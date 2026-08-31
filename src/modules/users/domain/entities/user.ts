@@ -65,11 +65,32 @@ export class User extends AggregateRoot {
     this.props.updatedAt = now;
   }
 
+  updateProfile(
+    input: { name?: string; email?: Email; document?: PersonDocument },
+    now: Date,
+  ): void {
+    if (input.name !== undefined) {
+      const name = input.name.trim();
+      if (name.length < NAME_MIN_LENGTH || name.length > NAME_MAX_LENGTH) {
+        throw new InvalidUserNameError();
+      }
+      this.props.name = name;
+    }
+    if (input.email !== undefined) {
+      this.props.email = input.email;
+    }
+    if (input.document !== undefined) {
+      this.props.document = input.document;
+    }
+    this.props.updatedAt = now;
+  }
+
   deactivate(now: Date): void {
     if (this.props.status === UserStatus.Inactive) {
       return;
     }
     this.props.status = UserStatus.Inactive;
+    this.props.deletedAt = now;
     this.props.updatedAt = now;
   }
 

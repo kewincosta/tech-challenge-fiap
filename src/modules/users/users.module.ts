@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PASSWORD_HASHER } from './application/ports/password-hasher.port';
+import { DeactivateUserHandler } from './application/commands/deactivate-user/deactivate-user.handler';
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
+import { UpdateUserHandler } from './application/commands/update-user/update-user.handler';
 import { GetUserByIdHandler } from './application/queries/get-user-by-id/get-user-by-id.handler';
 import { VerifyCredentialsHandler } from './application/queries/verify-credentials/verify-credentials.handler';
 import { USER_REPOSITORY } from './domain/repositories/user.repository';
@@ -15,6 +17,8 @@ import { UsersController } from './presentation/controllers/users.controller';
   controllers: [UsersController],
   providers: [
     RegisterUserHandler,
+    UpdateUserHandler,
+    DeactivateUserHandler,
     GetUserByIdHandler,
     VerifyCredentialsHandler,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },

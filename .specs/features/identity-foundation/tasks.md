@@ -476,11 +476,11 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] Name, email and document can be updated, each revalidated
-- [ ] Deactivation sets `deleted_at` and frees the email and document for reuse
-- [ ] Updating to an email or document already in use answers 409
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] Name, email and document can be updated, each revalidated
+- [x] Deactivation sets `deleted_at` and frees the email and document for reuse
+- [x] Updating to an email or document already in use answers 409
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 126 unit tests pass (111 baseline + 15 net new across `user.spec.ts`, `update-user.handler.spec.ts`, `deactivate-user.handler.spec.ts`; no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
