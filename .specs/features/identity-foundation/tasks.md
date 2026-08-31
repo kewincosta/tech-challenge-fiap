@@ -562,12 +562,12 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] Assigning `SUPER_ADMIN` is always refused with `AUTHZ_ROLE_NOT_ASSIGNABLE`
-- [ ] Assigning `ADMIN` without `SUPER_ADMIN` is refused with `AUTHZ_ROLE_ESCALATION_FORBIDDEN`
-- [ ] A super administrator can assign `ADMIN`
-- [ ] An administrator can assign `SERVICE_ADVISOR`, `MECHANIC` and `CUSTOMER`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 6 unit and 3 e2e tests pass (no silent deletions)
+- [x] Assigning `SUPER_ADMIN` is always refused with `AUTHZ_ROLE_NOT_ASSIGNABLE`
+- [x] Assigning `ADMIN` without `SUPER_ADMIN` is refused with `AUTHZ_ROLE_ESCALATION_FORBIDDEN`
+- [x] A super administrator can assign `ADMIN`
+- [x] An administrator can assign `SERVICE_ADVISOR`, `MECHANIC` and `CUSTOMER`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 5 new unit tests (10 total in the file) and 3 e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: full

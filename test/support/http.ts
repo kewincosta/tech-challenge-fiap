@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
 import { faker } from '@faker-js/faker';
 import request from 'supertest';
-import { AssignRoleToUserCommand } from '../../src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command';
+import { DataSource } from 'typeorm';
 import { uniqueValidCpf } from './factories/document.factory';
 
 export interface RegisteredCredentials {
@@ -53,15 +52,25 @@ export async function registerAndLogin(app: INestApplication): Promise<Authentic
   return login(app, await registerUser(app));
 }
 
-// Dispatches the assignment straight through the real CommandBus, bypassing HTTP - there is no
-// role-granting endpoint an e2e test can call at this stage of the batch (T13 is what refuses
-// this at the API boundary; until then nothing stops a direct dispatch), and building an admin
-// actor is fixture setup, not the behaviour under test.
+// Inserts the assignment directly, bypassing both HTTP and AssignRoleToUserCommand. T13's
+// escalation rule refuses ADMIN through that command unless the actor already holds SUPER_ADMIN,
+// and refuses SUPER_ADMIN unconditionally (AD-006: only the seed script or a direct database
+// insert may create one) - building a privileged actor for test fixtures needs the same direct
+// insert AD-006 itself prescribes, since going through the command would just trip the rule the
+// fixture exists to test around.
 export async function grantRole(
   app: INestApplication,
   userId: string,
   role: string,
 ): Promise<void> {
-  const commandBus = app.get(CommandBus);
-  await commandBus.execute(new AssignRoleToUserCommand(userId, { name: role }));
+  const dataSource = app.get(DataSource);
+  await dataSource.query(
+    `INSERT INTO user_roles (user_id, role_id, created_at)
+       SELECT u.id, r.id, now()
+         FROM users u
+        CROSS JOIN roles r
+        WHERE u.external_id = $1 AND r.name = $2
+       ON CONFLICT DO NOTHING`,
+    [userId, role],
+  );
 }

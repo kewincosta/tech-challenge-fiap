@@ -19,6 +19,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
+import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
+import { Principal } from '../../../authentication/presentation/principal';
 import { AssignRoleToUserCommand } from '../../application/commands/assign-role-to-user/assign-role-to-user.command';
 import { RevokeRoleFromUserCommand } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.command';
 import { AppPermission } from '../../application/contracts/app-permissions';
@@ -59,9 +61,10 @@ export class UserAccessController {
   async assignRole(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Param('roleId', ParseUUIDPipe) roleId: string,
+    @CurrentUser() principal: Principal,
   ): Promise<void> {
     await this.commandBus.execute<AssignRoleToUserCommand, void>(
-      new AssignRoleToUserCommand(userId, { id: roleId }),
+      new AssignRoleToUserCommand(userId, { id: roleId }, principal.userId),
     );
   }
 
