@@ -11,7 +11,10 @@ import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id
 import { UpdateInventoryItemCommand } from './update-inventory-item.command';
 
 @CommandHandler(UpdateInventoryItemCommand)
-export class UpdateInventoryItemHandler implements ICommandHandler<UpdateInventoryItemCommand, void> {
+export class UpdateInventoryItemHandler implements ICommandHandler<
+  UpdateInventoryItemCommand,
+  void
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -30,7 +33,10 @@ export class UpdateInventoryItemHandler implements ICommandHandler<UpdateInvento
 
     // No `sku` field here at all: the count and the catalog identity are both create-only, only a
     // movement moves the count and nothing ever renames a SKU (INV-01 AC6, T4's updateDetails).
-    item.updateDetails({ name: command.name, description: command.description, unitPrice }, this.clock.now());
+    item.updateDetails(
+      { name: command.name, description: command.description, unitPrice },
+      this.clock.now(),
+    );
     await this.items.save(item);
     this.eventBus.publishAll(item.pullDomainEvents());
   }

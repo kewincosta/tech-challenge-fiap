@@ -1,7 +1,10 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import { ID_GENERATOR, IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
+import {
+  ID_GENERATOR,
+  IdGenerator,
+} from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { SkuAlreadyInUseError } from '../../../domain/errors/sku-already-in-use.error';
@@ -12,12 +15,16 @@ import {
 } from '../../../domain/repositories/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
-import { CreatedInventoryItemDto, CreateInventoryItemCommand } from './create-inventory-item.command';
+import {
+  CreatedInventoryItemDto,
+  CreateInventoryItemCommand,
+} from './create-inventory-item.command';
 
 @CommandHandler(CreateInventoryItemCommand)
-export class CreateInventoryItemHandler
-  implements ICommandHandler<CreateInventoryItemCommand, CreatedInventoryItemDto>
-{
+export class CreateInventoryItemHandler implements ICommandHandler<
+  CreateInventoryItemCommand,
+  CreatedInventoryItemDto
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

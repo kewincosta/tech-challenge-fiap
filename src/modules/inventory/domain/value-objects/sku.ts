@@ -11,8 +11,7 @@ export class Sku {
    * plain index on `sku` instead of an expression index (design.md's Tech Decisions).
    */
   static create(raw: string): Sku {
-    const normalized =
-      typeof raw === 'string' ? raw.trim().replace(/\s+/g, ' ').toUpperCase() : '';
+    const normalized = typeof raw === 'string' ? raw.trim().replace(/\s+/g, ' ').toUpperCase() : '';
     if (normalized.length === 0 || normalized.length > MAX_LENGTH) {
       throw new InvalidSkuError();
     }

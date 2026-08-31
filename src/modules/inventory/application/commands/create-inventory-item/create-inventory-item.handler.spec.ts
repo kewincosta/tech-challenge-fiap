@@ -48,7 +48,9 @@ describe('CreateInventoryItemHandler', () => {
 
   it('should refuse a SKU an active item already holds', async () => {
     const { handler, items } = makeHandler();
-    await handler.execute(new CreateInventoryItemCommand('FLT-001', 'Filtro de oleo', 'PART', 2500));
+    await handler.execute(
+      new CreateInventoryItemCommand('FLT-001', 'Filtro de oleo', 'PART', 2500),
+    );
 
     await expect(
       handler.execute(new CreateInventoryItemCommand('FLT-001', 'Outro filtro', 'PART', 3000)),

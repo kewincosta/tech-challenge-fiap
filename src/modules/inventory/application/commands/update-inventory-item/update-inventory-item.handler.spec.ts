@@ -36,7 +36,9 @@ describe('UpdateInventoryItemHandler', () => {
     const { handler, items } = makeHandler();
     await items.save(buildItem());
 
-    await handler.execute(new UpdateInventoryItemCommand(ITEM_ID.value, undefined, undefined, 3000));
+    await handler.execute(
+      new UpdateInventoryItemCommand(ITEM_ID.value, undefined, undefined, 3000),
+    );
 
     const updated = items.items[0];
     expect(updated.unitPrice.cents).toBe(3000);

@@ -57,7 +57,8 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     const { itemRow, movementRows } = InventoryItemMapper.toOrm(item);
     const delta = item.newMovements.reduce(
       (sum, movement) =>
-        sum + (movement.kind === StockMovementKind.Inbound ? movement.quantity : -movement.quantity),
+        sum +
+        (movement.kind === StockMovementKind.Inbound ? movement.quantity : -movement.quantity),
       0,
     );
     try {
@@ -94,7 +95,10 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     }
   }
 
-  private async resolveUserInternalId(manager: EntityManager, userExternalId: string): Promise<string> {
+  private async resolveUserInternalId(
+    manager: EntityManager,
+    userExternalId: string,
+  ): Promise<string> {
     const rows: Array<{ id: string }> = await manager.query(
       `SELECT id FROM users WHERE external_id = $1`,
       [userExternalId],

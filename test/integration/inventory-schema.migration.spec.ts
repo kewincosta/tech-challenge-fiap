@@ -18,7 +18,10 @@ async function insertUser(): Promise<number> {
     `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
      VALUES (gen_random_uuid(), $1, 'hash', 'Test User', $2, 'ACTIVE', now(), now())
      RETURNING id`,
-    [`inv-${Math.random().toString(36).slice(2)}@example.com`, Math.random().toString().slice(2, 13)],
+    [
+      `inv-${Math.random().toString(36).slice(2)}@example.com`,
+      Math.random().toString().slice(2, 13),
+    ],
   );
   return rows[0].id;
 }

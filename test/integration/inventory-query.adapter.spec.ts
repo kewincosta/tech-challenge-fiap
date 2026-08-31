@@ -43,11 +43,13 @@ async function insertUser(): Promise<string> {
   return externalId;
 }
 
-async function saveItem(overrides: {
-  sku?: string;
-  kind?: InventoryItemKind;
-  priceCents?: number;
-} = {}): Promise<InventoryItem> {
+async function saveItem(
+  overrides: {
+    sku?: string;
+    kind?: InventoryItemKind;
+    priceCents?: number;
+  } = {},
+): Promise<InventoryItem> {
   const item = InventoryItem.create({
     id: InventoryItemId.create(randomUUID()),
     sku: Sku.create(overrides.sku ?? uniqueSku()),
