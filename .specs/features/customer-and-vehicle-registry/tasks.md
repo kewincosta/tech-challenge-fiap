@@ -616,10 +616,11 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Get by external id returns plate, brand, model, year, owning customer, or null
-- [ ] List by customer returns every active vehicle for that customer, excludes removed ones
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Get by external id returns plate, brand, model, year, owning customer, or null
+- [x] List by customer returns every active vehicle for that customer, excludes removed ones
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 4 tests pass (no silent deletions), verified durable across two consecutive
+  full `test:integration` runs (T15's lesson applied)
 
 **Tests**: integration
 **Gate**: quick
