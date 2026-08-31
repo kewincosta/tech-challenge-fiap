@@ -163,12 +163,12 @@ T14  T15  T16  T17
 
 **Done when**:
 
-- [ ] `fromCents`, `fromDatabase`, `add`, `subtract`, `multiply`, `isGreaterThan`, `equals` and `cents` implemented
-- [ ] Negative and fractional amounts rejected with a domain error
-- [ ] Zero accepted
-- [ ] A `bigint` read back as a string converts to the amount that was written
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `fromCents`, `fromDatabase`, `add`, `subtract`, `multiply`, `isGreaterThan`, `equals` and `cents` implemented
+- [x] Negative and fractional amounts rejected with a domain error
+- [x] Zero accepted
+- [x] A `bigint` read back as a string converts to the amount that was written
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 12 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
