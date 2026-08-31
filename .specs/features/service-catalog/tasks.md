@@ -364,12 +364,12 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] `GetServiceQuery` returns the service by external id, active or deactivated, with its status
-- [ ] `GetServiceQuery` returns null for an id that does not exist
-- [ ] `GetServiceQuery` returns null, not a thrown error, for a malformed id
-- [ ] `ListServicesQuery` returns active services only
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `GetServiceQuery` returns the service by external id, active or deactivated, with its status
+- [x] `GetServiceQuery` returns null for an id that does not exist
+- [x] `GetServiceQuery` returns null, not a thrown error, for a malformed id
+- [x] `ListServicesQuery` returns active services only
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 5 tests pass. The two null cases and the deactivated case together are what prove the contract feature 5 depends on: "does not exist" and "exists but inactive" are distinct answers. Lint clean, full integration suite 92/92 on both runs (87 before this task).
 
 **Tests**: integration
 **Gate**: quick
