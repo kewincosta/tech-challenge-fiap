@@ -446,13 +446,13 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] `User.register` requires a `PersonDocument`
-- [ ] `UserRepository` gains `findByDocument` and `existsByDocument`
-- [ ] Registration without a document is refused
-- [ ] Registration with a document already in use answers 409
-- [ ] The user insert and the role assignment commit or roll back together
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e` - this is the closing checkpoint of the transitional gate note above `## Preconditions`; by T9 the chained command must exit 0 with no exceptions, including the full e2e suite, since the `document` field on registration was the last gap
-- [ ] Test count: 8 unit and 3 integration tests pass (no silent deletions)
+- [x] `User.register` requires a `PersonDocument`
+- [x] `UserRepository` gains `findByDocument` and `existsByDocument`
+- [x] Registration without a document is refused
+- [x] Registration with a document already in use answers 409
+- [x] The user insert and the role assignment commit or roll back together
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e` - this is the closing checkpoint of the transitional gate note above `## Preconditions`; by T9 the chained command must exit 0 with no exceptions, including the full e2e suite, since the `document` field on registration was the last gap
+- [x] Test count: 111 unit (106 baseline + 5 net new across `user.spec.ts` and `register-user.handler.spec.ts`) and 3 new integration tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: full

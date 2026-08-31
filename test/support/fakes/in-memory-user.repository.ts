@@ -1,6 +1,7 @@
 import { User } from '../../../src/modules/users/domain/entities/user';
 import { UserRepository } from '../../../src/modules/users/domain/repositories/user.repository';
 import { Email } from '../../../src/modules/users/domain/value-objects/email';
+import { PersonDocument } from '../../../src/modules/users/domain/value-objects/person-document';
 import { UserId } from '../../../src/modules/users/domain/value-objects/user-id';
 
 export class InMemoryUserRepository implements UserRepository {
@@ -19,6 +20,19 @@ export class InMemoryUserRepository implements UserRepository {
   async existsByEmail(email: Email): Promise<boolean> {
     return Promise.resolve(
       this.users.some((user) => user.email.equals(email) && user.deletedAt === null),
+    );
+  }
+
+  async findByDocument(document: PersonDocument): Promise<User | null> {
+    return Promise.resolve(
+      this.users.find((user) => user.document.equals(document) && user.deletedAt === null) ??
+        null,
+    );
+  }
+
+  async existsByDocument(document: PersonDocument): Promise<boolean> {
+    return Promise.resolve(
+      this.users.some((user) => user.document.equals(document) && user.deletedAt === null),
     );
   }
 

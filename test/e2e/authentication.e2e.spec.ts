@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestApp } from '../support/app';
 import { api, login, registerAndLogin, registerUser } from '../support/http';
 
@@ -28,6 +29,7 @@ describe('Authentication', () => {
         email: faker.internet.email().toLowerCase(),
         name: 'Jane Doe',
         password: 'Str0ngPassword',
+        document: uniqueValidCpf(),
       })
       .expect(201);
 
@@ -39,7 +41,12 @@ describe('Authentication', () => {
 
     const response = await api(app)
       .post('/api/v1/users')
-      .send({ email: credentials.email, name: 'Other', password: 'Str0ngPassword' })
+      .send({
+        email: credentials.email,
+        name: 'Other',
+        password: 'Str0ngPassword',
+        document: uniqueValidCpf(),
+      })
       .expect(409);
 
     expect(response.body).toMatchObject({ code: 'USER_EMAIL_ALREADY_IN_USE' });
@@ -52,6 +59,7 @@ describe('Authentication', () => {
         email: faker.internet.email().toLowerCase(),
         name: 'Jane Doe',
         password: 'short',
+        document: uniqueValidCpf(),
       })
       .expect(400);
 
@@ -109,8 +117,13 @@ describe('Authentication', () => {
   it('should not store the refresh token in plain text', async () => {
     const client = await registerAndLogin(app);
 
+    // sessions.id / refresh_tokens.session_id are the internal bigint keys (AD-001); the session
+    // id carried on the client and in the JWT is the external uuid, so it has to resolve through
+    // sessions.external_id rather than compare directly against the internal foreign key.
     const rows: Array<{ token_hash: string }> = await dataSource.query(
-      `SELECT token_hash FROM refresh_tokens WHERE session_id = $1`,
+      `SELECT rt.token_hash FROM refresh_tokens rt
+         JOIN sessions s ON s.id = rt.session_id
+        WHERE s.external_id = $1`,
       [client.sessionId],
     );
 
@@ -127,12 +140,14 @@ describe('Authentication', () => {
       .set('Authorization', `Bearer ${client.accessToken}`)
       .expect(200);
 
+    // CUSTOMER is granted work-orders:read-own and work-orders:decide-own by the RBAC seed
+    // (1787702400001-seed-rbac-catalog.ts) - not an empty set.
     expect(response.body).toMatchObject({
       id: client.userId,
       email: client.email,
       status: 'ACTIVE',
       roles: ['CUSTOMER'],
-      permissions: [],
+      permissions: ['work-orders:decide-own', 'work-orders:read-own'],
     });
   });
 
@@ -189,8 +204,9 @@ describe('Authentication', () => {
       .post('/api/v1/auth/tokens')
       .send({ refreshToken: rotatedBody.refreshToken })
       .expect(401);
+    // sessions.id is the internal bigint key (AD-001); client.sessionId is the external uuid.
     const sessions: Array<{ status: string }> = await dataSource.query(
-      `SELECT status FROM sessions WHERE id = $1`,
+      `SELECT status FROM sessions WHERE external_id = $1`,
       [client.sessionId],
     );
     expect(sessions[0].status).toBe('REVOKED');
@@ -276,6 +292,7 @@ describe('Authentication', () => {
         email: faker.internet.email().toLowerCase(),
         name: 'Jane Doe',
         password: 'Str0ngPassword',
+        document: uniqueValidCpf(),
         isAdmin: true,
       })
       .expect(400);

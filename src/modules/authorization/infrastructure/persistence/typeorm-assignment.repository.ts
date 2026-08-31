@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { CLOCK, Clock } from '../../../../shared/application/ports/clock.port';
+import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { AssignmentRepository } from '../../application/ports/assignment.repository';
 import { RoleOrmEntity } from './role.orm-entity';
 import { UserRoleOrmEntity } from './user-role.orm-entity';
@@ -22,7 +23,9 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
       this.resolveUserInternalId(userId),
       this.resolveRoleInternalId(roleId),
     ]);
-    await this.userRoles
+    const manager = currentEntityManager();
+    const userRoles = manager ? manager.getRepository(UserRoleOrmEntity) : this.userRoles;
+    await userRoles
       .createQueryBuilder()
       .insert()
       .values({ userId: userInternalId, roleId: roleInternalId, createdAt: this.clock.now() })
@@ -51,7 +54,11 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
   }
 
   private async resolveUserInternalId(externalUserId: string): Promise<string> {
-    const rows: Array<{ id: string }> = await this.dataSource.query(
+    // Reads through the active transaction's manager when RegisterUserHandler is assigning the
+    // default role to a user it just inserted in the same transaction - a different connection
+    // would not see that row until commit. See TypeOrmTransactionRunner.
+    const runner = currentEntityManager() ?? this.dataSource;
+    const rows: Array<{ id: string }> = await runner.query(
       `SELECT id FROM users WHERE external_id = $1`,
       [externalUserId],
     );

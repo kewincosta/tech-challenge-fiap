@@ -17,6 +17,9 @@ export class UserOrmEntity {
   @Column({ name: 'name', type: 'varchar', length: 120 })
   name!: string;
 
+  @Column({ name: 'document', type: 'varchar', length: 14 })
+  document!: string;
+
   @Column({ name: 'status', type: 'varchar', length: 20 })
   status!: string;
 

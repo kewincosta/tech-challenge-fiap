@@ -53,7 +53,7 @@ export class UsersController {
   @ApiTooManyRequestsResponse({ type: ErrorResponseDto })
   async register(@Body() body: RegisterUserRequestDto): Promise<RegisteredUserResponseDto> {
     return this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
-      new RegisterUserCommand(body.email, body.name, body.password),
+      new RegisterUserCommand(body.email, body.name, body.password, body.document),
     );
   }
 

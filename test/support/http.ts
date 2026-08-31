@@ -1,11 +1,13 @@
 import { INestApplication } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import request from 'supertest';
+import { uniqueValidCpf } from './factories/document.factory';
 
 export interface RegisteredCredentials {
   userId: string;
   email: string;
   password: string;
+  document: string;
 }
 
 export interface AuthenticatedClient extends RegisteredCredentials {
@@ -21,11 +23,12 @@ export function api(app: INestApplication): request.Agent {
 export async function registerUser(app: INestApplication): Promise<RegisteredCredentials> {
   const email = faker.internet.email().toLowerCase();
   const password = 'Str0ngPassword';
+  const document = uniqueValidCpf();
   const response = await api(app)
     .post('/api/v1/users')
-    .send({ email, name: faker.person.fullName(), password })
+    .send({ email, name: faker.person.fullName(), password, document })
     .expect(201);
-  return { userId: (response.body as { id: string }).id, email, password };
+  return { userId: (response.body as { id: string }).id, email, password, document };
 }
 
 export async function login(

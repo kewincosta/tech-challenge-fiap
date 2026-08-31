@@ -4,12 +4,14 @@ import { UserRegistered } from '../events/user-registered.event';
 import { UserStatus } from '../user-status';
 import { Email } from '../value-objects/email';
 import { PasswordHash } from '../value-objects/password-hash';
+import { PersonDocument } from '../value-objects/person-document';
 import { UserId } from '../value-objects/user-id';
 
 interface UserProps {
   id: UserId;
   email: Email;
   name: string;
+  document: PersonDocument;
   passwordHash: PasswordHash;
   status: UserStatus;
   createdAt: Date;
@@ -21,6 +23,7 @@ interface RegisterUserInput {
   id: UserId;
   email: Email;
   name: string;
+  document: PersonDocument;
   passwordHash: PasswordHash;
   now: Date;
 }
@@ -42,6 +45,7 @@ export class User extends AggregateRoot {
       id: input.id,
       email: input.email,
       name,
+      document: input.document,
       passwordHash: input.passwordHash,
       status: UserStatus.Active,
       createdAt: input.now,
@@ -83,6 +87,10 @@ export class User extends AggregateRoot {
 
   get name(): string {
     return this.props.name;
+  }
+
+  get document(): PersonDocument {
+    return this.props.document;
   }
 
   get passwordHash(): PasswordHash {

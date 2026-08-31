@@ -3,6 +3,7 @@ export class RegisterUserCommand {
     readonly email: string,
     readonly name: string,
     readonly password: string,
+    readonly document: string,
   ) {}
 }
 

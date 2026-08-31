@@ -147,7 +147,12 @@ export class TypeOrmSessionRepository implements SessionRepository {
           userInternalId,
           active: SessionStatus.Active,
         })
-        .returning(['id', 'external_id'])
+        // .returning() resolves each entry by entity property path (findColumnsWithPropertyPath),
+        // not by database column name - 'external_id' matched nothing and was silently dropped
+        // from the RETURNING clause, so every revoked row's external id came back undefined. The
+        // property name is externalId; TypeORM still maps it to the real column, external_id, so
+        // the raw row keys below are unchanged.
+        .returning(['id', 'externalId'])
         .execute();
       const revokedRows = updateResult.raw as Array<{ id: string; external_id: string }>;
       if (revokedRows.length > 0) {

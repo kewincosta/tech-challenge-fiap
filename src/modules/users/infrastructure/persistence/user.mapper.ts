@@ -2,6 +2,7 @@ import { User } from '../../domain/entities/user';
 import { UserStatus } from '../../domain/user-status';
 import { Email } from '../../domain/value-objects/email';
 import { PasswordHash } from '../../domain/value-objects/password-hash';
+import { PersonDocument } from '../../domain/value-objects/person-document';
 import { UserId } from '../../domain/value-objects/user-id';
 import { UserOrmEntity } from './user.orm-entity';
 
@@ -11,6 +12,7 @@ export class UserMapper {
       id: UserId.create(row.externalId),
       email: Email.create(row.email),
       name: row.name,
+      document: PersonDocument.create(row.document),
       passwordHash: PasswordHash.create(row.passwordHash),
       status: row.status as UserStatus,
       createdAt: row.createdAt,
@@ -25,6 +27,7 @@ export class UserMapper {
     row.email = user.email.value;
     row.passwordHash = user.passwordHash.value;
     row.name = user.name;
+    row.document = user.document.value;
     row.status = user.status;
     row.createdAt = user.createdAt;
     row.updatedAt = user.updatedAt;
