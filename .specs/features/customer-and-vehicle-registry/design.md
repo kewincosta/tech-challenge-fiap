@@ -129,7 +129,7 @@ graph TD
 - **Interfaces**: `execute(command: RegisterVehicleCommand): Promise<RegisteredVehicleDto>`
 - **Dependencies**: `VEHICLE_REPOSITORY`, `QueryBus`, `CLOCK`, `ID_GENERATOR`.
 - **Reuses**: `GetCustomerQuery`.
-- **Logic**: `GetCustomerQuery(command.customerId)` - `CustomerNotFoundError` (404) if null, `OwningCustomerInactiveError` (RuleViolation, 422) if its status is inactive; `LicensePlate.create(command.plate)` throws `InvalidLicensePlateError` (400) on a malformed plate; `VehicleYear.create(command.year)` throws `InvalidVehicleYearError` (400) outside 1950..currentYear+1; `vehicles.save(...)` with a partial unique index on `plate` where `deleted_at IS NULL` as the concurrency backstop (Edge Cases).
+- **Logic**: `GetCustomerQuery(command.customerId)` - `ReferencedCustomerNotFoundError` (404, `vehicles`' own error class, not an import of `customers`' `CustomerNotFoundError` - same mirroring convention T7 established with `TargetUserNotFoundError`) if null, `OwningCustomerInactiveError` (RuleViolation, 422) if its status is inactive; `LicensePlate.create(command.plate)` throws `InvalidLicensePlateError` (400) on a malformed plate; `VehicleYear.create(command.year)` throws `InvalidVehicleYearError` (400) outside 1950..currentYear+1; `vehicles.save(...)` with a partial unique index on `plate` where `deleted_at IS NULL` as the concurrency backstop (Edge Cases).
 
 ### `GetMyVehiclesHandler`
 
@@ -207,12 +207,12 @@ round trip per row to fetch each candidate's name, does not scale to a list endp
 | Register with both/neither `userId` and account data | `AmbiguousCustomerRegistrationError`, `ErrorKind.Validation` | HTTP 400 |
 | Malformed address or phone | `InvalidAddressError` / `InvalidPhoneNumberError`, `ErrorKind.Validation` | HTTP 400 |
 | Register a vehicle for a deactivated customer | `OwningCustomerInactiveError`, `ErrorKind.RuleViolation` | HTTP 422 |
-| Register a vehicle for a customer that does not exist | `CustomerNotFoundError`, `ErrorKind.NotFound` | HTTP 404 |
+| Register a vehicle for a customer that does not exist | `ReferencedCustomerNotFoundError` (vehicles' own class), `ErrorKind.NotFound` | HTTP 404 |
 | Malformed plate, either format | `InvalidLicensePlateError`, `ErrorKind.Validation` | HTTP 400 |
 | Duplicate active plate | DB unique violation mapped to `LicensePlateAlreadyInUseError`, `ErrorKind.Conflict` | HTTP 409 |
 | Implausible model year | `InvalidVehicleYearError`, `ErrorKind.Validation` | HTTP 400 |
 | Missing `customers:manage`/`vehicles:manage`/`customers:read`/`vehicles:read` and not the owning person | Existing `PermissionsGuard` | HTTP 403 |
-| Unknown customer/vehicle external id | `CustomerNotFoundError`/`VehicleNotFoundError`, `ErrorKind.NotFound` | HTTP 404 |
+| Unknown customer/vehicle external id | `customers`' own `CustomerNotFoundError` / `vehicles`' own `VehicleNotFoundError`, each module's own class, `ErrorKind.NotFound` | HTTP 404 |
 
 ---
 
