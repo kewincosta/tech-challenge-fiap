@@ -457,20 +457,20 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] `POST /api/v1/inventory-items` and `PATCH /api/v1/inventory-items/:externalId` behind `inventory:manage`
-- [ ] `POST /api/v1/inventory-items/:externalId/replenishments` and `.../adjustments` behind `inventory:manage`, each recording the authenticated user as the actor
-- [ ] `GET /api/v1/inventory-items` (filterable by kind) and `GET /api/v1/inventory-items/:externalId` behind `inventory:read`
-- [ ] `GET /api/v1/inventory-items/:externalId/movements` behind `audit:read`
-- [ ] **A mechanic is refused 403 when replenishing** - phase 7's own named e2e case (INV-02 AC7)
-- [ ] A mechanic *can* list and read the catalog (`inventory:read`), and is refused 403 on the movement history (`audit:read`) - the two permissions proven distinct
-- [ ] An adjustment below the count answers 422 over HTTP, and the count is unchanged afterwards - the third of the three layers this rule is proven at (L-003)
-- [ ] An adjustment with no note answers 400
-- [ ] **A movement against an item that does not exist answers 404** (owns half of that edge case, L-002)
-- [ ] A duplicate active SKU answers 409
-- [ ] `InventoryModule` registered in `AppModule`
-- [ ] The full pre-existing suite (426 tests) stays green - nothing in this feature touches existing code
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 12 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/inventory-items` and `PATCH /api/v1/inventory-items/:externalId` behind `inventory:manage`
+- [x] `POST /api/v1/inventory-items/:externalId/replenishments` and `.../adjustments` behind `inventory:manage`, each recording the authenticated user as the actor
+- [x] `GET /api/v1/inventory-items` (filterable by kind) and `GET /api/v1/inventory-items/:externalId` behind `inventory:read`
+- [x] `GET /api/v1/inventory-items/:externalId/movements` behind `audit:read`
+- [x] **A mechanic is refused 403 when replenishing** - phase 7's own named e2e case (INV-02 AC7)
+- [x] A mechanic *can* list and read the catalog (`inventory:read`), and is refused 403 on the movement history (`audit:read`) - the two permissions proven distinct
+- [x] An adjustment below the count answers 422 over HTTP, and the count is unchanged afterwards - the third of the three layers this rule is proven at (L-003)
+- [x] An adjustment with no note answers 400
+- [x] **A movement against an item that does not exist answers 404** (owns half of that edge case, L-002)
+- [x] A duplicate active SKU answers 409
+- [x] `InventoryModule` registered in `AppModule`
+- [x] The full pre-existing suite (426 tests) stays green - nothing in this feature touches existing code
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 12 e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: build

@@ -19,6 +19,7 @@ import { PendingPasswordGuard } from './modules/authentication/presentation/guar
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { PermissionsGuard } from './modules/authorization/presentation/guards/permissions.guard';
 import { CustomersModule } from './modules/customers/customers.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
@@ -79,6 +80,7 @@ import { SharedModule } from './shared/shared.module';
     CustomersModule,
     VehiclesModule,
     ServicesModule,
+    InventoryModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createAppValidationPipe },
