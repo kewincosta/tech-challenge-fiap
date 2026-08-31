@@ -831,11 +831,14 @@ real HTTP routes, not just a mocked `QueryBus` at the unit level.
 
 **Done when**:
 
-- [ ] `POST /api/v1/vehicles` with a `customerId` that does not exist answers 404
-- [ ] `PATCH /api/v1/vehicles/:id` transferring to a deactivated customer answers 422
-- [ ] `PATCH /api/v1/vehicles/:id` transferring to a `customerId` that does not exist answers 404
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: recorded in the commit
+- [x] `POST /api/v1/vehicles` with a `customerId` that does not exist answers 404
+- [x] `PATCH /api/v1/vehicles/:id` transferring to a deactivated customer answers 422
+- [x] `PATCH /api/v1/vehicles/:id` transferring to a `customerId` that does not exist answers 404
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 3 new e2e tests, all pass on the first run. Unit 218/218, integration 71/71
+  (run twice consecutively for durability), e2e 71/71 = 360 total. This closes both gaps
+  `validation.md` flagged (Fix 1 in T21, Fix 2 here) - `customer-and-vehicle-registry` has no
+  remaining logged coverage gaps.
 
 **Tests**: e2e
 **Gate**: full

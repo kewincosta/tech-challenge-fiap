@@ -187,6 +187,63 @@ describe('Vehicles', () => {
     expect(response.body).toMatchObject({ customerId: newCustomerId });
   });
 
+  it('should return 404 when registering a vehicle for a customer that does not exist', async () => {
+    const response = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({
+        customerId: '00000000-0000-4000-8000-000000000001',
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'VEHICLE_REFERENCED_CUSTOMER_NOT_FOUND' });
+  });
+
+  it('should refuse transferring a vehicle to a deactivated customer', async () => {
+    const { customerId } = await registerCustomer();
+    const { customerId: deactivatedCustomerId } = await registerCustomer();
+    await api(app)
+      .delete(`/api/v1/customers/${deactivatedCustomerId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+    const created = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .expect(201);
+    const vehicleId = (created.body as { id: string }).id;
+
+    const response = await api(app)
+      .patch(`/api/v1/vehicles/${vehicleId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId: deactivatedCustomerId })
+      .expect(422);
+
+    expect(response.body).toMatchObject({ code: 'VEHICLE_OWNING_CUSTOMER_INACTIVE' });
+  });
+
+  it('should return 404 when transferring a vehicle to a customer that does not exist', async () => {
+    const { customerId } = await registerCustomer();
+    const created = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .expect(201);
+    const vehicleId = (created.body as { id: string }).id;
+
+    const response = await api(app)
+      .patch(`/api/v1/vehicles/${vehicleId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId: '00000000-0000-4000-8000-000000000002' })
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'VEHICLE_REFERENCED_CUSTOMER_NOT_FOUND' });
+  });
+
   it('should remove a vehicle and answer 404 for it afterwards', async () => {
     const { customerId } = await registerCustomer();
     const created = await api(app)
