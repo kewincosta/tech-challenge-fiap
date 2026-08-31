@@ -75,7 +75,7 @@ is specified when it is reached, never in advance.
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
 | 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
-| 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Not started |
+| 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Implemented, pending Verifier |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
 | 5 | `work-order-creation` | 8 | Large | Not started |
@@ -109,43 +109,40 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/identity-foundation` - **done**
-- **Phase / Task**: All 20 tasks (T1-T4 merged T5, T6-T20) complete and merged to `main` at
-  `49bf8ab`. Verifier pass 1 (baseline `bf20dbb`) returned FAIL on two real gaps; T18-T20 closed
-  them; Verifier pass 2 (baseline `332519e`) returned PASS, 43/43 spec-anchored ACs, 229/229 gate,
-  3/3 discrimination-sensor mutations killed. `validation.md` and spec.md's Requirement
-  Traceability (9/9 `Verified`) both reflect the passing state.
-- **Completed**: every task in `tasks.md`, every checkbox marked, feature Verified end to end.
+- **Feature**: `.specs/features/customer-and-vehicle-registry`
+- **Phase / Task**: All 20 tasks (T1-T20, two modules - `customers` and `vehicles`) complete and
+  committed to `main` at `e2857f2`. Diff range for the Verifier: `c878d74..HEAD` (28 commits,
+  spec through the last task). Not yet Verified - dispatching the mandatory Verifier next.
+- **Completed**: every task in `tasks.md`, every checkbox marked. Gate at close: lint clean,
+  build clean, unit 216/216, integration 71/71 (run twice consecutively for durability), e2e
+  67/67 - 354 total, up from the 229 `identity-foundation` baseline, zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: none for this feature. The next unit of work is specifying feature 2,
-  `customer-and-vehicle-registry`, when the user asks for it - not before, per this file's own
-  Feature Roadmap policy.
+- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read `validation.md`
+  and act on any gaps (bounded to 3 fix/re-verify iterations before escalating).
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes carried from Batch 2 and the T14-T17 continuation** (useful context if resuming cold):
-the original batch-2 sub-agent completed T9-T13 cleanly, then its session transcript expired
-before it could resume for T14 (a rate-limit cutoff, not a failure) - `SendMessage` could not
-reattach to it, so the orchestrator implemented T14 through T17 directly, following the same
-per-task cycle (implement, test, gate, adequacy review, checkbox, atomic commit). Two real,
-non-trivial findings from that continuation, both already fixed and both worth knowing if
-touching this code again:
-1. T16's token/principal shape change (`mustChangePassword`) rippled into `AuthenticateUserHandler`,
-   `RefreshSessionHandler`, `JwtAuthGuard`, `UserDto`, and the shared `FakeAccessTokenService` test
-   fixture - a compilation dependency, not scope creep, and all of it landed in T16's commit.
-2. T17 (removing `sessions/current`) broke T16's own e2e fixture, which had used that route to
-   prove "logout is allowed while pending" - fixed by pointing it at the surviving `DELETE
-   sessions` route. A reminder that later tasks can invalidate earlier tasks' fixtures, not just
-   earlier tasks' code.
-
-**Notes from the first Verifier pass and the T18-T20 fix round:** T14's own deferral of the
-staff-creation endpoint to feature 2 (reading IDENT-07's "Why P1" line as scope permission) was
-the orchestrator's own call, made without checking back - the independent Verifier disagreed,
-correctly: spec.md lists IDENT-07 as this feature's own P1 story with its own AC1 and Independent
-Test. The user resolved the conflict by choosing to build it now rather than formally descope it
-(T18). The Verifier also found spec.md's own deactivation Edge Case had never been assigned to
-any task (T19), and three minor e2e/integration coverage gaps (T20). Lesson: a task's own
-Done-when note asserting "this belongs to a later feature" is a scope claim, not a fact, and
-needs the same evidence-or-zero discipline as any other Done-when item - it should point at
-where the later feature's spec actually says so, or it should not be written as settled.
+**Notes from this feature's own implementation** (useful context if resuming cold or verifying):
+1. Two design.md corrections made mid-implementation, both fixed as their own small commits:
+   `Vehicle.customerId`/`Customer.userId` are plain `string` external ids, not an imported VO
+   instance (the original design claimed a precedent - `AssignRoleToUserCommand` crossing a
+   `UserId` instance - that turned out not to be true on inspection: every cross-module reference
+   in this codebase already carries a plain string). Cross-module "not found" errors are
+   module-local classes (`TargetUserNotFoundError` in `customers`, `ReferencedCustomerNotFoundError`
+   in `vehicles`), never an imported `DomainError` from the other module - mirrors the
+   `AssignedUserNotFoundError` pattern already established in `authorization`.
+2. Real bug found by T20's own e2e gate, not a pre-existing gap: `TypeOrmCustomerQueryAdapter
+   .getById` (T6) filtered `deleted_at IS NULL`, so `RegisterVehicleHandler`'s deactivated-customer
+   check was unreachable - a deactivated customer's id resolved to `null` before the status check
+   ran, answering 404 instead of the correct 422. Fixed by dropping that filter from `getById`
+   only (the staff/cross-module lookup) while keeping it on `getByUserId`/`listActive` (the
+   self-service and search paths, where hiding a deactivated customer is the intended behaviour).
+3. Hardcoded literal test fixtures (license plates) passed in isolation but collided with leftover
+   rows from a prior run once the project's own "test database is never truncated" convention
+   applied across two consecutive `test:integration` runs - fixed with a `uniqueLicensePlate()`
+   factory, matching `uniqueValidCpf()`'s existing shape. A reminder to default to unique
+   generated test data always, never a fixed literal, even for a "just this once" fixture.
+4. No RBAC seed migration change was needed: `customers:read/manage` and `vehicles:read/manage`
+   already existed and were already granted to the right roles from `identity-foundation`'s own
+   seed - confirmed before starting, not assumed.
