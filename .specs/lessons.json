@@ -29,17 +29,19 @@
       "text": "Every line in a spec's Edge Cases section needs an owning task in tasks.md - an edge case with no task assigned to it typically ships unimplemented and untested.",
       "signal": "ac_gap",
       "scope": "planning",
-      "status": "candidate",
+      "status": "confirmed",
       "features": [
-        "identity-foundation"
+        "identity-foundation",
+        "service-catalog"
       ],
-      "recurrence": 1,
+      "recurrence": 2,
       "harmful": 0,
       "evidence": [
-        ".specs/features/identity-foundation/spec.md:206 (planning)"
+        ".specs/features/identity-foundation/spec.md:206 (planning)",
+        "spec.md Edge Cases (whitespace-only duplicate name; update-path reuse of a deactivated service's name) - no owning task in tasks.md (planning)"
       ],
       "created": "2026-08-31T10:15:15Z",
-      "last_seen": "2026-08-31T10:15:15Z"
+      "last_seen": "2026-08-31T17:48:37Z"
     },
     {
       "id": "L-003",
@@ -47,17 +49,19 @@
       "text": "A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.",
       "signal": "ac_gap",
       "scope": "application-handlers",
-      "status": "candidate",
+      "status": "confirmed",
       "features": [
-        "customer-and-vehicle-registry"
+        "customer-and-vehicle-registry",
+        "service-catalog"
       ],
-      "recurrence": 1,
+      "recurrence": 2,
       "harmful": 0,
       "evidence": [
-        "CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)"
+        "CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)",
+        "update-service.handler.spec.ts (no case renaming a service to a name only a deactivated service holds, even though service.repository.spec.ts:85-94 proves the identical existsActiveByName call shape) (application-handlers)"
       ],
       "created": "2026-08-31T12:39:52Z",
-      "last_seen": "2026-08-31T12:39:52Z"
+      "last_seen": "2026-08-31T17:48:43Z"
     },
     {
       "id": "L-004",
