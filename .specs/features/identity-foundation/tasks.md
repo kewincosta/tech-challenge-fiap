@@ -623,12 +623,12 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] `POST /api/v1/users/me/password` takes the current and the new password
-- [ ] A wrong current password answers 401
-- [ ] A weak new password answers 400
-- [ ] Every session of that user is revoked on success
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 5 unit and 4 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/users/me/password` takes the current and the new password
+- [x] A wrong current password answers 401
+- [x] A weak new password answers 400
+- [x] Every session of that user is revoked on success
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 5 unit and 4 e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: full

@@ -36,6 +36,7 @@ import { CurrentUser } from '../../../authentication/presentation/decorators/cur
 import { Public } from '../../../authentication/presentation/decorators/public.decorator';
 import { Principal } from '../../../authentication/presentation/principal';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { ChangePasswordCommand } from '../../application/commands/change-password/change-password.command';
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
 import {
   RegisteredUserDto,
@@ -47,6 +48,7 @@ import { GetUserByIdQuery } from '../../application/queries/get-user-by-id/get-u
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { UserSummaryDto } from '../../application/ports/user-query.port';
 import { UserNotFoundError } from '../../domain/errors/user-not-found.error';
+import { ChangePasswordRequestDto } from '../dtos/change-password.request.dto';
 import { RegisterUserRequestDto } from '../dtos/register-user.request.dto';
 import { UpdateUserRequestDto } from '../dtos/update-user.request.dto';
 import {
@@ -105,6 +107,21 @@ export class UsersController {
       new UpdateUserCommand(principal.userId, body.name, body.email, body.document),
     );
     return this.getUserOrThrow(principal.userId);
+  }
+
+  @Post('me/password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change the authenticated user own password, revoking every session' })
+  @ApiNoContentResponse()
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  async changePassword(
+    @CurrentUser() principal: Principal,
+    @Body() body: ChangePasswordRequestDto,
+  ): Promise<void> {
+    await this.commandBus.execute<ChangePasswordCommand, void>(
+      new ChangePasswordCommand(principal.userId, body.currentPassword, body.newPassword),
+    );
   }
 
   @Get()

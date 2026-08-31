@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PASSWORD_HASHER } from './application/ports/password-hasher.port';
 import { USER_QUERY_PORT } from './application/ports/user-query.port';
+import { ChangePasswordHandler } from './application/commands/change-password/change-password.handler';
 import { DeactivateUserHandler } from './application/commands/deactivate-user/deactivate-user.handler';
 import { RegisterUserHandler } from './application/commands/register-user/register-user.handler';
 import { UpdateUserHandler } from './application/commands/update-user/update-user.handler';
@@ -23,6 +24,7 @@ import { UsersController } from './presentation/controllers/users.controller';
     RegisterUserHandler,
     UpdateUserHandler,
     DeactivateUserHandler,
+    ChangePasswordHandler,
     GetUserByIdHandler,
     VerifyCredentialsHandler,
     FindUserByDocumentHandler,
