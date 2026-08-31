@@ -75,7 +75,7 @@ is specified when it is reached, never in advance.
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
 | 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
-| 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Implemented, pending Verifier |
+| 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Verified |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
 | 5 | `work-order-creation` | 8 | Large | Not started |
@@ -110,20 +110,30 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/customer-and-vehicle-registry`
-- **Phase / Task**: All 20 tasks (T1-T20, two modules - `customers` and `vehicles`) complete and
-  committed to `main` at `e2857f2`. Diff range for the Verifier: `c878d74..HEAD` (28 commits,
-  spec through the last task). Not yet Verified - dispatching the mandatory Verifier next.
-- **Completed**: every task in `tasks.md`, every checkbox marked. Gate at close: lint clean,
-  build clean, unit 216/216, integration 71/71 (run twice consecutively for durability), e2e
-  67/67 - 354 total, up from the 229 `identity-foundation` baseline, zero regressions.
+- **Phase / Task**: Verified. All 20 tasks (T1-T20, two modules - `customers` and `vehicles`)
+  complete and committed to `main` at `cded578`. Verifier report at
+  `.specs/features/customer-and-vehicle-registry/validation.md`, diff range `c878d74..cded578`
+  (29 commits, spec through the last task).
+- **Completed**: every task in `tasks.md`; every one of the 6 stories (CVR-01 through CVR-06, 41
+  ACs total) independently re-derived and confirmed by the Verifier, evidence-or-zero. 5/5 Edge
+  Cases handled. AD-003 cross-module boundary confirmed clean (`customers`/`vehicles` cross only
+  through `CommandBus`/`QueryBus`, plus the one documented raw-SQL infrastructure exception).
+  Discrimination sensor: 3/3 injected mutations killed. Gate reproduced independently on two full
+  runs: lint clean, build clean, unit 216/216, integration 71/71 (run twice consecutively for
+  durability), e2e 67/67 - 354 total, up from the 229 `identity-foundation` baseline, zero
+  regressions.
 - **In-progress** (file:line): none
-- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read `validation.md`
-  and act on any gaps (bounded to 3 fix/re-verify iterations before escalating).
+- **Next step**: none required to close this feature. Two minor, non-blocking test-coverage
+  completeness gaps are logged in `validation.md`'s Fix Plans (Fix 1: `RegisterCustomerHandler`
+  has no direct test for a malformed address/phone during registration, CVR-01 AC7/AC8; Fix 2:
+  three vehicle-route NotFound/RuleViolation branches - CVR-03 AC3, CVR-06 AC3/AC4 - have unit
+  coverage only, no e2e). Neither blocks starting `service-catalog` (feature 3).
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context if resuming cold or verifying):
+**Notes from this feature's own implementation and verification** (useful context if resuming
+cold or building on top of this feature):
 1. Two design.md corrections made mid-implementation, both fixed as their own small commits:
    `Vehicle.customerId`/`Customer.userId` are plain `string` external ids, not an imported VO
    instance (the original design claimed a precedent - `AssignRoleToUserCommand` crossing a
@@ -138,6 +148,9 @@ entry. They apply to every feature.
    ran, answering 404 instead of the correct 422. Fixed by dropping that filter from `getById`
    only (the staff/cross-module lookup) while keeping it on `getByUserId`/`listActive` (the
    self-service and search paths, where hiding a deactivated customer is the intended behaviour).
+   The Verifier independently re-derived this fix against real Postgres and confirmed it does not
+   contradict CVR-05 AC4 (list/search still hide a deactivated customer) - both behaviours are
+   proven in adjacent tests in the same file.
 3. Hardcoded literal test fixtures (license plates) passed in isolation but collided with leftover
    rows from a prior run once the project's own "test database is never truncated" convention
    applied across two consecutive `test:integration` runs - fixed with a `uniqueLicensePlate()`
@@ -146,3 +159,8 @@ entry. They apply to every feature.
 4. No RBAC seed migration change was needed: `customers:read/manage` and `vehicles:read/manage`
    already existed and were already granted to the right roles from `identity-foundation`'s own
    seed - confirmed before starting, not assumed.
+5. The Verifier's own first full gate run hit one transient failure outside this feature's diff:
+   `test/e2e/role-escalation.e2e.spec.ts` (`identity-foundation` code, untouched here) failed once
+   on a `registerUser()` 409 - a faker email or `uniqueValidCpf()` document colliding with a row
+   already in the never-truncated test database. Three subsequent runs (isolated, full e2e suite,
+   full gate sequence) all passed clean; not a regression. Logged as lesson L-004.
