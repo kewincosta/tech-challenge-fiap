@@ -76,7 +76,7 @@ is specified when it is reached, never in advance.
 | --- | --- | --- | --- | --- |
 | 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Verified |
-| 3 | `service-catalog` | 6 | Medium | Not started |
+| 3 | `service-catalog` | 6 | Medium | Implemented, pending Verifier |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
 | 5 | `work-order-creation` | 8 | Large | Not started |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Not started |
@@ -109,55 +109,42 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/customer-and-vehicle-registry` - **done**
-- **Phase / Task**: Verified, PASS on the first pass, both post-verification coverage-hardening
-  tasks closed same day. 22 tasks total (T1-T20 plus T21/T22) complete and committed to `main` at
-  `d683d5a`. Verifier report at `.specs/features/customer-and-vehicle-registry/validation.md`.
-- **Completed**: every task in `tasks.md`; every one of the 6 stories (CVR-01 through CVR-06, 41
-  ACs total) independently re-derived and confirmed by the Verifier, evidence-or-zero. 5/5 Edge
-  Cases handled. AD-003 cross-module boundary confirmed clean. Discrimination sensor: 3/3 injected
-  mutations killed. Both minor coverage gaps the Verifier flagged (Fix 1, Fix 2 - neither a
-  production defect) closed in T21/T22, test-only, no production code touched by either. Final
-  gate: lint clean, build clean, unit 218/218, integration 71/71 (run twice consecutively for
-  durability), e2e 71/71 - 360 total, up from the 229 `identity-foundation` baseline, zero
-  regressions throughout.
+- **Feature**: `.specs/features/service-catalog`
+- **Phase / Task**: All 10 tasks (T1-T10) complete and committed to `main` at `6030dcd`. Diff range
+  for the Verifier: `1c9d225..HEAD` (13 commits, spec through the last task). Not yet Verified -
+  dispatching the mandatory Verifier next.
+- **Completed**: every task in `tasks.md`, every checkbox marked. Gate at close: lint clean, build
+  clean, unit 250/250, integration 92/92 (run twice consecutively for durability), e2e 81/81 -
+  423 total, up from the 360 `customer-and-vehicle-registry` baseline, zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required to close this feature. No open gaps. The next unit of work is
-  specifying feature 3, `service-catalog`, when the user asks for it - not before, per this
-  file's own Feature Roadmap policy.
+- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read `validation.md`
+  and act on any gaps (bounded to 3 fix/re-verify iterations before escalating).
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation and verification** (useful context if resuming
-cold or building on top of this feature):
-1. Two design.md corrections made mid-implementation, both fixed as their own small commits:
-   `Vehicle.customerId`/`Customer.userId` are plain `string` external ids, not an imported VO
-   instance (the original design claimed a precedent - `AssignRoleToUserCommand` crossing a
-   `UserId` instance - that turned out not to be true on inspection: every cross-module reference
-   in this codebase already carries a plain string). Cross-module "not found" errors are
-   module-local classes (`TargetUserNotFoundError` in `customers`, `ReferencedCustomerNotFoundError`
-   in `vehicles`), never an imported `DomainError` from the other module - mirrors the
-   `AssignedUserNotFoundError` pattern already established in `authorization`.
-2. Real bug found by T20's own e2e gate, not a pre-existing gap: `TypeOrmCustomerQueryAdapter
-   .getById` (T6) filtered `deleted_at IS NULL`, so `RegisterVehicleHandler`'s deactivated-customer
-   check was unreachable - a deactivated customer's id resolved to `null` before the status check
-   ran, answering 404 instead of the correct 422. Fixed by dropping that filter from `getById`
-   only (the staff/cross-module lookup) while keeping it on `getByUserId`/`listActive` (the
-   self-service and search paths, where hiding a deactivated customer is the intended behaviour).
-   The Verifier independently re-derived this fix against real Postgres and confirmed it does not
-   contradict CVR-05 AC4 (list/search still hide a deactivated customer) - both behaviours are
-   proven in adjacent tests in the same file.
-3. Hardcoded literal test fixtures (license plates) passed in isolation but collided with leftover
-   rows from a prior run once the project's own "test database is never truncated" convention
-   applied across two consecutive `test:integration` runs - fixed with a `uniqueLicensePlate()`
-   factory, matching `uniqueValidCpf()`'s existing shape. A reminder to default to unique
-   generated test data always, never a fixed literal, even for a "just this once" fixture.
-4. No RBAC seed migration change was needed: `customers:read/manage` and `vehicles:read/manage`
-   already existed and were already granted to the right roles from `identity-foundation`'s own
-   seed - confirmed before starting, not assumed.
-5. The Verifier's own first full gate run hit one transient failure outside this feature's diff:
-   `test/e2e/role-escalation.e2e.spec.ts` (`identity-foundation` code, untouched here) failed once
-   on a `registerUser()` 409 - a faker email or `uniqueValidCpf()` document colliding with a row
-   already in the never-truncated test database. Three subsequent runs (isolated, full e2e suite,
-   full gate sequence) all passed clean; not a regression. Logged as lesson L-004.
+**Notes from this feature's own implementation** (useful context if resuming cold or verifying):
+1. This is where AD-002 first becomes real code: `services.price_cents` is the project's first
+   `Money`-backed column. Every `bigint` non-primary-key column in this codebase maps to a
+   **string** property because that is what the driver returns, so `ServiceMapper` and
+   `TypeOrmServiceQueryAdapter` both call `Money.fromDatabase` explicitly. The repository test
+   asserts both halves - that the raw driver value really is a `string` and that the mapped value
+   is a `number` - because only the pair proves the conversion is happening rather than the value
+   happening to match.
+2. First expression index in the schema: `ux_services_active_name` keys on `lower(name)` and
+   filters on `status = 'ACTIVE'`. The repository's own `existsActiveByName` uses `lower()` on both
+   sides for the same reason; if only one side did, a duplicate would surface as a raw 500 instead
+   of a 409. The migration test's first draft asserted the literal `lower(name`, but Postgres
+   normalises that to `lower((name)::text)` for a varchar column - the assertion was corrected to
+   the real observed text rather than loosened to a vague `contains('lower')`.
+3. `services` deliberately has **no `deleted_at`**: deactivation here is a status flip, and the
+   uniqueness filter is `WHERE status = 'ACTIVE'`, unlike every other table built so far. The
+   migration test asserts the column's absence explicitly, since "adding it back for symmetry"
+   would be an easy and wrong later change.
+4. The `getById`-unfiltered / `listActive`-filtered split was designed in from the start rather
+   than discovered as a bug, carrying forward what `customer-and-vehicle-registry` learned late:
+   feature 5 needs "does not exist" to stay distinct from "exists but deactivated" so it can
+   refuse rule 18 precisely. `GetServiceQuery` is that contract.
+5. No RBAC seed change was needed - `services:read` and `services:manage` were already seeded and
+   granted to the right roles by `identity-foundation`. Verified against the migration before
+   starting, not assumed.
