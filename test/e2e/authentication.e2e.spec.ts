@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestApp } from '../support/app';
-import { api, login, registerAndLogin, registerUser } from '../support/http';
+import { api, grantRole, login, registerAndLogin, registerUser } from '../support/http';
 
 let app: INestApplication;
 let dataSource: DataSource;
@@ -212,14 +212,15 @@ describe('Authentication', () => {
     expect(sessions[0].status).toBe('REVOKED');
   });
 
-  it('should logout and immediately reject the access token', async () => {
+  it('should logout and immediately reject the access and refresh tokens', async () => {
     const client = await registerAndLogin(app);
 
-    await api(app)
-      .delete('/api/v1/auth/sessions/current')
+    const response = await api(app)
+      .delete('/api/v1/auth/sessions')
       .set('Authorization', `Bearer ${client.accessToken}`)
-      .expect(204);
+      .expect(200);
 
+    expect(response.body).toEqual({ revokedSessions: 1 });
     await api(app)
       .get('/api/v1/users/me')
       .set('Authorization', `Bearer ${client.accessToken}`)
@@ -228,6 +229,18 @@ describe('Authentication', () => {
       .post('/api/v1/auth/tokens')
       .send({ refreshToken: client.refreshToken })
       .expect(401);
+  });
+
+  it('should reject the removed per-device logout path (not a valid session id)', async () => {
+    // sessions/current is gone (T17). What remains at that path is the generic
+    // DELETE sessions/:id route, and "current" fails ParseUUIDPipe before ever reaching a
+    // handler - 400, not 404, which is the real, observed behaviour, not a guess.
+    const client = await registerAndLogin(app);
+
+    await api(app)
+      .delete('/api/v1/auth/sessions/current')
+      .set('Authorization', `Bearer ${client.accessToken}`)
+      .expect(400);
   });
 
   it('should logout all sessions of the user', async () => {
@@ -267,6 +280,23 @@ describe('Authentication', () => {
     );
     expect(currentEntries).toHaveLength(1);
     expect(currentEntries[0].id).toBe(current.sessionId);
+  });
+
+  it('should let an admin revoke another user session with sessions:revoke-any', async () => {
+    const target = await registerAndLogin(app);
+    const adminCredentials = await registerUser(app);
+    await grantRole(app, adminCredentials.userId, 'ADMIN');
+    const admin = await login(app, adminCredentials);
+
+    await api(app)
+      .delete(`/api/v1/auth/sessions/${target.sessionId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    await api(app)
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${target.accessToken}`)
+      .expect(401);
   });
 
   it('should not revoke a session owned by another user', async () => {

@@ -6,7 +6,6 @@ import { authConfig } from '../../config/auth.config';
 import { RedisModule } from '../../shared/infrastructure/redis/redis.module';
 import { AuthenticateUserHandler } from './application/commands/authenticate-user/authenticate-user.handler';
 import { LogoutAllSessionsHandler } from './application/commands/logout-all-sessions/logout-all-sessions.handler';
-import { LogoutHandler } from './application/commands/logout/logout.handler';
 import { RefreshSessionHandler } from './application/commands/refresh-session/refresh-session.handler';
 import { RevokeSessionHandler } from './application/commands/revoke-session/revoke-session.handler';
 import { ACCESS_TOKEN_SERVICE } from './application/ports/access-token.port';
@@ -43,7 +42,6 @@ import { PendingPasswordGuard } from './presentation/guards/pending-password.gua
   providers: [
     AuthenticateUserHandler,
     RefreshSessionHandler,
-    LogoutHandler,
     LogoutAllSessionsHandler,
     RevokeSessionHandler,
     ListUserSessionsHandler,

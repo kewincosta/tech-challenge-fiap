@@ -33,7 +33,6 @@ import {
   LogoutAllSessionsCommand,
   LogoutAllSessionsResultDto,
 } from '../../application/commands/logout-all-sessions/logout-all-sessions.command';
-import { LogoutCommand } from '../../application/commands/logout/logout.command';
 import { RefreshSessionCommand } from '../../application/commands/refresh-session/refresh-session.command';
 import { RevokeSessionCommand } from '../../application/commands/revoke-session/revoke-session.command';
 import { AuthResultDto } from '../../application/dtos/auth-result.dto';
@@ -91,24 +90,13 @@ export class AuthController {
     );
   }
 
-  @Delete('sessions/current')
-  @AllowsPendingPassword()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout: revoke the current session' })
-  @ApiNoContentResponse()
-  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
-  async logout(@CurrentUser() principal: Principal): Promise<void> {
-    await this.commandBus.execute<LogoutCommand, void>(new LogoutCommand(principal.sessionId));
-  }
-
   @Delete('sessions')
   @AllowsPendingPassword()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout all: revoke every active session of the authenticated user' })
+  @ApiOperation({ summary: 'Logout: revoke every active session of the authenticated user' })
   @ApiOkResponse({ type: LogoutAllResponseDto })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
-  async logoutAll(@CurrentUser() principal: Principal): Promise<LogoutAllResponseDto> {
+  async logout(@CurrentUser() principal: Principal): Promise<LogoutAllResponseDto> {
     return this.commandBus.execute<LogoutAllSessionsCommand, LogoutAllSessionsResultDto>(
       new LogoutAllSessionsCommand(principal.userId),
     );

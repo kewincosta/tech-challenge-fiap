@@ -50,13 +50,14 @@ describe('Pending password', () => {
   });
 
   it('should allow logging out while a password change is pending', async () => {
+    // sessions/current no longer exists (T17); the sole logout is the bare DELETE sessions route.
     const credentials = await registerUser(app);
     await markPendingPassword(app, credentials.userId);
     const client = await login(app, credentials);
 
     await api(app)
-      .delete('/api/v1/auth/sessions/current')
+      .delete('/api/v1/auth/sessions')
       .set('Authorization', `Bearer ${client.accessToken}`)
-      .expect(204);
+      .expect(200);
   });
 });
