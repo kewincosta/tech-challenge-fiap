@@ -52,6 +52,29 @@ export async function registerAndLogin(app: INestApplication): Promise<Authentic
   return login(app, await registerUser(app));
 }
 
+export interface StaffCreatedAccount {
+  userId: string;
+  email: string;
+  document: string;
+  temporaryPassword: string;
+}
+
+// Exercises POST /users/staff (T18, IDENT-07 AC1). The actor token must carry users:manage.
+export async function createStaffAccount(
+  app: INestApplication,
+  actorToken: string,
+): Promise<StaffCreatedAccount> {
+  const email = faker.internet.email().toLowerCase();
+  const document = uniqueValidCpf();
+  const response = await api(app)
+    .post('/api/v1/users/staff')
+    .set('Authorization', `Bearer ${actorToken}`)
+    .send({ email, name: faker.person.fullName(), document })
+    .expect(201);
+  const body = response.body as { id: string; temporaryPassword: string };
+  return { userId: body.id, email, document, temporaryPassword: body.temporaryPassword };
+}
+
 // Inserts the assignment directly, bypassing both HTTP and AssignRoleToUserCommand. T13's
 // escalation rule refuses ADMIN through that command unless the actor already holds SUPER_ADMIN,
 // and refuses SUPER_ADMIN unconditionally (AD-006: only the seed script or a direct database
@@ -75,10 +98,10 @@ export async function grantRole(
   );
 }
 
-// Sets the flag directly, bypassing HTTP. No endpoint in this feature creates a pending-password
-// account (that flow belongs to feature 2, the staff-creation endpoint - see T14's deferred item
-// in tasks.md); a test that needs one has to reach for the same kind of direct fixture insert
-// grantRole already uses for the same reason.
+// Sets the flag directly, bypassing HTTP. POST /users/staff (T18) now creates a pending-password
+// account through the real endpoint - prefer createStaffAccount() for a test that exercises the
+// flow itself. This helper stays for tests that only need the flag set on an otherwise-plain
+// account, without paying for a second registration.
 export async function markPendingPassword(app: INestApplication, userId: string): Promise<void> {
   const dataSource = app.get(DataSource);
   await dataSource.query(`UPDATE users SET must_change_password = true WHERE external_id = $1`, [

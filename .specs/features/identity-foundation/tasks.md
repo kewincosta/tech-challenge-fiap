@@ -736,12 +736,12 @@ password, generating one and returning it once. Closes the gap `validation.md` f
 
 **Done when**:
 
-- [ ] `RegisterUserCommand` takes an `issuedByStaff` flag; when set, the handler generates the password with `Password.generate()` instead of requiring one from the caller
-- [ ] `POST /api/v1/users/staff`, guarded by `users:manage`, creates the account and returns `{ id, temporaryPassword }` with HTTP 201
-- [ ] The temporary password is never persisted in plain form and never named by a public route's request body; `res.body.temporaryPassword` is added to the pino redact paths defensively, alongside the existing `req.body.password`
-- [ ] An e2e test proves spec.md's own Independent Test for IDENT-07: create an account through the endpoint, log in with the returned password, get refused with 403 on another route, change the password, then succeed
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 2 new unit tests (register-user.handler.spec.ts, 6 -> 8) and 3 new e2e tests (staff-account.e2e.spec.ts). Unit 152/152, integration 28/28 (unaffected), e2e 42/42.
+- [x] `RegisterUserCommand` takes an `issuedByStaff` flag; when set, the handler generates the password with `Password.generate()` instead of requiring one from the caller
+- [x] `POST /api/v1/users/staff`, guarded by `users:manage`, creates the account and returns `{ id, temporaryPassword }` with HTTP 201
+- [x] The temporary password is never persisted in plain form and never named by a public route's request body; `res.body.temporaryPassword` is added to the pino redact paths defensively, alongside the existing `req.body.password`
+- [x] An e2e test proves spec.md's own Independent Test for IDENT-07: create an account through the endpoint, log in with the returned password, get refused with 403 on another route, change the password, then succeed
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 2 new unit tests (register-user.handler.spec.ts, 6 -> 8) and 3 new e2e tests (staff-account.e2e.spec.ts). Unit 152/152, integration 28/28 (unaffected), e2e 42/42.
 
 **Tests**: e2e
 **Gate**: full

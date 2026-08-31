@@ -5,6 +5,17 @@ export class RegisteredUserResponseDto {
   id!: string;
 }
 
+export class StaffAccountResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({
+    example: 'aB3dE5fG7h9K',
+    description: 'Shown once. Hand it to the account holder; it cannot be retrieved again.',
+  })
+  temporaryPassword!: string;
+}
+
 export class UserResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;

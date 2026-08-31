@@ -50,11 +50,13 @@ import { ListUsersQuery } from '../../application/queries/list-users/list-users.
 import { UserSummaryDto } from '../../application/ports/user-query.port';
 import { UserNotFoundError } from '../../domain/errors/user-not-found.error';
 import { ChangePasswordRequestDto } from '../dtos/change-password.request.dto';
+import { CreateStaffAccountRequestDto } from '../dtos/create-staff-account.request.dto';
 import { RegisterUserRequestDto } from '../dtos/register-user.request.dto';
 import { UpdateUserRequestDto } from '../dtos/update-user.request.dto';
 import {
   CurrentUserResponseDto,
   RegisteredUserResponseDto,
+  StaffAccountResponseDto,
   UserResponseDto,
   UserSummaryResponseDto,
 } from '../dtos/user.response.dto';
@@ -79,6 +81,28 @@ export class UsersController {
     return this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
       new RegisterUserCommand(body.email, body.name, body.password, body.document),
     );
+  }
+
+  @Post('staff')
+  @RequirePermissions(AppPermission.UsersManage)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Create an account with a system-generated temporary password',
+    description:
+      'The workshop never invents a password for someone else (IDENT-07). The response carries ' +
+      'the generated password once; the account must change it before using any other route.',
+  })
+  @ApiCreatedResponse({ type: StaffAccountResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async createStaffAccount(
+    @Body() body: CreateStaffAccountRequestDto,
+  ): Promise<StaffAccountResponseDto> {
+    const result = await this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
+      new RegisterUserCommand(body.email, body.name, undefined, body.document, true),
+    );
+    return { id: result.id, temporaryPassword: result.temporaryPassword! };
   }
 
   @Get('me')

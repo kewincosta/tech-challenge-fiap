@@ -37,7 +37,11 @@ export class RegisterUserHandler implements ICommandHandler<RegisterUserCommand,
 
   async execute(command: RegisterUserCommand): Promise<RegisteredUserDto> {
     const email = Email.create(command.email);
-    const password = Password.create(command.password);
+    // A staff-created account never supplies its own password (IDENT-07): the workshop cannot
+    // hand someone a credential it invented, so one is generated here instead of validated.
+    const password = command.issuedByStaff
+      ? Password.generate()
+      : Password.create(command.password!);
     const document = PersonDocument.create(command.document);
     if (await this.users.existsByEmail(email)) {
       throw new EmailAlreadyInUseError();
@@ -53,6 +57,7 @@ export class RegisterUserHandler implements ICommandHandler<RegisterUserCommand,
       document,
       passwordHash,
       now: this.clock.now(),
+      temporary: command.issuedByStaff,
     });
     // The insert and the role assignment it dispatches through the CommandBus must commit or
     // roll back together (see design.md's Risks & Concerns) - otherwise a failure between the two
@@ -63,7 +68,9 @@ export class RegisterUserHandler implements ICommandHandler<RegisterUserCommand,
         new AssignRoleToUserCommand(user.id.value, { name: SystemRole.Customer }),
       );
       this.eventBus.publishAll(user.pullDomainEvents());
-      return { id: user.id.value };
+      return command.issuedByStaff
+        ? { id: user.id.value, temporaryPassword: password.value }
+        : { id: user.id.value };
     });
   }
 }

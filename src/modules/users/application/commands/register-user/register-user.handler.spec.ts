@@ -53,6 +53,34 @@ describe('RegisterUserHandler', () => {
     );
   });
 
+  it('should generate a temporary password for a staff-created account and flag it pending', async () => {
+    const { handler, users, commandBus } = makeHandler();
+
+    const result = await handler.execute(
+      new RegisterUserCommand('jane@example.com', 'Jane Doe', undefined, '11144477735', true),
+    );
+
+    const saved = users.users[0];
+    expect(result.temporaryPassword).toBeDefined();
+    expect(result.temporaryPassword).toHaveLength(12);
+    expect(saved.mustChangePassword).toBe(true);
+    expect(saved.passwordHash.value).toBe(`hashed:${result.temporaryPassword}`);
+    expect(commandBus.execute).toHaveBeenCalledWith(
+      new AssignRoleToUserCommand(saved.id.value, { name: SystemRole.Customer }),
+    );
+  });
+
+  it('should not return a temporary password for a self-registered account', async () => {
+    const { handler, users } = makeHandler();
+
+    const result = await handler.execute(
+      new RegisterUserCommand('jane@example.com', 'Jane Doe', 'Str0ngPassword', '11144477735'),
+    );
+
+    expect(result.temporaryPassword).toBeUndefined();
+    expect(users.users[0].mustChangePassword).toBe(false);
+  });
+
   it('should not create a user with an existing email', async () => {
     const { handler, users, commandBus } = makeHandler();
     await users.save(buildUser({ email: 'jane@example.com', document: '11144477735' }));

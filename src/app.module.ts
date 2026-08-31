@@ -44,6 +44,10 @@ import { SharedModule } from './shared/shared.module';
               'req.headers.authorization',
               'req.body.password',
               'req.body.refreshToken',
+              // Defensive: pino-http's default res serializer carries no body today, so this
+              // path matches nothing yet, but the staff-creation response (IDENT-07 AC6) must
+              // never appear in a log line if a future serializer starts including one.
+              'res.body.temporaryPassword',
             ],
             remove: true,
           },
