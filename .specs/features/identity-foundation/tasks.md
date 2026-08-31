@@ -504,11 +504,11 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] The query returns the matching active user or null
-- [ ] A deactivated user is not returned
-- [ ] A malformed document returns null rather than raising
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 4 integration tests pass (no silent deletions)
+- [x] The query returns the matching active user or null
+- [x] A deactivated user is not returned
+- [x] A malformed document returns null rather than raising
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 4 integration tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: full
