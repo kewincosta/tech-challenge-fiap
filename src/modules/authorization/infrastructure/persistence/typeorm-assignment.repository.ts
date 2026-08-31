@@ -4,7 +4,6 @@ import { DataSource, Repository } from 'typeorm';
 import { CLOCK, Clock } from '../../../../shared/application/ports/clock.port';
 import { AssignmentRepository } from '../../application/ports/assignment.repository';
 import { RoleOrmEntity } from './role.orm-entity';
-import { UserGroupOrmEntity } from './user-group.orm-entity';
 import { UserRoleOrmEntity } from './user-role.orm-entity';
 
 @Injectable()
@@ -12,8 +11,6 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
   constructor(
     @InjectRepository(UserRoleOrmEntity)
     private readonly userRoles: Repository<UserRoleOrmEntity>,
-    @InjectRepository(UserGroupOrmEntity)
-    private readonly userGroups: Repository<UserGroupOrmEntity>,
     @InjectRepository(RoleOrmEntity)
     private readonly roles: Repository<RoleOrmEntity>,
     private readonly dataSource: DataSource,
@@ -39,20 +36,6 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
       this.resolveRoleInternalId(roleId),
     ]);
     const result = await this.userRoles.delete({ userId: userInternalId, roleId: roleInternalId });
-    return (result.affected ?? 0) > 0;
-  }
-
-  async addUserToGroup(userId: string, groupId: string): Promise<void> {
-    await this.userGroups
-      .createQueryBuilder()
-      .insert()
-      .values({ userId, groupId, createdAt: this.clock.now() })
-      .orIgnore()
-      .execute();
-  }
-
-  async removeUserFromGroup(userId: string, groupId: string): Promise<boolean> {
-    const result = await this.userGroups.delete({ userId, groupId });
     return (result.affected ?? 0) > 0;
   }
 

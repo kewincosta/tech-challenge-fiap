@@ -3,8 +3,6 @@ export const AppPermission = {
   UsersManage: 'users:manage',
   RolesRead: 'roles:read',
   RolesManage: 'roles:manage',
-  GroupsRead: 'groups:read',
-  GroupsManage: 'groups:manage',
   PermissionsRead: 'permissions:read',
   UserAccessRead: 'user-access:read',
   UserAccessManage: 'user-access:manage',

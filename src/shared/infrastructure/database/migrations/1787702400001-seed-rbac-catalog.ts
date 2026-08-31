@@ -5,8 +5,6 @@ const PERMISSION_ROWS = `
   ('users:manage', 'Create, update and deactivate user accounts'),
   ('roles:read', 'List and read roles'),
   ('roles:manage', 'Create, update and delete roles'),
-  ('groups:read', 'List and read groups'),
-  ('groups:manage', 'Create, update and delete groups'),
   ('permissions:read', 'List the permission catalog'),
   ('user-access:read', 'Read user role assignments'),
   ('user-access:manage', 'Assign and revoke user roles'),
@@ -158,7 +156,7 @@ export class SeedRbacCatalog1787702400001 implements MigrationInterface {
       SYSTEM_ROLE_NAMES,
     ]);
     await queryRunner.query(`DELETE FROM permissions WHERE code IN (
-      'users:read', 'users:manage', 'roles:read', 'roles:manage', 'groups:read', 'groups:manage',
+      'users:read', 'users:manage', 'roles:read', 'roles:manage',
       'permissions:read', 'user-access:read', 'user-access:manage', 'sessions:revoke-any',
       'customers:read', 'customers:manage', 'vehicles:read', 'vehicles:manage',
       'services:read', 'services:manage', 'inventory:read', 'inventory:manage',

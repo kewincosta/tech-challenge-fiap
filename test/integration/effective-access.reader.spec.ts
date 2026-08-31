@@ -13,67 +13,49 @@ function uniqueRoleName(prefix: string): string {
   return `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
 }
 
+function uniqueDigits(length: number): string {
+  let digits = '';
+  while (digits.length < length) {
+    digits += Math.floor(Math.random() * 10).toString();
+  }
+  return digits.slice(0, length);
+}
+
 async function insertUser(): Promise<string> {
-  const id = randomUUID();
+  const externalId = randomUUID();
   await dataSource.query(
-    `INSERT INTO users (id, email, password_hash, name, status, created_at, updated_at)
-     VALUES ($1, $2, 'hashed', 'Jane Doe', 'ACTIVE', $3, $3)`,
-    [id, `${id}@example.com`, NOW],
+    `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+     VALUES ($1, $2, 'hashed', 'Jane Doe', $3, 'ACTIVE', $4, $4)`,
+    [externalId, `${externalId}@example.com`, uniqueDigits(11), NOW],
   );
-  return id;
+  return externalId;
 }
 
 async function insertRole(name: string, permissionCodes: string[]): Promise<string> {
-  const id = randomUUID();
-  await dataSource.query(
-    `INSERT INTO roles (id, name, description, is_system, created_at, updated_at)
-     VALUES ($1, $2, NULL, false, $3, $3)`,
-    [id, name, NOW],
+  const rows: Array<{ id: string }> = await dataSource.query(
+    `INSERT INTO roles (external_id, name, description, is_system, created_at, updated_at)
+     VALUES ($1, $2, NULL, false, $3, $3) RETURNING id`,
+    [randomUUID(), name, NOW],
   );
+  const roleInternalId = rows[0].id;
   if (permissionCodes.length > 0) {
     await dataSource.query(
       `INSERT INTO role_permissions (role_id, permission_id)
        SELECT $1, p.id FROM permissions p WHERE p.code = ANY($2)`,
-      [id, permissionCodes],
+      [roleInternalId, permissionCodes],
     );
   }
-  return id;
+  return roleInternalId;
 }
 
-async function insertGroup(roleIds: string[], permissionCodes: string[]): Promise<string> {
-  const id = randomUUID();
-  await dataSource.query(
-    `INSERT INTO groups (id, name, description, created_at, updated_at)
-     VALUES ($1, $2, NULL, $3, $3)`,
-    [id, `group-${id}`, NOW],
+async function assignRole(userExternalId: string, roleInternalId: string): Promise<void> {
+  const userRows: Array<{ id: string }> = await dataSource.query(
+    `SELECT id FROM users WHERE external_id = $1`,
+    [userExternalId],
   );
-  for (const roleId of roleIds) {
-    await dataSource.query(`INSERT INTO group_roles (group_id, role_id) VALUES ($1, $2)`, [
-      id,
-      roleId,
-    ]);
-  }
-  if (permissionCodes.length > 0) {
-    await dataSource.query(
-      `INSERT INTO group_permissions (group_id, permission_id)
-       SELECT $1, p.id FROM permissions p WHERE p.code = ANY($2)`,
-      [id, permissionCodes],
-    );
-  }
-  return id;
-}
-
-async function assignRole(userId: string, roleId: string): Promise<void> {
   await dataSource.query(
     `INSERT INTO user_roles (user_id, role_id, created_at) VALUES ($1, $2, $3)`,
-    [userId, roleId, NOW],
-  );
-}
-
-async function assignGroup(userId: string, groupId: string): Promise<void> {
-  await dataSource.query(
-    `INSERT INTO user_groups (user_id, group_id, created_at) VALUES ($1, $2, $3)`,
-    [userId, groupId, NOW],
+    [userRows[0].id, roleInternalId, NOW],
   );
 }
 
@@ -88,7 +70,7 @@ afterAll(async () => {
 });
 
 describe('TypeOrmEffectiveAccessReader', () => {
-  it('should return empty access for a user without roles or groups', async () => {
+  it('should return empty access for a user without roles', async () => {
     const userId = await insertUser();
 
     const access = await reader.read(userId);
@@ -107,39 +89,16 @@ describe('TypeOrmEffectiveAccessReader', () => {
     expect(access.permissions).toEqual(['users:read']);
   });
 
-  it('should resolve permissions granted through a group role', async () => {
+  it('should deduplicate permissions granted by more than one role', async () => {
     const userId = await insertUser();
-    const roleName = uniqueRoleName('GROUPED');
-    const roleId = await insertRole(roleName, ['roles:read']);
-    await assignGroup(userId, await insertGroup([roleId], []));
-
-    const access = await reader.read(userId);
-
-    expect(access.roles).toEqual([roleName]);
-    expect(access.permissions).toEqual(['roles:read']);
-  });
-
-  it('should resolve permissions granted directly by a group', async () => {
-    const userId = await insertUser();
-    await assignGroup(userId, await insertGroup([], ['groups:read']));
-
-    const access = await reader.read(userId);
-
-    expect(access.roles).toEqual([]);
-    expect(access.permissions).toEqual(['groups:read']);
-  });
-
-  it('should deduplicate permissions granted by several paths', async () => {
-    const userId = await insertUser();
-    const directRoleName = uniqueRoleName('DIRECT');
-    const groupRoleName = uniqueRoleName('GROUPED');
-    const groupRoleId = await insertRole(groupRoleName, ['users:read']);
-    await assignRole(userId, await insertRole(directRoleName, ['users:read']));
-    await assignGroup(userId, await insertGroup([groupRoleId], ['users:read']));
+    const firstRoleName = uniqueRoleName('FIRST');
+    const secondRoleName = uniqueRoleName('SECOND');
+    await assignRole(userId, await insertRole(firstRoleName, ['users:read']));
+    await assignRole(userId, await insertRole(secondRoleName, ['users:read']));
 
     const access = await reader.read(userId);
 
     expect(access.permissions).toEqual(['users:read']);
-    expect(access.roles.sort()).toEqual([directRoleName, groupRoleName].sort());
+    expect(access.roles.sort()).toEqual([firstRoleName, secondRoleName].sort());
   });
 });

@@ -385,13 +385,13 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] The Group aggregate, its errors, events, value objects, repository, seven commands, two queries, four ORM entities, controller and DTOs are gone
-- [ ] `TypeOrmEffectiveAccessReader` resolves from user roles only
-- [ ] `AccessCacheInvalidationSubscriber` no longer listens to the two group events
-- [ ] `groups:read` and `groups:manage` are gone from the contract and the seed
-- [ ] `test/support/db.ts` no longer lists the four group entities
-- [ ] The group cases of `test/integration/effective-access.reader.spec.ts` are deleted and the role cases stay. This is the only task that deletes tests, and it is legitimate because their subject no longer exists - it is not the forbidden case of deleting a test to make a suite pass
-- [ ] Gate check passes per the transitional gate note above (T7's row): lint and build green, unit green, the full integration suite (14 tests: T4's 11 plus the two pre-existing files now repaired) green, e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [x] The Group aggregate, its errors, events, value objects, repository, seven commands, two queries, four ORM entities, controller and DTOs are gone
+- [x] `TypeOrmEffectiveAccessReader` resolves from user roles only
+- [x] `AccessCacheInvalidationSubscriber` no longer listens to the two group events
+- [x] `groups:read` and `groups:manage` are gone from the contract and the seed
+- [x] `test/support/db.ts` no longer lists the four group entities
+- [x] The group cases of `test/integration/effective-access.reader.spec.ts` are deleted and the role cases stay. This is the only task that deletes tests, and it is legitimate because their subject no longer exists - it is not the forbidden case of deleting a test to make a suite pass
+- [x] Gate check passes per the transitional gate note above (T7's row): lint and build green, unit green, the full integration suite (14 tests: T4's 11 plus the two pre-existing files now repaired) green, e2e unchanged from the T4 baseline, zero unexplained failures anywhere
 
 **Tests**: integration
 **Gate**: build
