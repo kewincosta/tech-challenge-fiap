@@ -117,13 +117,13 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] Accepts a valid name and exposes it trimmed
-- [ ] Collapses runs of internal whitespace to a single space
-- [ ] Rejects an empty or whitespace-only name with `InvalidServiceNameError`
-- [ ] Rejects a name longer than 120 characters
-- [ ] Preserves the capitalisation as supplied (it is not lowercased on the way in)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Accepts a valid name and exposes it trimmed
+- [x] Collapses runs of internal whitespace to a single space
+- [x] Rejects an empty or whitespace-only name with `InvalidServiceNameError`
+- [x] Rejects a name longer than 120 characters (both sides of the bound asserted: 120 accepted, 121 rejected)
+- [x] Preserves the capitalisation as supplied (it is not lowercased on the way in)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
