@@ -109,22 +109,21 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/service-catalog` - **Verified**, PASS.
-- **Phase / Task**: All 10 tasks (T1-T10) complete, committed to `main` through `6030dcd`, verified
-  independently by a fresh Verifier sub-agent against `101f62e` (diff range `1c9d225..HEAD`, 14
-  commits, spec through the closing STATE.md update). `validation.md` written and passing
-  `validate_state.py`.
-- **Completed**: every task in `tasks.md`; 19/19 spec ACs across the 4 stories matched their
-  spec-defined outcome; discrimination sensor killed 3/3 injected mutations (the `Money` conversion,
-  the `lower()` expression index, and the `getById`-unfiltered contract); full gate reproduced
-  independently - lint clean, build clean, unit 250/250, integration 92/92 (twice consecutively),
-  e2e 81/81, 423 total, zero regressions against the 360 `customer-and-vehicle-registry` baseline.
-  RBAC catalog confirmed unchanged and already correct for `SERVICE_ADVISOR`/`MECHANIC`.
+- **Feature**: `.specs/features/service-catalog` - **done**
+- **Phase / Task**: Verified, PASS on the first pass, and the three post-verification coverage gaps
+  closed the same day in T11. 11 tasks total (T1-T11) committed to `main` at `6b4fbb0`. Verifier
+  report at `.specs/features/service-catalog/validation.md`.
+- **Completed**: every task in `tasks.md`; all 4 stories (SVC-01 through SVC-04, 19 ACs) and every
+  Edge Case independently re-derived and confirmed by the Verifier, evidence-or-zero. Discrimination
+  sensor: 3/3 injected mutations killed, one per new hazard (the `Money`-backed column, the
+  expression index, the `getById`-unfiltered contract). Final gate: lint clean, build clean, unit
+  252/252, integration 92/92 (run twice consecutively for durability), e2e 82/82 - 426 total, up
+  from the 360 baseline, zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: specify feature 4, `inventory-and-stock-movements` (plan phase 7). Three minor,
-  non-blocking coverage gaps are logged in `validation.md`'s Fix 1-3 (SVC-01 AC8's update/deactivate
-  403 e2e coverage; the whitespace-only duplicate-name edge case; reusing a deactivated service's
-  name via update rather than create) - optional hardening, not a blocker.
+- **Next step**: none required. No open gaps. The next unit of work is specifying feature 4,
+  `inventory-and-stock-movements`, when the user asks for it - not before, per this file's own
+  Feature Roadmap policy. That feature is the first with append-only child entities and the first
+  where AD-007 (audit rows written inside the aggregate's own transaction) becomes real code.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
