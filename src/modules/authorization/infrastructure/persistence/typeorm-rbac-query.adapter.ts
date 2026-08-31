@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import {
   GroupDto,
   PermissionDto,
@@ -36,6 +36,7 @@ export class TypeOrmRbacQueryAdapter implements RbacQueryPort {
     private readonly userRoles: Repository<UserRoleOrmEntity>,
     @InjectRepository(UserGroupOrmEntity)
     private readonly userGroups: Repository<UserGroupOrmEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listRoles(): Promise<RoleDto[]> {
@@ -44,7 +45,7 @@ export class TypeOrmRbacQueryAdapter implements RbacQueryPort {
   }
 
   async getRoleById(roleId: string): Promise<RoleDto | null> {
-    const row = await this.roles.findOne({ where: { id: roleId } });
+    const row = await this.roles.findOne({ where: { externalId: roleId } });
     if (!row) {
       return null;
     }
@@ -68,13 +69,25 @@ export class TypeOrmRbacQueryAdapter implements RbacQueryPort {
 
   async listPermissions(): Promise<PermissionDto[]> {
     const rows = await this.permissions.find({ order: { code: 'ASC' } });
-    return rows.map((row) => ({ id: row.id, code: row.code, description: row.description }));
+    return rows.map((row) => ({
+      id: row.externalId,
+      code: row.code,
+      description: row.description,
+    }));
   }
 
   async getUserAccess(userId: string): Promise<UserAccessDto> {
+    const userRows: Array<{ id: string }> = await this.dataSource.query(
+      `SELECT id FROM users WHERE external_id = $1`,
+      [userId],
+    );
+    if (userRows.length === 0) {
+      return { roles: [], groups: [] };
+    }
+    const userInternalId = userRows[0].id;
     const [roleLinks, groupLinks] = await Promise.all([
-      this.userRoles.find({ where: { userId } }),
-      this.userGroups.find({ where: { userId } }),
+      this.userRoles.find({ where: { userId: userInternalId } }),
+      this.userGroups.find({ where: { userId: userInternalId } }),
     ]);
     const [roleRows, groupRows] = await Promise.all([
       roleLinks.length > 0
@@ -85,7 +98,7 @@ export class TypeOrmRbacQueryAdapter implements RbacQueryPort {
         : Promise.resolve([]),
     ]);
     return {
-      roles: roleRows.map((row) => ({ id: row.id, name: row.name })),
+      roles: roleRows.map((row) => ({ id: row.externalId, name: row.name })),
       groups: groupRows.map((row) => ({ id: row.id, name: row.name })),
     };
   }
@@ -109,7 +122,7 @@ export class TypeOrmRbacQueryAdapter implements RbacQueryPort {
       codesByRole.set(link.roleId, bucket);
     }
     return rows.map((row) => ({
-      id: row.id,
+      id: row.externalId,
       name: row.name,
       description: row.description,
       isSystem: row.isSystem,

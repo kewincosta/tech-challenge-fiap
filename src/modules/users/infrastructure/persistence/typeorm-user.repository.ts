@@ -16,7 +16,7 @@ export class TypeOrmUserRepository implements UserRepository {
   ) {}
 
   async findById(id: UserId): Promise<User | null> {
-    const row = await this.repository.findOne({ where: { id: id.value } });
+    const row = await this.repository.findOne({ where: { externalId: id.value } });
     return row ? UserMapper.toDomain(row) : null;
   }
 
@@ -32,6 +32,14 @@ export class TypeOrmUserRepository implements UserRepository {
   }
 
   async save(user: User): Promise<void> {
-    await this.repository.save(UserMapper.toOrm(user));
+    const row = UserMapper.toOrm(user);
+    const existing = await this.repository.findOne({
+      where: { externalId: user.id.value },
+      select: { id: true },
+    });
+    if (existing) {
+      row.id = existing.id;
+    }
+    await this.repository.save(row);
   }
 }

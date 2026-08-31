@@ -9,7 +9,6 @@ import { SessionRevocationReason } from '../../src/modules/authentication/domain
 import { SessionStatus } from '../../src/modules/authentication/domain/session-status';
 import { RefreshTokenHash } from '../../src/modules/authentication/domain/value-objects/refresh-token-hash';
 import { RefreshTokenId } from '../../src/modules/authentication/domain/value-objects/refresh-token-id';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
 import { buildSession, SESSION_NOW } from '../support/factories/session.factory';
 import { createTestDataSource } from '../support/db';
 
@@ -20,19 +19,41 @@ function uniqueHash(label: string): string {
   return `hash(${label}-${randomUUID()})`;
 }
 
+function uniqueDigits(length: number): string {
+  let digits = '';
+  while (digits.length < length) {
+    digits += Math.floor(Math.random() * 10).toString();
+  }
+  return digits.slice(0, length);
+}
+
+// Users are created here through a raw insert rather than TypeOrmUserRepository, matching the
+// existing pattern of test-only setup data going straight through SQL. UserOrmEntity does not
+// yet declare `document` - that column reaches the domain in T9 - so it is supplied directly to
+// satisfy the schema's NOT NULL constraint without pulling T9's scope into this test.
 async function insertUser(): Promise<string> {
-  const id = randomUUID();
-  await dataSource.getRepository(UserOrmEntity).save({
-    id,
-    email: `${id}@example.com`,
-    passwordHash: 'hashed:Str0ngPassword',
-    name: 'Jane Doe',
-    status: 'ACTIVE',
-    createdAt: SESSION_NOW,
-    updatedAt: SESSION_NOW,
-    deletedAt: null,
-  });
-  return id;
+  const externalId = randomUUID();
+  await dataSource.query(
+    `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+     VALUES ($1, $2, 'hashed:Str0ngPassword', 'Jane Doe', $3, 'ACTIVE', $4, $4)`,
+    [externalId, `${externalId}@example.com`, uniqueDigits(11), SESSION_NOW],
+  );
+  return externalId;
+}
+
+async function sessionInternalIdFor(externalSessionId: string): Promise<string> {
+  const row = await dataSource
+    .getRepository(SessionOrmEntity)
+    .findOneOrFail({ where: { externalId: externalSessionId } });
+  return row.id;
+}
+
+async function userInternalIdFor(externalUserId: string): Promise<string> {
+  const rows: Array<{ id: string }> = await dataSource.query(
+    `SELECT id FROM users WHERE external_id = $1`,
+    [externalUserId],
+  );
+  return rows[0].id;
 }
 
 beforeAll(async () => {
@@ -79,9 +100,10 @@ describe('TypeOrmSessionRepository', () => {
     });
     await repository.save(session);
 
+    const sessionInternalId = await sessionInternalIdFor(session.id.value);
     const tokens = await dataSource
       .getRepository(RefreshTokenOrmEntity)
-      .find({ where: { sessionId: session.id.value } });
+      .find({ where: { sessionInternalId } });
     const active = tokens.filter(
       (token) => (token.status as RefreshTokenStatus) === RefreshTokenStatus.Active,
     );
@@ -127,17 +149,20 @@ describe('TypeOrmSessionRepository', () => {
     );
 
     expect(revokedIds).toHaveLength(2);
+    const ownerInternalId = await userInternalIdFor(userId);
     const ownerActive = await dataSource
       .getRepository(SessionOrmEntity)
-      .count({ where: { userId, status: SessionStatus.Active } });
+      .count({ where: { userInternalId: ownerInternalId, status: SessionStatus.Active } });
     expect(ownerActive).toBe(0);
+    const otherInternalId = await userInternalIdFor(otherUserId);
     const foreignActive = await dataSource
       .getRepository(SessionOrmEntity)
-      .count({ where: { userId: otherUserId, status: SessionStatus.Active } });
+      .count({ where: { userInternalId: otherInternalId, status: SessionStatus.Active } });
     expect(foreignActive).toBe(1);
-    const foreignActiveTokens = await dataSource
-      .getRepository(RefreshTokenOrmEntity)
-      .count({ where: { sessionId: foreignSession.id.value, status: RefreshTokenStatus.Active } });
+    const foreignSessionInternalId = await sessionInternalIdFor(foreignSession.id.value);
+    const foreignActiveTokens = await dataSource.getRepository(RefreshTokenOrmEntity).count({
+      where: { sessionInternalId: foreignSessionInternalId, status: RefreshTokenStatus.Active },
+    });
     expect(foreignActiveTokens).toBe(1);
   });
 });

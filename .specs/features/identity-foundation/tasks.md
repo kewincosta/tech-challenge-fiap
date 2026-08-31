@@ -356,12 +356,12 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] Every ORM entity carries `id` and `externalId`
-- [ ] Every mapper builds the domain object from `externalId`
-- [ ] Every repository resolves an external id into an internal key at its boundary
-- [ ] The JWT still resolves a session issued before the change
-- [ ] Gate check passes per the transitional gate note above (T6's row): unit green, `session.repository.spec.ts` (4 tests) returns to green, `effective-access.reader.spec.ts` stays red exactly as at T4 (T7's scope), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
-- [ ] Test count: `session.repository.spec.ts`'s existing 4 tests pass again, at their existing count - T6 adds no new test file, it repairs an existing one
+- [x] Every ORM entity carries `id` and `externalId`
+- [x] Every mapper builds the domain object from `externalId`
+- [x] Every repository resolves an external id into an internal key at its boundary
+- [x] The JWT still resolves a session issued before the change
+- [x] Gate check passes per the transitional gate note above (T6's row): unit green, `session.repository.spec.ts` (4 tests) returns to green, `effective-access.reader.spec.ts` stays red exactly as at T4 (T7's scope), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [x] Test count: `session.repository.spec.ts`'s existing 4 tests pass again, at their existing count - T6 adds no new test file, it repairs an existing one
 
 **Tests**: integration
 **Gate**: full

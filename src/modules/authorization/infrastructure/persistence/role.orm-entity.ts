@@ -1,9 +1,12 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('roles')
 export class RoleOrmEntity {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: string;
+
+  @Column({ name: 'external_id', type: 'uuid' })
+  externalId!: string;
 
   @Column({ name: 'name', type: 'varchar', length: 50 })
   name!: string;

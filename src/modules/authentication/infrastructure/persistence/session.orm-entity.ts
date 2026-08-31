@@ -1,13 +1,16 @@
-import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { RefreshTokenOrmEntity } from './refresh-token.orm-entity';
 
 @Entity('sessions')
 export class SessionOrmEntity {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: string;
 
-  @Column({ name: 'user_id', type: 'uuid' })
-  userId!: string;
+  @Column({ name: 'external_id', type: 'uuid' })
+  externalId!: string;
+
+  @Column({ name: 'user_id', type: 'bigint' })
+  userInternalId!: string;
 
   @Column({ name: 'status', type: 'varchar', length: 20 })
   status!: string;

@@ -1,8 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { CLOCK, Clock } from '../../../../shared/application/ports/clock.port';
 import { AssignmentRepository } from '../../application/ports/assignment.repository';
+import { RoleOrmEntity } from './role.orm-entity';
 import { UserGroupOrmEntity } from './user-group.orm-entity';
 import { UserRoleOrmEntity } from './user-role.orm-entity';
 
@@ -13,20 +14,31 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
     private readonly userRoles: Repository<UserRoleOrmEntity>,
     @InjectRepository(UserGroupOrmEntity)
     private readonly userGroups: Repository<UserGroupOrmEntity>,
+    @InjectRepository(RoleOrmEntity)
+    private readonly roles: Repository<RoleOrmEntity>,
+    private readonly dataSource: DataSource,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async assignRoleToUser(userId: string, roleId: string): Promise<void> {
+    const [userInternalId, roleInternalId] = await Promise.all([
+      this.resolveUserInternalId(userId),
+      this.resolveRoleInternalId(roleId),
+    ]);
     await this.userRoles
       .createQueryBuilder()
       .insert()
-      .values({ userId, roleId, createdAt: this.clock.now() })
+      .values({ userId: userInternalId, roleId: roleInternalId, createdAt: this.clock.now() })
       .orIgnore()
       .execute();
   }
 
   async removeRoleFromUser(userId: string, roleId: string): Promise<boolean> {
-    const result = await this.userRoles.delete({ userId, roleId });
+    const [userInternalId, roleInternalId] = await Promise.all([
+      this.resolveUserInternalId(userId),
+      this.resolveRoleInternalId(roleId),
+    ]);
+    const result = await this.userRoles.delete({ userId: userInternalId, roleId: roleInternalId });
     return (result.affected ?? 0) > 0;
   }
 
@@ -42,5 +54,27 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
   async removeUserFromGroup(userId: string, groupId: string): Promise<boolean> {
     const result = await this.userGroups.delete({ userId, groupId });
     return (result.affected ?? 0) > 0;
+  }
+
+  private async resolveRoleInternalId(externalRoleId: string): Promise<string> {
+    const role = await this.roles.findOne({
+      where: { externalId: externalRoleId },
+      select: { id: true },
+    });
+    if (!role) {
+      throw new NotFoundException(`Role ${externalRoleId} not found`);
+    }
+    return role.id;
+  }
+
+  private async resolveUserInternalId(externalUserId: string): Promise<string> {
+    const rows: Array<{ id: string }> = await this.dataSource.query(
+      `SELECT id FROM users WHERE external_id = $1`,
+      [externalUserId],
+    );
+    if (rows.length === 0) {
+      throw new NotFoundException(`User ${externalUserId} not found`);
+    }
+    return rows[0].id;
   }
 }

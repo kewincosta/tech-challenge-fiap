@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { SessionQueryPort, SessionSummaryDto } from '../../application/ports/session-query.port';
 import { SessionStatus } from '../../domain/session-status';
 import { SessionOrmEntity } from './session.orm-entity';
@@ -10,15 +10,23 @@ export class TypeOrmSessionQueryAdapter implements SessionQueryPort {
   constructor(
     @InjectRepository(SessionOrmEntity)
     private readonly sessions: Repository<SessionOrmEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async listActiveByUserId(userId: string): Promise<SessionSummaryDto[]> {
+    const userRows: Array<{ id: string }> = await this.dataSource.query(
+      `SELECT id FROM users WHERE external_id = $1`,
+      [userId],
+    );
+    if (userRows.length === 0) {
+      return [];
+    }
     const rows = await this.sessions.find({
-      where: { userId, status: SessionStatus.Active },
+      where: { userInternalId: userRows[0].id, status: SessionStatus.Active },
       order: { createdAt: 'DESC' },
     });
     return rows.map((row) => ({
-      id: row.id,
+      id: row.externalId,
       ip: row.ip,
       userAgent: row.userAgent,
       createdAt: row.createdAt.toISOString(),

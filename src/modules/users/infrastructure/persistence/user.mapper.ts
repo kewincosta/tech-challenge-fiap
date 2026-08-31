@@ -8,7 +8,7 @@ import { UserOrmEntity } from './user.orm-entity';
 export class UserMapper {
   static toDomain(row: UserOrmEntity): User {
     return User.restore({
-      id: UserId.create(row.id),
+      id: UserId.create(row.externalId),
       email: Email.create(row.email),
       name: row.name,
       passwordHash: PasswordHash.create(row.passwordHash),
@@ -21,7 +21,7 @@ export class UserMapper {
 
   static toOrm(user: User): UserOrmEntity {
     const row = new UserOrmEntity();
-    row.id = user.id.value;
+    row.externalId = user.id.value;
     row.email = user.email.value;
     row.passwordHash = user.passwordHash.value;
     row.name = user.name;

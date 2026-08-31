@@ -1,9 +1,12 @@
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('permissions')
 export class PermissionOrmEntity {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: string;
+
+  @Column({ name: 'external_id', type: 'uuid' })
+  externalId!: string;
 
   @Column({ name: 'code', type: 'varchar', length: 100 })
   code!: string;

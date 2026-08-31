@@ -23,7 +23,9 @@ export class TypeOrmPermissionRepository implements PermissionRepository {
     if (ids.length === 0) {
       return [];
     }
-    const rows = await this.permissions.find({ where: { id: In(ids.map((id) => id.value)) } });
+    const rows = await this.permissions.find({
+      where: { externalId: In(ids.map((id) => id.value)) },
+    });
     return rows.map((row) => this.toDomain(row));
   }
 
@@ -39,7 +41,7 @@ export class TypeOrmPermissionRepository implements PermissionRepository {
 
   private toDomain(row: PermissionOrmEntity): Permission {
     return Permission.restore({
-      id: PermissionId.create(row.id),
+      id: PermissionId.create(row.externalId),
       code: PermissionCode.create(row.code),
       description: row.description,
     });

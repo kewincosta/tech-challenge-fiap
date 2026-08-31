@@ -1,13 +1,16 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { SessionOrmEntity } from './session.orm-entity';
 
 @Entity('refresh_tokens')
 export class RefreshTokenOrmEntity {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: string;
 
-  @Column({ name: 'session_id', type: 'uuid' })
-  sessionId!: string;
+  @Column({ name: 'external_id', type: 'uuid' })
+  externalId!: string;
+
+  @Column({ name: 'session_id', type: 'bigint' })
+  sessionInternalId!: string;
 
   @ManyToOne(() => SessionOrmEntity, (session) => session.tokens, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'session_id' })
@@ -28,6 +31,6 @@ export class RefreshTokenOrmEntity {
   @Column({ name: 'rotated_at', type: 'timestamptz', nullable: true })
   rotatedAt!: Date | null;
 
-  @Column({ name: 'replaced_by_id', type: 'uuid', nullable: true })
-  replacedById!: string | null;
+  @Column({ name: 'replaced_by_id', type: 'bigint', nullable: true })
+  replacedByInternalId!: string | null;
 }
