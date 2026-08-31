@@ -219,7 +219,7 @@ Every ambiguity is resolved or recorded here.
 | IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Verified |
 | IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Verified |
 | IDENT-06 | P1: Nobody widens their own access | Tasks | Verified |
-| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing - AC1 closed by T18, pending re-verification |
+| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Verified |
 | IDENT-08 | P1: Signing out signs out everywhere | Tasks | Verified |
 | IDENT-09 | P2: One grouping concept in the access model | Tasks | Verified |
 
