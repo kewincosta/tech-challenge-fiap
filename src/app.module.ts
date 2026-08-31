@@ -20,6 +20,7 @@ import { AuthorizationModule } from './modules/authorization/authorization.modul
 import { PermissionsGuard } from './modules/authorization/presentation/guards/permissions.guard';
 import { CustomersModule } from './modules/customers/customers.module';
 import { UsersModule } from './modules/users/users.module';
+import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
 import { GlobalExceptionFilter } from './shared/presentation/filters/global-exception.filter';
@@ -75,6 +76,7 @@ import { SharedModule } from './shared/shared.module';
     AuthenticationModule,
     AuthorizationModule,
     CustomersModule,
+    VehiclesModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createAppValidationPipe },

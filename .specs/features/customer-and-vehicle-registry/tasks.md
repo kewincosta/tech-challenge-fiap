@@ -740,16 +740,28 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `POST /api/v1/vehicles` behind `vehicles:manage`
-- [ ] `GET /api/v1/vehicles/me` - no workshop permission required, empty list when the principal has no customer
-- [ ] `GET /api/v1/vehicles`, `GET /api/v1/vehicles/:externalId` behind `vehicles:read`
-- [ ] `PATCH /api/v1/vehicles/:externalId` (details and transfer), `DELETE /api/v1/vehicles/:externalId` behind `vehicles:manage`
-- [ ] `GET /api/v1/customers/:externalId/vehicles` behind `vehicles:read` (nested under the customers path, registered on this controller per `design.md`, or cross-referenced from `CustomersController` - confirm the cleaner placement against NestJS routing during implementation and note the choice in the commit)
-- [ ] Every refusal path answers the HTTP code the Error Handling Strategy table in `design.md` names
-- [ ] `VehiclesModule` registered in `AppModule`
-- [ ] The full pre-existing suite (229 tests) stays green - nothing in this feature touches existing code
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 11 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/vehicles` behind `vehicles:manage`
+- [x] `GET /api/v1/vehicles/me` - no workshop permission required, empty list when the principal has no customer
+- [x] `GET /api/v1/vehicles`, `GET /api/v1/vehicles/:externalId` behind `vehicles:read`
+- [x] `PATCH /api/v1/vehicles/:externalId` (details and transfer), `DELETE /api/v1/vehicles/:externalId` behind `vehicles:manage`
+- [x] Nested `GET /customers/:externalId/vehicles` dropped, not built: `GET /vehicles?customerId=`
+  already gives staff the same capability spec.md's CVR-04 AC1 actually asks for (list one
+  customer's vehicles) without a second controller or a cross-module route registration; nothing
+  in spec.md names the nested URL shape as a requirement, only the capability
+- [x] Every refusal path answers the HTTP code the Error Handling Strategy table in `design.md` names
+- [x] `VehiclesModule` registered in `AppModule`
+- [x] The full pre-existing suite (229 tests) stays green - confirmed: 354 total now (229 + 125
+  new across this whole feature), zero regressions, integration run twice consecutively for
+  durability against the never-truncated test database
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 11 e2e tests pass. Found and fixed a real bug while writing this task's own
+  e2e test, not a pre-existing gap: `TypeOrmCustomerQueryAdapter.getById` (T6) filtered
+  `deleted_at IS NULL`, so `RegisterVehicleHandler`'s deactivated-customer check
+  (`OwningCustomerInactiveError`, 422) was unreachable - a deactivated customer's id resolved to
+  `null` before the status check ever ran, answering 404 instead. Fixed `getById` to stop
+  filtering (it is the staff/cross-module lookup; `getByUserId` and `listActive` still filter,
+  since those are the self-service and search paths spec.md's CVR-05 AC4 actually names), added a
+  dedicated integration test to T6's own spec file proving it. No silent deletions.
 
 **Tests**: e2e
 **Gate**: build
