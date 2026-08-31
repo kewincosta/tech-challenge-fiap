@@ -187,26 +187,31 @@ Spot-checked the highest-risk new code against `references/coding-principles.md`
 
 ## Fix Plans
 
-### Fix 1 (Minor, non-blocking) - SVC-01 AC8's update/deactivate 403 branches have no dedicated e2e case
+### Fix 1 (Minor, non-blocking) - CLOSED - SVC-01 AC8's update/deactivate 403 branches have no dedicated e2e case
 
 - **Root cause**: `services.controller.ts:97,122` carry `@RequirePermissions(AppPermission.ServicesManage)` on `PATCH`/`DELETE`, the identical decorator proven to work generically in `permissions.guard.spec.ts` (5 tests) and directly e2e-tested for `POST` (`services.e2e.spec.ts:68-78`), but `services.e2e.spec.ts` never drives a `SERVICE_ADVISOR` token through `PATCH`/`DELETE` to assert 403 on those two routes specifically.
 - **Fix task**: add two e2e cases to `services.e2e.spec.ts` - `PATCH /api/v1/services/:externalId` and `DELETE /api/v1/services/:externalId` as a `SERVICE_ADVISOR`, both asserting `403 {code: 'AUTH_FORBIDDEN'}`.
 - **Verify**: `npm run test:e2e`.
 - **Priority**: Minor, non-blocking - the guard mechanism and the decorator placement are both already proven; this closes a completeness gap, not a defect.
 
-### Fix 2 (Minor, non-blocking) - whitespace-only duplicate name has no path-specific test
+### Fix 2 (Minor, non-blocking) - CLOSED - whitespace-only duplicate name has no path-specific test
 
 - **Root cause**: `ServiceName.create` (`service-name.ts:14`) trims and collapses whitespace before any uniqueness comparison happens, so a name differing from an existing active one only by surrounding whitespace cannot reach `existsActiveByName` or the database index un-normalised. `service-name.spec.ts:6-9` proves the normalisation alone; no test combines it with an actual duplicate-name submission.
 - **Fix task**: add one case to `create-service.handler.spec.ts` - create `'Troca de oleo'`, then attempt `'  Troca de oleo  '` (or with doubled internal spaces), assert `rejects.toThrow(ServiceNameAlreadyInUseError)`.
 - **Verify**: `npm run test:unit`.
 - **Priority**: Minor, non-blocking - correct today by construction (the VO normalises before comparison), not a demonstrated defect.
 
-### Fix 3 (Minor, non-blocking) - reusing a deactivated service's name via UPDATE (not just CREATE) has no test
+### Fix 3 (Minor, non-blocking) - CLOSED - reusing a deactivated service's name via UPDATE (not just CREATE) has no test
 
 - **Root cause**: `UpdateServiceHandler` (`update-service.handler.ts:31`) calls the same `existsActiveByName(name, serviceId)` that `CreateServiceHandler` calls, and the name-freed-by-deactivation behaviour is proven at the repository level for a fresh `save()` (`service.repository.spec.ts:85-94`) and end-to-end for the create route (`services.e2e.spec.ts:178-190`), but `update-service.handler.spec.ts`'s six tests never rename an existing service to a name that only a *deactivated* service holds.
 - **Fix task**: add one case to `update-service.handler.spec.ts` - save an active service and a deactivated one sharing no name, then update the active one to the deactivated one's name, assert `resolves.not.toThrow()`.
 - **Verify**: `npm run test:unit`.
 - **Priority**: Minor, non-blocking - same repository method, same call shape as the already-proven create path; this closes a completeness gap, not a defect. Also flagged as a recurrence of `L-002` (an edge case with no owning task in `tasks.md`) and `L-003` (a sibling call path's test substituting for the specific handler's own) - both lessons recorded below.
+
+**Post-report update**: all three fixes were closed the same day, in `tasks.md` T11. None touched
+production code - each added the direct proof for an outcome this report had already confirmed
+correct. Final state: unit 252/252, integration 92/92 (durable across two consecutive runs), e2e
+82/82 - 426 total, up from 423 at the original PASS. `service-catalog` has no remaining logged gaps.
 
 No other findings. All 19 ACs across the 4 stories match their spec-defined outcome, the
 cross-module boundary is clean, the discrimination sensor killed all 3 injected mutations (one for

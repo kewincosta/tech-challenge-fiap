@@ -441,12 +441,12 @@ T11
 
 **Done when**:
 
-- [ ] `PATCH /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
-- [ ] `DELETE /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
-- [ ] Creating a name that differs from an active one only by whitespace is refused with `ServiceNameAlreadyInUseError` (Fix 2)
-- [ ] Renaming a service to a name only a *deactivated* service holds is accepted (Fix 3)
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: recorded in the commit
+- [x] `PATCH /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
+- [x] `DELETE /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
+- [x] Creating a name that differs from an active one only by whitespace is refused with `ServiceNameAlreadyInUseError` (Fix 2)
+- [x] Renaming a service to a name only a *deactivated* service holds is accepted (Fix 3)
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 3 new tests (1 e2e covering both Fix 1 routes, 2 unit). Unit 252/252, integration 92/92 (run twice), e2e 82/82 = 426 total, up from 423. No production code touched - all three outcomes were already correct, and the Verifier had confirmed as much; this closed the proof, not a defect.
 
 **Tests**: e2e
 **Gate**: build

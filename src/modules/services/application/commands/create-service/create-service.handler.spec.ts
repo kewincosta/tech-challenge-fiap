@@ -64,6 +64,18 @@ describe('CreateServiceHandler', () => {
     expect(services.services).toHaveLength(1);
   });
 
+  it('should refuse a name differing from an active one only by whitespace', async () => {
+    // ServiceName normalises before any comparison, so this can never reach existsActiveByName
+    // un-normalised - proven here as a path, not only as VO behaviour (validation.md's Fix 2).
+    const { handler, services } = makeHandler();
+    await handler.execute(new CreateServiceCommand('Troca de oleo', 15099, 60));
+
+    await expect(
+      handler.execute(new CreateServiceCommand('  Troca   de oleo  ', 20000, 90)),
+    ).rejects.toThrow(ServiceNameAlreadyInUseError);
+    expect(services.services).toHaveLength(1);
+  });
+
   it('should accept a creation with no description', async () => {
     const { handler, services } = makeHandler();
 

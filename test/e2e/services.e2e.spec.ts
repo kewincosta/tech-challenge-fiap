@@ -77,6 +77,26 @@ describe('Services', () => {
     expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
   });
 
+  it('should refuse a service advisor updating or deactivating a service', async () => {
+    // The guard mechanism itself is proven generically, and create's 403 is tested above; these
+    // two cover the PATCH and DELETE routes specifically (validation.md's Fix 1).
+    const advisor = await loginAs('SERVICE_ADVISOR');
+    const service = await createService();
+
+    const updated = await api(app)
+      .patch(`/api/v1/services/${service.id}`)
+      .set('Authorization', `Bearer ${advisor.accessToken}`)
+      .send({ priceCents: 20000 })
+      .expect(403);
+    expect(updated.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+
+    const deleted = await api(app)
+      .delete(`/api/v1/services/${service.id}`)
+      .set('Authorization', `Bearer ${advisor.accessToken}`)
+      .expect(403);
+    expect(deleted.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
   it('should let a mechanic list and read the catalog', async () => {
     const mechanic = await loginAs('MECHANIC');
     const service = await createService();

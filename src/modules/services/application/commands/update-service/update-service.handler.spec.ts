@@ -65,6 +65,20 @@ describe('UpdateServiceHandler', () => {
     ).resolves.not.toThrow();
   });
 
+  it('should accept renaming onto a name only a deactivated service holds', async () => {
+    // Same existsActiveByName call the create path uses, but exercised through update
+    // (validation.md's Fix 3).
+    const { handler, services } = makeHandler();
+    await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
+    const retired = buildService(OTHER_ID, 'Alinhamento');
+    retired.deactivate(new Date());
+    await services.save(retired);
+
+    await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, 'Alinhamento'));
+
+    expect(services.services.find((s) => s.id.equals(SERVICE_ID))?.name.value).toBe('Alinhamento');
+  });
+
   it('should refuse an unknown service', async () => {
     const { handler } = makeHandler();
 
