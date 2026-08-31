@@ -644,12 +644,13 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Registers a vehicle for an active customer
-- [ ] Refuses (422) for a deactivated customer
-- [ ] Refuses (404) for a non-existent customer
-- [ ] Propagates `InvalidLicensePlateError`/`InvalidVehicleYearError` for malformed input
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Registers a vehicle for an active customer
+- [x] Refuses (422) for a deactivated customer
+- [x] Refuses (404) for a non-existent customer (`ReferencedCustomerNotFoundError`, `vehicles`'
+  own class - see the design.md correction made while implementing this task)
+- [x] Propagates `InvalidLicensePlateError`/`InvalidVehicleYearError` for malformed input
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
