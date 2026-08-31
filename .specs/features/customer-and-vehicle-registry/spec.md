@@ -177,18 +177,18 @@ Every ambiguity is resolved or recorded here. The domain rules themselves come f
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CVR-01 | P1: A service advisor turns a person into a customer | Design | In Design |
-| CVR-02 | P1: Finding and reading customer records | Design | In Design |
-| CVR-03 | P1: A vehicle is on record before it can be serviced | Design | In Design |
-| CVR-04 | P1: Reading vehicle records | Design | In Design |
-| CVR-05 | P2: Maintaining customer records | Design | In Design |
-| CVR-06 | P2: Maintaining vehicle records | Design | In Design |
+| CVR-01 | P1: A service advisor turns a person into a customer | Tasks | In Tasks |
+| CVR-02 | P1: Finding and reading customer records | Tasks | In Tasks |
+| CVR-03 | P1: A vehicle is on record before it can be serviced | Tasks | In Tasks |
+| CVR-04 | P1: Reading vehicle records | Tasks | In Tasks |
+| CVR-05 | P2: Maintaining customer records | Tasks | In Tasks |
+| CVR-06 | P2: Maintaining vehicle records | Tasks | In Tasks |
 
 **ID format:** `CVR-NN`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 6 total, 0 mapped to tasks, 6 unmapped ⚠️ (Tasks phase has not run yet)
+**Coverage:** 6 total, 6 mapped to tasks, 0 unmapped
 
 ---
 
