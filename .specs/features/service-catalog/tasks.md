@@ -273,12 +273,12 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] `getById` returns name, description, price in cents as a number, duration and status, or null
-- [ ] `getById` returns a **deactivated** service with `status: 'INACTIVE'` (SVC-02 AC3, SVC-04 AC1) - the distinction feature 5 needs for rule 18
-- [ ] `listActive` excludes deactivated services (SVC-02 AC2)
-- [ ] `listActive` returns the price as a number, not the driver's string
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `getById` returns name, description, price in cents as a number, duration and status, or null
+- [x] `getById` returns a **deactivated** service with `status: 'INACTIVE'` (SVC-02 AC3, SVC-04 AC1) - the distinction feature 5 needs for rule 18, proven here rather than discovered later as customer-and-vehicle-registry had to
+- [x] `listActive` excludes deactivated services (SVC-02 AC2)
+- [x] `listActive` returns the price as a number, not the driver's string - asserted on `typeof`, so a read model that skipped the conversion could not pass
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 5 tests pass. Lint clean, full integration suite 87/87 on both runs (82 before this task). Phase 2 complete.
 
 **Tests**: integration
 **Gate**: quick
