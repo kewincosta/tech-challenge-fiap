@@ -302,14 +302,14 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] Creates an active service and returns its external id (SVC-01 AC1)
-- [ ] Refuses a negative price, propagating the shared kernel's `InvalidMoneyAmountError` (SVC-01 AC2)
-- [ ] Refuses a zero or negative duration (SVC-01 AC3)
-- [ ] Refuses a name already held by an active service, case-insensitively, with `ServiceNameAlreadyInUseError` (SVC-01 AC4)
-- [ ] Accepts a creation with no description (SVC-01 AC7)
-- [ ] Accepts a price of zero (SVC-03 AC3)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Creates an active service and returns its external id (SVC-01 AC1)
+- [x] Refuses a negative price, propagating the shared kernel's `InvalidMoneyAmountError` (SVC-01 AC2)
+- [x] Refuses a zero or negative duration (SVC-01 AC3)
+- [x] Refuses a name already held by an active service, case-insensitively, with `ServiceNameAlreadyInUseError` (SVC-01 AC4)
+- [x] Accepts a creation with no description (SVC-01 AC7)
+- [x] Accepts a price of zero (SVC-03 AC3)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass. Every refusal test also asserts nothing was persisted, which is what separates "refused" from "refused after writing" (no silent deletions).
 
 **Tests**: unit
 **Gate**: quick
