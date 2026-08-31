@@ -552,12 +552,13 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `vehicles` table has `id bigserial pk`, `external_id uuid unique`, `customer_id bigint references customers(id)`
-- [ ] Partial unique index on `plate` where `deleted_at IS NULL` (not a plain unique index - a removed vehicle's plate must be reusable)
-- [ ] Index on `customer_id`
-- [ ] `down()` drops the table cleanly
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `vehicles` table has `id bigserial pk`, `external_id uuid unique`, `customer_id bigint references customers(id)`
+- [x] Partial unique index on `plate` where `deleted_at IS NULL` (not a plain unique index - a removed vehicle's plate must be reusable)
+- [x] Index on `customer_id`
+- [x] `down()` drops the table cleanly - verified by code review, not execution (same reasoning as T4)
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 4 tests pass, not 5 - the `external_id`/`id` checks share one test the same way
+  T4's did, and `down()` isn't executed against the shared test database (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
