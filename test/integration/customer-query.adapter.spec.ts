@@ -110,4 +110,20 @@ describe('TypeOrmCustomerQueryAdapter', () => {
     expect(found).toHaveLength(0);
     expect(await queryAdapter.getByUserId(userId)).toBeNull();
   });
+
+  it('should still return a deactivated customer by external id, unlike the list and getByUserId', async () => {
+    // getById is the staff/cross-module lookup (GET /customers/:externalId,
+    // RegisterVehicleHandler/UpdateVehicleHandler resolving the owning customer). Those callers
+    // need to tell "does not exist" (null) apart from "exists but deactivated" (status field) -
+    // found and fixed while implementing T20, which needs exactly this distinction to answer 422
+    // instead of a misleading 404 for a deactivated owning customer.
+    const { customerId } = await registerCustomer(`Jane-${randomUUID()}`, uniqueValidCpf());
+    const customer = (await customerRepository.findById(CustomerId.create(customerId)))!;
+    customer.deactivate(new Date());
+    await customerRepository.save(customer);
+
+    const found = await queryAdapter.getById(customerId);
+
+    expect(found?.status).toBe('INACTIVE');
+  });
 });
