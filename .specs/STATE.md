@@ -109,25 +109,22 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/customer-and-vehicle-registry`
-- **Phase / Task**: Verified. All 20 tasks (T1-T20, two modules - `customers` and `vehicles`)
-  complete and committed to `main` at `cded578`. Verifier report at
-  `.specs/features/customer-and-vehicle-registry/validation.md`, diff range `c878d74..cded578`
-  (29 commits, spec through the last task).
+- **Feature**: `.specs/features/customer-and-vehicle-registry` - **done**
+- **Phase / Task**: Verified, PASS on the first pass, both post-verification coverage-hardening
+  tasks closed same day. 22 tasks total (T1-T20 plus T21/T22) complete and committed to `main` at
+  `d683d5a`. Verifier report at `.specs/features/customer-and-vehicle-registry/validation.md`.
 - **Completed**: every task in `tasks.md`; every one of the 6 stories (CVR-01 through CVR-06, 41
   ACs total) independently re-derived and confirmed by the Verifier, evidence-or-zero. 5/5 Edge
-  Cases handled. AD-003 cross-module boundary confirmed clean (`customers`/`vehicles` cross only
-  through `CommandBus`/`QueryBus`, plus the one documented raw-SQL infrastructure exception).
-  Discrimination sensor: 3/3 injected mutations killed. Gate reproduced independently on two full
-  runs: lint clean, build clean, unit 216/216, integration 71/71 (run twice consecutively for
-  durability), e2e 67/67 - 354 total, up from the 229 `identity-foundation` baseline, zero
-  regressions.
+  Cases handled. AD-003 cross-module boundary confirmed clean. Discrimination sensor: 3/3 injected
+  mutations killed. Both minor coverage gaps the Verifier flagged (Fix 1, Fix 2 - neither a
+  production defect) closed in T21/T22, test-only, no production code touched by either. Final
+  gate: lint clean, build clean, unit 218/218, integration 71/71 (run twice consecutively for
+  durability), e2e 71/71 - 360 total, up from the 229 `identity-foundation` baseline, zero
+  regressions throughout.
 - **In-progress** (file:line): none
-- **Next step**: none required to close this feature. Two minor, non-blocking test-coverage
-  completeness gaps are logged in `validation.md`'s Fix Plans (Fix 1: `RegisterCustomerHandler`
-  has no direct test for a malformed address/phone during registration, CVR-01 AC7/AC8; Fix 2:
-  three vehicle-route NotFound/RuleViolation branches - CVR-03 AC3, CVR-06 AC3/AC4 - have unit
-  coverage only, no e2e). Neither blocks starting `service-catalog` (feature 3).
+- **Next step**: none required to close this feature. No open gaps. The next unit of work is
+  specifying feature 3, `service-catalog`, when the user asks for it - not before, per this
+  file's own Feature Roadmap policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
