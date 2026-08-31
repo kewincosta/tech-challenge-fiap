@@ -261,12 +261,12 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Saving a `Customer` resolves the external `userId` to the internal `user_id` through the active transaction's manager when one is open
-- [ ] A save-then-restore round trip returns an equal aggregate, address and phone included
-- [ ] A duplicate `user_id` insert throws the real Postgres unique-violation, mapped to `CustomerAlreadyExistsForUserError`
-- [ ] A save for a non-existent `userId` throws not-found
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Saving a `Customer` resolves the external `userId` to the internal `user_id` through the active transaction's manager when one is open
+- [x] A save-then-restore round trip returns an equal aggregate, address and phone included
+- [x] A duplicate `user_id` insert throws the real Postgres unique-violation, mapped to `CustomerAlreadyExistsForUserError`
+- [x] A save for a non-existent `userId` throws not-found
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
