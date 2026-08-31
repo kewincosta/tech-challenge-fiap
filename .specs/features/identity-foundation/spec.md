@@ -213,15 +213,15 @@ Every ambiguity is resolved or recorded here.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| IDENT-01 | P1: Workshop capabilities exist as permissions | Tasks | Implementing |
-| IDENT-02 | P1: Money has one implementation | Tasks | Implementing |
-| IDENT-03 | P1: No route exposes an enumerable identifier | Tasks | Implementing |
-| IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Implementing |
-| IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Implementing |
-| IDENT-06 | P1: Nobody widens their own access | Tasks | Implementing |
-| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing |
-| IDENT-08 | P1: Signing out signs out everywhere | Tasks | Implementing |
-| IDENT-09 | P2: One grouping concept in the access model | Tasks | Implementing |
+| IDENT-01 | P1: Workshop capabilities exist as permissions | Tasks | Verified |
+| IDENT-02 | P1: Money has one implementation | Tasks | Verified |
+| IDENT-03 | P1: No route exposes an enumerable identifier | Tasks | Verified |
+| IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Verified |
+| IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Verified |
+| IDENT-06 | P1: Nobody widens their own access | Tasks | Verified |
+| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing - AC1 unimplemented, see `validation.md` |
+| IDENT-08 | P1: Signing out signs out everywhere | Tasks | Verified |
+| IDENT-09 | P2: One grouping concept in the access model | Tasks | Verified |
 
 **ID format:** `IDENT-NN`
 
