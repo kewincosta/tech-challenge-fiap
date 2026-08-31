@@ -11,14 +11,9 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     return Promise.resolve(this.items.find((item) => item.id.equals(id)) ?? null);
   }
 
-  async existsActiveBySku(sku: Sku, excludingId?: InventoryItemId): Promise<boolean> {
+  async existsActiveBySku(sku: Sku): Promise<boolean> {
     return Promise.resolve(
-      this.items.some(
-        (item) =>
-          item.sku.equals(sku) &&
-          item.status === InventoryItemStatus.Active &&
-          !(excludingId && item.id.equals(excludingId)),
-      ),
+      this.items.some((item) => item.sku.equals(sku) && item.status === InventoryItemStatus.Active),
     );
   }
 

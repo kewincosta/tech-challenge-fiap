@@ -479,6 +479,36 @@ T8  T9  T10  T11
 
 ---
 
+### T12: Close the coverage gaps validation.md flagged
+
+**What**: Four e2e tests closing `validation.md`'s Fix 1-3, plus removing the dead `excludingId` parameter from `existsActiveBySku` (Fix 4). No behaviour changes: the Verifier confirmed every outcome is already correct, most by construction; what was missing is the direct proof, and one parameter nothing ever calls.
+**Where**: `test/e2e/inventory-items.e2e.spec.ts`, `src/modules/inventory/domain/repositories/inventory-item.repository.ts`, `src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts`, `test/support/fakes/in-memory-inventory-item.repository.ts`
+**Depends on**: T11
+**Reuses**: The `loginAs()` and `createItem()` fixtures already in `inventory-items.e2e.spec.ts`
+**Requirement**: INV-01 (AC2, AC8, AC9), INV-02 (AC4, AC7)
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [x] `POST /api/v1/inventory-items` with a `kind` outside `PART`/`SUPPLY` answers 400 (Fix 1)
+- [x] A mechanic attempting create, update or adjust each answers 403 (Fix 2)
+- [x] A customer holding neither `inventory:read` nor `inventory:manage` answers 403 on the list (Fix 2)
+- [x] A zero or negative `quantity` over HTTP answers 400 on both replenishments and adjustments (Fix 3)
+- [x] `existsActiveBySku`'s `excludingId` parameter is removed from the port, the TypeORM repository and the in-memory fake - nothing in this codebase ever called it with one (Fix 4)
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 4 new e2e tests. Unit 300/300, integration 124/124 (run twice), e2e 98/98 (run twice) = 522 total, up from 518. Only Fix 4 touches production code, and only by deleting an unused parameter - every other outcome was already correct.
+
+**Tests**: e2e
+**Gate**: build
+
+**Commit**: `test(inventory): close the coverage gaps validation.md flagged`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
@@ -493,6 +523,7 @@ T6 -> T9
 T8 -> T11
 T9 -> T11
 T10 -> T11
+T11 -> T12
 ```
 
 Execution is strictly sequential - there is no intra-phase parallelism.

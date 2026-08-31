@@ -2,7 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
 import { uniqueSku } from '../support/factories/sku.factory';
-import { api, grantRole, login, registerUser, type AuthenticatedClient } from '../support/http';
+import {
+  api,
+  grantRole,
+  login,
+  registerAndLogin,
+  registerUser,
+  type AuthenticatedClient,
+} from '../support/http';
 
 let app: INestApplication;
 let close: () => Promise<void>;
@@ -230,5 +237,80 @@ describe('Inventory items', () => {
     const ids = (response.body as Array<{ id: string }>).map((row) => row.id);
     expect(ids).toContain(part.id);
     expect(ids).not.toContain(supply.id);
+  });
+
+  it('should refuse a kind outside PART/SUPPLY with 400', async () => {
+    const response = await api(app)
+      .post('/api/v1/inventory-items')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ sku: uniqueSku(), name: 'Item invalido', kind: 'BOGUS', unitPriceCents: 1000 })
+      .expect(400);
+
+    expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it('should refuse a mechanic creating, updating or adjusting an item', async () => {
+    // validation.md's Fix 2: replenish's 403 is proven above, but the identical guard on these
+    // three sibling routes was not - a sibling route's test does not substitute for its own (L-003).
+    const mechanic = await loginAs('MECHANIC');
+    const item = await createItem();
+    await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/replenishments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: 5, unitPriceCents: 2500 })
+      .expect(200);
+
+    const created = await api(app)
+      .post('/api/v1/inventory-items')
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .send({ sku: uniqueSku(), name: 'Item', kind: 'PART', unitPriceCents: 1000 })
+      .expect(403);
+    expect(created.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+
+    const updated = await api(app)
+      .patch(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .send({ unitPriceCents: 3000 })
+      .expect(403);
+    expect(updated.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+
+    const adjusted = await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/adjustments`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .send({ quantity: 1, note: 'nota' })
+      .expect(403);
+    expect(adjusted.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('should refuse an actor holding neither inventory permission on the list', async () => {
+    const outsider = await registerAndLogin(app);
+
+    const response = await api(app)
+      .get('/api/v1/inventory-items')
+      .set('Authorization', `Bearer ${outsider.accessToken}`)
+      .expect(403);
+
+    expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('should refuse a zero or negative quantity over HTTP on both replenishments and adjustments', async () => {
+    const item = await createItem();
+    await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/replenishments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: 5, unitPriceCents: 2500 })
+      .expect(200);
+
+    await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/replenishments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: 0, unitPriceCents: 2500 })
+      .expect(400);
+
+    await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/adjustments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: -1, note: 'nota' })
+      .expect(400);
   });
 });

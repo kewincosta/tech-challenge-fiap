@@ -31,15 +31,13 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     return row ? InventoryItemMapper.toDomain(row) : null;
   }
 
-  async existsActiveBySku(sku: Sku, excludingId?: InventoryItemId): Promise<boolean> {
-    const query = this.items
+  async existsActiveBySku(sku: Sku): Promise<boolean> {
+    const count = await this.items
       .createQueryBuilder('item')
       .where('item.sku = :sku', { sku: sku.value })
-      .andWhere('item.status = :status', { status: 'ACTIVE' });
-    if (excludingId) {
-      query.andWhere('item.external_id <> :excluded', { excluded: excludingId.value });
-    }
-    return (await query.getCount()) > 0;
+      .andWhere('item.status = :status', { status: 'ACTIVE' })
+      .getCount();
+    return count > 0;
   }
 
   /**
