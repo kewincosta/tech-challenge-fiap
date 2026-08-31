@@ -103,7 +103,7 @@ graph TD
   - `transferTo(customerId: CustomerId, now: Date): void`
   - `remove(now: Date): void`
   - Getters: `id`, `customerId`, `plate: LicensePlate`, `brand`, `model`, `year: VehicleYear`, `deletedAt`.
-- **Dependencies**: `LicensePlate`, `VehicleYear`, `VehicleId`, `CustomerId` (from `customers`' own value objects module - a value object crossing a module boundary is data, not behaviour, and `UserId` already crosses into `authorization`'s `AssignRoleToUserCommand` payload the same way).
+- **Dependencies**: `LicensePlate`, `VehicleYear`, `VehicleId`. `customerId` is a plain `string` (the external id), not an imported `CustomerId` instance - corrected during T3 from an earlier, inaccurate claim in this doc that `AssignRoleToUserCommand` crosses a `UserId` instance; it does not, its `userId` field is a plain `string` too. Every existing cross-module reference in this codebase (`RegisterUserCommand`, `GetUserByIdQuery`, `AssignRoleToUserCommand`) carries external ids as plain strings, never a VO instance, so `Customer.userId` and `Vehicle.customerId` follow the same convention.
 - **Reuses**: `AggregateRoot`.
 
 ### `RegisterCustomerHandler`
