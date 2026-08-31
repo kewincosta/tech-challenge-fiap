@@ -77,7 +77,7 @@ is specified when it is reached, never in advance.
 | 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Verified |
 | 3 | `service-catalog` | 6 | Medium | Verified |
-| 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
+| 4 | `inventory-and-stock-movements` | 7 | Large | Verified |
 | 5 | `work-order-creation` | 8 | Large | Not started |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Not started |
 | 7 | `work-order-execution-and-closing` | 11, 12 | Complex | Not started |
@@ -109,52 +109,53 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/service-catalog` - **done**
-- **Phase / Task**: Verified, PASS on the first pass, and the three post-verification coverage gaps
-  closed the same day in T11. 11 tasks total (T1-T11) committed to `main` at `6b4fbb0`. Verifier
-  report at `.specs/features/service-catalog/validation.md`.
-- **Completed**: every task in `tasks.md`; all 4 stories (SVC-01 through SVC-04, 19 ACs) and every
-  Edge Case independently re-derived and confirmed by the Verifier, evidence-or-zero. Discrimination
-  sensor: 3/3 injected mutations killed, one per new hazard (the `Money`-backed column, the
-  expression index, the `getById`-unfiltered contract). Final gate: lint clean, build clean, unit
-  252/252, integration 92/92 (run twice consecutively for durability), e2e 82/82 - 426 total, up
-  from the 360 baseline, zero regressions.
+- **Feature**: `.specs/features/inventory-and-stock-movements` - **done**
+- **Phase / Task**: Verified, PASS on the first pass, with four non-blocking coverage-completeness
+  gaps logged (Fix 1-4) - none required before closing. 11 tasks total (T1-T11) committed to `main`
+  at `ede787d`. Verifier report at
+  `.specs/features/inventory-and-stock-movements/validation.md`.
+- **Completed**: every task in `tasks.md`; all 4 stories (INV-01 through INV-04, 25 ACs) and every
+  listed Edge Case independently re-derived and confirmed by the Verifier, evidence-or-zero.
+  Discrimination sensor: 3/3 injected mutations killed - the dropped pessimistic-write lock
+  (probabilistic kill rate, 3/15 runs - see L-005), the removed adjustment-note guard (deterministic
+  at all three layers), and the untyped `Money.fromDatabase` bypass (deterministic, 7 cascading
+  failures). Final gate: lint clean, build clean, unit 300/300, integration 124/124 (run twice
+  consecutively for durability), e2e 94/94 (run twice consecutively) - 518 total, up from the 426
+  baseline, zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required. No open gaps. The next unit of work is specifying feature 4,
-  `inventory-and-stock-movements`, when the user asks for it - not before, per this file's own
-  Feature Roadmap policy. That feature is the first with append-only child entities and the first
-  where AD-007 (audit rows written inside the aggregate's own transaction) becomes real code.
+- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 5,
+  `work-order-creation`, when the user asks for it - not before, per this file's own Feature Roadmap
+  policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 4 or a re-read of this one):
-1. This is where AD-002 first becomes real code: `services.price_cents` is the project's first
-   `Money`-backed column. Every `bigint` non-primary-key column in this codebase maps to a
-   **string** property because that is what the driver returns, so `ServiceMapper` and
-   `TypeOrmServiceQueryAdapter` both call `Money.fromDatabase` explicitly. The repository test
-   asserts both halves - that the raw driver value really is a `string` and that the mapped value
-   is a `number` - because only the pair proves the conversion is happening rather than the value
-   happening to match. `inventory-and-stock-movements` (feature 4) is the next module with a
-   `Money`-backed column and should follow the same pair-assertion pattern.
-2. First expression index in the schema: `ux_services_active_name` keys on `lower(name)` and
-   filters on `status = 'ACTIVE'`. The repository's own `existsActiveByName` uses `lower()` on both
-   sides for the same reason; if only one side did, a duplicate would surface as a raw 500 instead
-   of a 409. The migration test's first draft asserted the literal `lower(name`, but Postgres
-   normalises that to `lower((name)::text)` for a varchar column - the assertion was corrected to
-   the real observed text rather than loosened to a vague `contains('lower')`.
-3. `services` deliberately has **no `deleted_at`**: deactivation here is a status flip, and the
-   uniqueness filter is `WHERE status = 'ACTIVE'`, unlike every other table built so far. The
-   migration test asserts the column's absence explicitly, since "adding it back for symmetry"
-   would be an easy and wrong later change.
-4. The `getById`-unfiltered / `listActive`-filtered split was designed in from the start rather
-   than discovered as a bug, carrying forward what `customer-and-vehicle-registry` learned late:
-   feature 5 needs "does not exist" to stay distinct from "exists but deactivated" so it can
-   refuse rule 18 precisely. `GetServiceQuery` is that contract, confirmed present at every layer
-   (query adapter, query handler, HTTP route) by the Verifier.
-5. No RBAC seed change was needed - `services:read` and `services:manage` were already seeded and
-   granted to the right roles by `identity-foundation`. Verified against the migration before
-   starting, and confirmed untouched by the Verifier's diff check.
-6. Two lessons (`L-002`, edge cases need an owning task in `tasks.md`; `L-003`, a sibling call
-   path's test does not substitute for the specific handler's own) recurred in this feature and are
-   now `confirmed` in `LESSONS.md` - load them at Specify/Design for feature 4.
+**Notes from this feature's own implementation** (useful context for feature 5 or a re-read of this one):
+1. AD-007 became running code for the first time here: the movement row and the item's new count
+   are written inside the same transaction by `TypeOrmInventoryItemRepository.save`, never by a
+   post-commit subscriber. A forced real unique-index violation mid-transaction proves a failed
+   write leaves neither the count nor the movement row behind.
+2. The project's first pessimistic row lock (`SELECT ... FOR UPDATE`, TypeORM's
+   `lock: { mode: 'pessimistic_write' }`). The naive alternative - writing the aggregate's own
+   precomputed `quantityOnHand` - would lose concurrent updates silently, because the
+   `CHECK (quantity_on_hand >= 0)` constraint cannot see two writers each landing on a value that
+   individually satisfies it. The concurrency test genuinely races two overlapping transactions
+   (`Promise.all`), but the Verifier's sensor found its kill rate for a dropped lock is
+   probabilistic (3/15 runs) rather than deterministic on a fast local Postgres - recorded as new
+   candidate lesson `L-005`. A future feature with a similar concurrency guarantee should consider
+   a deliberate synchronization point to force true overlap rather than relying on `Promise.all`
+   timing alone.
+3. `inventory-and-stock-movements` is the second module with a `Money`-backed column (after
+   `service-catalog`'s `services.price_cents`), now on two tables (`inventory_items`,
+   `stock_movements`) - the same explicit `Money.fromDatabase` pair-assertion pattern held on both.
+4. `L-003` (a sibling handler/route's test does not substitute for this one's own) recurred a third
+   time in this feature: the `/replenishments` mechanic-403 e2e case does not cover
+   `POST`/`PATCH`/`.../adjustments`, and the DTO-level `@IsIn`/`@IsPositive` validation proven
+   generically elsewhere in the codebase has no dedicated test for `kind`/`quantity` on these
+   specific routes. Both logged as non-blocking (Fix 2, Fix 3 in the Verifier report), merged as
+   further evidence into `L-003` rather than filed separately.
+5. Feature 7 (`work-order-execution-and-closing`) inherits a schema already shaped for it: the
+   `CONSUMPTION`/`RETURN` movement kinds, the `PENDING`/`SETTLED`/`WRITTEN_OFF` statuses,
+   `undoes_movement_id`, and the whole `stock_movement_transitions` table exist today, written by
+   nothing. Feature 8 (`tracking-and-metrics`) will need the `List Stock Shortages` read model this
+   feature deliberately deferred (spec.md's Out of Scope).

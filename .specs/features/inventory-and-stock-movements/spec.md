@@ -135,10 +135,10 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| INV-01 | P1: The workshop keeps one catalog of parts and supplies | Tasks | In Tasks |
-| INV-02 | P1: Stock moves only through a recorded movement | Tasks | In Tasks |
-| INV-03 | P1: The quantity on hand never goes negative | Tasks | In Tasks |
-| INV-04 | P2: Every unit that moved is on the record | Tasks | In Tasks |
+| INV-01 | P1: The workshop keeps one catalog of parts and supplies | Tasks | Verified |
+| INV-02 | P1: Stock moves only through a recorded movement | Tasks | Verified |
+| INV-03 | P1: The quantity on hand never goes negative | Tasks | Verified |
+| INV-04 | P2: Every unit that moved is on the record | Tasks | Verified |
 
 **ID format:** `INV-NN`
 
