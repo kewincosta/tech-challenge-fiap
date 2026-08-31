@@ -54,7 +54,7 @@ Every ambiguity is resolved or recorded here.
 **Why P1**: Every controller from feature 2 onwards references these codes. Without them, no later feature can be guarded.
 
 **Acceptance Criteria**:
-1. The system SHALL expose the twenty-three workshop permission codes listed in the design through the existing permission catalog.
+1. The system SHALL expose the permission codes defined in `docs/ddd/implementation-plan.md` Phase 0 through the existing permission catalog: twenty new workshop codes (`customers:read` through `metrics:read`) alongside the seven pre-existing identity codes that survive the group removal (AD-005), twenty-seven codes in total.
 2. WHEN the RBAC seed migration runs THEN the system SHALL grant each system role exactly the permission set defined in the design.
 3. The system SHALL define a `SUPER_ADMIN` system role holding `roles:manage`, which `ADMIN` does not hold.
 4. IF a permission code does not match the existing `PermissionCode` format THEN the system SHALL reject it at creation.
@@ -213,15 +213,15 @@ Every ambiguity is resolved or recorded here.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| IDENT-01 | P1: Workshop capabilities exist as permissions | Tasks | Pending |
-| IDENT-02 | P1: Money has one implementation | Tasks | Pending |
-| IDENT-03 | P1: No route exposes an enumerable identifier | Tasks | Pending |
-| IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Pending |
-| IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Pending |
-| IDENT-06 | P1: Nobody widens their own access | Tasks | Pending |
-| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Pending |
-| IDENT-08 | P1: Signing out signs out everywhere | Tasks | Pending |
-| IDENT-09 | P2: One grouping concept in the access model | Tasks | Pending |
+| IDENT-01 | P1: Workshop capabilities exist as permissions | Tasks | Implementing |
+| IDENT-02 | P1: Money has one implementation | Tasks | Implementing |
+| IDENT-03 | P1: No route exposes an enumerable identifier | Tasks | Implementing |
+| IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Implementing |
+| IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Implementing |
+| IDENT-06 | P1: Nobody widens their own access | Tasks | Implementing |
+| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing |
+| IDENT-08 | P1: Signing out signs out everywhere | Tasks | Implementing |
+| IDENT-09 | P2: One grouping concept in the access model | Tasks | Implementing |
 
 **ID format:** `IDENT-NN`
 

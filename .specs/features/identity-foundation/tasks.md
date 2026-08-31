@@ -271,7 +271,7 @@ T14  T15  T16  T17
 
 #### T3: Workshop permission contract and the SUPER_ADMIN role
 
-**What**: Add the twenty-three workshop permission codes to the contract and `SUPER_ADMIN` to the system role enum.
+**What**: Add the twenty workshop permission codes from `docs/ddd/implementation-plan.md` Phase 0 to the contract (twenty-seven total alongside the seven pre-existing identity codes) and `SUPER_ADMIN` to the system role enum.
 **Where**: `src/modules/authorization/application/contracts/`
 **Depends on**: None
 **Reuses**: the existing `AppPermission` and `SystemRole` shapes
