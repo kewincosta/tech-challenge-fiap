@@ -290,13 +290,13 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Get by external id returns identity data (via the join), address, phone, status, or null
-- [ ] Get by user's external id returns the customer or null (backs CVR-02 AC4 and T19's `GetMyVehiclesQuery`)
-- [ ] List filters by a name fragment case-insensitively
-- [ ] List filters by an exact document match
-- [ ] List excludes deactivated customers
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Get by external id returns identity data (via the join), address, phone, status, or null
+- [x] Get by user's external id returns the customer or null (backs CVR-02 AC4 and T19's `GetMyVehiclesQuery`)
+- [x] List filters by a name fragment case-insensitively
+- [x] List filters by an exact document match
+- [x] List excludes deactivated customers
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
