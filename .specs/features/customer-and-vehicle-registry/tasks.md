@@ -320,14 +320,21 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Registers over an existing user holding `CUSTOMER`
-- [ ] Refuses (422) an existing user without `CUSTOMER`
-- [ ] Refuses (409, at the domain/handler level, not just the DB) a user that already has a customer
-- [ ] Registers via the account-creation branch, dispatching `RegisterUserCommand` with `issuedByStaff: true`, and returns `temporaryPassword`
-- [ ] Refuses (400) a request with both `userId` and account data, and a request with neither
-- [ ] The whole handler body runs inside `transactionRunner.run()` - a failure after the user is created rolls back the user too (unit-level proof via the fake transaction runner's call count, matching `RegisterUserHandler`'s own test for this)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] Registers over an existing user holding `CUSTOMER`
+- [x] Refuses (422) an existing user without `CUSTOMER`
+- [x] Refuses (409, at the domain/handler level, not just the DB) a user that already has a customer
+- [x] Registers via the account-creation branch, dispatching `RegisterUserCommand` with `issuedByStaff: true`, and returns `temporaryPassword`
+- [x] Refuses (400) a request with both `userId` and account data, and a request with neither
+- [x] The whole handler body runs inside `transactionRunner.run()` (proven via the fake transaction runner's call count)
+- [x] Refuses (404) an existing-user branch target that does not exist - not in the original
+  Done-when list, added while implementing: CVR-01's own ACs never named this case, but
+  `GetUserByIdQuery` returning null needs defined behavior; mirrors every other
+  "referenced entity not found" case in this codebase (`TargetUserNotFoundError`, new)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass, not 7 - the 404 case above, plus a dedicated pre-check
+  (`existsByUserId`) added to close a real gap: the handler originally relied only on the
+  repository's DB-constraint backstop for the 409 case, unlike `RegisterUserHandler`'s two-layer
+  `existsByEmail`/`existsByDocument` pattern (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
