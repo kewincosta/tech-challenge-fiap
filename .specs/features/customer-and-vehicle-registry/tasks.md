@@ -674,13 +674,14 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Update replaces brand/model/year, leaves the rest untouched when omitted
-- [ ] Update transfers ownership to a new active customer
-- [ ] Update refuses (422) a transfer to a deactivated customer
-- [ ] Update refuses (404) a transfer to a non-existent customer
-- [ ] Remove sets the soft-delete marker, is idempotent
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] Update replaces brand/model/year, leaves the rest untouched when omitted
+- [x] Update transfers ownership to a new active customer
+- [x] Update refuses (422) a transfer to a deactivated customer
+- [x] Update refuses (404) a transfer to a non-existent customer
+- [x] Remove sets the soft-delete marker, is idempotent
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass, not 7 - split into two files (5 for update, 3 for remove), with a
+  dedicated not-found test added for update (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
