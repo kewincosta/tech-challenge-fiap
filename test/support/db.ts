@@ -8,6 +8,7 @@ import { UserRoleOrmEntity } from '../../src/modules/authorization/infrastructur
 import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
+import { ServiceOrmEntity } from '../../src/modules/services/infrastructure/persistence/service.orm-entity';
 
 export function createTestDataSource(): DataSource {
   return new DataSource({
@@ -27,6 +28,7 @@ export function createTestDataSource(): DataSource {
       RolePermissionOrmEntity,
       CustomerOrmEntity,
       VehicleOrmEntity,
+      ServiceOrmEntity,
     ],
   });
 }

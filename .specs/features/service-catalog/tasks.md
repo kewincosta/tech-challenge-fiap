@@ -241,15 +241,15 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] A save-then-find round trip returns an equal aggregate
-- [ ] A price written as 15099 cents reloads as exactly `15099` **as a number**, and the raw driver value for that column is asserted to be a `string` - the explicit conversion phase 6's Risks line demands (SVC-03 AC2)
-- [ ] A price of zero round-trips (SVC-03 AC3)
-- [ ] `existsActiveByName` matches case-insensitively: insert `Troca de Oleo`, assert `existsActiveByName('troca de oleo')` is true
-- [ ] `existsActiveByName` ignores deactivated services, so a freed name reads as available (SVC-04 AC2)
-- [ ] A concurrent duplicate active name hits the real unique index and is mapped to `ServiceNameAlreadyInUseError`
-- [ ] Every test uses `uniqueServiceName()`, never a fixed literal - the test database is never truncated
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] A save-then-find round trip returns an equal aggregate
+- [x] A price written as 15099 cents reloads as exactly `15099` **as a number**, and the raw driver value for that column is asserted to be a `string` - both halves asserted, since only the pair proves the conversion is really happening rather than the value happening to match (SVC-03 AC2)
+- [x] A price of zero round-trips (SVC-03 AC3)
+- [x] `existsActiveByName` matches case-insensitively, asserted in both directions (lowercased and uppercased) plus a negative case
+- [x] `existsActiveByName` ignores deactivated services, so a freed name reads as available, and a new service really can take it (SVC-04 AC2)
+- [x] A concurrent duplicate active name hits the real unique index and is mapped to `ServiceNameAlreadyInUseError` - the test bypasses the application pre-check on purpose, since that is the only case where the database is the last line of defence
+- [x] Every test uses `uniqueServiceName()`, never a fixed literal - the test database is never truncated
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 6 tests pass. Lint clean, full integration suite 82/82 on both runs (76 before this task).
 
 **Tests**: integration
 **Gate**: quick
