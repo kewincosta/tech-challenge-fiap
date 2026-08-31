@@ -74,7 +74,7 @@ is specified when it is reached, never in advance.
 
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
-| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Implemented, pending Verifier |
+| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Fix round complete (T18-T20), pending re-verification |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Not started |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
@@ -110,15 +110,15 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/identity-foundation`
-- **Phase / Task**: All 16 tasks (T1-T4 merged T5, T6-T17) complete and merged to `main` at
-  `5976d46`. Awaiting the feature-level Verifier (mandatory, not yet dispatched at the time of
-  this snapshot).
+- **Phase / Task**: All 20 tasks (T1-T4 merged T5, T6-T20) complete and merged to `main` at
+  `318c790`. The first Verifier pass (`validation.md`, first version) returned FAIL on two real
+  gaps; T18-T20 close them. Awaiting re-verification.
 - **Completed**: T1, T2, T3, T4 (merged with the original T5), T6, T7, T8, T9, T10, T11, T12,
-  T13, T14, T15, T16, T17 - every task in `tasks.md`, every checkbox marked.
+  T13, T14, T15, T16, T17, T18, T19, T20 - every task in `tasks.md`, every checkbox marked.
 - **In-progress** (file:line): none
-- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read
-  `validation.md` and act on any gaps it reports (bounded to 3 fix/re-verify iterations before
-  escalating).
+- **Next step**: dispatch a fresh Verifier sub-agent (author != verifier) to re-verify against
+  the T18-T20 diff, then read the updated `validation.md` and act on any remaining gaps (bounded
+  to 3 fix/re-verify iterations total before escalating - this is iteration 2).
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
@@ -138,8 +138,13 @@ touching this code again:
    sessions` route. A reminder that later tasks can invalidate earlier tasks' fixtures, not just
    earlier tasks' code.
 
-Deferred, explicitly, not a gap: the HTTP endpoint that lets staff create an account with a
-generated password (IDENT-07's "Why P1" line) belongs to feature 2
-(`customer-and-vehicle-registry`), not to this feature. T14 built the domain-level flag and
-generator only; the pino redact path for that future response field is feature 2's job too, to
-add in the same commit that adds the field. See H19-equivalent reasoning in `tasks.md` T14.
+**Notes from the first Verifier pass and the T18-T20 fix round:** T14's own deferral of the
+staff-creation endpoint to feature 2 (reading IDENT-07's "Why P1" line as scope permission) was
+the orchestrator's own call, made without checking back - the independent Verifier disagreed,
+correctly: spec.md lists IDENT-07 as this feature's own P1 story with its own AC1 and Independent
+Test. The user resolved the conflict by choosing to build it now rather than formally descope it
+(T18). The Verifier also found spec.md's own deactivation Edge Case had never been assigned to
+any task (T19), and three minor e2e/integration coverage gaps (T20). Lesson: a task's own
+Done-when note asserting "this belongs to a later feature" is a scope claim, not a fact, and
+needs the same evidence-or-zero discipline as any other Done-when item - it should point at
+where the later feature's spec actually says so, or it should not be written as settled.
