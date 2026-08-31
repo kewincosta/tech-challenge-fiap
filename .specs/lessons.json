@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 5,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -52,16 +52,19 @@
       "status": "confirmed",
       "features": [
         "customer-and-vehicle-registry",
-        "service-catalog"
+        "service-catalog",
+        "inventory-and-stock-movements"
       ],
-      "recurrence": 2,
+      "recurrence": 3,
       "harmful": 0,
       "evidence": [
         "CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)",
-        "update-service.handler.spec.ts (no case renaming a service to a name only a deactivated service holds, even though service.repository.spec.ts:85-94 proves the identical existsActiveByName call shape) (application-handlers)"
+        "update-service.handler.spec.ts (no case renaming a service to a name only a deactivated service holds, even though service.repository.spec.ts:85-94 proves the identical existsActiveByName call shape) (application-handlers)",
+        "inventory-items.controller.ts POST/PATCH/:externalId/adjustments (inventory:manage) - only the /replenishments route got a dedicated mechanic-403 e2e case (test/e2e/inventory-items.e2e.spec.ts:112-123); create/update/adjust and the read-routes-with-neither-permission branch (INV-01 AC9) rest on the same decorator with no route-specific case (application-handlers)",
+        "create-inventory-item.request.dto.ts:24 (@IsIn(['PART','SUPPLY'])) and replenish/adjust DTOs' @IsPositive quantity guard (INV-01 AC2, INV-02 AC4) - no test at any layer asserts the DTO-level 400 for an invalid kind or a zero/negative movement quantity over HTTP, though the identical global ValidationPipe mechanism is proven for other DTOs elsewhere in the codebase (application-handlers)"
       ],
       "created": "2026-08-31T12:39:52Z",
-      "last_seen": "2026-08-31T17:48:43Z"
+      "last_seen": "2026-08-31T22:33:37Z"
     },
     {
       "id": "L-004",
@@ -80,6 +83,24 @@
       ],
       "created": "2026-08-31T12:39:57Z",
       "last_seen": "2026-08-31T12:39:57Z"
+    },
+    {
+      "id": "L-005",
+      "key": "surviving_mutant::a promise all raced two transaction test against a real database is not a reliable discrimination sensor for a dropped row lock by itself because two independent read then write calls do not always interleave measure a concurrency sensor s mutation kill rate across several repeated runs before trusting a single pass or fail",
+      "text": "A Promise.all()-raced two-transaction test against a real database is not a reliable discrimination sensor for a dropped row lock by itself, because two independent read-then-write calls do not always interleave - measure a concurrency sensor's mutation kill rate across several repeated runs before trusting a single pass or fail.",
+      "signal": "surviving_mutant",
+      "scope": "concurrency-tests",
+      "status": "candidate",
+      "features": [
+        "inventory-and-stock-movements"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "typeorm-inventory-item.repository.ts:68 (pessimistic_write lock removed) against test/integration/inventory-item.repository.spec.ts:199-226's Promise.all()-raced concurrent-replenishment test - failed 3/15 runs (~20%) under the mutation, 0/2 false-positive on the unmutated tree across two full test:integration gate runs (concurrency-tests)"
+      ],
+      "created": "2026-08-31T22:33:43Z",
+      "last_seen": "2026-08-31T22:33:43Z"
     }
   ]
 }
