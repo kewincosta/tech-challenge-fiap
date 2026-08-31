@@ -300,18 +300,18 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] A save-then-find round trip returns an equal aggregate, with the quantity on hand intact
-- [ ] `findById` attaches **no** movements, however many the item has (design.md: the history is a read model)
-- [ ] A replenishment writes the item's new count and the movement row in one transaction: after the save, both are present and consistent
-- [ ] **A failure inside the write leaves neither** - the count unchanged and no movement row (AD-007's whole point, proven by a forced rollback against real Postgres)
-- [ ] **An adjustment that would go negative appends no movement row at all**, asserted by reading the ledger after the refusal (owns that edge case, L-002)
-- [ ] **Two concurrent replenishments on the same item leave the count equal to their sum**, run as two overlapping transactions on two real connections (owns that edge case; the single highest-risk guarantee in this feature - the `CHECK` constraint cannot catch a lost update, only the row lock can)
-- [ ] The unit price round-trips as a **number** while the raw driver value is asserted to be a `string`, on both tables (the `service-catalog` pattern, repeated here because this is a second `Money`-backed table)
-- [ ] `existsActiveBySku` matches on the normalised SKU; a duplicate active SKU maps the real unique-index violation to `SkuAlreadyInUseError`
-- [ ] `actor_user_id` is resolved from the acting user's external id at the repository boundary (AD-001)
-- [ ] Every test uses `uniqueSku()`, never a fixed literal - the test database is never truncated
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] A save-then-find round trip returns an equal aggregate, with the quantity on hand intact
+- [x] `findById` attaches **no** movements, however many the item has (design.md: the history is a read model)
+- [x] A replenishment writes the item's new count and the movement row in one transaction: after the save, both are present and consistent
+- [x] **A failure inside the write leaves neither** - the count unchanged and no movement row (AD-007's whole point, proven by a forced rollback against real Postgres)
+- [x] **An adjustment that would go negative appends no movement row at all**, asserted by reading the ledger after the refusal (owns that edge case, L-002)
+- [x] **Two concurrent replenishments on the same item leave the count equal to their sum**, run as two overlapping transactions on two real connections (owns that edge case; the single highest-risk guarantee in this feature - the `CHECK` constraint cannot catch a lost update, only the row lock can)
+- [x] The unit price round-trips as a **number** while the raw driver value is asserted to be a `string`, on both tables (the `service-catalog` pattern, repeated here because this is a second `Money`-backed table)
+- [x] `existsActiveBySku` matches on the normalised SKU; a duplicate active SKU maps the real unique-index violation to `SkuAlreadyInUseError`
+- [x] `actor_user_id` is resolved from the acting user's external id at the repository boundary (AD-001)
+- [x] Every test uses `uniqueSku()`, never a fixed literal - the test database is never truncated
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 10 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick

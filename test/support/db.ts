@@ -9,6 +9,8 @@ import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistenc
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
 import { ServiceOrmEntity } from '../../src/modules/services/infrastructure/persistence/service.orm-entity';
+import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
+import { StockMovementOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/stock-movement.orm-entity';
 
 export function createTestDataSource(): DataSource {
   return new DataSource({
@@ -29,6 +31,8 @@ export function createTestDataSource(): DataSource {
       CustomerOrmEntity,
       VehicleOrmEntity,
       ServiceOrmEntity,
+      InventoryItemOrmEntity,
+      StockMovementOrmEntity,
     ],
   });
 }
