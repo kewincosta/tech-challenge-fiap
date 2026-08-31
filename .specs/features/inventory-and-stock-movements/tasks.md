@@ -370,7 +370,7 @@ T8  T9  T10  T11
 - [ ] Refuses a SKU an active item already holds, with `SkuAlreadyInUseError`
 - [ ] Update replaces only the supplied fields, leaving the others untouched
 - [ ] Update refuses an unknown item with `InventoryItemNotFoundError`
-- [ ] Renaming an item to its own current SKU is accepted, not a false conflict
+- [ ] Update never touches the SKU - `UpdateInventoryItemCommand` carries no `sku` field, so nothing can rename one (T4's `updateDetails` signature has no `sku` parameter; SKU is create-only)
 - [ ] Every refusal test also asserts nothing was persisted
 - [ ] Gate check passes: `npm run test:unit`
 - [ ] Test count: 8 tests pass (no silent deletions)
