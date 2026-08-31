@@ -393,19 +393,20 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] `POST /api/v1/services` behind `services:manage`, 201 with the new id
-- [ ] `GET /api/v1/services` behind `services:read`, active services only
-- [ ] `GET /api/v1/services/:externalId` behind `services:read`, 404 when unknown, and returns a deactivated service with its status
-- [ ] `PATCH /api/v1/services/:externalId` behind `services:manage`
-- [ ] `DELETE /api/v1/services/:externalId` behind `services:manage`, 204, deactivates rather than deleting
-- [ ] A service advisor is refused 403 on create - phase 6's own named e2e case (SVC-01 AC8)
-- [ ] A mechanic can list and read the catalog (SVC-02 AC1)
-- [ ] A customer holding neither permission is refused 403 (SVC-02 AC5)
-- [ ] A duplicate active name over HTTP answers 409, and a name freed by deactivation is accepted (SVC-04 AC2)
-- [ ] `ServicesModule` registered in `AppModule`
-- [ ] The full pre-existing suite (360 tests) stays green - nothing in this feature touches existing code
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 10 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/services` behind `services:manage`, 201 with the new id
+- [x] `GET /api/v1/services` behind `services:read`, active services only
+- [x] `GET /api/v1/services/:externalId` behind `services:read`, 404 when unknown, and returns a deactivated service with its status
+- [x] `PATCH /api/v1/services/:externalId` behind `services:manage`
+- [x] `DELETE /api/v1/services/:externalId` behind `services:manage`, 204, deactivates rather than deleting
+- [x] A service advisor is refused 403 on create - phase 6's own named e2e case (SVC-01 AC8)
+- [x] A mechanic can list and read the catalog (SVC-02 AC1)
+- [x] A customer holding neither permission is refused 403 (SVC-02 AC5)
+- [x] A duplicate active name over HTTP answers 409 case-insensitively, and a name freed by deactivation is accepted - the full create/deactivate/recreate cycle proven over HTTP (SVC-04 AC2)
+- [x] Negative price and zero duration both answer 400 over HTTP
+- [x] `ServicesModule` registered in `AppModule`
+- [x] The full pre-existing suite (360 tests) stays green - confirmed: 423 total now (360 + 63 from this feature), zero regressions
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 10 e2e tests pass on the first run. Lint clean, build clean, unit 250/250, integration 92/92 (run twice consecutively), e2e 81/81.
 
 **Tests**: e2e
 **Gate**: build
