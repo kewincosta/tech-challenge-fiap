@@ -458,12 +458,12 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Accepts the old format
-- [ ] Accepts the Mercosul format
-- [ ] Normalises lower case and separators
-- [ ] Rejects a plate matching neither format
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Accepts the old format
+- [x] Accepts the Mercosul format
+- [x] Normalises lower case and separators
+- [x] Rejects a plate matching neither format
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
