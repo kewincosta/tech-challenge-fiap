@@ -358,12 +358,14 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Update replaces address and/or phone, leaves the rest untouched when omitted
-- [ ] Update rejects a malformed address/phone (propagates the VO's own error)
-- [ ] Deactivate sets the soft-delete marker and does not touch the backing `User`
-- [ ] Deactivate on an already-deactivated customer is idempotent
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Update replaces address and/or phone, leaves the rest untouched when omitted
+- [x] Update rejects a malformed address/phone (propagates the VO's own error)
+- [x] Deactivate sets the soft-delete marker and does not touch the backing `User` (true by
+  construction - the handler never dispatches anything user-related)
+- [x] Deactivate on an already-deactivated customer is idempotent
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass, not 6 - split into two files (4 for update, 3 for deactivate),
+  with a dedicated not-found test added for each handler (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
