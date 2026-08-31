@@ -160,12 +160,14 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Accepts a mobile number (area code + 9 digits)
-- [ ] Accepts a landline number (area code + 8 digits)
-- [ ] Rejects a number with no area code
-- [ ] Normalises a formatted number (punctuation, spaces) to digits only
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Accepts a mobile number (area code + 9 digits)
+- [x] Accepts a landline number (area code + 8 digits)
+- [x] Rejects a number with no area code
+- [x] Normalises a formatted number (punctuation, spaces) to digits only
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass, not 4 - added a test for the absent-phone-number case (mirrors
+  `Address.create(undefined)`, needed for CVR-01 AC9 at the value-object level too) (no silent
+  deletions)
 
 **Tests**: unit
 **Gate**: quick
