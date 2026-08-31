@@ -116,6 +116,17 @@ T14  T15  T16
 T17  T18  T19  T20
 ```
 
+### Phase 7: Coverage hardening after independent verification
+
+The Verifier's first pass on this feature returned PASS with two non-blocking, minor
+test-coverage-completeness gaps (`validation.md`'s Fix 1 and Fix 2) - no production defect, just
+missing direct tests for outcomes already correct by inspection and by an identical pattern
+proven elsewhere. Closing both rather than leaving them logged.
+
+```
+T21  T22
+```
+
 ---
 
 ## Task Breakdown
@@ -770,6 +781,66 @@ T17  T18  T19  T20
 
 ---
 
+### T21: Close Fix 1 from validation.md - registration-path address/phone validation coverage
+
+**What**: Two unit tests proving `RegisterCustomerHandler` itself rejects a malformed address/phone
+(not just the VOs in isolation or the sibling `UpdateCustomerHandler`), plus one e2e case through
+the real `POST /customers` route.
+**Where**: `src/modules/customers/application/commands/register-customer/register-customer.handler.spec.ts`, `test/e2e/customers.e2e.spec.ts`
+**Depends on**: T20
+**Reuses**: The existing malformed-input fixtures already proven in `update-customer.handler.spec.ts`
+**Requirement**: CVR-01 (AC7, AC8)
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `RegisterCustomerHandler`'s own unit suite has a case asserting a malformed address rejects with `InvalidAddressError`
+- [ ] Same for a malformed phone number, `InvalidPhoneNumberError`
+- [ ] One e2e case: `POST /api/v1/customers` with a partially populated address answers 400
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: recorded in the commit
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `test(customers): cover malformed address/phone at the registration handler itself`
+
+---
+
+### T22: Close Fix 2 from validation.md - vehicle route error-path e2e coverage
+
+**What**: Three e2e cases driving `RegisterVehicleHandler`'s non-existent-customer branch and
+`UpdateVehicleHandler`'s transfer-to-deactivated / transfer-to-non-existent branches through the
+real HTTP routes, not just a mocked `QueryBus` at the unit level.
+**Where**: `test/e2e/vehicles.e2e.spec.ts`
+**Depends on**: T20
+**Reuses**: The existing `registerCustomer()` e2e fixture helper already in this file
+**Requirement**: CVR-03 (AC3), CVR-06 (AC3, AC4)
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `POST /api/v1/vehicles` with a `customerId` that does not exist answers 404
+- [ ] `PATCH /api/v1/vehicles/:id` transferring to a deactivated customer answers 422
+- [ ] `PATCH /api/v1/vehicles/:id` transferring to a `customerId` that does not exist answers 404
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: recorded in the commit
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `test(vehicles): cover the vehicle route error paths validation.md flagged`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
@@ -794,6 +865,8 @@ T9 -> T19
 T17 -> T20
 T18 -> T20
 T19 -> T20
+T20 -> T21
+T20 -> T22
 ```
 
 Execution is strictly sequential - there is no intra-phase parallelism.
