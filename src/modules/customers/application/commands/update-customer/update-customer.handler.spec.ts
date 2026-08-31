@@ -5,7 +5,6 @@ import { InMemoryCustomerRepository } from '../../../../../../test/support/fakes
 import { Customer } from '../../../domain/entities/customer';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
 import { InvalidAddressError } from '../../../domain/errors/invalid-address.error';
-import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
 import { UpdateCustomerCommand } from './update-customer.command';

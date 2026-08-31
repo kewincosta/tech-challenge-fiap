@@ -26,9 +26,9 @@ describe('Address', () => {
   });
 
   it('should reject a partially populated address', () => {
-    const { zipCode: _zipCode, ...withoutZip } = COMPLETE_ADDRESS;
+    const withoutZip = { ...COMPLETE_ADDRESS, zipCode: '' };
 
-    expect(() => Address.create(withoutZip as never)).toThrow(InvalidAddressError);
+    expect(() => Address.create(withoutZip)).toThrow(InvalidAddressError);
   });
 
   it('should reject an invalid state code', () => {

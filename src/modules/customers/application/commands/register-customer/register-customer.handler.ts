@@ -56,7 +56,7 @@ export class RegisterCustomerHandler
     // for RegisterUserHandler).
     return this.transactionRunner.run(async () => {
       const { userId, temporaryPassword } = hasExistingUser
-        ? await this.resolveExistingUser(command.userId!)
+        ? await this.resolveExistingUser(command.userId)
         : await this.createAccount(command);
 
       const customer = Customer.register({
