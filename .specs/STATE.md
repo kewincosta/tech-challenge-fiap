@@ -74,7 +74,7 @@ is specified when it is reached, never in advance.
 
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
-| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Specified |
+| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | In progress (T1-T8 of 17 done) |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Not started |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
@@ -110,10 +110,12 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/identity-foundation`
-- **Phase / Task**: not started
-- **Completed**: none
+- **Phase / Task**: Batch 1 (Phase 1 + Phase 2, T1-T8) complete and merged to `main` at `4e4e18b`. About to dispatch Batch 2 (Phase 3 + Phase 4, T9-T17).
+- **Completed**: T1, T2, T3, T4 (merged with the original T5 - see tasks.md), T6, T7, T8
 - **In-progress** (file:line): none
-- **Next step**: approve `spec.md`, `design.md` and `tasks.md`, then execute T1
+- **Next step**: dispatch a phase-batch sub-agent for T9-T17. T9 is the closing checkpoint of the transitional gate defined in tasks.md - by T9, `npm run test:unit && npm run test:integration && npm run test:e2e` chained must exit 0 with no exceptions (currently e2e is 4/17, 13 known-red pending T9's `document` field on registration, exactly per the baseline table in tasks.md).
 - **Blockers**: none
-- **Uncommitted files**: the whole tree - the repository has no commits yet
+- **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
+
+**Notes carried from Batch 1** (useful context if resuming cold): three structural corrections were made mid-batch, each committed as its own `docs(specs)` commit before the affected task's code commit: (1) `_test` database must be dropped and recreated empty by the orchestrator - not the batch worker, whose sandbox correctly refuses `DROP DATABASE`/`migration:revert`/`dropdb` - immediately before T4's gate; (2) T4 and T5 were merged into one task, because `global-setup.ts` always runs both migrations together and a schema-only rewrite can never gate green while the seed migration still targets the old schema; (3) T4/T6/T7/T8 gate on a documented transitional baseline table (in tasks.md, right after `## Gate Check Commands`) instead of a single chained exit-code check, because the pre-existing integration/e2e suite cannot fully recover until T9 lands. None of this should recur for T9-T17: no other task rewrites a migration file in place, and T9 is the task that closes the transitional window.
