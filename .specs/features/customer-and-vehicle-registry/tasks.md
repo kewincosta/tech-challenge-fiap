@@ -422,14 +422,19 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `POST /api/v1/customers` behind `customers:manage`, both branches reachable, temp password returned on the account-creation branch
-- [ ] `GET /api/v1/customers/me`, `PATCH /api/v1/customers/me` - no workshop permission required
-- [ ] `GET /api/v1/customers` behind `customers:read`, `?name=`/`?document=` filters
-- [ ] `GET/PATCH/DELETE /api/v1/customers/:externalId` behind `customers:read`/`customers:manage`
-- [ ] Every refusal path answers the HTTP code the Error Handling Strategy table in `design.md` names
-- [ ] `CustomersModule` registered in `AppModule`
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 10 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/customers` behind `customers:manage`, both branches reachable, temp password returned on the account-creation branch
+- [x] `GET /api/v1/customers/me`, `PATCH /api/v1/customers/me` - no workshop permission required
+- [x] `GET /api/v1/customers` behind `customers:read`, `?name=`/`?document=` filters
+- [x] `GET/PATCH/DELETE /api/v1/customers/:externalId` behind `customers:read`/`customers:manage`
+- [x] Every refusal path answers the HTTP code the Error Handling Strategy table in `design.md` names
+- [x] `CustomersModule` registered in `AppModule`
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 10 e2e tests pass. Fixed 3 pre-existing lint errors caught by this task's build
+  gate, none introduced by T10 itself: an unnecessary non-null assertion in T7's handler (TS
+  narrows `command.userId` through the aliased `hasExistingUser` condition already), an unused
+  `Address` import in T8's update-customer spec, and an unused destructured variable in T1's
+  address spec (rewritten without the destructure-and-discard pattern). No silent deletions -
+  full suite 295/295 (unit 187, integration 52, e2e 56), up from the 229 baseline.
 
 **Tests**: e2e
 **Gate**: build

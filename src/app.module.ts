@@ -18,6 +18,7 @@ import { JwtAuthGuard } from './modules/authentication/presentation/guards/jwt-a
 import { PendingPasswordGuard } from './modules/authentication/presentation/guards/pending-password.guard';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { PermissionsGuard } from './modules/authorization/presentation/guards/permissions.guard';
+import { CustomersModule } from './modules/customers/customers.module';
 import { UsersModule } from './modules/users/users.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
@@ -73,6 +74,7 @@ import { SharedModule } from './shared/shared.module';
     UsersModule,
     AuthenticationModule,
     AuthorizationModule,
+    CustomersModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createAppValidationPipe },
