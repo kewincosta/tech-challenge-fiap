@@ -40,6 +40,51 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 
 ---
 
+## Transitional test-suite state during the schema retrofit (T4, T6, T7, T8)
+
+T4 rewrites the schema every existing repository, mapper and reader was written against. The
+pre-existing integration and e2e suites (`test/integration/effective-access.reader.spec.ts`,
+`test/integration/session.repository.spec.ts`, `test/e2e/authentication.e2e.spec.ts`) fail the
+moment that schema changes, and stay failing until the tasks that update the code they exercise
+land - T6 (persistence layer), T7 (group removal) and T9 (the `document` field that makes
+registration, and therefore most of the e2e suite, work again). This is expected, not a defect in
+T4: a single schema rewrite necessarily ripples across every module before every module is fixed,
+and splitting the fix into atomic, reviewable, revertible tasks means the suite stays red for
+several tasks in a row rather than becoming one task too large to review or revert.
+
+Because of this, T4, T6, T7 and T8 do not gate on their chained command as a single exit-code
+check - the `&&` chain aborts on the first still-broken pre-existing test and would never reach
+the later commands at all. For these four tasks, run the commands that make up the task's own
+Gate level separately (`npm run test:unit`, then `npm run test:integration`, then
+`npm run test:e2e`, each on its own; T7's `Gate: build` still runs `npm run lint && npm run build`
+first, exit 0 required as normal) and compare the printed integration/e2e pass/fail counts against
+the baseline table below, instead of requiring a single 0 exit code across the whole chain.
+
+**Baseline established by T4** (measured, not projected): unit 106/106 green, unaffected by the
+schema change. Integration: T4's own 11 new tests in
+`test/integration/identity-schema.migration.spec.ts` all green; the 9 pre-existing integration
+tests (4 in `session.repository.spec.ts`, 5 in `effective-access.reader.spec.ts`) all red on
+`invalid input syntax for type bigint`. E2E: all 17 pre-existing tests in
+`authentication.e2e.spec.ts` run, 13 red on `registerUser` returning 500 instead of 201, 4 green
+(whatever in that file does not depend on a successful registration).
+
+**Expected trajectory - each task narrows the red set, never widens it:**
+
+| Task | Integration | E2E |
+| --- | --- | --- |
+| T4 | 9 pre-existing tests red (all of them); T4's own 11 green | 13 red, 4 green - unchanged from before T4, since T4 does not touch this file |
+| T6 | `session.repository.spec.ts` (4 tests) green; `effective-access.reader.spec.ts` (5 tests) still red - that fix is T7's scope | unchanged from T4 - T6 does not add the `document` field |
+| T7 | fully green - its own group-case deletions plus T6's persistence fix close out `effective-access.reader.spec.ts` | unchanged from T4 - still T9's scope |
+| T8 | fully green, plus T8's own 3 new tests | unchanged from T4 - T8 only touches a script |
+| T9 | fully green | fully green - the closing checkpoint. `document` on registration was the last gap, so T9's `Gate: full` runs the normal chained command unmodified: nothing is expected to be red by then |
+
+A count that goes up anywhere - a test green at the start of a task and red at the end, or any
+number higher than the row above it - is a real regression, not part of the plan, and blocks the
+task exactly like any other gate failure. A worker that finds a count it cannot explain against
+this table stops and reports, the same as any other blocker.
+
+---
+
 ## Preconditions
 
 Two things must be true before T1 starts. Neither is a task, because neither produces code, and
@@ -286,7 +331,7 @@ boundary is wrong. This is that case.
 - [ ] Each role is granted its explicit list, never a `CROSS JOIN` wildcard
 - [ ] `SUPER_ADMIN` holds `roles:manage` and `ADMIN` does not
 - [ ] The migration runs from an empty database, verified by dropping and re-running rather than by trusting an existing one
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Gate check passes per the transitional gate note above (T4's row of the baseline table): unit green, T4's own 11 integration tests green, the 9 pre-existing integration tests and the 13 pre-existing e2e failures match the stated baseline exactly, zero unexplained failures anywhere
 - [ ] Test count: 11 integration tests pass, covering the schema shape and one case per seeded role (no silent deletions)
 
 **Tests**: integration
@@ -315,8 +360,8 @@ boundary is wrong. This is that case.
 - [ ] Every mapper builds the domain object from `externalId`
 - [ ] Every repository resolves an external id into an internal key at its boundary
 - [ ] The JWT still resolves a session issued before the change
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: the existing e2e suite passes unchanged except for added document fields
+- [ ] Gate check passes per the transitional gate note above (T6's row): unit green, `session.repository.spec.ts` (4 tests) returns to green, `effective-access.reader.spec.ts` stays red exactly as at T4 (T7's scope), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [ ] Test count: `session.repository.spec.ts`'s existing 4 tests pass again, at their existing count - T6 adds no new test file, it repairs an existing one
 
 **Tests**: integration
 **Gate**: full
@@ -346,7 +391,7 @@ boundary is wrong. This is that case.
 - [ ] `groups:read` and `groups:manage` are gone from the contract and the seed
 - [ ] `test/support/db.ts` no longer lists the four group entities
 - [ ] The group cases of `test/integration/effective-access.reader.spec.ts` are deleted and the role cases stay. This is the only task that deletes tests, and it is legitimate because their subject no longer exists - it is not the forbidden case of deleting a test to make a suite pass
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Gate check passes per the transitional gate note above (T7's row): lint and build green, unit green, the full integration suite (14 tests: T4's 11 plus the two pre-existing files now repaired) green, e2e unchanged from the T4 baseline, zero unexplained failures anywhere
 
 **Tests**: integration
 **Gate**: build
@@ -374,7 +419,7 @@ boundary is wrong. This is that case.
 - [ ] It assigns `SUPER_ADMIN`, not `ADMIN`
 - [ ] Running it twice leaves exactly one super administrator
 - [ ] `.env.example` documents `ADMIN_DOCUMENT`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Gate check passes per the transitional gate note above (T8's row): unit green, the full integration suite green including T8's own 3 new tests (17 total), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
 - [ ] Test count: 3 integration tests pass (no silent deletions)
 
 **Tests**: integration
@@ -406,7 +451,7 @@ boundary is wrong. This is that case.
 - [ ] Registration without a document is refused
 - [ ] Registration with a document already in use answers 409
 - [ ] The user insert and the role assignment commit or roll back together
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e` - this is the closing checkpoint of the transitional gate note above `## Preconditions`; by T9 the chained command must exit 0 with no exceptions, including the full e2e suite, since the `document` field on registration was the last gap
 - [ ] Test count: 8 unit and 3 integration tests pass (no silent deletions)
 
 **Tests**: integration
