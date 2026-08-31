@@ -176,16 +176,16 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] `Service.create` records `ServiceCreated` and starts the service `ACTIVE`
-- [ ] `Service.create` accepts a null description (SVC-01 AC7)
-- [ ] `Service.restore` rebuilds from persisted props with no domain event
-- [ ] `updateDetails` replaces only the supplied fields and records `ServiceUpdated` (SVC-01 AC5)
-- [ ] `updateDetails` clears the description when explicitly given `null`, and leaves it untouched when the field is omitted
-- [ ] `deactivate` sets `INACTIVE`, records `ServiceDeactivated`, and is idempotent (SVC-04 AC3)
-- [ ] The price is held as `Money`, so a negative price is impossible to construct (SVC-01 AC2 is enforced by the shared kernel's own `InvalidMoneyAmountError`)
-- [ ] `ServiceNotFoundError` (`NotFound`), `ServiceNameAlreadyInUseError` (`Conflict`), `InvalidServiceNameError` and `InvalidServiceDurationError` (`Validation`) exist with the right `ErrorKind`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `Service.create` records `ServiceCreated` and starts the service `ACTIVE`
+- [x] `Service.create` accepts a null description (SVC-01 AC7)
+- [x] `Service.restore` rebuilds from persisted props with no domain event
+- [x] `updateDetails` replaces only the supplied fields and records `ServiceUpdated` (SVC-01 AC5)
+- [x] `updateDetails` clears the description when explicitly given `null`, and leaves it untouched when the field is omitted (one test per side)
+- [x] `deactivate` sets `INACTIVE`, records `ServiceDeactivated`, and is idempotent (SVC-04 AC3)
+- [x] The price is held as `Money`, so a negative price is impossible to construct (SVC-01 AC2 is enforced by the shared kernel's own `InvalidMoneyAmountError`)
+- [x] `ServiceNotFoundError` (`NotFound`), `ServiceNameAlreadyInUseError` (`Conflict`), `InvalidServiceNameError` and `InvalidServiceDurationError` (`Validation`) exist with the right `ErrorKind` (build-verified, same criterion the two prior features used for their error classes)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass. Lint clean, full unit suite 235/235 (218 before this phase), no regressions.
 
 **Tests**: unit
 **Gate**: quick
