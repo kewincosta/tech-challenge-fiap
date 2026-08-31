@@ -333,14 +333,14 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] Update replaces only the supplied fields, leaving the others untouched (SVC-01 AC5)
-- [ ] Update refuses a name another active service already holds, with `ServiceNameAlreadyInUseError`
-- [ ] Renaming a service to its own current name is accepted, not a false conflict (design.md's Risks & Concerns)
-- [ ] Update refuses an unknown service with `ServiceNotFoundError`
-- [ ] Update works on a deactivated service (spec.md's Assumptions: status is orthogonal)
-- [ ] Deactivate flips the status, is idempotent, and refuses an unknown service with `ServiceNotFoundError`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] Update replaces only the supplied fields, leaving the others untouched (SVC-01 AC5) - the test asserts the three fields that must NOT change, not only the one that did
+- [x] Update refuses a name another active service already holds, with `ServiceNameAlreadyInUseError`
+- [x] Renaming a service to its own current name is accepted, not a false conflict (design.md's Risks & Concerns) - without this test a naive pre-check passes every other case and breaks on the first PATCH that resends the current name alongside a price
+- [x] Update refuses an unknown service with `ServiceNotFoundError`
+- [x] Update works on a deactivated service (spec.md's Assumptions: status is orthogonal)
+- [x] Deactivate flips the status, is idempotent, and refuses an unknown service with `ServiceNotFoundError`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 9 tests pass, not 8 - added a handler-level case for clearing the description with an explicit `null`, since the aggregate-level test alone does not prove the command carries `null` through rather than treating it as "omitted". Lint clean, full unit suite 250/250 (235 before this task).
 
 **Tests**: unit
 **Gate**: quick
