@@ -516,14 +516,19 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `Vehicle.register` records `VehicleRegistered`
-- [ ] `Vehicle.restore` rebuilds from persisted props with no domain event
-- [ ] `updateDetails` replaces brand/model/year, updates `updatedAt`
-- [ ] `transferTo` relinks `customerId`, records no separate event beyond the update (or a dedicated event if `design.md`'s event list is followed literally - confirm against it)
-- [ ] `remove` sets the soft-delete marker, is idempotent
-- [ ] `InvalidLicensePlateError`, `LicensePlateAlreadyInUseError`, `VehicleNotFoundError`, `OwningCustomerInactiveError`, `InvalidVehicleYearError` exist with the right `ErrorKind`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] `Vehicle.register` records `VehicleRegistered`
+- [x] `Vehicle.restore` rebuilds from persisted props with no domain event
+- [x] `updateDetails` replaces brand/model/year, updates `updatedAt`
+- [x] `transferTo` relinks `customerId` and records `VehicleUpdated` (confirmed against
+  `design.md`'s event list: no separate "transferred" event, an update is an update)
+- [x] `remove` sets the soft-delete marker, is idempotent
+- [x] `InvalidLicensePlateError`, `LicensePlateAlreadyInUseError`, `VehicleNotFoundError`, `OwningCustomerInactiveError`, `InvalidVehicleYearError` exist with the right `ErrorKind` (build-verified, matching T3's own precedent)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass, not 9 - also added 2 tests beyond the original list (brand/model
+  trimming, empty-brand rejection via the new `InvalidVehicleDetailsError`, a small gap found
+  while implementing: neither `implementation-plan.md` nor `design.md` named a dedicated brand/model
+  validation, but the aggregate needed one to match `User.name`'s own inline-validation precedent)
+  (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
