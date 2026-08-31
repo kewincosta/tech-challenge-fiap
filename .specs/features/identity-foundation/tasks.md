@@ -195,13 +195,13 @@ T14  T15  T16  T17
 
 **Done when**:
 
-- [ ] A valid CPF and a valid CNPJ are accepted, punctuation stripped
-- [ ] Wrong check digits rejected
-- [ ] Repeated digit sequences rejected
-- [ ] Wrong length rejected
-- [ ] `kind` returns CPF or CNPJ
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] A valid CPF and a valid CNPJ are accepted, punctuation stripped
+- [x] Wrong check digits rejected
+- [x] Repeated digit sequences rejected
+- [x] Wrong length rejected
+- [x] `kind` returns CPF or CNPJ
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 10 tests pass (no silent deletions)
 
 **Commit**: `feat(users): add PersonDocument value object with CPF and CNPJ validation`
 
