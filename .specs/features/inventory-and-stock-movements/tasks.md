@@ -169,14 +169,14 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] Accepts zero and any positive whole number of units
-- [ ] Rejects a negative or fractional value
-- [ ] `plus` returns a new quantity with the units added
-- [ ] `minus` returns a new quantity with the units subtracted
-- [ ] `minus` that would go below zero throws `InsufficientStockError` (`ErrorKind.RuleViolation`, 422) - the first of the three layers this rule is proven at (L-003)
-- [ ] `minus` down to exactly zero is allowed (the boundary, not just the failure)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] Accepts zero and any positive whole number of units
+- [x] Rejects a negative or fractional value
+- [x] `plus` returns a new quantity with the units added
+- [x] `minus` returns a new quantity with the units subtracted
+- [x] `minus` that would go below zero throws `InsufficientStockError` (`ErrorKind.RuleViolation`, 422) - the first of the three layers this rule is proven at (L-003)
+- [x] `minus` down to exactly zero is allowed (the boundary, not just the failure)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
