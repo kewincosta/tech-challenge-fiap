@@ -191,13 +191,13 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `Customer.register` records `CustomerRegistered` and accepts an optional `Address`/`PhoneNumber`
-- [ ] `Customer.restore` rebuilds from persisted props with no domain event
-- [ ] `updateProfile` replaces the address and/or phone, updates `updatedAt`
-- [ ] `deactivate` sets the status and `deletedAt`, is idempotent (calling it twice does not double-record an event)
-- [ ] `UserMissingCustomerRoleError`, `CustomerAlreadyExistsForUserError`, `CustomerNotFoundError`, `AmbiguousCustomerRegistrationError` exist with the right `ErrorKind` (`RuleViolation`, `Conflict`, `NotFound`, `Validation` respectively)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `Customer.register` records `CustomerRegistered` and accepts an optional `Address`/`PhoneNumber`
+- [x] `Customer.restore` rebuilds from persisted props with no domain event
+- [x] `updateProfile` replaces the address and/or phone, updates `updatedAt`
+- [x] `deactivate` sets the status and `deletedAt`, is idempotent (calling it twice does not double-record an event)
+- [x] `UserMissingCustomerRoleError`, `CustomerAlreadyExistsForUserError`, `CustomerNotFoundError`, `AmbiguousCustomerRegistrationError` exist with the right `ErrorKind` (`RuleViolation`, `Conflict`, `NotFound`, `Validation` respectively)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
