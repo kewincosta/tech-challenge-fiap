@@ -58,6 +58,21 @@ describe('Customers', () => {
     expect((response.body as { temporaryPassword: string }).temporaryPassword).toHaveLength(12);
   });
 
+  it('should refuse registering a customer with a partially populated address', async () => {
+    const response = await api(app)
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({
+        email: `${randomUUID()}@example.com`,
+        name: 'Jane Counter',
+        document: uniqueValidCpf(),
+        address: { street: 'Rua das Flores', number: '123' },
+      })
+      .expect(400);
+
+    expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
   it('should refuse registering a customer without customers:manage', async () => {
     const actor = await registerAndLogin(app);
     const target = await registerUser(app);

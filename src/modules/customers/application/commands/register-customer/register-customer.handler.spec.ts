@@ -10,6 +10,8 @@ import { InMemoryCustomerRepository } from '../../../../../../test/support/fakes
 import { RegisterUserCommand } from '../../../../users/application/commands/register-user/register-user.command';
 import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambiguous-customer-registration.error';
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
+import { InvalidAddressError } from '../../../domain/errors/invalid-address.error';
+import { InvalidPhoneNumberError } from '../../../domain/errors/invalid-phone-number.error';
 import { TargetUserNotFoundError } from '../../../domain/errors/target-user-not-found.error';
 import { UserMissingCustomerRoleError } from '../../../domain/errors/user-missing-customer-role.error';
 import { RegisterCustomerCommand } from './register-customer.command';
@@ -116,6 +118,40 @@ describe('RegisterCustomerHandler', () => {
     expect(commandBus.execute).toHaveBeenCalledWith(
       new RegisterUserCommand('jane@example.com', 'Jane Doe', undefined, '11144477735', true),
     );
+  });
+
+  it('should reject a malformed address', async () => {
+    const { handler } = makeHandler();
+
+    await expect(
+      handler.execute(
+        new RegisterCustomerCommand(
+          undefined,
+          'jane@example.com',
+          'Jane Doe',
+          '11144477735',
+          { street: '', number: '', district: '', city: '', state: 'ZZ', zipCode: '123' },
+          undefined,
+        ),
+      ),
+    ).rejects.toThrow(InvalidAddressError);
+  });
+
+  it('should reject a malformed phone number', async () => {
+    const { handler } = makeHandler();
+
+    await expect(
+      handler.execute(
+        new RegisterCustomerCommand(
+          undefined,
+          'jane@example.com',
+          'Jane Doe',
+          '11144477735',
+          undefined,
+          '123',
+        ),
+      ),
+    ).rejects.toThrow(InvalidPhoneNumberError);
   });
 
   it('should refuse a request supplying both an existing user id and account data', async () => {

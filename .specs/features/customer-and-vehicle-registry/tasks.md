@@ -798,11 +798,14 @@ the real `POST /customers` route.
 
 **Done when**:
 
-- [ ] `RegisterCustomerHandler`'s own unit suite has a case asserting a malformed address rejects with `InvalidAddressError`
-- [ ] Same for a malformed phone number, `InvalidPhoneNumberError`
-- [ ] One e2e case: `POST /api/v1/customers` with a partially populated address answers 400
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: recorded in the commit
+- [x] `RegisterCustomerHandler`'s own unit suite has a case asserting a malformed address rejects with `InvalidAddressError`
+- [x] Same for a malformed phone number, `InvalidPhoneNumberError`
+- [x] One e2e case: `POST /api/v1/customers` with a partially populated address answers 400
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 3 new tests (2 unit, 1 e2e). The e2e case is caught at the DTO/class-validator
+  layer (`code: 'VALIDATION_ERROR'`, not `CUSTOMER_INVALID_ADDRESS`) since `AddressRequestDto`'s
+  own field validators reject a partial object before the handler's `Address.create` ever runs -
+  both layers now have direct coverage. Unit 218/218, integration 71/71, e2e 68/68 = 357 total.
 
 **Tests**: e2e
 **Gate**: full
