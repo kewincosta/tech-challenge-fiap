@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 3,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::a task s done when note that defers an acceptance criterion to a later feature does not amend the spec confirm the spec itself still assigns that ac to the current feature before treating the deferral as settled or edit the spec s ac and traceability explicitly",
+      "text": "A task's Done-when note that defers an acceptance criterion to a later feature does not amend the spec - confirm the spec itself still assigns that AC to the current feature before treating the deferral as settled, or edit the spec's AC and traceability explicitly.",
+      "signal": "ac_gap",
+      "scope": "users",
+      "status": "candidate",
+      "features": [
+        "identity-foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "IDENT-07-AC1 (users)"
+      ],
+      "created": "2026-08-31T10:15:10Z",
+      "last_seen": "2026-08-31T10:15:10Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::every line in a spec s edge cases section needs an owning task in tasks md an edge case with no task assigned to it typically ships unimplemented and untested",
+      "text": "Every line in a spec's Edge Cases section needs an owning task in tasks.md - an edge case with no task assigned to it typically ships unimplemented and untested.",
+      "signal": "ac_gap",
+      "scope": "planning",
+      "status": "candidate",
+      "features": [
+        "identity-foundation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        ".specs/features/identity-foundation/spec.md:206 (planning)"
+      ],
+      "created": "2026-08-31T10:15:15Z",
+      "last_seen": "2026-08-31T10:15:15Z"
+    }
+  ]
+}
