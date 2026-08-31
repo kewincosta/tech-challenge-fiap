@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import dataSource from '../src/shared/infrastructure/database/typeorm-cli.datasource';
+import { PersonDocument } from '../src/modules/users/domain/value-objects/person-document';
 
 async function seedAdmin(): Promise<void> {
   const email = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
@@ -9,25 +10,27 @@ async function seedAdmin(): Promise<void> {
   if (email.length === 0 || password.length < 8) {
     throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD (minimum 8 characters) must be set.');
   }
+  const document = PersonDocument.create(process.env.ADMIN_DOCUMENT ?? '');
+
   await dataSource.initialize();
   try {
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
     await dataSource.query(
-      `INSERT INTO users (id, email, password_hash, name, status, created_at, updated_at)
-       VALUES ($1, $2, $3, 'Administrator', 'ACTIVE', now(), now())
+      `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+       VALUES ($1, $2, $3, 'Administrator', $4, 'ACTIVE', now(), now())
        ON CONFLICT (email) WHERE deleted_at IS NULL DO NOTHING`,
-      [randomUUID(), email, passwordHash],
+      [randomUUID(), email, passwordHash, document.value],
     );
     await dataSource.query(
       `INSERT INTO user_roles (user_id, role_id, created_at)
        SELECT u.id, r.id, now()
          FROM users u
         CROSS JOIN roles r
-        WHERE u.email = $1 AND u.deleted_at IS NULL AND r.name = 'ADMIN'
+        WHERE u.email = $1 AND u.deleted_at IS NULL AND r.name = 'SUPER_ADMIN'
        ON CONFLICT DO NOTHING`,
       [email],
     );
-    console.log(`Admin user ready: ${email}`);
+    console.log(`Super administrator ready: ${email}`);
   } finally {
     await dataSource.destroy();
   }

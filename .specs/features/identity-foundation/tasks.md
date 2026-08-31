@@ -415,12 +415,12 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] The script reads `ADMIN_DOCUMENT` and refuses to run without a valid one
-- [ ] It assigns `SUPER_ADMIN`, not `ADMIN`
-- [ ] Running it twice leaves exactly one super administrator
-- [ ] `.env.example` documents `ADMIN_DOCUMENT`
-- [ ] Gate check passes per the transitional gate note above (T8's row): unit green, the full integration suite green including T8's own 3 new tests (17 total), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
-- [ ] Test count: 3 integration tests pass (no silent deletions)
+- [x] The script reads `ADMIN_DOCUMENT` and refuses to run without a valid one
+- [x] It assigns `SUPER_ADMIN`, not `ADMIN`
+- [x] Running it twice leaves exactly one super administrator
+- [x] `.env.example` documents `ADMIN_DOCUMENT`
+- [x] Gate check passes per the transitional gate note above (T8's row): unit green, the full integration suite green including T8's own 3 new tests (17 total), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [x] Test count: 3 integration tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: full
