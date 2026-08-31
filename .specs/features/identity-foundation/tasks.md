@@ -320,19 +320,19 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] `users`, `roles`, `permissions`, `sessions` and `refresh_tokens` carry `id bigserial` and `external_id uuid` unique
-- [ ] `user_roles` and `role_permissions` keep a composite key of internal keys
-- [ ] No group table is created
-- [ ] `users` carries `document varchar(14) not null` and `must_change_password boolean not null default false`
-- [ ] Partial unique indexes on `email` and `document` filtered by `deleted_at IS NULL`
-- [ ] The refresh token self reference keeps `DEFERRABLE INITIALLY DEFERRED`
-- [ ] Every permission code from T3 is inserted by the seed
-- [ ] `SUPER_ADMIN`, `ADMIN`, `SERVICE_ADVISOR`, `MECHANIC` and `CUSTOMER` exist as system roles
-- [ ] Each role is granted its explicit list, never a `CROSS JOIN` wildcard
-- [ ] `SUPER_ADMIN` holds `roles:manage` and `ADMIN` does not
-- [ ] The migration runs from an empty database, verified by dropping and re-running rather than by trusting an existing one
-- [ ] Gate check passes per the transitional gate note above (T4's row of the baseline table): unit green, T4's own 11 integration tests green, the 9 pre-existing integration tests and the 13 pre-existing e2e failures match the stated baseline exactly, zero unexplained failures anywhere
-- [ ] Test count: 11 integration tests pass, covering the schema shape and one case per seeded role (no silent deletions)
+- [x] `users`, `roles`, `permissions`, `sessions` and `refresh_tokens` carry `id bigserial` and `external_id uuid` unique
+- [x] `user_roles` and `role_permissions` keep a composite key of internal keys
+- [x] No group table is created
+- [x] `users` carries `document varchar(14) not null` and `must_change_password boolean not null default false`
+- [x] Partial unique indexes on `email` and `document` filtered by `deleted_at IS NULL`
+- [x] The refresh token self reference keeps `DEFERRABLE INITIALLY DEFERRED`
+- [x] Every permission code from T3 is inserted by the seed
+- [x] `SUPER_ADMIN`, `ADMIN`, `SERVICE_ADVISOR`, `MECHANIC` and `CUSTOMER` exist as system roles
+- [x] Each role is granted its explicit list, never a `CROSS JOIN` wildcard
+- [x] `SUPER_ADMIN` holds `roles:manage` and `ADMIN` does not
+- [x] The migration runs from an empty database, verified by dropping and re-running rather than by trusting an existing one
+- [x] Gate check passes per the transitional gate note above (T4's row of the baseline table): unit green, T4's own 11 integration tests green, the 9 pre-existing integration tests and the 13 pre-existing e2e failures match the stated baseline exactly, zero unexplained failures anywhere
+- [x] Test count: 11 integration tests pass, covering the schema shape and one case per seeded role (no silent deletions)
 
 **Tests**: integration
 **Gate**: full
