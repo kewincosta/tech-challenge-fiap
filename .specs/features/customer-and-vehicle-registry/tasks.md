@@ -487,12 +487,12 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Accepts a plausible year
-- [ ] Rejects a year before 1950
-- [ ] Rejects a year more than one year ahead of the clock's current year
-- [ ] Accepts exactly one year ahead (boundary)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Accepts a plausible year
+- [x] Rejects a year before 1950
+- [x] Rejects a year more than one year ahead of the clock's current year
+- [x] Accepts exactly one year ahead (boundary)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
