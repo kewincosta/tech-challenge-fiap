@@ -31,7 +31,7 @@ describe('Authentication', () => {
       })
       .expect(201);
 
-    expect(response.body).toEqual({ id: expect.any(String) });
+    expect(response.body).toEqual({ id: expect.any(String) as string });
   });
 
   it('should not register a user with an existing email', async () => {
@@ -81,9 +81,9 @@ describe('Authentication', () => {
     expect(response.body).toMatchObject({
       tokenType: 'Bearer',
       expiresInSeconds: 900,
-      accessToken: expect.any(String),
-      refreshToken: expect.any(String),
-      sessionId: expect.any(String),
+      accessToken: expect.any(String) as string,
+      refreshToken: expect.any(String) as string,
+      sessionId: expect.any(String) as string,
     });
   });
 
@@ -99,9 +99,11 @@ describe('Authentication', () => {
       .send({ email: `unknown-${faker.string.uuid()}@example.com`, password: 'Str0ngPassword' })
       .expect(401);
 
-    expect(wrongPassword.body).toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
-    expect(unknownEmail.body.code).toBe(wrongPassword.body.code);
-    expect(unknownEmail.body.message).toBe(wrongPassword.body.message);
+    const wrongPasswordBody = wrongPassword.body as { code: string; message: string };
+    const unknownEmailBody = unknownEmail.body as { code: string; message: string };
+    expect(wrongPasswordBody).toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
+    expect(unknownEmailBody.code).toBe(wrongPasswordBody.code);
+    expect(unknownEmailBody.message).toBe(wrongPasswordBody.message);
   });
 
   it('should not store the refresh token in plain text', async () => {
@@ -148,11 +150,16 @@ describe('Authentication', () => {
       .send({ refreshToken: client.refreshToken })
       .expect(201);
 
-    expect(response.body.refreshToken).not.toBe(client.refreshToken);
-    expect(response.body.sessionId).toBe(client.sessionId);
+    const body = response.body as {
+      refreshToken: string;
+      sessionId: string;
+      accessToken: string;
+    };
+    expect(body.refreshToken).not.toBe(client.refreshToken);
+    expect(body.sessionId).toBe(client.sessionId);
     await api(app)
       .get('/api/v1/users/me')
-      .set('Authorization', `Bearer ${response.body.accessToken}`)
+      .set('Authorization', `Bearer ${body.accessToken}`)
       .expect(200);
   });
 
@@ -171,6 +178,7 @@ describe('Authentication', () => {
       .post('/api/v1/auth/tokens')
       .send({ refreshToken: client.refreshToken })
       .expect(201);
+    const rotatedBody = rotated.body as { refreshToken: string };
 
     await api(app)
       .post('/api/v1/auth/tokens')
@@ -179,7 +187,7 @@ describe('Authentication', () => {
 
     await api(app)
       .post('/api/v1/auth/tokens')
-      .send({ refreshToken: rotated.body.refreshToken })
+      .send({ refreshToken: rotatedBody.refreshToken })
       .expect(401);
     const sessions: Array<{ status: string }> = await dataSource.query(
       `SELECT status FROM sessions WHERE id = $1`,

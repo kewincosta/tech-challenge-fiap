@@ -9,5 +9,5 @@ export function swcPlugin(): Plugin {
       parser: { syntax: 'typescript', decorators: true },
       transform: { legacyDecorator: true, decoratorMetadata: true },
     },
-  }) as Plugin;
+  });
 }

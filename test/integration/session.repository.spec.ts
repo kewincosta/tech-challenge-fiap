@@ -82,7 +82,9 @@ describe('TypeOrmSessionRepository', () => {
     const tokens = await dataSource
       .getRepository(RefreshTokenOrmEntity)
       .find({ where: { sessionId: session.id.value } });
-    const active = tokens.filter((token) => token.status === RefreshTokenStatus.Active);
+    const active = tokens.filter(
+      (token) => (token.status as RefreshTokenStatus) === RefreshTokenStatus.Active,
+    );
     expect(tokens).toHaveLength(2);
     expect(active).toHaveLength(1);
     expect(active[0].tokenHash).toBe(secondHash);

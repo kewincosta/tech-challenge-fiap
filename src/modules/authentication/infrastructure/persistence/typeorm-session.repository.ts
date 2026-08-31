@@ -50,8 +50,12 @@ export class TypeOrmSessionRepository implements SessionRepository {
 
   async save(session: Session): Promise<void> {
     const { sessionRow, tokenRows } = SessionMapper.toOrm(session);
-    const supersededRows = tokenRows.filter((row) => row.status !== RefreshTokenStatus.Active);
-    const activeRows = tokenRows.filter((row) => row.status === RefreshTokenStatus.Active);
+    const supersededRows = tokenRows.filter(
+      (row) => (row.status as RefreshTokenStatus) !== RefreshTokenStatus.Active,
+    );
+    const activeRows = tokenRows.filter(
+      (row) => (row.status as RefreshTokenStatus) === RefreshTokenStatus.Active,
+    );
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.save(SessionOrmEntity, sessionRow);
