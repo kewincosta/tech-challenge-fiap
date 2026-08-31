@@ -582,12 +582,17 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] Saving a `Vehicle` resolves the external `customerId` to the internal `customer_id`
-- [ ] A save-then-restore round trip returns an equal aggregate
-- [ ] A duplicate active plate insert throws the real Postgres unique-violation, mapped to `LicensePlateAlreadyInUseError`
-- [ ] A soft-deleted vehicle's plate is reusable by a new registration (proves the partial index, not a plain one)
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Saving a `Vehicle` resolves the external `customerId` to the internal `customer_id`
+- [x] A save-then-restore round trip returns an equal aggregate
+- [x] A duplicate active plate insert throws the real Postgres unique-violation, mapped to `LicensePlateAlreadyInUseError`
+- [x] A soft-deleted vehicle's plate is reusable by a new registration (proves the partial index, not a plain one)
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 5 tests pass (no silent deletions). Caught and fixed a real bug while running the
+  full suite (not just this file): the first draft used fixed literal plates
+  (`ABC1234`-`ABC1237`), which passed in isolation but collided with leftover rows from a prior
+  run once the test database's own "never truncated" convention (`STATE.md`) applied - fixed with
+  a new `uniqueLicensePlate()` factory (`test/support/factories/plate.factory.ts`, reused by T20),
+  verified durable across two consecutive full `test:integration` runs
 
 **Tests**: integration
 **Gate**: quick
