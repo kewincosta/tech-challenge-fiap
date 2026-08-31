@@ -231,17 +231,17 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] `create` starts the item `ACTIVE` with a quantity on hand of **zero** and records `InventoryItemCreated` (owns the "new item starts at zero" edge case, L-002)
-- [ ] `restore` rebuilds from persisted props with no domain event and with **no movements attached** (the history is a read model - design.md)
-- [ ] `updateDetails` replaces only the supplied fields, records `InventoryItemUpdated`, and exposes no way to change the quantity on hand (INV-01 AC6)
-- [ ] `replenish` raises the count, appends one `INBOUND` movement, records `StockReplenished`
-- [ ] `adjustDown` lowers the count through `StockQuantity.minus`, appends one `ADJUSTMENT` movement, records `StockAdjusted`
-- [ ] `adjustDown` with a blank or whitespace-only note throws `AdjustmentNoteRequiredError`
-- [ ] `adjustDown` below zero propagates `InsufficientStockError` and leaves both the count and `newMovements` untouched
-- [ ] `newMovements` is a non-draining getter: reading it twice returns the same movements (design.md's Tech Decisions - a drain would lose the ledger row on a retried save)
-- [ ] `InvalidSkuError`, `SkuAlreadyInUseError`, `InventoryItemNotFoundError`, `InvalidMovementQuantityError`, `AdjustmentNoteRequiredError` and `InsufficientStockError` exist with the right `ErrorKind`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 11 tests pass (no silent deletions)
+- [x] `create` starts the item `ACTIVE` with a quantity on hand of **zero** and records `InventoryItemCreated` (owns the "new item starts at zero" edge case, L-002)
+- [x] `restore` rebuilds from persisted props with no domain event and with **no movements attached** (the history is a read model - design.md)
+- [x] `updateDetails` replaces only the supplied fields, records `InventoryItemUpdated`, and exposes no way to change the quantity on hand (INV-01 AC6)
+- [x] `replenish` raises the count, appends one `INBOUND` movement, records `StockReplenished`
+- [x] `adjustDown` lowers the count through `StockQuantity.minus`, appends one `ADJUSTMENT` movement, records `StockAdjusted`
+- [x] `adjustDown` with a blank or whitespace-only note throws `AdjustmentNoteRequiredError`
+- [x] `adjustDown` below zero propagates `InsufficientStockError` and leaves both the count and `newMovements` untouched
+- [x] `newMovements` is a non-draining getter: reading it twice returns the same movements (design.md's Tech Decisions - a drain would lose the ledger row on a retried save)
+- [x] `InvalidSkuError`, `SkuAlreadyInUseError`, `InventoryItemNotFoundError`, `InvalidMovementQuantityError`, `AdjustmentNoteRequiredError` and `InsufficientStockError` exist with the right `ErrorKind`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 11 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
