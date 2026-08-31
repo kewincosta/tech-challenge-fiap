@@ -335,13 +335,13 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] `getById` returns SKU, name, kind, unit price as a number, quantity on hand and status, or null
-- [ ] `listActive` returns every active item, and filters by `kind` when one is supplied
-- [ ] `listMovements` returns every movement of one item in chronological order, with the actor's **external** id, never the internal one (AD-001)
-- [ ] `listMovements` returns an empty list for an item with no movements
-- [ ] Prices come back as numbers on both read paths, not the driver's string
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] `getById` returns SKU, name, kind, unit price as a number, quantity on hand and status, or null
+- [x] `listActive` returns every active item, and filters by `kind` when one is supplied
+- [x] `listMovements` returns every movement of one item in chronological order, with the actor's **external** id, never the internal one (AD-001)
+- [x] `listMovements` returns an empty list for an item with no movements
+- [x] Prices come back as numbers on both read paths, not the driver's string
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 7 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
