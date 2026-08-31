@@ -6,6 +6,7 @@ import { CreateIdentityAndAccessSchema1787702400000 } from '../../src/shared/inf
 import { SeedRbacCatalog1787702400001 } from '../../src/shared/infrastructure/database/migrations/1787702400001-seed-rbac-catalog';
 import { CreateCustomersTable1787702400002 } from '../../src/shared/infrastructure/database/migrations/1787702400002-create-customers-table';
 import { CreateVehiclesTable1787702400003 } from '../../src/shared/infrastructure/database/migrations/1787702400003-create-vehicles-table';
+import { CreateServicesTable1787702400004 } from '../../src/shared/infrastructure/database/migrations/1787702400004-create-services-table';
 
 const TEST_DATABASE_SUFFIX = '_test';
 
@@ -57,6 +58,7 @@ async function runMigrations(): Promise<void> {
       SeedRbacCatalog1787702400001,
       CreateCustomersTable1787702400002,
       CreateVehiclesTable1787702400003,
+      CreateServicesTable1787702400004,
     ],
   });
   await dataSource.initialize();

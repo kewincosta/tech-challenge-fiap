@@ -209,15 +209,15 @@ T7  T8  T9  T10
 
 **Done when**:
 
-- [ ] `services` has `id bigserial pk`, `external_id uuid unique`, and no `deleted_at` column (deactivation is a status flip - design.md's Tech Decisions)
-- [ ] `price_cents bigint` rejects a negative value at the database level
-- [ ] `estimated_duration_minutes integer` rejects zero at the database level
-- [ ] `status` has a `CHECK` constraint over `ACTIVE`/`INACTIVE`
-- [ ] `ux_services_active_name` is a unique index on `lower(name)` filtered by `status = 'ACTIVE'` - both halves asserted from `pg_indexes.indexdef`, since this is the first expression index in the schema
-- [ ] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
-- [ ] `down()` drops the table cleanly - verified by code review, not executed against the shared test database
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `services` has `id bigserial pk`, `external_id uuid unique`, and no `deleted_at` column (deactivation is a status flip - design.md's Tech Decisions), asserted explicitly since that difference is easy to "fix" by mistake later
+- [x] `price_cents bigint` rejects a negative value at the database level
+- [x] `estimated_duration_minutes integer` rejects zero at the database level
+- [x] `status` has a `CHECK` constraint over `ACTIVE`/`INACTIVE`
+- [x] `ux_services_active_name` is a unique index on `lower(name)` filtered by `status = 'ACTIVE'` - both halves asserted from `pg_indexes.indexdef`. First draft of the assertion looked for the literal `lower(name`; Postgres normalises it to `lower((name)::text)` for a varchar column, so the assertion was corrected to the real observed text rather than loosened to a vague `contains('lower')`
+- [x] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
+- [x] `down()` drops the table cleanly - verified by code review, not executed against the shared test database
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 5 tests pass. Full integration suite 76/76 on both runs (71 before this task).
 
 **Tests**: integration
 **Gate**: quick
