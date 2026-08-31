@@ -23,6 +23,9 @@ export class UserOrmEntity {
   @Column({ name: 'status', type: 'varchar', length: 20 })
   status!: string;
 
+  @Column({ name: 'must_change_password', type: 'boolean' })
+  mustChangePassword!: boolean;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

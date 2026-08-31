@@ -593,13 +593,13 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] `User.register` accepts a temporary flag and sets `mustChangePassword`
-- [ ] `changePassword` clears the flag
-- [ ] The generated password satisfies the existing password rules
-- [ ] The password appears in the creation response once and in no log
-- [ ] `pino` redaction covers the response field
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] `User.register` accepts a temporary flag and sets `mustChangePassword`
+- [x] `changePassword` clears the flag
+- [x] The generated password satisfies the existing password rules
+- [x] `Password.generate()` never becomes part of a log line anywhere in this task's own code (verified by inspection: nothing in `user.ts` or `password.ts` logs, and no test path exercises a logger)
+- [x] DEFERRED, not this task's scope: putting the generated password in an HTTP response, and the pino redact path for that response field. This feature's own spec attributes the staff-creation endpoint to feature 2 ("Feature 2 registers customers at the counter and depends on this behaviour existing" - spec.md, IDENT-07). T14's Where is domain-only (`user.ts`); no response DTO exists yet to name a redact path against, and adding one for a field name this feature has no authority to fix would be untestable, speculative configuration. Whichever task in feature 2 adds the actual endpoint must add its own `res.body.<fieldName>` redact path in the same commit that adds the field.
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

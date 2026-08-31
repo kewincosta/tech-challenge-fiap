@@ -15,6 +15,7 @@ export class UserMapper {
       document: PersonDocument.create(row.document),
       passwordHash: PasswordHash.create(row.passwordHash),
       status: row.status as UserStatus,
+      mustChangePassword: row.mustChangePassword,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       deletedAt: row.deletedAt,
@@ -29,6 +30,7 @@ export class UserMapper {
     row.name = user.name;
     row.document = user.document.value;
     row.status = user.status;
+    row.mustChangePassword = user.mustChangePassword;
     row.createdAt = user.createdAt;
     row.updatedAt = user.updatedAt;
     row.deletedAt = user.deletedAt;

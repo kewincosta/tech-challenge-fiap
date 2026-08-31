@@ -14,6 +14,7 @@ interface UserProps {
   document: PersonDocument;
   passwordHash: PasswordHash;
   status: UserStatus;
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -26,6 +27,9 @@ interface RegisterUserInput {
   document: PersonDocument;
   passwordHash: PasswordHash;
   now: Date;
+  /** Set when staff creates the account with a generated password (IDENT-07). Defaults to false
+   *  for self-registration, which always supplies its own password. */
+  temporary?: boolean;
 }
 
 const NAME_MIN_LENGTH = 2;
@@ -48,6 +52,7 @@ export class User extends AggregateRoot {
       document: input.document,
       passwordHash: input.passwordHash,
       status: UserStatus.Active,
+      mustChangePassword: input.temporary ?? false,
       createdAt: input.now,
       updatedAt: input.now,
       deletedAt: null,
@@ -62,6 +67,7 @@ export class User extends AggregateRoot {
 
   changePassword(newHash: PasswordHash, now: Date): void {
     this.props.passwordHash = newHash;
+    this.props.mustChangePassword = false;
     this.props.updatedAt = now;
   }
 
@@ -120,6 +126,10 @@ export class User extends AggregateRoot {
 
   get status(): UserStatus {
     return this.props.status;
+  }
+
+  get mustChangePassword(): boolean {
+    return this.props.mustChangePassword;
   }
 
   get createdAt(): Date {

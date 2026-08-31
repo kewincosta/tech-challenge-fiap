@@ -38,6 +38,7 @@ describe('User', () => {
       document,
       passwordHash: PasswordHash.create('hashed:old'),
       status: UserStatus.Active,
+      mustChangePassword: false,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -93,6 +94,45 @@ describe('User', () => {
     user.changePassword(PasswordHash.create('hashed:new'), new Date('2026-08-26T13:00:00.000Z'));
 
     expect(user.passwordHash.value).toBe('hashed:new');
+  });
+
+  it('should register a self-registered user with no pending password change', () => {
+    const user = buildUser();
+
+    expect(user.mustChangePassword).toBe(false);
+  });
+
+  it('should register a staff-created user flagged as pending a password change', () => {
+    const user = buildUser({ temporary: true });
+
+    expect(user.mustChangePassword).toBe(true);
+  });
+
+  it('should clear the pending password flag when the password is changed', () => {
+    const user = buildUser({ temporary: true });
+
+    user.changePassword(PasswordHash.create('hashed:new'), new Date('2026-08-26T13:00:00.000Z'));
+
+    expect(user.mustChangePassword).toBe(false);
+  });
+
+  it('should restore a user together with its pending password flag', () => {
+    const now = new Date('2026-08-26T13:00:00.000Z');
+
+    const user = User.restore({
+      id: buildUser().id,
+      email: buildUser({ email: 'restored-pending@example.com' }).email,
+      name: 'Restored User',
+      document: PersonDocument.create('11144477735'),
+      passwordHash: PasswordHash.create('hashed:old'),
+      status: UserStatus.Active,
+      mustChangePassword: true,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    });
+
+    expect(user.mustChangePassword).toBe(true);
   });
 
   it('should update the name, email and document, each revalidated', () => {

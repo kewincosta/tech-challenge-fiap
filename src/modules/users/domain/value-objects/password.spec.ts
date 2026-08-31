@@ -20,4 +20,22 @@ describe('Password', () => {
   it('should not accept a password without letters', () => {
     expect(() => Password.create('12345678')).toThrow(WeakPasswordError);
   });
+
+  it('should generate a password that satisfies the strength rules', () => {
+    expect(() => Password.generate()).not.toThrow();
+  });
+
+  it('should generate a password with at least one letter and one digit', () => {
+    const password = Password.generate();
+
+    expect(password.value).toMatch(/[a-zA-Z]/);
+    expect(password.value).toMatch(/\d/);
+  });
+
+  it('should generate a different password on each call', () => {
+    const first = Password.generate();
+    const second = Password.generate();
+
+    expect(first.value).not.toBe(second.value);
+  });
 });

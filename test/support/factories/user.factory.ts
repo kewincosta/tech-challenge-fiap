@@ -14,6 +14,7 @@ export interface UserFactoryOverrides {
   document?: string;
   passwordHash?: string;
   now?: Date;
+  temporary?: boolean;
 }
 
 export function buildUser(overrides: UserFactoryOverrides = {}): User {
@@ -24,5 +25,6 @@ export function buildUser(overrides: UserFactoryOverrides = {}): User {
     document: PersonDocument.create(overrides.document ?? uniqueValidCpf()),
     passwordHash: PasswordHash.create(overrides.passwordHash ?? `hashed:${faker.internet.password()}`),
     now: overrides.now ?? new Date('2026-08-26T12:00:00.000Z'),
+    temporary: overrides.temporary,
   });
 }
