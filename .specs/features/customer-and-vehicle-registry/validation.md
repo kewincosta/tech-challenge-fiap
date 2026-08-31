@@ -223,19 +223,28 @@ asserted to be so.
 
 ## Fix Plans
 
-### Fix 1 (Minor, non-blocking): `RegisterCustomerHandler` has no direct test for a malformed address/phone during registration
+### Fix 1 (Minor, non-blocking) - CLOSED: `RegisterCustomerHandler` has no direct test for a malformed address/phone during registration
 
 - **Root cause**: `register-customer.handler.ts:50-51` calls `Address.create(command.address)` and `PhoneNumber.create(command.phoneNumber)` unconditionally, and both VOs are fully unit-tested on their own (`address.spec.ts`, `phone-number.spec.ts`), and the identical call shape is proven to propagate correctly in the sibling `UpdateCustomerHandler` (`update-customer.handler.spec.ts:68-84`) - but `register-customer.handler.spec.ts` itself never passes a malformed `address`/`phoneNumber` to the command, so the registration path's own wiring has no direct assertion.
 - **Fix task**: add two cases to `register-customer.handler.spec.ts` - a malformed address and a malformed phone number, both asserting `rejects.toThrow(InvalidAddressError)`/`InvalidPhoneNumberError`. Optionally add one e2e case to `customers.e2e.spec.ts` (`POST /customers` with a partial address -> 400).
 - **Verify**: `npm run test:unit` (and `npm run test:e2e` if the e2e case is added).
 - **Priority**: Minor, non-blocking - the outcome is correct today by code inspection and by the identical pattern proven elsewhere; this closes a documentation/coverage gap, not a defect.
+- **Closed**: T21, commit `8d49e3e` - both handler-level unit cases and the e2e case added exactly as scoped above. `npm run test:unit`/`test:e2e` both green (218/218, 68/68 at the time).
 
-### Fix 2 (Minor, non-blocking): three NotFound/RuleViolation branches on the vehicle routes have unit coverage only, no e2e
+### Fix 2 (Minor, non-blocking) - CLOSED: three NotFound/RuleViolation branches on the vehicle routes have unit coverage only, no e2e
 
 - **Root cause**: `RegisterVehicleHandler`'s non-existent-customer branch (CVR-03 AC3) and `UpdateVehicleHandler`'s transfer-to-deactivated (CVR-06 AC3) and transfer-to-non-existent (CVR-06 AC4) branches are each proven by a unit test with a mocked `QueryBus`, but `vehicles.e2e.spec.ts` never drives these three cases through the real HTTP routes against a real Postgres/`GetCustomerQuery` round trip. The Test Coverage Matrix in `tasks.md` states e2e should cover "every route... happy path, every edge case, every error path" for controllers; these three error paths are the gap.
 - **Fix task**: add three e2e cases to `vehicles.e2e.spec.ts` - `POST /vehicles` with a random UUID as `customerId` -> 404; `PATCH /vehicles/:id` with `customerId` pointing at a deactivated customer -> 422; `PATCH /vehicles/:id` with `customerId` pointing at a random UUID -> 404.
 - **Verify**: `npm run test:e2e`.
 - **Priority**: Minor, non-blocking - the cross-module `GetCustomerQuery` contract itself is proven working end-to-end elsewhere (`GetMyVehiclesHandler`'s real-handler wiring in `vehicle-read-queries.spec.ts`), and the `ErrorKind` -> HTTP mapping is proven generically; this closes a completeness gap in the e2e suite, not a defect.
+- **Closed**: T22, commit `4cbd143` - all three e2e cases added exactly as scoped above, all passed on the first run. `npm run test:e2e` green (71/71 at the time).
+
+**Post-report update**: both fixes above were closed the same day, in `tasks.md` T21/T22. Neither
+touched any production code - both are test-only additions proving outcomes the original PASS
+verdict already confirmed correct by inspection. No re-verification was dispatched: the behaviour
+under test did not change, only the coverage proving it did. Final state after both closures:
+unit 218/218, integration 71/71 (durable across two consecutive runs), e2e 71/71 - 360 total, up
+from 354 at the original PASS. `customer-and-vehicle-registry` has no remaining logged gaps.
 
 No other findings. All 41 ACs across the 6 stories match their spec-defined outcome, the
 cross-module boundary is clean, the discrimination sensor killed all 3 injected mutations, and two
@@ -247,12 +256,12 @@ independent full gate runs both passed 354/354.
 
 | Requirement | Previous Status | New Status |
 | --- | --- | --- |
-| CVR-01 | Implementing | **Verified** (AC7/AC8 registration-path test coverage gap logged as Fix 1, non-blocking) |
+| CVR-01 | Implementing | **Verified** (AC7/AC8 registration-path test coverage gap - Fix 1, closed in T21) |
 | CVR-02 | Implementing | **Verified** |
-| CVR-03 | Implementing | **Verified** (AC3 e2e coverage gap logged as Fix 2, non-blocking; the `getById` deactivated-customer bug this task found is closed and independently confirmed) |
+| CVR-03 | Implementing | **Verified** (AC3 e2e coverage gap - Fix 2, closed in T22; the `getById` deactivated-customer bug this task found is closed and independently confirmed) |
 | CVR-04 | Implementing | **Verified** |
 | CVR-05 | Implementing | **Verified** |
-| CVR-06 | Implementing | **Verified** (AC3/AC4 e2e coverage gap logged as Fix 2, non-blocking) |
+| CVR-06 | Implementing | **Verified** (AC3/AC4 e2e coverage gap - Fix 2, closed in T22) |
 
 ---
 
