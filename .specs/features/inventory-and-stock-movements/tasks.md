@@ -397,14 +397,14 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] Replenishing raises the count and appends exactly one `INBOUND` movement carrying the acting user
-- [ ] Adjusting down lowers the count and appends exactly one `ADJUSTMENT` movement
-- [ ] **A note is optional on a replenishment and mandatory on an adjustment** - one test per side (owns that edge case, L-002)
-- [ ] A zero or negative quantity is refused at this layer too, not only in the entity (L-003)
-- [ ] An adjustment below zero is refused with `InsufficientStockError` and persists nothing - the second of the three layers this rule is proven at (L-003)
-- [ ] **Both handlers refuse an item that does not exist with `InventoryItemNotFoundError` and write nothing** - one test each, not one shared (owns that edge case, L-002 and L-003)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] Replenishing raises the count and appends exactly one `INBOUND` movement carrying the acting user
+- [x] Adjusting down lowers the count and appends exactly one `ADJUSTMENT` movement
+- [x] **A note is optional on a replenishment and mandatory on an adjustment** - one test per side (owns that edge case, L-002)
+- [x] A zero or negative quantity is refused at this layer too, not only in the entity (L-003)
+- [x] An adjustment below zero is refused with `InsufficientStockError` and persists nothing - the second of the three layers this rule is proven at (L-003)
+- [x] **Both handlers refuse an item that does not exist with `InventoryItemNotFoundError` and write nothing** - one test each, not one shared (owns that edge case, L-002 and L-003)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 10 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
