@@ -1,6 +1,8 @@
 import { INestApplication } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { faker } from '@faker-js/faker';
 import request from 'supertest';
+import { AssignRoleToUserCommand } from '../../src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command';
 import { uniqueValidCpf } from './factories/document.factory';
 
 export interface RegisteredCredentials {
@@ -49,4 +51,17 @@ export async function login(
 
 export async function registerAndLogin(app: INestApplication): Promise<AuthenticatedClient> {
   return login(app, await registerUser(app));
+}
+
+// Dispatches the assignment straight through the real CommandBus, bypassing HTTP - there is no
+// role-granting endpoint an e2e test can call at this stage of the batch (T13 is what refuses
+// this at the API boundary; until then nothing stops a direct dispatch), and building an admin
+// actor is fixture setup, not the behaviour under test.
+export async function grantRole(
+  app: INestApplication,
+  userId: string,
+  role: string,
+): Promise<void> {
+  const commandBus = app.get(CommandBus);
+  await commandBus.execute(new AssignRoleToUserCommand(userId, { name: role }));
 }

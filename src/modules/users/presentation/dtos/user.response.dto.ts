@@ -29,3 +29,20 @@ export class CurrentUserResponseDto extends UserResponseDto {
   @ApiProperty({ type: [String], example: ['users:read'] })
   permissions!: string[];
 }
+
+export class UserSummaryResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'jane.doe@example.com' })
+  email!: string;
+
+  @ApiProperty({ example: 'Jane Doe' })
+  name!: string;
+
+  @ApiProperty({ example: '11144477735' })
+  document!: string;
+
+  @ApiProperty({ example: 'ACTIVE' })
+  status!: string;
+}

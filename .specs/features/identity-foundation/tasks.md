@@ -532,13 +532,13 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] `POST`, `PATCH` and `DELETE /api/v1/users/{externalId}` behind `users:manage`
-- [ ] `PATCH /api/v1/users/me` scoped to the principal with no workshop permission
-- [ ] `GET /api/v1/users` filtered by role and by document behind `users:read`
-- [ ] `me` is declared before the `{externalId}` route
-- [ ] Every route carries its Swagger decorators
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 10 e2e tests pass (no silent deletions)
+- [x] `PATCH` and `DELETE /api/v1/users/{externalId}` behind `users:manage` - `POST` stays public and unchanged (self-registration; spec.md gives it no permission gate and T9 already tests it public)
+- [x] `PATCH /api/v1/users/me` scoped to the principal with no workshop permission
+- [x] `GET /api/v1/users` filtered by role and by document behind `users:read`
+- [x] `me` is declared before the `{externalId}` route
+- [x] Every route carries its Swagger decorators
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 10 e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: full

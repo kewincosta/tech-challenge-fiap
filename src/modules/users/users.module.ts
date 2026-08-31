@@ -7,6 +7,7 @@ import { RegisterUserHandler } from './application/commands/register-user/regist
 import { UpdateUserHandler } from './application/commands/update-user/update-user.handler';
 import { FindUserByDocumentHandler } from './application/queries/find-user-by-document/find-user-by-document.handler';
 import { GetUserByIdHandler } from './application/queries/get-user-by-id/get-user-by-id.handler';
+import { ListUsersHandler } from './application/queries/list-users/list-users.handler';
 import { VerifyCredentialsHandler } from './application/queries/verify-credentials/verify-credentials.handler';
 import { USER_REPOSITORY } from './domain/repositories/user.repository';
 import { TypeOrmUserQueryAdapter } from './infrastructure/persistence/typeorm-user-query.adapter';
@@ -25,6 +26,7 @@ import { UsersController } from './presentation/controllers/users.controller';
     GetUserByIdHandler,
     VerifyCredentialsHandler,
     FindUserByDocumentHandler,
+    ListUsersHandler,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
     { provide: USER_QUERY_PORT, useClass: TypeOrmUserQueryAdapter },
