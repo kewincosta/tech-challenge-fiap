@@ -98,6 +98,17 @@ T4  T5  T6
 T7  T8  T9  T10
 ```
 
+### Phase 4: Coverage hardening after independent verification
+
+The Verifier's first pass returned PASS with three minor, non-blocking coverage-completeness gaps
+(`validation.md`'s Fix 1-3) - no production defect, just missing direct proof for outcomes already
+correct. Two of them are recurrences of L-002 and L-003, the lessons that pass promoted to
+`confirmed`. Closing all three rather than leaving them logged.
+
+```
+T11
+```
+
 ---
 
 ## Task Breakdown
@@ -415,6 +426,35 @@ T7  T8  T9  T10
 
 ---
 
+### T11: Close the three coverage gaps validation.md flagged
+
+**What**: Four test-only additions closing `validation.md`'s Fix 1-3. No production code changes: the Verifier confirmed all three outcomes are already correct, two of them by construction; what is missing is the direct proof.
+**Where**: `test/e2e/services.e2e.spec.ts`, `src/modules/services/application/commands/create-service/create-service.handler.spec.ts`, `src/modules/services/application/commands/update-service/update-service.handler.spec.ts`
+**Depends on**: T10
+**Reuses**: The `loginAs()` and `createService()` fixtures already in `services.e2e.spec.ts`
+**Requirement**: SVC-01 (AC4, AC8), SVC-04 (AC2)
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `PATCH /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
+- [ ] `DELETE /api/v1/services/:externalId` as a `SERVICE_ADVISOR` answers 403 (Fix 1)
+- [ ] Creating a name that differs from an active one only by whitespace is refused with `ServiceNameAlreadyInUseError` (Fix 2)
+- [ ] Renaming a service to a name only a *deactivated* service holds is accepted (Fix 3)
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: recorded in the commit
+
+**Tests**: e2e
+**Gate**: build
+
+**Commit**: `test(services): close the coverage gaps validation.md flagged`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
@@ -428,6 +468,7 @@ T5 -> T8
 T7 -> T10
 T8 -> T10
 T9 -> T10
+T10 -> T11
 ```
 
 Execution is strictly sequential - there is no intra-phase parallelism.
@@ -448,6 +489,7 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T8 | 2 commands in one cohesive pair | OK |
 | T9 | 2 read queries, cohesive | OK |
 | T10 | 1 controller | Granular |
+| T11 | Test-only, 3 files, one cohesive fix round | OK - three small gaps from one report, closed together rather than as three single-assertion tasks |
 
 ---
 
@@ -465,6 +507,7 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T8 | T5 | T5 -> T8 | Match |
 | T9 | T6 | T6 -> T9 | Match |
 | T10 | T7, T8, T9 | T7 -> T10, T8 -> T10, T9 -> T10 | Match |
+| T11 | T10 | T10 -> T11 | Match |
 
 No dependency points at a later phase.
 
@@ -484,6 +527,7 @@ No dependency points at a later phase.
 | T8 | Application handler | unit | unit | OK |
 | T9 | Query adapter (read side of application) | integration | integration | OK |
 | T10 | Controller | e2e | e2e | OK |
+| T11 | Controller routes and application handlers | e2e (highest) | e2e | OK |
 
 ---
 
