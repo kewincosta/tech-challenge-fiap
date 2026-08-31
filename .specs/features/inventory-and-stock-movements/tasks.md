@@ -365,15 +365,15 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] Creates an active item with a quantity of zero and returns its external id
-- [ ] Refuses a negative unit price, propagating the shared kernel's `InvalidMoneyAmountError` (its own test at this layer, L-003)
-- [ ] Refuses a SKU an active item already holds, with `SkuAlreadyInUseError`
-- [ ] Update replaces only the supplied fields, leaving the others untouched
-- [ ] Update refuses an unknown item with `InventoryItemNotFoundError`
-- [ ] Update never touches the SKU - `UpdateInventoryItemCommand` carries no `sku` field, so nothing can rename one (T4's `updateDetails` signature has no `sku` parameter; SKU is create-only)
-- [ ] Every refusal test also asserts nothing was persisted
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] Creates an active item with a quantity of zero and returns its external id
+- [x] Refuses a negative unit price, propagating the shared kernel's `InvalidMoneyAmountError` (its own test at this layer, L-003)
+- [x] Refuses a SKU an active item already holds, with `SkuAlreadyInUseError`
+- [x] Update replaces only the supplied fields, leaving the others untouched
+- [x] Update refuses an unknown item with `InventoryItemNotFoundError`
+- [x] Update never touches the SKU - `UpdateInventoryItemCommand` carries no `sku` field, so nothing can rename one (T4's `updateDetails` signature has no `sku` parameter; SKU is create-only)
+- [x] Every refusal test also asserts nothing was persisted
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
