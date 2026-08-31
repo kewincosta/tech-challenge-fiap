@@ -74,7 +74,7 @@ is specified when it is reached, never in advance.
 
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
-| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | In progress (T1-T8 of 17 done) |
+| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Implemented, pending Verifier |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Not started |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
@@ -110,12 +110,36 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/identity-foundation`
-- **Phase / Task**: Batch 1 (Phase 1 + Phase 2, T1-T8) complete and merged to `main` at `4e4e18b`. About to dispatch Batch 2 (Phase 3 + Phase 4, T9-T17).
-- **Completed**: T1, T2, T3, T4 (merged with the original T5 - see tasks.md), T6, T7, T8
+- **Phase / Task**: All 16 tasks (T1-T4 merged T5, T6-T17) complete and merged to `main` at
+  `5976d46`. Awaiting the feature-level Verifier (mandatory, not yet dispatched at the time of
+  this snapshot).
+- **Completed**: T1, T2, T3, T4 (merged with the original T5), T6, T7, T8, T9, T10, T11, T12,
+  T13, T14, T15, T16, T17 - every task in `tasks.md`, every checkbox marked.
 - **In-progress** (file:line): none
-- **Next step**: dispatch a phase-batch sub-agent for T9-T17. T9 is the closing checkpoint of the transitional gate defined in tasks.md - by T9, `npm run test:unit && npm run test:integration && npm run test:e2e` chained must exit 0 with no exceptions (currently e2e is 4/17, 13 known-red pending T9's `document` field on registration, exactly per the baseline table in tasks.md).
+- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read
+  `validation.md` and act on any gaps it reports (bounded to 3 fix/re-verify iterations before
+  escalating).
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes carried from Batch 1** (useful context if resuming cold): three structural corrections were made mid-batch, each committed as its own `docs(specs)` commit before the affected task's code commit: (1) `_test` database must be dropped and recreated empty by the orchestrator - not the batch worker, whose sandbox correctly refuses `DROP DATABASE`/`migration:revert`/`dropdb` - immediately before T4's gate; (2) T4 and T5 were merged into one task, because `global-setup.ts` always runs both migrations together and a schema-only rewrite can never gate green while the seed migration still targets the old schema; (3) T4/T6/T7/T8 gate on a documented transitional baseline table (in tasks.md, right after `## Gate Check Commands`) instead of a single chained exit-code check, because the pre-existing integration/e2e suite cannot fully recover until T9 lands. None of this should recur for T9-T17: no other task rewrites a migration file in place, and T9 is the task that closes the transitional window.
+**Notes carried from Batch 2 and the T14-T17 continuation** (useful context if resuming cold):
+the original batch-2 sub-agent completed T9-T13 cleanly, then its session transcript expired
+before it could resume for T14 (a rate-limit cutoff, not a failure) - `SendMessage` could not
+reattach to it, so the orchestrator implemented T14 through T17 directly, following the same
+per-task cycle (implement, test, gate, adequacy review, checkbox, atomic commit). Two real,
+non-trivial findings from that continuation, both already fixed and both worth knowing if
+touching this code again:
+1. T16's token/principal shape change (`mustChangePassword`) rippled into `AuthenticateUserHandler`,
+   `RefreshSessionHandler`, `JwtAuthGuard`, `UserDto`, and the shared `FakeAccessTokenService` test
+   fixture - a compilation dependency, not scope creep, and all of it landed in T16's commit.
+2. T17 (removing `sessions/current`) broke T16's own e2e fixture, which had used that route to
+   prove "logout is allowed while pending" - fixed by pointing it at the surviving `DELETE
+   sessions` route. A reminder that later tasks can invalidate earlier tasks' fixtures, not just
+   earlier tasks' code.
+
+Deferred, explicitly, not a gap: the HTTP endpoint that lets staff create an account with a
+generated password (IDENT-07's "Why P1" line) belongs to feature 2
+(`customer-and-vehicle-registry`), not to this feature. T14 built the domain-level flag and
+generator only; the pino redact path for that future response field is feature 2's job too, to
+add in the same commit that adds the field. See H19-equivalent reasoning in `tasks.md` T14.
