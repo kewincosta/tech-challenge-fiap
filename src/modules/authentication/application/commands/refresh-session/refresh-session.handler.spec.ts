@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeAccessTokenService } from '../../../../../../test/support/fakes/fake-access-token.service';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
@@ -21,10 +21,19 @@ const AUTH_CONFIG = {
   sessionAbsoluteTtlSeconds: 2592000,
 };
 
-function makeHandler() {
+function makeHandler(mustChangePassword = false) {
   const sessions = new InMemorySessionRepository();
   const revokedSessions = new FakeRevokedSessionStore();
   const clock = new FakeClock();
+  const queryBus = stubQueryBus();
+  queryBus.execute.mockResolvedValue({
+    id: 'irrelevant-for-this-stub',
+    email: 'jane@example.com',
+    name: 'Jane Doe',
+    status: 'ACTIVE',
+    mustChangePassword,
+    createdAt: new Date().toISOString(),
+  });
   const eventBus = stubEventBus();
   const handler = new RefreshSessionHandler(
     sessions,
@@ -34,9 +43,10 @@ function makeHandler() {
     new FakeIdGenerator(),
     clock,
     AUTH_CONFIG,
+    queryBus.bus,
     eventBus.bus,
   );
-  return { handler, sessions, revokedSessions, clock, eventBus };
+  return { handler, sessions, revokedSessions, clock, queryBus, eventBus };
 }
 
 describe('RefreshSessionHandler', () => {
@@ -51,6 +61,17 @@ describe('RefreshSessionHandler', () => {
     expect(result.refreshToken).not.toBe('refresh-1');
     expect(result.sessionId).toBe(session.id.value);
     expect(sessions.sessions[0].activeToken.tokenHash.value).toBe(`hash(${result.refreshToken})`);
+  });
+
+  it('should re-read the pending password flag on every refresh', async () => {
+    const { handler, sessions, clock } = makeHandler(true);
+    const session = buildSession({ initialTokenHash: 'hash(refresh-1)' });
+    await sessions.save(session);
+    clock.advanceSeconds(600);
+
+    const result = await handler.execute(new RefreshSessionCommand('refresh-1'));
+
+    expect(result.accessToken.endsWith(':true')).toBe(true);
   });
 
   it('should not refresh with an unknown refresh token', async () => {

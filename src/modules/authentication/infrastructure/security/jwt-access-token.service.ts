@@ -15,6 +15,7 @@ import {
 interface AccessTokenClaims {
   sub: string;
   sid: string;
+  mustChangePassword: boolean;
 }
 
 @Injectable()
@@ -27,7 +28,7 @@ export class JwtAccessTokenService implements AccessTokenService {
 
   async sign(payload: AccessTokenPayload): Promise<SignedAccessToken> {
     const token = await this.jwtService.signAsync(
-      { sid: payload.sessionId },
+      { sid: payload.sessionId, mustChangePassword: payload.mustChangePassword },
       { subject: payload.userId, jwtid: this.idGenerator.generate() },
     );
     return { token, expiresInSeconds: this.config.accessTokenTtlSeconds };
@@ -36,10 +37,18 @@ export class JwtAccessTokenService implements AccessTokenService {
   async verify(token: string): Promise<AccessTokenPayload | null> {
     try {
       const claims = await this.jwtService.verifyAsync<AccessTokenClaims>(token);
-      if (typeof claims.sub !== 'string' || typeof claims.sid !== 'string') {
+      if (
+        typeof claims.sub !== 'string' ||
+        typeof claims.sid !== 'string' ||
+        typeof claims.mustChangePassword !== 'boolean'
+      ) {
         return null;
       }
-      return { userId: claims.sub, sessionId: claims.sid };
+      return {
+        userId: claims.sub,
+        sessionId: claims.sid,
+        mustChangePassword: claims.mustChangePassword,
+      };
     } catch {
       return null;
     }

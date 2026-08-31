@@ -32,6 +32,7 @@ import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-res
 import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
 import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
+import { AllowsPendingPassword } from '../../../authentication/presentation/decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
 import { Public } from '../../../authentication/presentation/decorators/public.decorator';
 import { Principal } from '../../../authentication/presentation/principal';
@@ -110,6 +111,7 @@ export class UsersController {
   }
 
   @Post('me/password')
+  @AllowsPendingPassword()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change the authenticated user own password, revoking every session' })

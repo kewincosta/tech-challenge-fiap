@@ -7,6 +7,8 @@ import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../../shared/application/ports/id-generator.port';
+import { UserDto } from '../../../../users/application/dtos/user.dto';
+import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import {
   VerifiedCredentialsDto,
   VerifyCredentialsQuery,
@@ -48,6 +50,15 @@ export class AuthenticateUserHandler
     if (!credentials) {
       throw new InvalidCredentialsError();
     }
+    // Re-fetched by id rather than carried on VerifiedCredentialsDto, so both this handler and
+    // RefreshSessionHandler read the pending-password flag through the same general-purpose
+    // query instead of two different shapes of the same fact.
+    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
+      new GetUserByIdQuery(credentials.userId),
+    );
+    if (!user) {
+      throw new InvalidCredentialsError();
+    }
     const now = this.clock.now();
     const rawRefreshToken = this.idGenerator.generate();
     const session = Session.start({
@@ -65,6 +76,7 @@ export class AuthenticateUserHandler
     const access = await this.accessTokens.sign({
       userId: credentials.userId,
       sessionId: session.id.value,
+      mustChangePassword: user.mustChangePassword,
     });
     const refreshTokenExpiresAt = session.activeToken.expiresAt.toISOString();
     this.eventBus.publishAll(session.pullDomainEvents());

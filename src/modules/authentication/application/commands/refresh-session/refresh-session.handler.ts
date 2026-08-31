@@ -1,13 +1,16 @@
 import { Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { authConfig } from '../../../../../config/auth.config';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
 import {
   ID_GENERATOR,
   IdGenerator,
 } from '../../../../../shared/application/ports/id-generator.port';
+import { UserDto } from '../../../../users/application/dtos/user.dto';
+import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { InvalidRefreshTokenError } from '../../../domain/errors/invalid-refresh-token.error';
+import { UserNotFoundError } from '../../../../users/domain/errors/user-not-found.error';
 import { RefreshTokenReuseError } from '../../../domain/errors/refresh-token-reuse.error';
 import {
   SESSION_REPOSITORY,
@@ -34,6 +37,7 @@ export class RefreshSessionHandler implements ICommandHandler<RefreshSessionComm
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(authConfig.KEY) private readonly config: ConfigType<typeof authConfig>,
+    private readonly queryBus: QueryBus,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -62,9 +66,18 @@ export class RefreshSessionHandler implements ICommandHandler<RefreshSessionComm
       throw error;
     }
     await this.sessions.save(session);
+    // Read fresh rather than carried on the session, so a password changed after the session
+    // was created is reflected in the reissued token (see ChangePasswordHandler and T16's guard).
+    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
+      new GetUserByIdQuery(session.userId),
+    );
+    if (!user) {
+      throw new UserNotFoundError();
+    }
     const access = await this.accessTokens.sign({
       userId: session.userId,
       sessionId: session.id.value,
+      mustChangePassword: user.mustChangePassword,
     });
     const refreshTokenExpiresAt = session.activeToken.expiresAt.toISOString();
     this.eventBus.publishAll(session.pullDomainEvents());

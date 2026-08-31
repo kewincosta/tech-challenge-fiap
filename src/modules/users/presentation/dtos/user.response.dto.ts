@@ -18,6 +18,9 @@ export class UserResponseDto {
   @ApiProperty({ example: 'ACTIVE' })
   status!: string;
 
+  @ApiProperty({ example: false })
+  mustChangePassword!: boolean;
+
   @ApiProperty({ example: '2026-08-26T12:00:00.000Z' })
   createdAt!: string;
 }

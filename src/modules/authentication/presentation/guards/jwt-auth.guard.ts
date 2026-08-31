@@ -46,7 +46,11 @@ export class JwtAuthGuard implements CanActivate {
     if (await this.revokedSessions.isRevoked(payload.sessionId)) {
       throw new UnauthorizedException();
     }
-    request.principal = { userId: payload.userId, sessionId: payload.sessionId };
+    request.principal = {
+      userId: payload.userId,
+      sessionId: payload.sessionId,
+      mustChangePassword: payload.mustChangePassword,
+    };
     return true;
   }
 

@@ -74,3 +74,14 @@ export async function grantRole(
     [userId, role],
   );
 }
+
+// Sets the flag directly, bypassing HTTP. No endpoint in this feature creates a pending-password
+// account (that flow belongs to feature 2, the staff-creation endpoint - see T14's deferred item
+// in tasks.md); a test that needs one has to reach for the same kind of direct fixture insert
+// grantRole already uses for the same reason.
+export async function markPendingPassword(app: INestApplication, userId: string): Promise<void> {
+  const dataSource = app.get(DataSource);
+  await dataSource.query(`UPDATE users SET must_change_password = true WHERE external_id = $1`, [
+    userId,
+  ]);
+}

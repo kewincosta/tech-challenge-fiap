@@ -1,6 +1,7 @@
 export interface AccessTokenPayload {
   userId: string;
   sessionId: string;
+  mustChangePassword: boolean;
 }
 
 export interface SignedAccessToken {

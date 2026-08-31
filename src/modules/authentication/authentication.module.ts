@@ -25,6 +25,7 @@ import { JwtAccessTokenService } from './infrastructure/security/jwt-access-toke
 import { Sha256RefreshTokenHasher } from './infrastructure/security/sha256-refresh-token-hasher';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
+import { PendingPasswordGuard } from './presentation/guards/pending-password.guard';
 
 @Module({
   imports: [
@@ -48,12 +49,13 @@ import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
     ListUserSessionsHandler,
     RefreshTokenReuseSubscriber,
     JwtAuthGuard,
+    PendingPasswordGuard,
     { provide: SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
     { provide: ACCESS_TOKEN_SERVICE, useClass: JwtAccessTokenService },
     { provide: REFRESH_TOKEN_HASHER, useClass: Sha256RefreshTokenHasher },
     { provide: REVOKED_SESSION_STORE, useClass: RedisRevokedSessionStore },
     { provide: SESSION_QUERY_PORT, useClass: TypeOrmSessionQueryAdapter },
   ],
-  exports: [JwtAuthGuard],
+  exports: [JwtAuthGuard, PendingPasswordGuard],
 })
 export class AuthenticationModule {}

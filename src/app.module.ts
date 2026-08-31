@@ -15,6 +15,7 @@ import { rateLimitConfig } from './config/rate-limit.config';
 import { redisConfig } from './config/redis.config';
 import { AuthenticationModule } from './modules/authentication/authentication.module';
 import { JwtAuthGuard } from './modules/authentication/presentation/guards/jwt-auth.guard';
+import { PendingPasswordGuard } from './modules/authentication/presentation/guards/pending-password.guard';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { PermissionsGuard } from './modules/authorization/presentation/guards/permissions.guard';
 import { UsersModule } from './modules/users/users.module';
@@ -73,6 +74,7 @@ import { SharedModule } from './shared/shared.module';
     { provide: APP_PIPE, useFactory: createAppValidationPipe },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useExisting: JwtAuthGuard },
+    { provide: APP_GUARD, useExisting: PendingPasswordGuard },
     { provide: APP_GUARD, useExisting: PermissionsGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],

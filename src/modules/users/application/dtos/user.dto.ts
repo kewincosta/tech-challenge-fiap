@@ -3,5 +3,6 @@ export interface UserDto {
   email: string;
   name: string;
   status: string;
+  mustChangePassword: boolean;
   createdAt: string;
 }

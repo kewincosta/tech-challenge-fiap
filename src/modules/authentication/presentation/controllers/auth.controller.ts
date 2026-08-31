@@ -39,6 +39,7 @@ import { RevokeSessionCommand } from '../../application/commands/revoke-session/
 import { AuthResultDto } from '../../application/dtos/auth-result.dto';
 import { SessionSummaryDto } from '../../application/ports/session-query.port';
 import { ListUserSessionsQuery } from '../../application/queries/list-user-sessions/list-user-sessions.query';
+import { AllowsPendingPassword } from '../decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Public } from '../decorators/public.decorator';
 import { Principal } from '../principal';
@@ -91,6 +92,7 @@ export class AuthController {
   }
 
   @Delete('sessions/current')
+  @AllowsPendingPassword()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout: revoke the current session' })
@@ -101,6 +103,7 @@ export class AuthController {
   }
 
   @Delete('sessions')
+  @AllowsPendingPassword()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout all: revoke every active session of the authenticated user' })
   @ApiOkResponse({ type: LogoutAllResponseDto })

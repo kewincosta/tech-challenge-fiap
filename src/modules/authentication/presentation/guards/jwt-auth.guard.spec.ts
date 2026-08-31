@@ -34,10 +34,22 @@ function makeGuard(isPublic = false) {
 describe('JwtAuthGuard', () => {
   it('should attach the principal for a valid bearer token', async () => {
     const { guard } = makeGuard();
-    const { context, request } = makeContext(`Bearer token:${USER_ID}:${SESSION_ID}`);
+    const { context, request } = makeContext(`Bearer token:${USER_ID}:${SESSION_ID}:false`);
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(request.principal).toEqual({ userId: USER_ID, sessionId: SESSION_ID });
+    expect(request.principal).toEqual({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: false,
+    });
+  });
+
+  it('should carry a pending password flag onto the principal', async () => {
+    const { guard } = makeGuard();
+    const { context, request } = makeContext(`Bearer token:${USER_ID}:${SESSION_ID}:true`);
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.principal?.mustChangePassword).toBe(true);
   });
 
   it('should allow a public route without a token', async () => {
@@ -64,7 +76,7 @@ describe('JwtAuthGuard', () => {
   it('should reject a token whose session was revoked', async () => {
     const { guard, revokedSessions } = makeGuard();
     await revokedSessions.add(SESSION_ID);
-    const { context } = makeContext(`Bearer token:${USER_ID}:${SESSION_ID}`);
+    const { context } = makeContext(`Bearer token:${USER_ID}:${SESSION_ID}:false`);
 
     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });

@@ -25,6 +25,7 @@ export class GetUserByIdHandler implements IQueryHandler<GetUserByIdQuery, UserD
       email: user.email.value,
       name: user.name,
       status: user.status,
+      mustChangePassword: user.mustChangePassword,
       createdAt: user.createdAt.toISOString(),
     };
   }

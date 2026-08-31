@@ -652,13 +652,13 @@ boundary is wrong. This is that case.
 
 **Done when**:
 
-- [ ] The access token carries the pending flag
-- [ ] The guard is registered after `JwtAuthGuard` and before `PermissionsGuard`
-- [ ] `@AllowsPendingPassword()` exempts the password change and the logout
-- [ ] Every other authenticated route answers 403 with `AUTH_PASSWORD_CHANGE_REQUIRED`
-- [ ] Once the flag is clear every route answers normally
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 6 unit and 3 e2e tests pass (no silent deletions)
+- [x] The access token carries the pending flag
+- [x] The guard is registered after `JwtAuthGuard` and before `PermissionsGuard`
+- [x] `@AllowsPendingPassword()` exempts the password change and the logout
+- [x] Every other authenticated route answers 403 with `AUTH_PASSWORD_CHANGE_REQUIRED`
+- [x] Once the flag is clear every route answers normally
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 6 unit and 3 e2e tests pass (no silent deletions). Three more incidental tests were added to pre-existing files (`jwt-auth.guard.spec.ts`, `authenticate-user.handler.spec.ts`, `refresh-session.handler.spec.ts`) to cover the compilation-dependency ripple this task caused (the token/principal shape change) - not part of this count, but necessary so that ripple is not left unverified.
 
 **Tests**: e2e
 **Gate**: full
