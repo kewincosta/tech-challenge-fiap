@@ -428,12 +428,12 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] `GetInventoryItemQuery` returns the item or null, and returns null rather than throwing for a malformed id
-- [ ] `ListInventoryItemsQuery` returns every active item, and only the matching kind when one is supplied
-- [ ] `GetItemMovementHistoryQuery` returns the movements in chronological order
-- [ ] **`GetItemMovementHistoryQuery` returns an empty list for a freshly created item** (owns half of that edge case, L-002)
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] `GetInventoryItemQuery` returns the item or null, and returns null rather than throwing for a malformed id
+- [x] `ListInventoryItemsQuery` returns every active item, and only the matching kind when one is supplied
+- [x] `GetItemMovementHistoryQuery` returns the movements in chronological order
+- [x] **`GetItemMovementHistoryQuery` returns an empty list for a freshly created item** (owns half of that edge case, L-002)
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
