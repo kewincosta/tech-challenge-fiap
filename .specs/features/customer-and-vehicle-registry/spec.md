@@ -177,12 +177,12 @@ Every ambiguity is resolved or recorded here. The domain rules themselves come f
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CVR-01 | P1: A service advisor turns a person into a customer | Tasks | In Tasks |
-| CVR-02 | P1: Finding and reading customer records | Tasks | In Tasks |
-| CVR-03 | P1: A vehicle is on record before it can be serviced | Tasks | In Tasks |
-| CVR-04 | P1: Reading vehicle records | Tasks | In Tasks |
-| CVR-05 | P2: Maintaining customer records | Tasks | In Tasks |
-| CVR-06 | P2: Maintaining vehicle records | Tasks | In Tasks |
+| CVR-01 | P1: A service advisor turns a person into a customer | Tasks | Implementing |
+| CVR-02 | P1: Finding and reading customer records | Tasks | Implementing |
+| CVR-03 | P1: A vehicle is on record before it can be serviced | Tasks | Implementing |
+| CVR-04 | P1: Reading vehicle records | Tasks | Implementing |
+| CVR-05 | P2: Maintaining customer records | Tasks | Implementing |
+| CVR-06 | P2: Maintaining vehicle records | Tasks | Implementing |
 
 **ID format:** `CVR-NN`
 
