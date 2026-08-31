@@ -389,11 +389,16 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `GetCustomerQuery` returns the customer or null by external id
-- [ ] `GetCustomerByUserIdQuery` returns the customer or null by the backing user's external id
-- [ ] `ListCustomersQuery` filters by name (partial) and/or document (exact), excludes deactivated
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `GetCustomerQuery` returns the customer or null by external id
+- [x] `GetCustomerByUserIdQuery` returns the customer or null by the backing user's external id
+- [x] `ListCustomersQuery` filters by name (partial) and/or document (exact), excludes deactivated
+  (proven already in T6's own adapter test; not re-proven here to avoid duplicating the same
+  assertion at two layers - see implement.md Check C)
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 6 tests pass, not 5 - added a malformed-customer-id case (`GetCustomerHandler`'s
+  own `CustomerId.create` guard) and a malformed-document-filter case (`ListCustomersHandler`'s
+  own `PersonDocument.create` guard), both real robustness gaps caught while implementing
+  (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
