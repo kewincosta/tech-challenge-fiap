@@ -129,13 +129,13 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `Address.create` accepts a complete address
-- [ ] `Address.create` returns `undefined`/accepts an empty input (no address at all)
-- [ ] Rejects a partially populated address (some fields present, others missing)
-- [ ] Rejects an invalid state code (outside the 27 real UF codes)
-- [ ] Rejects a malformed zip code and normalises a punctuated one to 8 digits
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] `Address.create` accepts a complete address
+- [x] `Address.create` returns `undefined`/accepts an empty input (no address at all)
+- [x] Rejects a partially populated address (some fields present, others missing)
+- [x] Rejects an invalid state code (outside the 27 real UF codes)
+- [x] Rejects a malformed zip code and normalises a punctuated one to 8 digits
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
