@@ -129,16 +129,16 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| SVC-01 | P1: An administrator maintains the service catalog | Design | In Design |
-| SVC-02 | P1: Staff read the catalog to pick work | Design | In Design |
-| SVC-03 | P1: A price is integer BRL cents, end to end | Design | In Design |
-| SVC-04 | P2: A deactivated service leaves the catalog without disappearing | Design | In Design |
+| SVC-01 | P1: An administrator maintains the service catalog | Tasks | In Tasks |
+| SVC-02 | P1: Staff read the catalog to pick work | Tasks | In Tasks |
+| SVC-03 | P1: A price is integer BRL cents, end to end | Tasks | In Tasks |
+| SVC-04 | P2: A deactivated service leaves the catalog without disappearing | Tasks | In Tasks |
 
 **ID format:** `SVC-NN`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 4 total, 0 mapped to tasks, 4 unmapped ⚠️ (Tasks phase has not run yet)
+**Coverage:** 4 total, 4 mapped to tasks, 0 unmapped
 
 ---
 
