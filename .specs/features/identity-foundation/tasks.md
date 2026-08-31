@@ -222,10 +222,10 @@ T14  T15  T16  T17
 
 **Done when**:
 
-- [ ] Every code in the design's permission table exists in `AppPermission`
-- [ ] `SystemRole` gains `SuperAdmin` and renames `Seller` to `ServiceAdvisor`
-- [ ] No code references `SystemRole.Seller` any more
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Every code in the design's permission table exists in `AppPermission`
+- [x] `SystemRole` gains `SuperAdmin` and renames `Seller` to `ServiceAdvisor`
+- [x] No code references `SystemRole.Seller` any more
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: none
 **Gate**: build

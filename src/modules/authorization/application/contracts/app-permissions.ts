@@ -1,5 +1,6 @@
 export const AppPermission = {
   UsersRead: 'users:read',
+  UsersManage: 'users:manage',
   RolesRead: 'roles:read',
   RolesManage: 'roles:manage',
   GroupsRead: 'groups:read',
@@ -8,6 +9,25 @@ export const AppPermission = {
   UserAccessRead: 'user-access:read',
   UserAccessManage: 'user-access:manage',
   SessionsRevokeAny: 'sessions:revoke-any',
+  CustomersRead: 'customers:read',
+  CustomersManage: 'customers:manage',
+  VehiclesRead: 'vehicles:read',
+  VehiclesManage: 'vehicles:manage',
+  ServicesRead: 'services:read',
+  ServicesManage: 'services:manage',
+  InventoryRead: 'inventory:read',
+  InventoryManage: 'inventory:manage',
+  WorkOrdersRead: 'work-orders:read',
+  WorkOrdersManage: 'work-orders:manage',
+  WorkOrdersExecute: 'work-orders:execute',
+  WorkOrdersDecide: 'work-orders:decide',
+  WorkOrdersCancel: 'work-orders:cancel',
+  WorkOrdersCancelInExecution: 'work-orders:cancel-in-execution',
+  WorkOrdersDiscount: 'work-orders:discount',
+  WorkOrdersReadOwn: 'work-orders:read-own',
+  WorkOrdersDecideOwn: 'work-orders:decide-own',
+  AuditRead: 'audit:read',
+  MetricsRead: 'metrics:read',
 } as const;
 
 export type AppPermissionCode = (typeof AppPermission)[keyof typeof AppPermission];
