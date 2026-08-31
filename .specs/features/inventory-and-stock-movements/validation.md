@@ -225,7 +225,7 @@ Spot-checked the highest-risk new code against `references/coding-principles.md`
 
 ## Fix Plans
 
-### Fix 1 (Minor, non-blocking) - INV-01 AC2 has no test at any layer: invalid `kind` -> 400
+### Fix 1 (Minor, non-blocking) - CLOSED - INV-01 AC2 has no test at any layer: invalid `kind` -> 400
 
 - **Root cause**: `create-inventory-item.request.dto.ts:23-25` carries `@IsIn(['PART', 'SUPPLY'])`,
   which the global `ValidationPipe` enforces correctly, but no unit, integration or e2e test submits a
@@ -236,7 +236,7 @@ Spot-checked the highest-risk new code against `references/coding-principles.md`
 - **Priority**: Minor, non-blocking - correct today by the DTO decorator and the codebase-wide
   `ValidationPipe`, not a demonstrated defect.
 
-### Fix 2 (Minor, non-blocking) - INV-01 AC8/AC9 and INV-02 AC7: 403 proven for one route per permission, not every route
+### Fix 2 (Minor, non-blocking) - CLOSED - INV-01 AC8/AC9 and INV-02 AC7: 403 proven for one route per permission, not every route
 
 - **Root cause**: `/replenishments` (mechanic-403) and `/movements` (mechanic-403 on `audit:read`) each
   have a dedicated e2e case, but `POST /inventory-items`, `PATCH /inventory-items/:id`, and
@@ -252,7 +252,7 @@ Spot-checked the highest-risk new code against `references/coding-principles.md`
   already-confirmed lesson L-003 (merged into it, not filed separately) - a sibling route's 403 test
   does not substitute for this route's own.
 
-### Fix 3 (Minor, non-blocking) - INV-02 AC4's e2e layer: zero/negative quantity -> 400 over HTTP
+### Fix 3 (Minor, non-blocking) - CLOSED - INV-02 AC4's e2e layer: zero/negative quantity -> 400 over HTTP
 
 - **Root cause**: `replenish-stock.request.dto.ts:6-7` and `adjust-stock.request.dto.ts:6-7` both carry
   `@IsPositive()`, and the domain (`stock-movement.spec.ts`) and handler
@@ -265,7 +265,7 @@ Spot-checked the highest-risk new code against `references/coding-principles.md`
 - **Priority**: Minor, non-blocking - domain and handler layers are airtight; only the HTTP-layer proof
   is missing.
 
-### Fix 4 (Minor, non-blocking, code quality) - `existsActiveBySku`'s `excludingId` parameter is dead
+### Fix 4 (Minor, non-blocking, code quality) - CLOSED - `existsActiveBySku`'s `excludingId` parameter is dead
 
 - **Root cause**: Added by analogy to `ServiceRepository.existsActiveByName(name, excludingId?)`, where
   an update can rename and needs to exclude its own row. `UpdateInventoryItemCommand` has no `sku`
@@ -284,6 +284,13 @@ demonstrated defects. Consistent with the precedent `service-catalog`'s own Veri
 comparable non-blocking gaps, still closed as PASS with Requirement Traceability moved to Verified),
 this report issues a full PASS with these four items logged for optional follow-up, not required
 before closing the feature.
+
+**Post-report update**: all four fixes were closed the same day, in `tasks.md` T12. Only Fix 4
+touched production code, and only by deleting the unused `excludingId` parameter - every other
+outcome was already correct; T12 added the direct proof. Final state: unit 300/300, integration
+124/124 (durable across two consecutive runs), e2e 98/98 (durable across two consecutive runs) -
+522 total, up from 518 at the original PASS. `inventory-and-stock-movements` has no remaining
+logged gaps.
 
 ---
 

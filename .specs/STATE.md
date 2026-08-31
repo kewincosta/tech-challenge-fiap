@@ -111,17 +111,19 @@ entry. They apply to every feature.
 
 - **Feature**: `.specs/features/inventory-and-stock-movements` - **done**
 - **Phase / Task**: Verified, PASS on the first pass, with four non-blocking coverage-completeness
-  gaps logged (Fix 1-4) - none required before closing. 11 tasks total (T1-T11) committed to `main`
-  at `ede787d`. Verifier report at
+  gaps (Fix 1-4) closed the same session in T12. 12 tasks total (T1-T12) committed to `main` at
+  `dfb167c`. Verifier report at
   `.specs/features/inventory-and-stock-movements/validation.md`.
 - **Completed**: every task in `tasks.md`; all 4 stories (INV-01 through INV-04, 25 ACs) and every
   listed Edge Case independently re-derived and confirmed by the Verifier, evidence-or-zero.
   Discrimination sensor: 3/3 injected mutations killed - the dropped pessimistic-write lock
   (probabilistic kill rate, 3/15 runs - see L-005), the removed adjustment-note guard (deterministic
   at all three layers), and the untyped `Money.fromDatabase` bypass (deterministic, 7 cascading
-  failures). Final gate: lint clean, build clean, unit 300/300, integration 124/124 (run twice
-  consecutively for durability), e2e 94/94 (run twice consecutively) - 518 total, up from the 426
-  baseline, zero regressions.
+  failures). T12 closed all four Verifier-flagged gaps with test-only additions (plus removing one
+  dead parameter, `existsActiveBySku`'s `excludingId` - Fix 4) - no production behaviour changed,
+  every outcome was already correct. Final gate: lint clean, build clean, unit 300/300, integration
+  124/124 (run twice consecutively), e2e 98/98 (run twice consecutively) - 522 total, up from the
+  426 baseline, zero regressions.
 - **In-progress** (file:line): none
 - **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 5,
   `work-order-creation`, when the user asks for it - not before, per this file's own Feature Roadmap
@@ -149,11 +151,11 @@ entry. They apply to every feature.
    `service-catalog`'s `services.price_cents`), now on two tables (`inventory_items`,
    `stock_movements`) - the same explicit `Money.fromDatabase` pair-assertion pattern held on both.
 4. `L-003` (a sibling handler/route's test does not substitute for this one's own) recurred a third
-   time in this feature: the `/replenishments` mechanic-403 e2e case does not cover
+   time in this feature: the `/replenishments` mechanic-403 e2e case did not cover
    `POST`/`PATCH`/`.../adjustments`, and the DTO-level `@IsIn`/`@IsPositive` validation proven
-   generically elsewhere in the codebase has no dedicated test for `kind`/`quantity` on these
-   specific routes. Both logged as non-blocking (Fix 2, Fix 3 in the Verifier report), merged as
-   further evidence into `L-003` rather than filed separately.
+   generically elsewhere in the codebase had no dedicated test for `kind`/`quantity` on these
+   specific routes. Both closed in T12 (Fix 2, Fix 3), merged as further evidence into `L-003`
+   rather than filed separately.
 5. Feature 7 (`work-order-execution-and-closing`) inherits a schema already shaped for it: the
    `CONSUMPTION`/`RETURN` movement kinds, the `PENDING`/`SETTLED`/`WRITTEN_OFF` statuses,
    `undoes_movement_id`, and the whole `stock_movement_transitions` table exist today, written by
