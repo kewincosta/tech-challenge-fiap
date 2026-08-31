@@ -204,6 +204,18 @@ An account created by staff cannot do anything until its password is replaced.
 T14  T15  T16  T17
 ```
 
+### Phase 5: Fix round after independent verification
+
+The Verifier ran against the merged Phase 1-4 work and returned FAIL: IDENT-07 AC1 had no
+production implementation (T14 built only the domain plumbing and deferred the endpoint, which
+`validation.md` found conflicts with what spec.md actually commits this feature to), and spec.md's
+own deactivation edge case had never been assigned to a task. Full report:
+`.specs/features/identity-foundation/validation.md`.
+
+```
+T18  T19  T20
+```
+
 ---
 
 ## Task Breakdown
@@ -707,6 +719,99 @@ boundary is wrong. This is that case.
 
 ---
 
+#### T18: Staff-created account with a generated temporary password
+
+**What**: A `users:manage`-guarded endpoint that creates an account without a caller-supplied
+password, generating one and returning it once. Closes the gap `validation.md` found: T14 built
+`User.register`'s `temporary` flag and `Password.generate()` but nothing called either.
+**Where**: `src/modules/users/application/commands/register-user/`, `src/modules/users/presentation/controllers/users.controller.ts`
+**Depends on**: T14
+**Reuses**: `RegisterUserHandler`'s existing existence checks, transaction wrap and role assignment; `Password.generate()`; `User.register`'s `temporary` flag - all already built by T9/T14, none of it duplicated
+**Requirement**: IDENT-07
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `RegisterUserCommand` takes an `issuedByStaff` flag; when set, the handler generates the password with `Password.generate()` instead of requiring one from the caller
+- [ ] `POST /api/v1/users/staff`, guarded by `users:manage`, creates the account and returns `{ id, temporaryPassword }` with HTTP 201
+- [ ] The temporary password is never persisted in plain form and never named by a public route's request body; `res.body.temporaryPassword` is added to the pino redact paths defensively, alongside the existing `req.body.password`
+- [ ] An e2e test proves spec.md's own Independent Test for IDENT-07: create an account through the endpoint, log in with the returned password, get refused with 403 on another route, change the password, then succeed
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: 2 new unit tests (register-user.handler.spec.ts, 6 -> 8) and 3 new e2e tests (staff-account.e2e.spec.ts). Unit 152/152, integration 28/28 (unaffected), e2e 42/42.
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `feat(users): add the staff account creation endpoint`
+
+---
+
+#### T19: Deactivating a user revokes its sessions
+
+**What**: `DeactivateUserHandler` dispatches `LogoutAllSessionsCommand` after saving, closing
+spec.md's own Edge Case ("an account deactivated while it has an active session refuses that
+session's next request with HTTP 401"), which no task in the original 16-task plan was ever
+assigned.
+**Where**: `src/modules/users/application/commands/deactivate-user/deactivate-user.handler.ts`
+**Depends on**: T17
+**Reuses**: `LogoutAllSessionsCommand`, the identical pattern `ChangePasswordHandler` already uses
+**Requirement**: IDENT-05 (edge case)
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `DeactivateUserHandler` dispatches `LogoutAllSessionsCommand` for the deactivated user after saving
+- [ ] A deactivated account's already-open session is refused with HTTP 401 on its next request
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: recorded in the commit
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `fix(users): revoke every session when an account is deactivated`
+
+---
+
+#### T20: Close the remaining coverage gaps from validation.md
+
+**What**: Three minor, independent test-only additions `validation.md` flagged as coverage gaps,
+none of them a production defect: document validation/duplication proven at the real registration
+route (not just unit/integration), a non-escalation role assignment proven through the real
+endpoint, and a real-Postgres round-trip for `Money.fromDatabase`.
+**Where**: `test/e2e/authentication.e2e.spec.ts`, `test/e2e/users.e2e.spec.ts`, new `test/integration/money.roundtrip.spec.ts`
+**Depends on**: T1, T9, T13
+**Reuses**: The existing weak-password/duplicate-email e2e fixtures in `authentication.e2e.spec.ts` as the template for the new document cases; `grantRole`'s replacement, the real `PUT .../roles/:roleId` route, for the role-assignment case
+**Requirement**: IDENT-02, IDENT-04, IDENT-05
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] An invalid document at `POST /api/v1/users` answers 400 `USER_INVALID_DOCUMENT`
+- [ ] A duplicate document at `POST /api/v1/users` answers 409 `USER_DOCUMENT_ALREADY_IN_USE`
+- [ ] A non-escalation role (`MECHANIC`) is assigned through the real `PUT /api/v1/users/:userId/roles/:roleId` endpoint, then the resulting account logs in and the role is confirmed
+- [ ] `Money.fromDatabase` round-trips an amount through a real Postgres `bigint` column
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: recorded in the commit
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `test(identity-foundation): close the coverage gaps validation.md flagged`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
@@ -722,6 +827,11 @@ T9 -> T11 -> T12
 T4 -> T13
 T9 -> T14 -> T15 -> T16
 T15 -> T17
+T14 -> T18
+T17 -> T19
+T1 -> T20
+T9 -> T20
+T13 -> T20
 ```
 
 Execution is strictly sequential - there is no intra-phase parallelism.
@@ -748,6 +858,9 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T15 | 1 command plus its route | OK |
 | T16 | 1 guard plus its decorator | OK |
 | T17 | 1 controller | Granular |
+| T18 | 1 command extended plus 1 route | OK |
+| T19 | 1 handler | Granular |
+| T20 | Test-only, 3 files, cohesive fix round | OK - three independent coverage gaps closed together rather than as three single-assertion tasks, per the same "merge when splitting would leave nothing independently gateable" reasoning as T4/T5 |
 
 ---
 
@@ -771,6 +884,9 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T15 | T14 | T14 -> T15 | Match |
 | T16 | T15 | T15 -> T16 | Match |
 | T17 | T15 | T15 -> T17 | Match |
+| T18 | T14 | T14 -> T18 | Match |
+| T19 | T17 | T17 -> T19 | Match |
+| T20 | T1, T9, T13 | T1 -> T20, T9 -> T20, T13 -> T20 | Match |
 
 No dependency points at a later phase.
 
@@ -796,3 +912,6 @@ No dependency points at a later phase.
 | T15 | Handler, controller | e2e (highest) | e2e | OK |
 | T16 | Guard, controller | e2e (highest) | e2e | OK |
 | T17 | Controller | e2e | e2e | OK |
+| T18 | Command, handler, controller | e2e (highest) | e2e | OK |
+| T19 | Application handler | e2e (highest - proves the revocation over HTTP) | e2e | OK |
+| T20 | Controller routes, value object real-DB path | e2e / integration | e2e | OK |
