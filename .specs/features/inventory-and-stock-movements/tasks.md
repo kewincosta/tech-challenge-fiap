@@ -200,14 +200,14 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] `StockMovement.record` builds an `INBOUND` or `ADJUSTMENT` movement carrying quantity, unit price, acting user, note and moment
-- [ ] Rejects a quantity that is not a positive integer with `InvalidMovementQuantityError` (zero, negative and fractional each tested)
-- [ ] An `INBOUND` and an `ADJUSTMENT` are recorded with `status: null` and `workOrderId: null`, because only a consumption carries a status (section 9's invariant)
-- [ ] `restore` rebuilds a movement from persisted props
-- [ ] The class exposes no setter and no mutating method - a movement cannot be changed after it is recorded
-- [ ] The `StockMovementKind` enum carries all four kinds and `StockMovementStatus` all three statuses, including the ones only features 5-7 will write
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] `StockMovement.record` builds an `INBOUND` or `ADJUSTMENT` movement carrying quantity, unit price, acting user, note and moment
+- [x] Rejects a quantity that is not a positive integer with `InvalidMovementQuantityError` (zero, negative and fractional each tested)
+- [x] An `INBOUND` and an `ADJUSTMENT` are recorded with `status: null` and `workOrderId: null`, because only a consumption carries a status (section 9's invariant)
+- [x] `restore` rebuilds a movement from persisted props
+- [x] The class exposes no setter and no mutating method - a movement cannot be changed after it is recorded
+- [x] The `StockMovementKind` enum carries all four kinds and `StockMovementStatus` all three statuses, including the ones only features 5-7 will write
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
