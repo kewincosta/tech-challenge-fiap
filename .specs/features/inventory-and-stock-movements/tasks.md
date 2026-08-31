@@ -140,12 +140,12 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] Accepts a valid SKU and exposes it trimmed and upper-cased
-- [ ] Collapses runs of internal whitespace to a single space
-- [ ] Rejects an empty or whitespace-only SKU with `InvalidSkuError`
-- [ ] Rejects a SKU longer than 40 characters, and accepts one of exactly 40 (both sides of the bound)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Accepts a valid SKU and exposes it trimmed and upper-cased
+- [x] Collapses runs of internal whitespace to a single space
+- [x] Rejects an empty or whitespace-only SKU with `InvalidSkuError`
+- [x] Rejects a SKU longer than 40 characters, and accepts one of exactly 40 (both sides of the bound)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
