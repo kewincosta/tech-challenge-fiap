@@ -66,6 +66,36 @@ describe('Authentication', () => {
     expect(response.body).toMatchObject({ code: 'USER_WEAK_PASSWORD' });
   });
 
+  it('should not register a user with an invalid document', async () => {
+    const response = await api(app)
+      .post('/api/v1/users')
+      .send({
+        email: faker.internet.email().toLowerCase(),
+        name: 'Jane Doe',
+        password: 'Str0ngPassword',
+        document: '11111111111',
+      })
+      .expect(400);
+
+    expect(response.body).toMatchObject({ code: 'USER_INVALID_DOCUMENT' });
+  });
+
+  it('should not register a user with a document already in use', async () => {
+    const credentials = await registerUser(app);
+
+    const response = await api(app)
+      .post('/api/v1/users')
+      .send({
+        email: faker.internet.email().toLowerCase(),
+        name: 'Other',
+        password: 'Str0ngPassword',
+        document: credentials.document,
+      })
+      .expect(409);
+
+    expect(response.body).toMatchObject({ code: 'USER_DOCUMENT_ALREADY_IN_USE' });
+  });
+
   it('should not store the password in plain text', async () => {
     const credentials = await registerUser(app);
 

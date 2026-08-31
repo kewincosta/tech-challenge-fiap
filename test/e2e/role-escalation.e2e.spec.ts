@@ -81,4 +81,25 @@ describe('Role escalation', () => {
     );
     expect(roles.map((row) => row.name)).toContain('ADMIN');
   });
+
+  it('should let an administrator assign a non-escalation role through the real endpoint', async () => {
+    const adminCredentials = await registerUser(app);
+    await grantRole(app, adminCredentials.userId, 'ADMIN');
+    const admin = await login(app, adminCredentials);
+    const target = await registerUser(app);
+    const mechanicRoleId = await roleExternalIdFor('MECHANIC');
+
+    await api(app)
+      .put(`/api/v1/users/${target.userId}/roles/${mechanicRoleId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const mechanic = await login(app, target);
+    const me = await api(app)
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+
+    expect((me.body as { roles: string[] }).roles).toContain('MECHANIC');
+  });
 });

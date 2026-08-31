@@ -798,12 +798,12 @@ endpoint, and a real-Postgres round-trip for `Money.fromDatabase`.
 
 **Done when**:
 
-- [ ] An invalid document at `POST /api/v1/users` answers 400 `USER_INVALID_DOCUMENT`
-- [ ] A duplicate document at `POST /api/v1/users` answers 409 `USER_DOCUMENT_ALREADY_IN_USE`
-- [ ] A non-escalation role (`MECHANIC`) is assigned through the real `PUT /api/v1/users/:userId/roles/:roleId` endpoint, then the resulting account logs in and the role is confirmed
-- [ ] `Money.fromDatabase` round-trips an amount through a real Postgres `bigint` column
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: recorded in the commit
+- [x] An invalid document at `POST /api/v1/users` answers 400 `USER_INVALID_DOCUMENT`
+- [x] A duplicate document at `POST /api/v1/users` answers 409 `USER_DOCUMENT_ALREADY_IN_USE`
+- [x] A non-escalation role (`MECHANIC`) is assigned through the real `PUT /api/v1/users/:userId/roles/:roleId` endpoint, then the resulting account logs in and the role is confirmed
+- [x] `Money.fromDatabase` round-trips an amount through a real Postgres `bigint` column
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 2 new e2e tests in `authentication.e2e.spec.ts` (invalid/duplicate document), 1 new e2e test in `role-escalation.e2e.spec.ts` (MECHANIC through the real endpoint), 2 new integration tests in `money.roundtrip.spec.ts` (new file). Unit 153/153 (unaffected), integration 30/30, e2e 46/46.
 
 **Tests**: e2e
 **Gate**: full
