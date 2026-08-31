@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubCommandBus, stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryUserRepository } from '../../../../../../test/support/fakes/in-memory-user.repository';
 import { buildUser } from '../../../../../../test/support/factories/user.factory';
+import { LogoutAllSessionsCommand } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command';
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error';
 import { UserStatus } from '../../../domain/user-status';
 import { DeactivateUserCommand } from './deactivate-user.command';
@@ -11,9 +12,10 @@ import { DeactivateUserHandler } from './deactivate-user.handler';
 function makeHandler() {
   const users = new InMemoryUserRepository();
   const eventBus = stubEventBus();
+  const commandBus = stubCommandBus();
   const clock = new FakeClock();
-  const handler = new DeactivateUserHandler(users, clock, eventBus.bus);
-  return { handler, users, eventBus, clock };
+  const handler = new DeactivateUserHandler(users, clock, eventBus.bus, commandBus.bus);
+  return { handler, users, eventBus, commandBus, clock };
 }
 
 describe('DeactivateUserHandler', () => {
@@ -47,5 +49,15 @@ describe('DeactivateUserHandler', () => {
     await expect(
       handler.execute(new DeactivateUserCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(UserNotFoundError);
+  });
+
+  it('should revoke every active session of the deactivated user', async () => {
+    const { handler, users, commandBus } = makeHandler();
+    const user = buildUser({ email: 'jane@example.com', document: '11144477735' });
+    await users.save(user);
+
+    await handler.execute(new DeactivateUserCommand(user.id.value));
+
+    expect(commandBus.execute).toHaveBeenCalledWith(new LogoutAllSessionsCommand(user.id.value));
   });
 });

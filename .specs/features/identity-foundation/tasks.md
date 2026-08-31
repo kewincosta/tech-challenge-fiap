@@ -768,10 +768,10 @@ assigned.
 
 **Done when**:
 
-- [ ] `DeactivateUserHandler` dispatches `LogoutAllSessionsCommand` for the deactivated user after saving
-- [ ] A deactivated account's already-open session is refused with HTTP 401 on its next request
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: recorded in the commit
+- [x] `DeactivateUserHandler` dispatches `LogoutAllSessionsCommand` for the deactivated user after saving
+- [x] A deactivated account's already-open session is refused with HTTP 401 on its next request
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 1 new unit test (deactivate-user.handler.spec.ts, 3 -> 4) and 1 new e2e test (users.e2e.spec.ts, 10 -> 11). Unit 153/153, integration 28/28 (unaffected), e2e 43/43.
 
 **Tests**: e2e
 **Gate**: full

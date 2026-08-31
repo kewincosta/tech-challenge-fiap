@@ -88,6 +88,22 @@ describe('User administration', () => {
       .expect(404);
   });
 
+  it('should refuse a deactivated account\'s session on its next request', async () => {
+    const target = await registerAndLogin(app);
+
+    await api(app)
+      .delete(`/api/v1/users/${target.userId}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const response = await api(app)
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${target.accessToken}`)
+      .expect(401);
+
+    expect(response.body).toMatchObject({ code: 'AUTH_UNAUTHORIZED' });
+  });
+
   it('should refuse deactivating an account without users:manage', async () => {
     const actor = await registerAndLogin(app);
     const target = await registerUser(app);
