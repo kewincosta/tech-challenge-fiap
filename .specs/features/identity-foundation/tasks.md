@@ -391,7 +391,7 @@ boundary is wrong. This is that case.
 - [x] `groups:read` and `groups:manage` are gone from the contract and the seed
 - [x] `test/support/db.ts` no longer lists the four group entities
 - [x] The group cases of `test/integration/effective-access.reader.spec.ts` are deleted and the role cases stay. This is the only task that deletes tests, and it is legitimate because their subject no longer exists - it is not the forbidden case of deleting a test to make a suite pass
-- [x] Gate check passes per the transitional gate note above (T7's row): lint and build green, unit green, the full integration suite (14 tests: T4's 11 plus the two pre-existing files now repaired) green, e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [x] Gate check passes per the transitional gate note above (T7's row): lint and build green, unit green, the full integration suite (18 tests: T4's 11, session.repository.spec.ts's 4, and effective-access.reader.spec.ts's 3 remaining after T7 deletes its two group-only cases) green, e2e unchanged from the T4 baseline, zero unexplained failures anywhere
 
 **Tests**: integration
 **Gate**: build
@@ -419,7 +419,7 @@ boundary is wrong. This is that case.
 - [x] It assigns `SUPER_ADMIN`, not `ADMIN`
 - [x] Running it twice leaves exactly one super administrator
 - [x] `.env.example` documents `ADMIN_DOCUMENT`
-- [x] Gate check passes per the transitional gate note above (T8's row): unit green, the full integration suite green including T8's own 3 new tests (17 total), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
+- [x] Gate check passes per the transitional gate note above (T8's row): unit green, the full integration suite green including T8's own 3 new tests (21 total), e2e unchanged from the T4 baseline, zero unexplained failures anywhere
 - [x] Test count: 3 integration tests pass (no silent deletions)
 
 **Tests**: integration
