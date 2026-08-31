@@ -51,13 +51,32 @@ alongside one value object, and the one-atomic-commit-per-task rule would be bro
 task. Commit the current tree first, on `main`, with a message the commit gate accepts, for
 example `chore: baseline the existing identity and access implementation`.
 
-**Every local database must be dropped.** T4 rewrites the initial migration in place rather than
-adding an ALTER migration. TypeORM records an executed migration by name in its `migrations`
-table, so on a database where the old migration already ran, `migration:run` skips it silently
-and leaves the old schema behind code that expects the new one. The failure is a confusing
-runtime mismatch, not a loud error. Drop the development database and the `_test` database, then
-run the migrations again. This destroys local data and nothing else: the repository has no
-commits and no deployed environment.
+**The `_test` database must be empty immediately before T4's gate runs, and empty again
+immediately before T5's gate runs.** T4 and T5 each rewrite a migration file in place rather than
+adding an ALTER migration. TypeORM records an executed migration by its class name in the
+`migrations` table, so once a name is recorded, editing that file's SQL and re-running migrations
+is a silent no-op, not an error - the old schema (or the old seed) stays under code that expects
+the new one, and the failure surfaces as a confusing runtime mismatch, never a loud one.
+
+This is not a single one-time drop. `test/support/global-setup.ts` always runs both migrations
+together (`CreateIdentityAndAccessSchema1787702400000` and `SeedRbacCatalog1787702400001`), so
+T4's own required gate - which must go green before T5 can start - necessarily records migration
+1787702400001 under its **pre-T5** content. T5 then needs the database empty again, or its
+rewritten seed is skipped exactly the way T4 was protecting against. T6, T7 and T8 do not touch a
+migration file in place, so they need no reset.
+
+Drop the `_test` database (the development database only matters if a human runs
+`migration:run` against it, and no gate touches it) and recreate it empty, then let the next
+gate run the migrations fresh. This destroys local test data and nothing else: the repository
+has no commits and no deployed environment until this feature's own baseline commit.
+
+**In a sandboxed execution environment, only the orchestrator can perform this reset.**
+`DROP DATABASE`, `migration:revert` and `dropdb` are destructive-database operations a batch
+worker's own sandbox correctly refuses to run unattended. A worker that reaches the end of T4 or
+the end of T5 must stop and report back rather than attempt the reset itself - it is not a
+failure, it is the sandbox doing its job. The orchestrator verifies the target database belongs
+to this project (not a tunnel, not another project's container) before dropping it, the same way
+it did before the first reset.
 
 **Nothing in this feature is remote.** No task pushes, deploys, calls an external service or
 touches a production database. Per the skill's blast radius rule, approving these tasks
@@ -77,8 +96,9 @@ explicitly through `npm run migration:run` when T4 and T5 reach a development da
 **Nothing truncates and nothing drops, inside the code.** There is no `TRUNCATE` anywhere, no
 `synchronize: true` (`database.module.ts` sets it to `false` and `test/support/db.ts` leaves the
 default), and the only `DROP TABLE` statements live in the `down` half of the initial migration,
-which nothing in this plan invokes. The single drop this feature needs is the manual one in the
-Preconditions, performed by a person, once.
+which nothing in this plan invokes. The drops this feature needs are the two manual ones in the
+Preconditions - once before T4, once before T5 - each performed by a person, or by the
+orchestrator when a batch worker is sandboxed away from destructive database operations.
 
 **Two guards already in the repository make the gates safe.** `assertDedicatedTestDatabase` refuses
 to run when `DATABASE_NAME` does not end in `_test`, and `assertStandaloneRedis` refuses a Redis
@@ -276,6 +296,9 @@ T14  T15  T16  T17
 **Depends on**: T3, T4
 **Reuses**: the existing seed style
 **Requirement**: IDENT-01
+**Precondition**: the `_test` database is empty again immediately before this task's gate runs -
+see Preconditions. T4's own gate already recorded this migration under its pre-rewrite content,
+so without a fresh drop the rewritten seed is silently skipped, not executed.
 
 **Tools**:
 
