@@ -54,7 +54,7 @@ Every ambiguity is resolved or recorded here.
 **Why P1**: Every controller from feature 2 onwards references these codes. Without them, no later feature can be guarded.
 
 **Acceptance Criteria**:
-1. The system SHALL expose the permission codes defined in `docs/ddd/implementation-plan.md` Phase 0 through the existing permission catalog: twenty new workshop codes (`customers:read` through `metrics:read`) alongside the seven pre-existing identity codes that survive the group removal (AD-005), twenty-seven codes in total.
+1. The system SHALL expose the permission codes defined in `docs/ddd/implementation-plan.md` Phase 0 through the existing permission catalog: nineteen new workshop codes (`customers:read` through `metrics:read`) alongside the eight pre-existing identity codes that survive the group removal (AD-005), twenty-seven codes in total.
 2. WHEN the RBAC seed migration runs THEN the system SHALL grant each system role exactly the permission set defined in the design.
 3. The system SHALL define a `SUPER_ADMIN` system role holding `roles:manage`, which `ADMIN` does not hold.
 4. IF a permission code does not match the existing `PermissionCode` format THEN the system SHALL reject it at creation.
@@ -219,7 +219,7 @@ Every ambiguity is resolved or recorded here.
 | IDENT-04 | P1: Everybody is identified by CPF or CNPJ | Tasks | Verified |
 | IDENT-05 | P1: The workshop creates its own staff accounts | Tasks | Verified |
 | IDENT-06 | P1: Nobody widens their own access | Tasks | Verified |
-| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing - AC1 unimplemented, see `validation.md` |
+| IDENT-07 | P1: A staff-created account starts with a temporary password | Tasks | Implementing - AC1 closed by T18, pending re-verification |
 | IDENT-08 | P1: Signing out signs out everywhere | Tasks | Verified |
 | IDENT-09 | P2: One grouping concept in the access model | Tasks | Verified |
 
