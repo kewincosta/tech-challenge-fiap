@@ -41,12 +41,18 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 
 ## Preconditions
 
-None. Unlike `identity-foundation`, this feature adds two brand-new migration files (new
-timestamps, `customers` and `vehicles`) rather than rewriting an existing one - the test harness's
-`global-setup.ts` picks up new migrations on its normal run with no manual database reset. No
-existing module's schema, code, or tests are touched, so the full suite (229 tests as of
-`identity-foundation`'s Verified state) is expected to stay green through every task in this
-feature - there is no transitional-gate section here.
+No database reset needed - unlike `identity-foundation`, this feature adds two brand-new migration
+files (new timestamps, `customers` and `vehicles`) rather than rewriting an existing one, so there
+is no stale-recorded-migration-name risk. **Correction, found while implementing T4**: the original
+draft of this section claimed `global-setup.ts` "picks up new migrations automatically" - false.
+`test/support/global-setup.ts`'s own `runMigrations()` passes a **hardcoded array** of migration
+classes to `DataSource`, not a glob (only `typeorm-cli.datasource.ts`, the production/CLI path,
+globs `migrations/*.ts`). Each new migration task (T4, T14) must import its class into
+`global-setup.ts` and add it to that array in the same commit, or the test database never creates
+the table and every integration/e2e test in the feature fails with a misleading "relation does not
+exist" rather than a clear migration error. No existing module's schema, code, or tests are
+touched, so the full suite (229 tests as of `identity-foundation`'s Verified state) is expected to
+stay green through every task in this feature - there is no transitional-gate section here.
 
 ## Database actions in this feature
 
@@ -221,12 +227,17 @@ T17  T18  T19  T20
 
 **Done when**:
 
-- [ ] `customers` table has `id bigserial pk`, `external_id uuid unique`, `user_id bigint unique references users(id)`
-- [ ] Address/phone columns nullable, `status` has a `CHECK` constraint
-- [ ] Unique index on `user_id` enforces CVR-01 AC3 at the database level
-- [ ] `down()` drops the table cleanly
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] `customers` table has `id bigserial pk`, `external_id uuid unique`, `user_id bigint unique references users(id)`
+- [x] Address/phone columns nullable, `status` has a `CHECK` constraint
+- [x] Unique index on `user_id` enforces CVR-01 AC3 at the database level (deliberately NOT
+  filtered by `deleted_at IS NULL` - a user backs at most one customer ever, not "at most one
+  active customer"; see the migration's own comment)
+- [x] `down()` drops the table cleanly - verified by code review, not by execution: running it
+  against the shared test database would drop `customers` mid-suite for every later test file
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 5 tests pass, not 4 - added a database-level `CHECK` constraint rejection test
+  found while reviewing the migration's own `chk_customers_status` constraint (no silent
+  deletions)
 
 **Tests**: integration
 **Gate**: quick
