@@ -265,18 +265,18 @@ T8  T9  T10  T11
 
 **Done when**:
 
-- [ ] All three tables have `id bigserial pk` and `external_id uuid unique` (AD-001)
-- [ ] `inventory_items.quantity_on_hand` rejects a negative value at the database level (INV-03 AC3)
-- [ ] `inventory_items.unit_price_cents` and `stock_movements.unit_price_cents` reject a negative value at the database level
-- [ ] `stock_movements.quantity` rejects zero and negative at the database level
-- [ ] `kind` on both tables and `status` on `stock_movements` carry `CHECK` constraints listing every value, including the `CONSUMPTION`/`RETURN` kinds and the three statuses only features 5-7 will write
-- [ ] `ux_inventory_items_active_sku` is a plain unique index on `sku` filtered by `status = 'ACTIVE'`
-- [ ] `stock_movements.actor_user_id` has a real foreign key to `users(id)`, and `work_order_id` deliberately has none (spec.md's Assumptions)
-- [ ] Indexes exist on `stock_movements (inventory_item_id, occurred_at)` and `(work_order_id, status)`, and on `stock_movement_transitions (stock_movement_id)`
-- [ ] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
-- [ ] `down()` drops the three tables cleanly - verified by code review, not executed against the shared test database
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] All three tables have `id bigserial pk` and `external_id uuid unique` (AD-001)
+- [x] `inventory_items.quantity_on_hand` rejects a negative value at the database level (INV-03 AC3)
+- [x] `inventory_items.unit_price_cents` and `stock_movements.unit_price_cents` reject a negative value at the database level
+- [x] `stock_movements.quantity` rejects zero and negative at the database level
+- [x] `kind` on both tables and `status` on `stock_movements` carry `CHECK` constraints listing every value, including the `CONSUMPTION`/`RETURN` kinds and the three statuses only features 5-7 will write
+- [x] `ux_inventory_items_active_sku` is a plain unique index on `sku` filtered by `status = 'ACTIVE'`
+- [x] `stock_movements.actor_user_id` has a real foreign key to `users(id)`, and `work_order_id` deliberately has none (spec.md's Assumptions)
+- [x] Indexes exist on `stock_movements (inventory_item_id, occurred_at)` and `(work_order_id, status)`, and on `stock_movement_transitions (stock_movement_id)`
+- [x] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
+- [x] `down()` drops the three tables cleanly - verified by code review, not executed against the shared test database
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 9 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
