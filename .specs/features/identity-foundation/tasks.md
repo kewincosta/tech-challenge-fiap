@@ -51,32 +51,29 @@ alongside one value object, and the one-atomic-commit-per-task rule would be bro
 task. Commit the current tree first, on `main`, with a message the commit gate accepts, for
 example `chore: baseline the existing identity and access implementation`.
 
-**The `_test` database must be empty immediately before T4's gate runs, and empty again
-immediately before T5's gate runs.** T4 and T5 each rewrite a migration file in place rather than
-adding an ALTER migration. TypeORM records an executed migration by its class name in the
-`migrations` table, so once a name is recorded, editing that file's SQL and re-running migrations
-is a silent no-op, not an error - the old schema (or the old seed) stays under code that expects
-the new one, and the failure surfaces as a confusing runtime mismatch, never a loud one.
-
-This is not a single one-time drop. `test/support/global-setup.ts` always runs both migrations
-together (`CreateIdentityAndAccessSchema1787702400000` and `SeedRbacCatalog1787702400001`), so
-T4's own required gate - which must go green before T5 can start - necessarily records migration
-1787702400001 under its **pre-T5** content. T5 then needs the database empty again, or its
-rewritten seed is skipped exactly the way T4 was protecting against. T6, T7 and T8 do not touch a
-migration file in place, so they need no reset.
+**The `_test` database must be empty immediately before T4's gate runs.** T4 rewrites both the
+schema migration and the RBAC seed migration in one task (see the note on T4 below - they were
+originally two tasks and got merged, because `test/support/global-setup.ts` always runs both
+migrations together in one `dataSource.runMigrations()` call, so neither can be gated
+independently: a schema-only rewrite fails the combined run the moment the still-old seed inserts
+a uuid literal into a column T4 just made `bigint`). TypeORM records an executed migration by its
+class name in the `migrations` table, so once a name is recorded, editing that file's SQL and
+re-running migrations is a silent no-op, not an error - the old schema stays under code that
+expects the new one, and the failure surfaces as a confusing runtime mismatch, never a loud one.
 
 Drop the `_test` database (the development database only matters if a human runs
-`migration:run` against it, and no gate touches it) and recreate it empty, then let the next
-gate run the migrations fresh. This destroys local test data and nothing else: the repository
-has no commits and no deployed environment until this feature's own baseline commit.
+`migration:run` against it, and no gate touches it) and recreate it empty, then let T4's gate run
+both migrations fresh, together. This destroys local test data and nothing else: the repository
+has no commits and no deployed environment until this feature's own baseline commit. No other
+task in this feature touches a migration file in place, so this is the only reset the feature
+needs.
 
 **In a sandboxed execution environment, only the orchestrator can perform this reset.**
 `DROP DATABASE`, `migration:revert` and `dropdb` are destructive-database operations a batch
-worker's own sandbox correctly refuses to run unattended. A worker that reaches the end of T4 or
-the end of T5 must stop and report back rather than attempt the reset itself - it is not a
-failure, it is the sandbox doing its job. The orchestrator verifies the target database belongs
-to this project (not a tunnel, not another project's container) before dropping it, the same way
-it did before the first reset.
+worker's own sandbox correctly refuses to run unattended. A worker that needs this reset must
+stop and report back rather than attempt it - it is not a failure, it is the sandbox doing its
+job. The orchestrator verifies the target database belongs to this project (not a tunnel, not
+another project's container) before dropping it.
 
 **Nothing in this feature is remote.** No task pushes, deploys, calls an external service or
 touches a production database. Per the skill's blast radius rule, approving these tasks
@@ -88,17 +85,17 @@ authorizes local implementation and local commits only.
 
 Every gate above `quick` touches a real database. This is what runs, and what protects it.
 
-**Migrations run automatically on thirteen of the seventeen tasks.** `test/support/global-setup.ts`
+**Migrations run automatically on twelve of the sixteen tasks.** `test/support/global-setup.ts`
 calls `dataSource.runMigrations()` before every integration and e2e run, so any task whose gate is
 `full` or `build` migrates the test database as a side effect of its gate. Migrations also run
-explicitly through `npm run migration:run` when T4 and T5 reach a development database.
+explicitly through `npm run migration:run` when T4 reaches a development database.
 
 **Nothing truncates and nothing drops, inside the code.** There is no `TRUNCATE` anywhere, no
 `synchronize: true` (`database.module.ts` sets it to `false` and `test/support/db.ts` leaves the
 default), and the only `DROP TABLE` statements live in the `down` half of the initial migration,
-which nothing in this plan invokes. The drops this feature needs are the two manual ones in the
-Preconditions - once before T4, once before T5 - each performed by a person, or by the
-orchestrator when a batch worker is sandboxed away from destructive database operations.
+which nothing in this plan invokes. The single drop this feature needs is the manual one in the
+Preconditions, performed by a person, or by the orchestrator when a batch worker is sandboxed away
+from destructive database operations.
 
 **Two guards already in the repository make the gates safe.** `assertDedicatedTestDatabase` refuses
 to run when `DATABASE_NAME` does not end in `_test`, and `assertStandaloneRedis` refuses a Redis
@@ -143,7 +140,7 @@ T1  T2  T3
 The initial migration is rewritten, the persistence layer follows, and the group feature goes out with it.
 
 ```
-T4  T5  T6  T7  T8
+T4  T6  T7  T8
 ```
 
 ### Phase 3: Person document and user administration
@@ -256,14 +253,20 @@ T14  T15  T16  T17
 
 ### Phase 2: Schema retrofit
 
-#### T4: Rewrite the identity schema migration
+#### T4: Rewrite the identity schema and RBAC seed migrations
 
-**What**: Rewrite the initial migration with `bigserial` primary keys and `external_id` uuid columns, the new `users` columns, and no group tables.
-**Where**: `src/shared/infrastructure/database/migrations/1787702400000-create-identity-and-access-schema.ts`
+**What**: Rewrite both the schema migration and the RBAC seed migration in one task. Originally
+two separate tasks; merged because `test/support/global-setup.ts` always runs both migrations
+together in one `dataSource.runMigrations()` call, so a schema-only rewrite can never gate green
+on its own - the still-old seed inserts a uuid literal into a column the schema rewrite just made
+`bigint`, and the combined run fails before any test file loads. Per the skill's own guidance on
+compilation-dependent tasks: if code can't be tested in the task that creates it, the task
+boundary is wrong. This is that case.
+**Where**: `src/shared/infrastructure/database/migrations/1787702400000-create-identity-and-access-schema.ts`, `src/shared/infrastructure/database/migrations/1787702400001-seed-rbac-catalog.ts`
 **Depends on**: T3
-**Reuses**: the existing raw SQL style, its `CHECK` constraints and partial unique indexes
-**Requirement**: IDENT-03
-**Precondition**: every local database is dropped first - see Preconditions. Rewriting a migration in place is invisible to a database that already ran it.
+**Reuses**: the existing raw SQL style, its `CHECK` constraints, partial unique indexes and seed style
+**Requirement**: IDENT-01, IDENT-03
+**Precondition**: the `_test` database is empty first - see Preconditions. Rewriting a migration in place is invisible to a database that already ran it.
 
 **Tools**:
 
@@ -278,46 +281,18 @@ T14  T15  T16  T17
 - [ ] `users` carries `document varchar(14) not null` and `must_change_password boolean not null default false`
 - [ ] Partial unique indexes on `email` and `document` filtered by `deleted_at IS NULL`
 - [ ] The refresh token self reference keeps `DEFERRABLE INITIALLY DEFERRED`
-- [ ] The migration runs from an empty database, verified by dropping and re-running rather than by trusting an existing one
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 6 integration tests pass (no silent deletions)
-
-**Tests**: integration
-**Gate**: full
-
-**Commit**: `refactor(database): rewrite identity schema with internal keys and external ids`
-
----
-
-#### T5: Rewrite the RBAC seed migration
-
-**What**: Seed the workshop permissions, the five system roles and an explicit grant list per role.
-**Where**: `src/shared/infrastructure/database/migrations/1787702400001-seed-rbac-catalog.ts`
-**Depends on**: T3, T4
-**Reuses**: the existing seed style
-**Requirement**: IDENT-01
-**Precondition**: the `_test` database is empty again immediately before this task's gate runs -
-see Preconditions. T4's own gate already recorded this migration under its pre-rewrite content,
-so without a fresh drop the rewritten seed is silently skipped, not executed.
-
-**Tools**:
-
-- MCP: NONE
-- Skill: NONE
-
-**Done when**:
-
-- [ ] Every permission code from T3 is inserted
+- [ ] Every permission code from T3 is inserted by the seed
 - [ ] `SUPER_ADMIN`, `ADMIN`, `SERVICE_ADVISOR`, `MECHANIC` and `CUSTOMER` exist as system roles
 - [ ] Each role is granted its explicit list, never a `CROSS JOIN` wildcard
 - [ ] `SUPER_ADMIN` holds `roles:manage` and `ADMIN` does not
+- [ ] The migration runs from an empty database, verified by dropping and re-running rather than by trusting an existing one
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 5 integration tests pass, one per role (no silent deletions)
+- [ ] Test count: 11 integration tests pass, covering the schema shape and one case per seeded role (no silent deletions)
 
 **Tests**: integration
 **Gate**: full
 
-**Commit**: `refactor(database): seed workshop permissions with explicit role grants`
+**Commit**: `refactor(database): rewrite identity schema and seed with internal keys and explicit grants`
 
 ---
 
@@ -384,7 +359,7 @@ so without a fresh drop the rewritten seed is silently skipped, not executed.
 
 **What**: Rewrite the admin seed script to supply a validated document and create a `SUPER_ADMIN`.
 **Where**: `scripts/seed-admin.ts`
-**Depends on**: T5
+**Depends on**: T4
 **Reuses**: the existing script structure and `argon2`
 **Requirement**: IDENT-06
 
@@ -531,7 +506,7 @@ so without a fresh drop the rewritten seed is silently skipped, not executed.
 
 **What**: Refuse assigning `SUPER_ADMIN` at all, and `ADMIN` unless the actor holds `SUPER_ADMIN`.
 **Where**: `src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts`
-**Depends on**: T5
+**Depends on**: T4
 **Reuses**: `RevokeSessionHandler` for the check-after-load pattern, `GetUserEffectiveAccessQuery`
 **Requirement**: IDENT-06
 
@@ -683,14 +658,13 @@ Every arrow is a real `Depends on`. Tasks with no arrow into them have no depend
 
 ```
 T3 -> T4 -> T6 -> T7
-T3 -> T5 -> T8
-T4 -> T5
+T4 -> T8
 T4 -> T7
 T2 -> T9
 T6 -> T9
 T9 -> T10 -> T12
 T9 -> T11 -> T12
-T5 -> T13
+T4 -> T13
 T9 -> T14 -> T15 -> T16
 T15 -> T17
 ```
@@ -706,8 +680,7 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T1 | 1 value object | Granular |
 | T2 | 1 value object | Granular |
 | T3 | 2 contract files, cohesive | OK |
-| T4 | 1 migration file | Granular |
-| T5 | 1 migration file | Granular |
+| T4 | 2 migration files, cohesive | OK - the schema and its seed are one deployable unit; `global-setup.ts` always runs them together, so splitting them left T4 ungateable on its own (see the note in T4's body) |
 | T6 | 1 layer across modules, one mechanical change repeated | OK - splitting per module would leave the build broken between commits |
 | T7 | 1 feature deleted | OK - a deletion is atomic or it does not compile |
 | T8 | 1 script | Granular |
@@ -731,15 +704,14 @@ Execution is strictly sequential - there is no intra-phase parallelism.
 | T2 | None | no arrow in | Match |
 | T3 | None | no arrow in | Match |
 | T4 | T3 | T3 -> T4 | Match |
-| T5 | T3, T4 | T3 -> T5, T4 -> T5 | Match |
 | T6 | T4 | T4 -> T6 | Match |
 | T7 | T4, T6 | T4 -> T7, T6 -> T7 | Match |
-| T8 | T5 | T5 -> T8 | Match |
+| T8 | T4 | T4 -> T8 | Match |
 | T9 | T2, T6 | T2 -> T9, T6 -> T9 | Match |
 | T10 | T9 | T9 -> T10 | Match |
 | T11 | T9 | T9 -> T11 | Match |
 | T12 | T10, T11 | T10 -> T12, T11 -> T12 | Match |
-| T13 | T5 | T5 -> T13 | Match |
+| T13 | T4 | T4 -> T13 | Match |
 | T14 | T9 | T9 -> T14 | Match |
 | T15 | T14 | T14 -> T15 | Match |
 | T16 | T15 | T15 -> T16 | Match |
@@ -757,7 +729,6 @@ No dependency points at a later phase.
 | T2 | Domain value object | unit | unit | OK |
 | T3 | Contract constants | none | none | OK |
 | T4 | Migration | integration | integration | OK |
-| T5 | Migration | integration | integration | OK |
 | T6 | Repository / mapper | integration | integration | OK |
 | T7 | Repository, module wiring | integration | integration | OK |
 | T8 | Script over the schema | integration | integration | OK |
