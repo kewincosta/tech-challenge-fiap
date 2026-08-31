@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 3,
+  "next_id": 5,
   "lessons": [
     {
       "id": "L-001",
@@ -40,6 +40,42 @@
       ],
       "created": "2026-08-31T10:15:15Z",
       "last_seen": "2026-08-31T10:15:15Z"
+    },
+    {
+      "id": "L-003",
+      "key": "ac_gap::a value object s own passing unit tests or a sibling handler exercising the identical call pattern do not substitute for a dedicated test on the specific handler or route that also calls it give every error producing call site its own asserting test at the layer the test coverage matrix promises for that route",
+      "text": "A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.",
+      "signal": "ac_gap",
+      "scope": "application-handlers",
+      "status": "candidate",
+      "features": [
+        "customer-and-vehicle-registry"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)"
+      ],
+      "created": "2026-08-31T12:39:52Z",
+      "last_seen": "2026-08-31T12:39:52Z"
+    },
+    {
+      "id": "L-004",
+      "key": "gate_fail::a per call test fixture generator built from limited entropy randomness a faker field a random digit checksum id can still collide against a never truncated test database once enough runs accumulate prefer a uuid derived fragment in fixture generators over independent random digits or a library default with bounded entropy",
+      "text": "A per-call test-fixture generator built from limited-entropy randomness (a faker field, a random-digit checksum id) can still collide against a never-truncated test database once enough runs accumulate - prefer a UUID-derived fragment in fixture generators over independent random digits or a library default with bounded entropy.",
+      "signal": "gate_fail",
+      "scope": "test-fixtures",
+      "status": "candidate",
+      "features": [
+        "customer-and-vehicle-registry"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "test/support/http.ts:26-28 (registerUser's faker email / document.factory.ts's uniqueValidCpf) - 409 collision observed on the first full gate run, gone on immediate rerun (test-fixtures)"
+      ],
+      "created": "2026-08-31T12:39:57Z",
+      "last_seen": "2026-08-31T12:39:57Z"
     }
   ]
 }

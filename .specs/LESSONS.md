@@ -26,6 +26,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: .specs/features/identity-foundation/spec.md:206 (planning)
 - last seen: 2026-08-31T10:15:15Z
 
+### L-003 - A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `application-handlers` · harmful: 0
+- features: customer-and-vehicle-registry
+- evidence: CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)
+- last seen: 2026-08-31T12:39:52Z
+
+### L-004 - A per-call test-fixture generator built from limited-entropy randomness (a faker field, a random-digit checksum id) can still collide against a never-truncated test database once enough runs accumulate - prefer a UUID-derived fragment in fixture generators over independent random digits or a library default with bounded entropy.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `test-fixtures` · harmful: 0
+- features: customer-and-vehicle-registry
+- evidence: test/support/http.ts:26-28 (registerUser's faker email / document.factory.ts's uniqueValidCpf) - 409 collision observed on the first full gate run, gone on immediate rerun (test-fixtures)
+- last seen: 2026-08-31T12:39:57Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
