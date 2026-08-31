@@ -74,7 +74,7 @@ is specified when it is reached, never in advance.
 
 | # | Feature | Plan phases | Scope | Status |
 | --- | --- | --- | --- | --- |
-| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Fix round complete (T18-T20), pending re-verification |
+| 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Not started |
 | 3 | `service-catalog` | 6 | Medium | Not started |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
@@ -109,16 +109,17 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/identity-foundation`
+- **Feature**: `.specs/features/identity-foundation` - **done**
 - **Phase / Task**: All 20 tasks (T1-T4 merged T5, T6-T20) complete and merged to `main` at
-  `318c790`. The first Verifier pass (`validation.md`, first version) returned FAIL on two real
-  gaps; T18-T20 close them. Awaiting re-verification.
-- **Completed**: T1, T2, T3, T4 (merged with the original T5), T6, T7, T8, T9, T10, T11, T12,
-  T13, T14, T15, T16, T17, T18, T19, T20 - every task in `tasks.md`, every checkbox marked.
+  `49bf8ab`. Verifier pass 1 (baseline `bf20dbb`) returned FAIL on two real gaps; T18-T20 closed
+  them; Verifier pass 2 (baseline `332519e`) returned PASS, 43/43 spec-anchored ACs, 229/229 gate,
+  3/3 discrimination-sensor mutations killed. `validation.md` and spec.md's Requirement
+  Traceability (9/9 `Verified`) both reflect the passing state.
+- **Completed**: every task in `tasks.md`, every checkbox marked, feature Verified end to end.
 - **In-progress** (file:line): none
-- **Next step**: dispatch a fresh Verifier sub-agent (author != verifier) to re-verify against
-  the T18-T20 diff, then read the updated `validation.md` and act on any remaining gaps (bounded
-  to 3 fix/re-verify iterations total before escalating - this is iteration 2).
+- **Next step**: none for this feature. The next unit of work is specifying feature 2,
+  `customer-and-vehicle-registry`, when the user asks for it - not before, per this file's own
+  Feature Roadmap policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
