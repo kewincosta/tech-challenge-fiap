@@ -76,7 +76,7 @@ is specified when it is reached, never in advance.
 | --- | --- | --- | --- | --- |
 | 1 | `identity-foundation` | 0, 1, 2, 3 | Large | Verified |
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Verified |
-| 3 | `service-catalog` | 6 | Medium | Implemented, pending Verifier |
+| 3 | `service-catalog` | 6 | Medium | Verified |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Not started |
 | 5 | `work-order-creation` | 8 | Large | Not started |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Not started |
@@ -109,28 +109,35 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/service-catalog`
-- **Phase / Task**: All 10 tasks (T1-T10) complete and committed to `main` at `6030dcd`. Diff range
-  for the Verifier: `1c9d225..HEAD` (13 commits, spec through the last task). Not yet Verified -
-  dispatching the mandatory Verifier next.
-- **Completed**: every task in `tasks.md`, every checkbox marked. Gate at close: lint clean, build
-  clean, unit 250/250, integration 92/92 (run twice consecutively for durability), e2e 81/81 -
-  423 total, up from the 360 `customer-and-vehicle-registry` baseline, zero regressions.
+- **Feature**: `.specs/features/service-catalog` - **Verified**, PASS.
+- **Phase / Task**: All 10 tasks (T1-T10) complete, committed to `main` through `6030dcd`, verified
+  independently by a fresh Verifier sub-agent against `101f62e` (diff range `1c9d225..HEAD`, 14
+  commits, spec through the closing STATE.md update). `validation.md` written and passing
+  `validate_state.py`.
+- **Completed**: every task in `tasks.md`; 19/19 spec ACs across the 4 stories matched their
+  spec-defined outcome; discrimination sensor killed 3/3 injected mutations (the `Money` conversion,
+  the `lower()` expression index, and the `getById`-unfiltered contract); full gate reproduced
+  independently - lint clean, build clean, unit 250/250, integration 92/92 (twice consecutively),
+  e2e 81/81, 423 total, zero regressions against the 360 `customer-and-vehicle-registry` baseline.
+  RBAC catalog confirmed unchanged and already correct for `SERVICE_ADVISOR`/`MECHANIC`.
 - **In-progress** (file:line): none
-- **Next step**: dispatch the Verifier sub-agent (author != verifier), then read `validation.md`
-  and act on any gaps (bounded to 3 fix/re-verify iterations before escalating).
+- **Next step**: specify feature 4, `inventory-and-stock-movements` (plan phase 7). Three minor,
+  non-blocking coverage gaps are logged in `validation.md`'s Fix 1-3 (SVC-01 AC8's update/deactivate
+  403 e2e coverage; the whitespace-only duplicate-name edge case; reusing a deactivated service's
+  name via update rather than create) - optional hardening, not a blocker.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context if resuming cold or verifying):
+**Notes from this feature's own implementation** (useful context for feature 4 or a re-read of this one):
 1. This is where AD-002 first becomes real code: `services.price_cents` is the project's first
    `Money`-backed column. Every `bigint` non-primary-key column in this codebase maps to a
    **string** property because that is what the driver returns, so `ServiceMapper` and
    `TypeOrmServiceQueryAdapter` both call `Money.fromDatabase` explicitly. The repository test
    asserts both halves - that the raw driver value really is a `string` and that the mapped value
    is a `number` - because only the pair proves the conversion is happening rather than the value
-   happening to match.
+   happening to match. `inventory-and-stock-movements` (feature 4) is the next module with a
+   `Money`-backed column and should follow the same pair-assertion pattern.
 2. First expression index in the schema: `ux_services_active_name` keys on `lower(name)` and
    filters on `status = 'ACTIVE'`. The repository's own `existsActiveByName` uses `lower()` on both
    sides for the same reason; if only one side did, a duplicate would surface as a raw 500 instead
@@ -144,7 +151,11 @@ entry. They apply to every feature.
 4. The `getById`-unfiltered / `listActive`-filtered split was designed in from the start rather
    than discovered as a bug, carrying forward what `customer-and-vehicle-registry` learned late:
    feature 5 needs "does not exist" to stay distinct from "exists but deactivated" so it can
-   refuse rule 18 precisely. `GetServiceQuery` is that contract.
+   refuse rule 18 precisely. `GetServiceQuery` is that contract, confirmed present at every layer
+   (query adapter, query handler, HTTP route) by the Verifier.
 5. No RBAC seed change was needed - `services:read` and `services:manage` were already seeded and
    granted to the right roles by `identity-foundation`. Verified against the migration before
-   starting, not assumed.
+   starting, and confirmed untouched by the Verifier's diff check.
+6. Two lessons (`L-002`, edge cases need an owning task in `tasks.md`; `L-003`, a sibling call
+   path's test does not substitute for the specific handler's own) recurred in this feature and are
+   now `confirmed` in `LESSONS.md` - load them at Specify/Design for feature 4.
