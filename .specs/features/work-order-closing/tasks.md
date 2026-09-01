@@ -847,14 +847,16 @@ Note: `discountAppliedByUserId` is not on `WorkOrderResponseDto` (design.md's ow
 
 **Done when**:
 
-- [ ] Two concurrent withdrawals of 3 on one work order answer one 200 and one 409, rather than the two 200s `main` answers today
-- [ ] After that pair, the units that left the shelf equal the work order's withdrawn quantity - the assertion that fails on `main`
-- [ ] Repeating the refused call after the conflict succeeds, and the second withdrawal is then correctly refused when it would exceed the planned quantity
-- [ ] A concurrent cancellation and withdrawal end with one refused, never with a pending consumption on a cancelled work order
-- [ ] Sequential calls on the same work order never answer 409, so the guard does not refuse honest traffic
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Two concurrent withdrawals of 3 on one work order answer one 200 and one 409, rather than the two 200s `main` answers today
+- [x] After that pair, the units that left the shelf equal the work order's withdrawn quantity - the assertion that fails on `main`
+- [x] Repeating the refused call after the conflict succeeds, and the second withdrawal is then correctly refused when it would exceed the planned quantity
+- [x] A concurrent cancellation and withdrawal end with one refused, never with a pending consumption on a cancelled work order
+- [x] Sequential calls on the same work order never answer 409, so the guard does not refuse honest traffic
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively (179/179 both times)
+- [x] Test count: 5 tests pass (matches the plan exactly)
+
+Note: `SettleStockMovementsHandler`/`WriteOffStockMovementsHandler`'s missing module registration (T20's own fix) is what let `DeliverVehicleHandler` and `CancelWorkOrderHandler` even reach their transactions in this file's tests - without T20's fix this task's cancellation-race test would have failed the same way T20's own first e2e run did. One full-suite run showed one unrelated transient failure (`vehicles.e2e.spec.ts`'s `registerUser` hitting a 409 from a rare CPF/email collision in `uniqueValidCpf`/faker, a file this feature never touches) and passed clean on two immediate re-runs at 179/179 - not counted against this task's own "twice consecutively" requirement, which both held clean.
 
 **Tests**: e2e
 **Gate**: build
