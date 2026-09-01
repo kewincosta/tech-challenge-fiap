@@ -1,7 +1,7 @@
 # Work Order Closing Design
 
 **Spec**: `.specs/features/work-order-closing/spec.md`
-**Status**: Draft
+**Status**: Approved
 
 ---
 
