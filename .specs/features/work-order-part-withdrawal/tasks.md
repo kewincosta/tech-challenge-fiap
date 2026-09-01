@@ -586,10 +586,10 @@ Note: the "movement ids recorded on work order items" bullet this task originall
 
 **Done when**:
 
-- [ ] The handler returns what the port answers, unchanged
-- [ ] An empty result is an empty list, never an error
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] The handler returns what the port answers, unchanged
+- [x] An empty result is an empty list, never an error
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (the third covers the pass-through has no arguments of its own - no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
