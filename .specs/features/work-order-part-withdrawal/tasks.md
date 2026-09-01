@@ -440,14 +440,16 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] The handler loads every addressed item through `findAllByIdsForUpdate` and applies one consumption per line
-- [ ] It returns one minted movement id per line, which is what the return path later points at
-- [ ] It writes the inventory item's catalog price at that moment on the movement, never the work order's budgeted price - spec.md's fourth edge case at this layer
-- [ ] It refuses the whole command with `InsufficientStockError` when any line exceeds its item's count on hand
-- [ ] It refuses with `InventoryItemNotFoundError` when an addressed id matches no item
-- [ ] Nothing is saved when any line is refused
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] The handler loads every addressed item through `findAllByIdsForUpdate` and applies one consumption per line
+- [x] It returns one minted movement id per line, which is what the return path later points at
+- [x] It writes the inventory item's catalog price at that moment on the movement, never the work order's budgeted price - spec.md's fourth edge case at this layer
+- [x] It refuses the whole command with `InsufficientStockError` when any line exceeds its item's count on hand
+- [x] It refuses with `InventoryItemNotFoundError` when an addressed id matches no item
+- [x] Nothing is saved when any line is refused
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (2 fewer than planned - one case per behavioural bullet)
+
+**Unplanned but required**: `InMemoryInventoryItemRepository.findAllByIdsForUpdate` returned live references from its internal array, so a batch handler that mutates every line before saving any of them made the "nothing saved when a line fails" test see the mutation as if it were already persisted - the fake alone could not tell "mutated in memory" from "written". Fixed by returning fresh `InventoryItem.restore(...)` clones, matching what the real TypeORM implementation already does (every read rebuilds a new object from the row). `findById` was deliberately left untouched - no existing test needs it changed, and this task's own new method is the one that needed to match the real repository's behavior.
 
 **Tests**: unit
 **Gate**: quick
