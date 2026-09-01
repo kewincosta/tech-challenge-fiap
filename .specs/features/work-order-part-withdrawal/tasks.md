@@ -473,13 +473,15 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] The handler loads every addressed item through `findAllByIdsForUpdate` and applies one restoration per line
-- [ ] Each appended `RETURN` movement names the consumption it undoes, taken from the command
-- [ ] It never edits the original consumption
-- [ ] It refuses with `InventoryItemNotFoundError` when an addressed id matches no item
-- [ ] Nothing is saved when any line is refused
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] The handler loads every addressed item through `findAllByIdsForUpdate` and applies one restoration per line
+- [x] Each appended `RETURN` movement names the consumption it undoes, taken from the command
+- [x] It never edits the original consumption
+- [x] It refuses with `InventoryItemNotFoundError` when an addressed id matches no item
+- [x] Nothing is saved when any line is refused
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (2 fewer than planned - the first bullet's two behaviours share one dense case)
+
+**Unplanned but required**: the first draft of the "never edits the original consumption" test read `newMovements` on the item *after* the handler ran - but a freshly loaded item never carries movements from an earlier lifecycle (`InventoryItem.restore` always starts empty, movements are a read model), so the original consumption was never there to inspect that way. Fixed by capturing the consumption from the object *before* the handler runs and asserting that same reference is untouched, which is the strongest proof a unit test without a real database can offer.
 
 **Tests**: unit
 **Gate**: quick
