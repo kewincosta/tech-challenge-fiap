@@ -222,6 +222,42 @@ async function createInExecutionWorkOrder(
   };
 }
 
+/**
+ * A work order that has completed its diagnosis and generated round 1, but stopped short of
+ * `/budget/approval` - `AWAITING_APPROVAL`, the state `withdrawParts`/`returnParts` refuse
+ * regardless of which item id the batch names, since the state guard runs before any line is
+ * resolved (validation.md's Fix 4 - the route-level 422 this state produces had no test of its own).
+ */
+async function createAwaitingApprovalWorkOrder(): Promise<{ number: string }> {
+  const owner = await registerCustomer();
+  const vehicleId = await registerVehicle(owner.customerId);
+  const created = await api(app)
+    .post('/api/v1/work-orders')
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ customerId: owner.customerId, vehicleId })
+    .expect(201);
+  const number = (created.body as { number: string }).number;
+
+  const inventoryItemId = await createInventoryItem(2500);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/diagnosis`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/parts`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ inventoryItemId, quantity: 2 })
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/diagnosis/completion`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+
+  const workOrder = await getWorkOrder(number);
+  expect(workOrder.status).toBe('AWAITING_APPROVAL');
+  return { number };
+}
+
 function withdraw(number: string, itemId: string, quantity: number) {
   return api(app)
     .post(`/api/v1/work-orders/${number}/withdrawals`)
@@ -388,6 +424,21 @@ describe('Work order part withdrawal - main path', () => {
       .set('Authorization', `Bearer ${mechanic.accessToken}`)
       .send({ lines: [{ itemId: unknownItemId, quantity: 1 }] })
       .expect(404);
+  });
+
+  it('answers 404 on the withdrawals route for an item id that belongs to a different work order', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+    const otherWorkOrder = await createInExecutionWorkOrder();
+
+    await withdraw(workOrder.number, otherWorkOrder.approvedItemId, 1).expect(404);
+  });
+
+  it('answers 422 on both routes for a work order not yet IN_EXECUTION', async () => {
+    const workOrder = await createAwaitingApprovalWorkOrder();
+    const someItemId = '99999999-9999-4999-8999-999999999999';
+
+    await withdraw(workOrder.number, someItemId, 1).expect(422);
+    await returnParts(workOrder.number, someItemId, 1).expect(422);
   });
 });
 

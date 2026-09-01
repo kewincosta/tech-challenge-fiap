@@ -148,6 +148,7 @@ describe('WithdrawPartsHandler', () => {
     expect(dispatched).toBeInstanceOf(ConsumeStockBatchCommand);
     expect(dispatched.lines).toEqual([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 }]);
     expect(dispatched.workOrderId).toBe(updated.id.value);
+    expect(dispatched.actorUserId).toBe(MECHANIC_ID);
   });
 
   it('publishes the recorded events after the transaction', async () => {

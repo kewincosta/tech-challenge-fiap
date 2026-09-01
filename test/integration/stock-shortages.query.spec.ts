@@ -144,6 +144,20 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     expect(shortages.some((row) => row.inventoryItemId === item.externalId)).toBe(false);
   });
 
+  it('leaves out an item whose count on hand exactly equals its outstanding demand', async () => {
+    // WOP-04's AC1 names "exceeds", AC4 "covers" - covers includes exact equality, so the
+    // boundary itself needs its own fixture (validation.md's M7): count and demand both at 3
+    // must not appear, or `>` has silently become `>=` somewhere in the query.
+    const item = await insertInventoryItem(3);
+    const workOrder = await insertWorkOrder('IN_EXECUTION');
+    const budgetId = await insertBudget(workOrder.id, 1, 'APPROVED');
+    await insertWorkOrderPart(workOrder.id, item.id, { budgetId, plannedQuantity: 3 });
+
+    const shortages = await queryAdapter.listStockShortages();
+
+    expect(shortages.some((row) => row.inventoryItemId === item.externalId)).toBe(false);
+  });
+
   it('ignores demand from a work order in any state other than IN_EXECUTION', async () => {
     const item = await insertInventoryItem(1);
     const workOrder = await insertWorkOrder('AWAITING_APPROVAL');

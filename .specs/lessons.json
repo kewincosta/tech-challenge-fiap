@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 8,
+  "next_id": 11,
   "lessons": [
     {
       "id": "L-001",
@@ -53,18 +53,20 @@
       "features": [
         "customer-and-vehicle-registry",
         "service-catalog",
-        "inventory-and-stock-movements"
+        "inventory-and-stock-movements",
+        "work-order-part-withdrawal"
       ],
-      "recurrence": 3,
+      "recurrence": 4,
       "harmful": 0,
       "evidence": [
         "CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers)",
         "update-service.handler.spec.ts (no case renaming a service to a name only a deactivated service holds, even though service.repository.spec.ts:85-94 proves the identical existsActiveByName call shape) (application-handlers)",
         "inventory-items.controller.ts POST/PATCH/:externalId/adjustments (inventory:manage) - only the /replenishments route got a dedicated mechanic-403 e2e case (test/e2e/inventory-items.e2e.spec.ts:112-123); create/update/adjust and the read-routes-with-neither-permission branch (INV-01 AC9) rest on the same decorator with no route-specific case (application-handlers)",
-        "create-inventory-item.request.dto.ts:24 (@IsIn(['PART','SUPPLY'])) and replenish/adjust DTOs' @IsPositive quantity guard (INV-01 AC2, INV-02 AC4) - no test at any layer asserts the DTO-level 400 for an invalid kind or a zero/negative movement quantity over HTTP, though the identical global ValidationPipe mechanism is proven for other DTOs elsewhere in the codebase (application-handlers)"
+        "create-inventory-item.request.dto.ts:24 (@IsIn(['PART','SUPPLY'])) and replenish/adjust DTOs' @IsPositive quantity guard (INV-01 AC2, INV-02 AC4) - no test at any layer asserts the DTO-level 400 for an invalid kind or a zero/negative movement quantity over HTTP, though the identical global ValidationPipe mechanism is proven for other DTOs elsewhere in the codebase (application-handlers)",
+        "WOP-01 AC6 (404), WOP-01 AC10 and WOP-03 AC5 (422): the aggregate's unit tests at work-order.spec.ts:1035/1063/1255 plus the ErrorKind mapping are the only evidence; no e2e asserts the status on the withdrawals or returns route (e2e-routes)"
       ],
       "created": "2026-08-31T12:39:52Z",
-      "last_seen": "2026-08-31T22:33:37Z"
+      "last_seen": "2026-09-01T14:04:35Z"
     },
     {
       "id": "L-004",
@@ -137,6 +139,60 @@
       ],
       "created": "2026-09-01T01:38:13Z",
       "last_seen": "2026-09-01T01:38:13Z"
+    },
+    {
+      "id": "L-008",
+      "key": "surviving_mutant::when two layers enforce the same rule the outer guard needs a test the inner guard cannot satisfy otherwise loosening or deleting the outer one changes behaviour that no test can see",
+      "text": "When two layers enforce the same rule, the outer guard needs a test the inner guard cannot satisfy - otherwise loosening or deleting the outer one changes behaviour that no test can see.",
+      "signal": "surviving_mutant",
+      "scope": "domain-aggregates",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates)"
+      ],
+      "created": "2026-09-01T14:04:16Z",
+      "last_seen": "2026-09-01T14:04:16Z"
+    },
+    {
+      "id": "L-009",
+      "key": "surviving_mutant::give every threshold comparison a fixture sitting exactly on its boundary fixtures that clear the threshold by a margin on both sides cannot tell a strict comparison from a non strict one",
+      "text": "Give every threshold comparison a fixture sitting exactly on its boundary - fixtures that clear the threshold by a margin on both sides cannot tell a strict comparison from a non-strict one.",
+      "signal": "surviving_mutant",
+      "scope": "query-adapters",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M7: typeorm-inventory-query.adapter.ts:65 (HAVING SUM(...) > quantity_on_hand changed to >=) survived stock-shortages.query.spec.ts and both e2e specs (query-adapters)"
+      ],
+      "created": "2026-09-01T14:04:24Z",
+      "last_seen": "2026-09-01T14:04:24Z"
+    },
+    {
+      "id": "L-010",
+      "key": "ac_gap::when an acceptance criterion names several fields a record must carry assert every one of them a not null column with a foreign key proves a value is present never that it is the right one",
+      "text": "When an acceptance criterion names several fields a record must carry, assert every one of them - a NOT NULL column with a foreign key proves a value is present, never that it is the right one.",
+      "signal": "ac_gap",
+      "scope": "persistence",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "WOP-01 AC2 and WOP-03 AC2 (the acting user on a CONSUMPTION and on a RETURN movement has no assertion; inventory-item.repository.spec.ts:334 covers only INBOUND) (persistence)"
+      ],
+      "created": "2026-09-01T14:04:24Z",
+      "last_seen": "2026-09-01T14:04:24Z"
     }
   ]
 }

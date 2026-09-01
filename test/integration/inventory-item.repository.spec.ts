@@ -443,19 +443,26 @@ describe('TypeOrmInventoryItemRepository', () => {
     });
     await repository.save(consuming);
 
-    const rows: Array<{ status: string; unit_price_cents: string; work_order_external_id: string }> =
-      await dataSource.query(
-        `SELECT sm.status, sm.unit_price_cents, wo.external_id AS work_order_external_id
-           FROM stock_movements sm
-           JOIN inventory_items ii ON ii.id = sm.inventory_item_id
-           JOIN work_orders wo ON wo.id = sm.work_order_id
-          WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
-        [item.id.value],
-      );
+    const rows: Array<{
+      status: string;
+      unit_price_cents: string;
+      work_order_external_id: string;
+      actor_external_id: string;
+    }> = await dataSource.query(
+      `SELECT sm.status, sm.unit_price_cents, wo.external_id AS work_order_external_id,
+              u.external_id AS actor_external_id
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         JOIN work_orders wo ON wo.id = sm.work_order_id
+         JOIN users u ON u.id = sm.actor_user_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [item.id.value],
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe('PENDING');
     expect(Number(rows[0].unit_price_cents)).toBe(3000);
     expect(rows[0].work_order_external_id).toBe(workOrderExternalId);
+    expect(rows[0].actor_external_id).toBe(actorExternalId);
   });
 
   it('should persist a RETURN movement with a null status and undoes_movement_id resolved to the original consumption', async () => {
@@ -513,18 +520,20 @@ describe('TypeOrmInventoryItemRepository', () => {
     });
     await repository.save(returning);
 
-    const rows: Array<{ status: string | null; undoes_external_id: string }> =
+    const rows: Array<{ status: string | null; undoes_external_id: string; actor_external_id: string }> =
       await dataSource.query(
-        `SELECT sm.status, undone.external_id AS undoes_external_id
+        `SELECT sm.status, undone.external_id AS undoes_external_id, u.external_id AS actor_external_id
            FROM stock_movements sm
            JOIN inventory_items ii ON ii.id = sm.inventory_item_id
            JOIN stock_movements undone ON undone.id = sm.undoes_movement_id
+           JOIN users u ON u.id = sm.actor_user_id
           WHERE ii.external_id = $1 AND sm.kind = 'RETURN'`,
         [item.id.value],
       );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBeNull();
     expect(rows[0].undoes_external_id).toBe(consumeMovementId.value);
+    expect(rows[0].actor_external_id).toBe(actorExternalId);
   });
 
   it('findPendingConsumptions returns the consumptions newest first', async () => {

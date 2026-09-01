@@ -1136,6 +1136,40 @@ describe('WorkOrder.withdrawParts', () => {
     expect(workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity).toBe(0);
   });
 
+  it('leaves the first line untouched when the second line alone exceeds its own planned quantity', () => {
+    // Both lines pass the round-approval guard - this isolates WithdrawalExceedsPlannedError as
+    // the guard that fires on the second line, distinct from the previous test's round guard.
+    // WorkOrderPartItem.withdraw carries the same planned-quantity check as a second line of
+    // defense, so a test that lets either guard fire cannot tell them apart (validation.md's M3).
+    const secondApprovedItem = WorkOrderPartItem.restore({
+      id: PENDING_ITEM_ID,
+      inventoryItemId: PENDING_INVENTORY_ITEM_ID,
+      sku: 'BLT-002',
+      itemName: 'Correia',
+      unitPrice: Money.fromCents(4000),
+      plannedQuantity: PlannedQuantity.create(1),
+      withdrawnQuantity: 0,
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(4000),
+    });
+    const workOrder = restoreInExecution(
+      [approvedRoundOnePart(), secondApprovedItem],
+      [approvedRoundOneBudget()],
+    );
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [
+          { itemId: APPROVED_ITEM_ID, quantity: 1 },
+          { itemId: PENDING_ITEM_ID, quantity: 2 },
+        ],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WithdrawalExceedsPlannedError);
+    expect(workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity).toBe(0);
+  });
+
   it('records exactly one PartWithdrawn for the whole batch, not one per line', () => {
     // Both items attached to the same approved round, so both lines are withdrawable in one call.
     const secondApprovedItem = WorkOrderPartItem.restore({

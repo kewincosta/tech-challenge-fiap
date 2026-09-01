@@ -15,10 +15,10 @@ Corroborated across multiple features. Safe to apply as guidance.
 - last seen: 2026-08-31T17:48:37Z
 
 ### L-003 - A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.
-- signal: `ac_gap` · recurrence: 3 feature(s) · scope: `application-handlers` · harmful: 0
-- features: customer-and-vehicle-registry, service-catalog, inventory-and-stock-movements
-- evidence: CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers) (+3 more)
-- last seen: 2026-08-31T22:33:37Z
+- signal: `ac_gap` · recurrence: 4 feature(s) · scope: `application-handlers` · harmful: 0
+- features: customer-and-vehicle-registry, service-catalog, inventory-and-stock-movements, work-order-part-withdrawal
+- evidence: CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers) (+4 more)
+- last seen: 2026-09-01T14:04:35Z
 
 ## Candidates (under observation - do NOT load as guidance yet)
 
@@ -53,6 +53,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - features: work-order-creation
 - evidence: tasks.md Edge Case Ownership table row 6 / T19 Done-when (no matching line item) (planning)
 - last seen: 2026-09-01T01:38:13Z
+
+### L-008 - When two layers enforce the same rule, the outer guard needs a test the inner guard cannot satisfy - otherwise loosening or deleting the outer one changes behaviour that no test can see.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `domain-aggregates` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates)
+- last seen: 2026-09-01T14:04:16Z
+
+### L-009 - Give every threshold comparison a fixture sitting exactly on its boundary - fixtures that clear the threshold by a margin on both sides cannot tell a strict comparison from a non-strict one.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: M7: typeorm-inventory-query.adapter.ts:65 (HAVING SUM(...) > quantity_on_hand changed to >=) survived stock-shortages.query.spec.ts and both e2e specs (query-adapters)
+- last seen: 2026-09-01T14:04:24Z
+
+### L-010 - When an acceptance criterion names several fields a record must carry, assert every one of them - a NOT NULL column with a foreign key proves a value is present, never that it is the right one.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: WOP-01 AC2 and WOP-03 AC2 (the acting user on a CONSUMPTION and on a RETURN movement has no assertion; inventory-item.repository.spec.ts:334 covers only INBOUND) (persistence)
+- last seen: 2026-09-01T14:04:24Z
 
 ## Quarantined (failed when applied - ignore)
 

@@ -708,6 +708,22 @@ Note: one interleaved full-suite run hit an unrelated flake in `registerUser`'s 
 
 ---
 
+### Verifier fix round (after T18, before closing the feature)
+
+The first Verifier pass (`.specs/features/work-order-part-withdrawal/validation.md`, dated 2026-09-01) returned **FAIL**: the implementation was correct everywhere it was probed, but two injected mutations survived and eight acceptance criteria had no assertion targeting the outcome the spec names. Five fix tasks, all Major or Minor, none touching production behaviour:
+
+- **Fix 1** (Major, kills mutant M3): `WorkOrder.assertWithdrawable`'s planned-quantity guard and `WorkOrderPartItem.withdraw`'s own guard enforce the same rule, so every existing test fired both at once and the outer guard had no independent evidence. Added a two-line-batch test to `work-order.spec.ts` where only the outer guard can catch the second line's overflow, asserting the first line's `withdrawnQuantity` is still 0 after the throw. Manually confirmed it kills the exact mutation (`+ 1` on the comparison) before reverting the probe.
+- **Fix 2** (Major, kills mutant M7): no fixture placed outstanding demand exactly equal to the count on hand, so `>` and `>=` were indistinguishable to the suite. Added a boundary case to `stock-shortages.query.spec.ts` (count 3, demand 3, asserted absent). Manually confirmed it kills the exact mutation (`>` to `>=`) before reverting the probe.
+- **Fix 3** (Major): WOP-01 AC2 and WOP-03 AC2 each name the acting user as one of four things a movement must carry; only three were asserted anywhere, and the one actor assertion that existed covered an `INBOUND` from `replenish` - a sibling call site L-003 rules out. Extended `inventory-item.repository.spec.ts`'s `CONSUMPTION` and `RETURN` cases to join `users` and assert the actor's external id, and added `actorUserId` assertions on the dispatched cross-module commands in both `withdraw-parts.handler.spec.ts` and `return-parts.handler.spec.ts`.
+- **Fix 4** (Minor): WOP-01 AC6 (item belongs to another work order, 404), AC10 (wrong state, 422) and WOP-03 AC5 (wrong state, 422) had domain-unit coverage but no route-level assertion of the HTTP status the spec names. Added a `createAwaitingApprovalWorkOrder` fixture and two tests to `work-order-withdrawals.e2e.spec.ts`.
+- **Fix 5** (Minor, no behaviour change): `design.md`'s Risks & Concerns and Tech Decisions still described the pre-T12-correction return path (caller-supplied `undoesMovementId`), and so did the comment on `InventoryItem.restoreUnits`. Rewrote both to describe the shipped `findPendingConsumptions` design, with an explicit note recording the decision to keep `ConsumedLineDto` on `ConsumeStockBatchHandler` even though nothing reads it now - removing it would mean editing a already-passing, already-asserted test for no behavioural gain.
+
+**Test count**: unit 532 -> 533 (+1, Fix 1), integration 194 -> 195 (+1, Fix 2; Fix 3 extended two existing assertions rather than adding cases), e2e 150 -> 152 (+2, Fix 4). Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`. The e2e suite passed twice consecutively (one interleaved run hit the same pre-existing L-004 flake T18's note already describes, in a sibling spec file's `registerCustomer`, unrelated to this fix round - two immediate reruns came back clean at 152).
+
+**Commit**: `test(work-orders): close the verifier's fix round on part withdrawal`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
