@@ -618,14 +618,14 @@ T19
 
 **Done when**:
 
-- [ ] Assigns a user who holds `MECHANIC` and records the assignment
-- [ ] Refuses a user who exists without the role, with `AssignedUserNotMechanicError`
-- [ ] **Refuses a user that does not exist with `AssignedMechanicNotFoundError`**, proving the existence read runs first, because the effective-access read alone answers empty roles for both cases (design.md's Risks & Concerns)
-- [ ] Replaces an existing assignee
-- [ ] Refuses an unknown work order with `WorkOrderNotFoundError`
-- [ ] **The `queryBus.execute` stub branches on the query instance, never on call order**
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Assigns a user who holds `MECHANIC` and records the assignment
+- [x] Refuses a user who exists without the role, with `AssignedUserNotMechanicError`
+- [x] **Refuses a user that does not exist with `AssignedMechanicNotFoundError`**, proving the existence read runs first, because the effective-access read alone answers empty roles for both cases (design.md's Risks & Concerns)
+- [x] Replaces an existing assignee
+- [x] Refuses an unknown work order with `WorkOrderNotFoundError`
+- [x] **The `queryBus.execute` stub branches on the query instance, never on call order**
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
