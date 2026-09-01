@@ -462,4 +462,103 @@ describe('TypeOrmWorkOrderRepository', () => {
     expect(fulfilled).toHaveLength(1);
     expect(rejected?.reason).toBeInstanceOf(VehicleAlreadyHasActiveWorkOrderError);
   });
+
+  it('should round-trip a completed work order, reading back the charged total, the discount, the note, the actor and the moment', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const number = uniqueNumber();
+    const now = new Date();
+    const workOrder = WorkOrder.restore({
+      id: WorkOrderId.create(randomUUID()),
+      number,
+      customerId: fixture.customer.externalId,
+      vehicleId: fixture.vehicle.externalId,
+      assignedMechanicUserId: null,
+      createdByUserId: fixture.creator.externalId,
+      status: WorkOrderStatus.Completed,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: now,
+      updatedAt: now,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: now,
+      diagnosisCompletedAt: now,
+      budgets: [],
+      budgetDecidedAt: now,
+      budgetDecidedByUserId: fixture.creator.externalId,
+      executionStartedAt: now,
+      chargedTotal: Money.fromCents(20000),
+      discount: Money.fromCents(5000),
+      discountNote: 'Preco combinado com o cliente',
+      discountAppliedByUserId: fixture.creator.externalId,
+      discountAppliedAt: now,
+      completedAt: now,
+    });
+    await repository.save(workOrder);
+
+    const reread = await repository.findByNumber(number);
+
+    expect(reread?.chargedTotal?.equals(Money.fromCents(20000))).toBe(true);
+    expect(reread?.discount.equals(Money.fromCents(5000))).toBe(true);
+    expect(reread?.discountNote).toBe('Preco combinado com o cliente');
+    expect(reread?.discountAppliedByUserId).toBe(fixture.creator.externalId);
+    expect(reread?.discountAppliedAt?.getTime()).toBe(now.getTime());
+    expect(reread?.completedAt?.getTime()).toBe(now.getTime());
+    expect(typeof reread?.chargedTotal?.cents).toBe('number');
+    expect(typeof reread?.discount.cents).toBe('number');
+  });
+
+  it('should round-trip a cancelled work order, reading back the reason, the canceller and the moment', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const number = uniqueNumber();
+    const now = new Date();
+    const workOrder = WorkOrder.restore({
+      id: WorkOrderId.create(randomUUID()),
+      number,
+      customerId: fixture.customer.externalId,
+      vehicleId: fixture.vehicle.externalId,
+      assignedMechanicUserId: null,
+      createdByUserId: fixture.creator.externalId,
+      status: WorkOrderStatus.Canceled,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: now,
+      updatedAt: now,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: null,
+      diagnosisCompletedAt: null,
+      budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
+      canceledAt: now,
+      canceledByUserId: fixture.creator.externalId,
+      cancellationReason: 'Cliente desistiu do reparo',
+    });
+    await repository.save(workOrder);
+
+    const reread = await repository.findByNumber(number);
+
+    expect(reread?.cancellationReason).toBe('Cliente desistiu do reparo');
+    expect(reread?.canceledByUserId).toBe(fixture.creator.externalId);
+    expect(reread?.canceledAt?.getTime()).toBe(now.getTime());
+  });
+
+  it('should read back a null charged total for a work order that has not been completed', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+
+    const reread = await repository.findByNumber(workOrder.number);
+
+    expect(reread?.chargedTotal).toBeNull();
+    expect(reread?.discount.equals(Money.fromCents(0))).toBe(true);
+  });
 });

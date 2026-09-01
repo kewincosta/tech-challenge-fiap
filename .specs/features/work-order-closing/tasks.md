@@ -398,14 +398,16 @@ Unplanned but required: writing this task's tests surfaced that `WorkOrder.resto
 
 **Done when**:
 
-- [ ] The ORM entity declares every column T1 added except `version`, which T10 owns
-- [ ] The mapper writes and reads the charged total and the discount as integer cents, never as a string
-- [ ] The three user columns are resolved from external id to internal id on write and back on read
-- [ ] An integration test round-trips a completed work order and reads back the charged total, the discount, the note, the actor and the moment
-- [ ] An integration test round-trips a cancelled work order and reads back the reason, the canceller and the moment
-- [ ] A work order that has not been completed reads back a null charged total
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] The ORM entity declares every column T1 added except `version`, which T10 owns
+- [x] The mapper writes and reads the charged total and the discount as integer cents, never as a string
+- [x] The three user columns are resolved from external id to internal id on write and back on read
+- [x] An integration test round-trips a completed work order and reads back the charged total, the discount, the note, the actor and the moment
+- [x] An integration test round-trips a cancelled work order and reads back the reason, the canceller and the moment
+- [x] A work order that has not been completed reads back a null charged total
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 4 tests pass (no silent deletions)
+
+Unplanned but required: `WorkOrderMapper`'s own spec file (`work-order.mapper.spec.ts`) constructed a `ResolvedWorkOrderIds` literal and a bare `WorkOrderOrmEntity` row missing the fields this task added. Neither `npm run build` (excludes `*.spec.ts` via `tsconfig.build.json`) nor `npm run lint` catches this - only `npx tsc --noEmit` against the full `tsconfig.json` does, and the row-fixture gap was a genuine runtime failure waiting to happen (`Money.fromDatabase(undefined)` throws), not just a type error. Fixed both fixtures with the same defaults the migration gives a pre-existing row.
 
 **Tests**: integration
 **Gate**: full

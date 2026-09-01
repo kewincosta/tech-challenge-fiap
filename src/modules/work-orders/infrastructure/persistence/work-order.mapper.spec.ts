@@ -28,6 +28,9 @@ function baseResolved(): ResolvedWorkOrderIds {
     createdByExternalId: CREATOR_ID,
     assignedMechanicExternalId: MECHANIC_ID,
     budgetDecidedByExternalId: CUSTOMER_ID,
+    discountAppliedByExternalId: null,
+    deliveredByExternalId: null,
+    canceledByExternalId: null,
     serviceExternalIdByInternalId: new Map([['9001', '77777777-7777-4777-8777-777777777777']]),
     inventoryItemExternalIdByInternalId: new Map(),
     budgetDeciderExternalIdByInternalId: new Map([['9101', CUSTOMER_ID]]),
@@ -50,6 +53,17 @@ function workOrderRowFixture(): WorkOrderOrmEntity {
   row.diagnosisCompletedAt = NOW;
   row.budgetDecidedAt = null;
   row.executionStartedAt = null;
+  // The columns this feature added - a row that never went through any closing transition
+  // carries the same defaults the migration gives every pre-existing row (discount_cents NOT
+  // NULL DEFAULT 0, everything else null).
+  row.chargedTotalCents = null;
+  row.discountCents = '0';
+  row.discountNote = null;
+  row.discountAppliedAt = null;
+  row.completedAt = null;
+  row.deliveredAt = null;
+  row.canceledAt = null;
+  row.cancellationReason = null;
   return row;
 }
 

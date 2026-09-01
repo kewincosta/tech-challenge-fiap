@@ -61,4 +61,37 @@ export class WorkOrderOrmEntity {
 
   @Column({ name: 'execution_started_at', type: 'timestamptz', nullable: true })
   executionStartedAt!: Date | null;
+
+  @Column({ name: 'charged_total_cents', type: 'bigint', nullable: true })
+  chargedTotalCents!: string | null;
+
+  @Column({ name: 'discount_cents', type: 'bigint' })
+  discountCents!: string;
+
+  @Column({ name: 'discount_note', type: 'varchar', length: 255, nullable: true })
+  discountNote!: string | null;
+
+  @Column({ name: 'discount_applied_by_user_id', type: 'bigint', nullable: true })
+  discountAppliedByInternalId!: string | null;
+
+  @Column({ name: 'discount_applied_at', type: 'timestamptz', nullable: true })
+  discountAppliedAt!: Date | null;
+
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
+  completedAt!: Date | null;
+
+  @Column({ name: 'delivered_at', type: 'timestamptz', nullable: true })
+  deliveredAt!: Date | null;
+
+  @Column({ name: 'delivered_by_user_id', type: 'bigint', nullable: true })
+  deliveredByInternalId!: string | null;
+
+  @Column({ name: 'canceled_at', type: 'timestamptz', nullable: true })
+  canceledAt!: Date | null;
+
+  @Column({ name: 'canceled_by_user_id', type: 'bigint', nullable: true })
+  canceledByInternalId!: string | null;
+
+  @Column({ name: 'cancellation_reason', type: 'varchar', length: 255, nullable: true })
+  cancellationReason!: string | null;
 }

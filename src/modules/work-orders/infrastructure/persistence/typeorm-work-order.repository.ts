@@ -53,6 +53,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       createdByExternalId,
       assignedMechanicExternalId,
       budgetDecidedByExternalId,
+      discountAppliedByExternalId,
+      deliveredByExternalId,
+      canceledByExternalId,
     ] = await Promise.all([
       this.resolveExternalId(this.dataSource, 'customers', row.customerInternalId),
       this.resolveExternalId(this.dataSource, 'vehicles', row.vehicleInternalId),
@@ -62,6 +65,15 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
         : Promise.resolve(null),
       row.budgetDecidedByInternalId
         ? this.resolveExternalId(this.dataSource, 'users', row.budgetDecidedByInternalId)
+        : Promise.resolve(null),
+      row.discountAppliedByInternalId
+        ? this.resolveExternalId(this.dataSource, 'users', row.discountAppliedByInternalId)
+        : Promise.resolve(null),
+      row.deliveredByInternalId
+        ? this.resolveExternalId(this.dataSource, 'users', row.deliveredByInternalId)
+        : Promise.resolve(null),
+      row.canceledByInternalId
+        ? this.resolveExternalId(this.dataSource, 'users', row.canceledByInternalId)
         : Promise.resolve(null),
     ]);
     const serviceExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
@@ -88,6 +100,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       createdByExternalId,
       assignedMechanicExternalId,
       budgetDecidedByExternalId,
+      discountAppliedByExternalId,
+      deliveredByExternalId,
+      canceledByExternalId,
       serviceExternalIdByInternalId,
       inventoryItemExternalIdByInternalId,
       budgetDeciderExternalIdByInternalId,
@@ -138,6 +153,15 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           : null;
         workOrderRow.budgetDecidedByInternalId = workOrder.budgetDecidedByUserId
           ? await this.resolveInternalId(manager, 'users', workOrder.budgetDecidedByUserId)
+          : null;
+        workOrderRow.discountAppliedByInternalId = workOrder.discountAppliedByUserId
+          ? await this.resolveInternalId(manager, 'users', workOrder.discountAppliedByUserId)
+          : null;
+        workOrderRow.deliveredByInternalId = workOrder.deliveredByUserId
+          ? await this.resolveInternalId(manager, 'users', workOrder.deliveredByUserId)
+          : null;
+        workOrderRow.canceledByInternalId = workOrder.canceledByUserId
+          ? await this.resolveInternalId(manager, 'users', workOrder.canceledByUserId)
           : null;
         await manager.save(WorkOrderOrmEntity, workOrderRow);
 

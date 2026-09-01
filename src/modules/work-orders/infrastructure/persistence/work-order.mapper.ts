@@ -22,6 +22,9 @@ export interface ResolvedWorkOrderIds {
   createdByExternalId: string;
   assignedMechanicExternalId: string | null;
   budgetDecidedByExternalId: string | null;
+  discountAppliedByExternalId: string | null;
+  deliveredByExternalId: string | null;
+  canceledByExternalId: string | null;
   serviceExternalIdByInternalId: Map<string, string>;
   inventoryItemExternalIdByInternalId: Map<string, string>;
   /** Keyed by each budget row's own `decided_by_user_id` internal id. */
@@ -81,6 +84,17 @@ export class WorkOrderMapper {
       budgetDecidedAt: row.budgetDecidedAt,
       budgetDecidedByUserId: resolved.budgetDecidedByExternalId,
       executionStartedAt: row.executionStartedAt,
+      chargedTotal: row.chargedTotalCents ? Money.fromDatabase(row.chargedTotalCents) : null,
+      discount: Money.fromDatabase(row.discountCents),
+      discountNote: row.discountNote,
+      discountAppliedByUserId: resolved.discountAppliedByExternalId,
+      discountAppliedAt: row.discountAppliedAt,
+      completedAt: row.completedAt,
+      deliveredAt: row.deliveredAt,
+      deliveredByUserId: resolved.deliveredByExternalId,
+      canceledAt: row.canceledAt,
+      canceledByUserId: resolved.canceledByExternalId,
+      cancellationReason: row.cancellationReason,
       serviceItems: serviceRows.map((serviceRow) => {
         const serviceExternalId = resolved.serviceExternalIdByInternalId.get(
           serviceRow.serviceInternalId,
@@ -128,9 +142,10 @@ export class WorkOrderMapper {
   }
 
   /**
-   * `customerInternalId`, `vehicleInternalId`, `createdByInternalId`, `assignedMechanicInternalId`
-   * and each item row's own reference column are left unset - only the repository resolves
-   * external ids to internal keys, since that is I/O the mapper stays free of.
+   * `customerInternalId`, `vehicleInternalId`, `createdByInternalId`, `assignedMechanicInternalId`,
+   * `discountAppliedByInternalId`, `deliveredByInternalId`, `canceledByInternalId` and each item
+   * row's own reference column are left unset - only the repository resolves external ids to
+   * internal keys, since that is I/O the mapper stays free of.
    */
   static toOrm(workOrder: WorkOrder): WorkOrderOrmSnapshot {
     const workOrderRow = new WorkOrderOrmEntity();
@@ -148,6 +163,14 @@ export class WorkOrderMapper {
     workOrderRow.diagnosisCompletedAt = workOrder.diagnosisCompletedAt;
     workOrderRow.budgetDecidedAt = workOrder.budgetDecidedAt;
     workOrderRow.executionStartedAt = workOrder.executionStartedAt;
+    workOrderRow.chargedTotalCents = workOrder.chargedTotal ? String(workOrder.chargedTotal.cents) : null;
+    workOrderRow.discountCents = String(workOrder.discount.cents);
+    workOrderRow.discountNote = workOrder.discountNote;
+    workOrderRow.discountAppliedAt = workOrder.discountAppliedAt;
+    workOrderRow.completedAt = workOrder.completedAt;
+    workOrderRow.deliveredAt = workOrder.deliveredAt;
+    workOrderRow.canceledAt = workOrder.canceledAt;
+    workOrderRow.cancellationReason = workOrder.cancellationReason;
 
     const serviceRows = workOrder.serviceItems.map((item) => {
       const row = new WorkOrderServiceOrmEntity();
