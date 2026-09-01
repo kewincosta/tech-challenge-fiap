@@ -241,11 +241,11 @@ T19
 
 **Done when**:
 
-- [ ] `add` builds an item carrying the service identifier, its name and its unit price, with no quantity
-- [ ] `restore` rebuilds an item from persisted props
-- [ ] The class exposes read-only getters and no mutating method
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] `add` builds an item carrying the service identifier, its name and its unit price, with no quantity
+- [x] `restore` rebuilds an item from persisted props
+- [x] The class exposes read-only getters and no mutating method
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
