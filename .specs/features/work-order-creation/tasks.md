@@ -559,13 +559,14 @@ T19
 
 **Done when**:
 
-- [ ] Plans a part on a work order in `IN_DIAGNOSIS`, snapshotting the SKU, name and unit price
-- [ ] Leaves the inventory item's quantity on hand untouched, no command reaching `inventory`
-- [ ] **Refuses a part planned on a work order in `RECEIVED` with `WorkOrderStateError`** - the second of the three layers this rule is proven at (L-003)
-- [ ] Refuses a zero or negative quantity with `InvalidPlannedQuantityError`
-- [ ] Refuses an inventory item the query answers null for, with `ReferencedInventoryItemNotFoundError`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Plans a part on a work order in `IN_DIAGNOSIS`, snapshotting the SKU, name and unit price
+- [x] Leaves the inventory item's quantity on hand untouched, no command reaching `inventory`
+- [x] **Refuses a part planned on a work order in `RECEIVED` with `WorkOrderStateError`** - the second of the three layers this rule is proven at (L-003)
+- [x] Refuses a zero or negative quantity with `InvalidPlannedQuantityError`
+- [x] Refuses an inventory item the query answers null for, with `ReferencedInventoryItemNotFoundError`
+- [x] **Refuses an unknown work order with `WorkOrderNotFoundError`** - added on its own, not covered by T14's identical case on a different handler (L-003)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
