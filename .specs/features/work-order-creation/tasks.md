@@ -183,12 +183,12 @@ T19
 
 **Done when**:
 
-- [ ] Accepts a positive whole number
-- [ ] Rejects zero
-- [ ] Rejects a negative value
-- [ ] Rejects a fractional value
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Accepts a positive whole number
+- [x] Rejects zero
+- [x] Rejects a negative value
+- [x] Rejects a fractional value
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
