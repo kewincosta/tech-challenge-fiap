@@ -220,11 +220,11 @@ T19  T20
 
 **Done when**:
 
-- [ ] Each error carries a distinct `code` and `ErrorKind.RuleViolation`
-- [ ] The three codes are distinct from the sixteen errors the module already exports
-- [ ] Each message names what the caller has to change, not just what failed
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Each error carries a distinct `code` and `ErrorKind.RuleViolation`
+- [x] The three codes are distinct from the sixteen errors the module already exports
+- [x] Each message names what the caller has to change, not just what failed
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (1 more than planned - the three-way distinctness check earned its own case)
 
 **Tests**: unit
 **Gate**: quick
