@@ -505,11 +505,11 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] The handler calls `settleWorkOrderConsumptions` with the work order, the actor and the clock's moment
-- [ ] A work order with no pending consumption settles nothing and does not throw
-- [ ] The handler carries the comment that it is reached only from inside the caller's transaction (AD-008)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] The handler calls `settleWorkOrderConsumptions` with the work order, the actor and the clock's moment
+- [x] A work order with no pending consumption settles nothing and does not throw
+- [x] The handler carries the comment that it is reached only from inside the caller's transaction (AD-008)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
