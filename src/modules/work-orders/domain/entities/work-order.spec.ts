@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
+import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -15,6 +17,7 @@ import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
+import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
@@ -689,5 +692,220 @@ describe('WorkOrder.approveBudget and rejectBudget', () => {
 
     expect(workOrder.budgetDecidedAt).toEqual(NOW);
     expect(workOrder.budgetDecidedByUserId).toBe(CUSTOMER_ID);
+  });
+});
+
+describe('WorkOrder.submitSupplementaryBudget', () => {
+  const SUPPLEMENTARY_BUDGET_ID = BudgetId.create('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+  const EXECUTION_START = new Date('2026-08-30T09:00:00Z');
+  const NEW_ITEM_ID = WorkOrderItemId.create('88888888-8888-4888-8888-888888888888');
+
+  function inExecutionWithApprovedRoundOne(): WorkOrder {
+    const approvedBudget = Budget.restore({
+      id: BudgetId.create('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+      round: 1,
+      total: Money.fromCents(15099),
+      status: BudgetStatus.Approved,
+      generatedAt: EXECUTION_START,
+      decidedAt: EXECUTION_START,
+      decidedByUserId: CUSTOMER_ID,
+    });
+    const attachedServiceItem = WorkOrderServiceItem.restore({
+      id: WorkOrderItemId.create('66666666-6666-4666-8666-666666666666'),
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(15099),
+    });
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InExecution,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [attachedServiceItem],
+      partItems: [],
+      diagnosisStartedAt: EXECUTION_START,
+      diagnosisCompletedAt: EXECUTION_START,
+      budgets: [approvedBudget],
+      budgetDecidedAt: EXECUTION_START,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: EXECUTION_START,
+    });
+  }
+
+  function addDraftService(workOrder: WorkOrder): void {
+    workOrder.addService({
+      itemId: NEW_ITEM_ID,
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Alinhamento',
+      unitPrice: Money.fromCents(8000),
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+  }
+
+  it('guards IN_EXECUTION, generates round two over the draft items and moves to AWAITING_APPROVAL', () => {
+    const workOrder = inExecutionWithApprovedRoundOne();
+    addDraftService(workOrder);
+
+    workOrder.submitSupplementaryBudget({
+      budgetId: SUPPLEMENTARY_BUDGET_ID,
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(workOrder.budgets).toHaveLength(2);
+    expect(workOrder.budgets[1].round).toBe(2);
+    expect(workOrder.budgets[1].total.cents).toBe(8000);
+  });
+
+  it('refuses an empty draft with EmptyDraftBudgetError', () => {
+    const workOrder = inExecutionWithApprovedRoundOne();
+
+    expect(() =>
+      workOrder.submitSupplementaryBudget({
+        budgetId: SUPPLEMENTARY_BUDGET_ID,
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(EmptyDraftBudgetError);
+  });
+
+  it('refuses to submit outside IN_EXECUTION', () => {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.InDiagnosis);
+
+    expect(() =>
+      workOrder.submitSupplementaryBudget({
+        budgetId: SUPPLEMENTARY_BUDGET_ID,
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderStateError);
+  });
+
+  it('never re-prices or re-attaches an item already attached to a decided round', () => {
+    const workOrder = inExecutionWithApprovedRoundOne();
+    addDraftService(workOrder);
+
+    workOrder.submitSupplementaryBudget({
+      budgetId: SUPPLEMENTARY_BUDGET_ID,
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    const roundOneItem = workOrder.serviceItems.find(
+      (item) => item.serviceName === 'Troca de oleo',
+    );
+    expect(roundOneItem?.budgetRound).toBe(1);
+    expect(roundOneItem?.budgetedUnitPrice?.cents).toBe(15099);
+  });
+
+  it('records SupplementaryBudgetGenerated then BudgetSent', () => {
+    const workOrder = inExecutionWithApprovedRoundOne();
+    addDraftService(workOrder);
+    workOrder.pullDomainEvents();
+
+    workOrder.submitSupplementaryBudget({
+      budgetId: SUPPLEMENTARY_BUDGET_ID,
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(2);
+    expect(events[0]).toBeInstanceOf(SupplementaryBudgetGenerated);
+    expect(events[1]).toBeInstanceOf(BudgetSent);
+  });
+
+  it('a full cycle from execution through approval back to execution ends with two rounds and one unchanged executionStartedAt', () => {
+    const workOrder = inExecutionWithApprovedRoundOne();
+    addDraftService(workOrder);
+    workOrder.submitSupplementaryBudget({
+      budgetId: SUPPLEMENTARY_BUDGET_ID,
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
+    expect(workOrder.budgets).toHaveLength(2);
+    expect(workOrder.budgets.every((budget) => budget.status === BudgetStatus.Approved)).toBe(
+      true,
+    );
+    expect(workOrder.executionStartedAt).toEqual(EXECUTION_START);
+  });
+});
+
+describe('WorkOrder.removeItem budgeted-item guard', () => {
+  it('refuses to remove an item already attached to a budget round', () => {
+    const attachedServiceItem = WorkOrderServiceItem.restore({
+      id: WorkOrderItemId.create('66666666-6666-4666-8666-666666666666'),
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(15099),
+    });
+    const workOrder = WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InDiagnosis,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [attachedServiceItem],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: null,
+      budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
+    });
+
+    expect(() =>
+      workOrder.removeItem({ itemId: attachedServiceItem.id, actorUserId: CREATOR_ID, now: NOW }),
+    ).toThrow(BudgetedItemNotRemovableError);
+  });
+
+  it('still removes a draft item', () => {
+    const workOrder = openWorkOrder();
+    workOrder.addService({
+      itemId: WorkOrderItemId.create('88888888-8888-4888-8888-888888888888'),
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    workOrder.removeItem({
+      itemId: WorkOrderItemId.create('88888888-8888-4888-8888-888888888888'),
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.serviceItems).toHaveLength(0);
   });
 });

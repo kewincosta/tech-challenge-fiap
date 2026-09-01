@@ -1,7 +1,9 @@
 import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
+import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -15,6 +17,7 @@ import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
+import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
@@ -113,6 +116,12 @@ interface DecideBudgetActionInput {
   now: Date;
 }
 
+interface SubmitSupplementaryBudgetInput {
+  budgetId: BudgetId;
+  actorUserId: string;
+  now: Date;
+}
+
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.Received,
@@ -201,15 +210,26 @@ export class WorkOrder extends AggregateRoot {
     this.record(new PartPlannedForWorkOrder(this.props.id.value, input.actorUserId, input.now));
   }
 
+  /**
+   * Refuses an item already attached to a budget round, whichever round and whichever state -
+   * once quoted, an item is locked in (T6's regeneration-in-place comment). Only a draft item can
+   * be removed.
+   */
   removeItem(input: RemoveItemInput): void {
     this.assertStateAllows(ITEM_EDITABLE_STATES);
     const serviceIndex = this.props.serviceItems.findIndex((item) => item.id.equals(input.itemId));
     if (serviceIndex >= 0) {
+      if (!this.props.serviceItems[serviceIndex].isDraft) {
+        throw new BudgetedItemNotRemovableError();
+      }
       this.props.serviceItems.splice(serviceIndex, 1);
     } else {
       const partIndex = this.props.partItems.findIndex((item) => item.id.equals(input.itemId));
       if (partIndex < 0) {
         throw new WorkOrderItemNotFoundError();
+      }
+      if (!this.props.partItems[partIndex].isDraft) {
+        throw new BudgetedItemNotRemovableError();
       }
       this.props.partItems.splice(partIndex, 1);
     }
@@ -326,6 +346,30 @@ export class WorkOrder extends AggregateRoot {
     if (destination === WorkOrderStatus.InExecution) {
       this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
     }
+  }
+
+  /**
+   * Guards `IN_EXECUTION`, generates the next round over the draft items only (no round-N items
+   * to fold back in, unlike `completeDiagnosis`'s regeneration case - `generateRound`'s
+   * `budgetRound === round` clause is a no-op for a brand new round number), and moves to
+   * `AWAITING_APPROVAL`.
+   */
+  submitSupplementaryBudget(input: SubmitSupplementaryBudgetInput): void {
+    this.assertStateAllows([WorkOrderStatus.InExecution]);
+    const nextRound = this.props.budgets.reduce((max, budget) => Math.max(max, budget.round), 0) + 1;
+    if (!this.hasItemsForRound(nextRound)) {
+      throw new EmptyDraftBudgetError();
+    }
+    const total = this.generateRound(nextRound);
+    this.props.budgets.push(
+      Budget.generate({ id: input.budgetId, round: nextRound, total, generatedAt: input.now }),
+    );
+    this.props.status = WorkOrderStatus.AwaitingApproval;
+    this.props.updatedAt = input.now;
+    this.record(
+      new SupplementaryBudgetGenerated(this.props.id.value, input.actorUserId, input.now),
+    );
+    this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
   }
 
   private pendingBudget(): Budget {

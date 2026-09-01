@@ -346,15 +346,15 @@ T19  T20
 
 **Done when**:
 
-- [ ] `submitSupplementaryBudget` guards `IN_EXECUTION`, generates round `max + 1` over the draft items only, and moves to `AWAITING_APPROVAL`
-- [ ] An empty draft is refused with `EmptyDraftBudgetError`
-- [ ] Items already attached to a decided round are neither re-priced nor re-attached
-- [ ] `SupplementaryBudgetGenerated` and `BudgetSent` are recorded
-- [ ] `removeItem` refuses an item attached to any round with `BudgetedItemNotRemovableError`, and still removes a draft item
-- [ ] A full cycle from execution through approval back to execution ends with two rounds and one unchanged `executionStartedAt`
-- [ ] The method signature carries no price and no total
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `submitSupplementaryBudget` guards `IN_EXECUTION`, generates round `max + 1` over the draft items only, and moves to `AWAITING_APPROVAL`
+- [x] An empty draft is refused with `EmptyDraftBudgetError`
+- [x] Items already attached to a decided round are neither re-priced nor re-attached
+- [x] `SupplementaryBudgetGenerated` and `BudgetSent` are recorded
+- [x] `removeItem` refuses an item attached to any round with `BudgetedItemNotRemovableError`, and still removes a draft item
+- [x] A full cycle from execution through approval back to execution ends with two rounds and one unchanged `executionStartedAt`
+- [x] The method signature carries no price and no total (structural: `SubmitSupplementaryBudgetInput` has no such field)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (4 fewer than planned - the two `removeItem` cases moved to their own `describe`, and each bullet maps 1:1 to a case rather than splitting further)
 
 **Tests**: unit
 **Gate**: quick
