@@ -90,6 +90,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: P2: restore-stock-batch.handler.ts:59 (every RETURN's undoesMovementId set to pending[0].movementId) survived all 882 tests, because undoesMovementId is asserted only in fixtures with one pending consumption, and the two-consumption split case asserts count and quantities only (WOP-03 AC2) (application-handlers)
 - last seen: 2026-09-01T14:55:24Z
 
+### L-014 - Give every aggregate function a fixture whose group holds more than one row - an aggregate over a single row returns that row whatever the aggregate is.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: Q4/Q5: typeorm-inventory-query.adapter.ts:57,58,65 (SUM reduced to MAX, array_agg truncated to its first element) survived all 883 tests, because every shortage fixture puts exactly one work_order_parts row in each GROUP BY group (WOP-04 AC2, AC3) (query-adapters)
+- last seen: 2026-09-01T15:16:20Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

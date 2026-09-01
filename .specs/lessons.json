@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 14,
+  "next_id": 15,
   "lessons": [
     {
       "id": "L-001",
@@ -248,6 +248,24 @@
       ],
       "created": "2026-09-01T14:55:24Z",
       "last_seen": "2026-09-01T14:55:24Z"
+    },
+    {
+      "id": "L-014",
+      "key": "surviving_mutant::give every aggregate function a fixture whose group holds more than one row an aggregate over a single row returns that row whatever the aggregate is",
+      "text": "Give every aggregate function a fixture whose group holds more than one row - an aggregate over a single row returns that row whatever the aggregate is.",
+      "signal": "surviving_mutant",
+      "scope": "query-adapters",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "Q4/Q5: typeorm-inventory-query.adapter.ts:57,58,65 (SUM reduced to MAX, array_agg truncated to its first element) survived all 883 tests, because every shortage fixture puts exactly one work_order_parts row in each GROUP BY group (WOP-04 AC2, AC3) (query-adapters)"
+      ],
+      "created": "2026-09-01T15:16:20Z",
+      "last_seen": "2026-09-01T15:16:20Z"
     }
   ]
 }

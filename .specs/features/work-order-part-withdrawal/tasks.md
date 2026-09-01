@@ -755,6 +755,18 @@ Neither P1 nor P2 was a regression from round 2's fix commit; both are narrower 
 
 ---
 
+### Verifier fix round 4 (after round 3's re-verification - the fix loop's bound, extended once with explicit user go-ahead)
+
+The round-4 Verifier (re-verifying commit `3115a90`) confirmed P1 and P2 both stay dead and every prior round's fixes still hold, but still returned **FAIL**: one more surviving gap, in code no prior round's mutations had touched. `validate.md`'s fix-to-re-verify loop is bounded to 3 iterations, and round 4 was the re-verification closing the third one - so this was reported to the user rather than fixed automatically. The user chose to apply the fix and run one more verification pass.
+
+- **Fix 10** (Major): `SELECT_SHORTAGES` aggregates `work_order_parts` rows per inventory item with `SUM` for the figure and `array_agg` for the work order names. Every fixture in the file, across all three prior rounds, gave an item exactly one contributing work order part - an aggregate over a single row returns that row regardless of which aggregate function is used, so `SUM` reads the same as `MAX` and `array_agg` the same as picking the first element. Added a case to `stock-shortages.query.spec.ts` with two `IN_EXECUTION` work orders, each with an `APPROVED` round planning 2 of an item with 3 on the shelf - true demand 4, exceeding the shelf, both numbers asserted. Manually confirmed it kills `SUM` to `MAX` and `array_agg` to a first-element slice, independently, before reverting each probe.
+
+**Test count**: unit unchanged at 534, integration 197 -> 198 (+1, Fix 10). Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`. The e2e suite passed twice consecutively.
+
+**Commit**: `test(work-orders): close the verifier's fourth fix round on part withdrawal`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.

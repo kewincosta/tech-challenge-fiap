@@ -163,6 +163,28 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     expect(found?.outstandingQuantity).toBe(2);
   });
 
+  it('sums demand and names every work order across more than one contributing round, not just one', async () => {
+    // Every other fixture in this file gives an item exactly one contributing work order part, so
+    // an aggregate over a single row cannot tell SUM from MAX, or array_agg from picking the first
+    // element (validation.md's Fix 10, round 4). Two work orders, 2 planned each, against a shelf
+    // of 3: true demand is 4, which exceeds the shelf, and both numbers must be named.
+    const item = await insertInventoryItem(3);
+    const workOrderA = await insertWorkOrder('IN_EXECUTION');
+    const budgetIdA = await insertBudget(workOrderA.id, 1, 'APPROVED');
+    await insertWorkOrderPart(workOrderA.id, item.id, { budgetId: budgetIdA, plannedQuantity: 2 });
+    const workOrderB = await insertWorkOrder('IN_EXECUTION');
+    const budgetIdB = await insertBudget(workOrderB.id, 1, 'APPROVED');
+    await insertWorkOrderPart(workOrderB.id, item.id, { budgetId: budgetIdB, plannedQuantity: 2 });
+
+    const shortages = await queryAdapter.listStockShortages();
+    const found = shortages.find((row) => row.inventoryItemId === item.externalId);
+
+    expect(found?.outstandingQuantity).toBe(4);
+    expect(found?.workOrderNumbers.slice().sort()).toEqual(
+      [workOrderA.number, workOrderB.number].sort(),
+    );
+  });
+
   it('leaves out an item whose count on hand covers its outstanding demand', async () => {
     const item = await insertInventoryItem(5);
     const workOrder = await insertWorkOrder('IN_EXECUTION');
