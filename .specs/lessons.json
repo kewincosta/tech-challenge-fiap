@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 8,
   "lessons": [
     {
       "id": "L-001",
@@ -101,6 +101,42 @@
       ],
       "created": "2026-08-31T22:33:43Z",
       "last_seen": "2026-08-31T22:33:43Z"
+    },
+    {
+      "id": "L-006",
+      "key": "ac_gap::every read route not only write routes needs its own 403 test using an actor that genuinely lacks that route s permission a suite where every e2e actor happens to hold the read permission leaves the lacks read permission criterion completely untested",
+      "text": "Every read route, not only write routes, needs its own 403 test using an actor that genuinely lacks that route's permission - a suite where every e2e actor happens to hold the read permission leaves the 'lacks read permission' criterion completely untested.",
+      "signal": "ac_gap",
+      "scope": "e2e-routes",
+      "status": "candidate",
+      "features": [
+        "work-order-creation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "spec.md WO-05 AC6 / test/e2e/work-orders.e2e.spec.ts (no case) (e2e-routes)"
+      ],
+      "created": "2026-09-01T01:38:08Z",
+      "last_seen": "2026-09-01T01:38:08Z"
+    },
+    {
+      "id": "L-007",
+      "key": "ac_gap::an edge case s task assignment in a tasks md edge case ownership table is not sufficient by itself the owning task s own done when checklist must also list that edge case as a line item or it can ship correctly implemented but with zero test evidence",
+      "text": "An edge case's task assignment in a tasks.md Edge Case Ownership table is not sufficient by itself - the owning task's own Done-when checklist must also list that edge case as a line item, or it can ship correctly implemented but with zero test evidence.",
+      "signal": "ac_gap",
+      "scope": "planning",
+      "status": "candidate",
+      "features": [
+        "work-order-creation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "tasks.md Edge Case Ownership table row 6 / T19 Done-when (no matching line item) (planning)"
+      ],
+      "created": "2026-09-01T01:38:13Z",
+      "last_seen": "2026-09-01T01:38:13Z"
     }
   ]
 }

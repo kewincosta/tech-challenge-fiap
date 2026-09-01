@@ -78,7 +78,7 @@ is specified when it is reached, never in advance.
 | 2 | `customer-and-vehicle-registry` | 4, 5 | Large | Verified |
 | 3 | `service-catalog` | 6 | Medium | Verified |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Verified |
-| 5 | `work-order-creation` | 8 | Large | Not started |
+| 5 | `work-order-creation` | 8 | Large | Verified |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Not started |
 | 7 | `work-order-execution-and-closing` | 11, 12 | Complex | Not started |
 | 8 | `tracking-and-metrics` | 13 | Medium | Not started |
@@ -109,55 +109,53 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/inventory-and-stock-movements` - **done**
-- **Phase / Task**: Verified, PASS on the first pass, with four non-blocking coverage-completeness
-  gaps (Fix 1-4) closed the same session in T12. 12 tasks total (T1-T12) committed to `main` at
-  `dfb167c`. Verifier report at
-  `.specs/features/inventory-and-stock-movements/validation.md`.
-- **Completed**: every task in `tasks.md`; all 4 stories (INV-01 through INV-04, 25 ACs) and every
-  listed Edge Case independently re-derived and confirmed by the Verifier, evidence-or-zero.
-  Discrimination sensor: 3/3 injected mutations killed - the dropped pessimistic-write lock
-  (probabilistic kill rate, 3/15 runs - see L-005), the removed adjustment-note guard (deterministic
-  at all three layers), and the untyped `Money.fromDatabase` bypass (deterministic, 7 cascading
-  failures). T12 closed all four Verifier-flagged gaps with test-only additions (plus removing one
-  dead parameter, `existsActiveBySku`'s `excludingId` - Fix 4) - no production behaviour changed,
-  every outcome was already correct. Final gate: lint clean, build clean, unit 300/300, integration
-  124/124 (run twice consecutively), e2e 98/98 (run twice consecutively) - 522 total, up from the
-  426 baseline, zero regressions.
+- **Feature**: `.specs/features/work-order-creation` - **done**
+- **Phase / Task**: Verified, PASS on re-verification pass 2 (iteration 2 of the bounded
+  3-iteration fix→re-verify loop). Pass 1 (`04861a1..ca0261a`, T1-T19) returned FAIL with two
+  coverage-only gaps - WO-05 AC6 (403 for an actor lacking `work-orders:read` on list/detail) and
+  the "trail for a nonexistent number → 404" Edge Case - both behaviourally correct by code
+  inspection but with zero test evidence. T20 (`8b1a96b`) closed both with two new e2e tests and no
+  production code change. 20 tasks total (T1-T20) committed to `main`. Verifier report at
+  `.specs/features/work-order-creation/validation.md`.
+- **Completed**: every task in `tasks.md`; all 5 stories (WO-01 through WO-05, 45 ACs/edge cases)
+  independently re-derived and confirmed by the Verifier, evidence-or-zero. Discrimination sensor:
+  3/3 injected mutations killed - the non-draining `domainEvents` read after `save()`, the
+  RECEIVED-state part-planning guard, and the active-vehicle unique-index-to-`409` mapping (the
+  last one killed deterministically in both a real concurrent-write race and a sequential e2e form,
+  unlike `inventory-and-stock-movements`' probabilistic pessimistic-lock mutation, `L-005` - a
+  different mechanism, no update to `L-005` warranted). Sensor not re-run in pass 2 since T20
+  touched zero production files (`git diff --stat ca0261a..HEAD -- src/` empty); pass 1's result
+  carries forward. Final gate: lint clean, build clean, unit 369/369, integration 155/155 (run
+  twice consecutively), e2e 113/113 (run twice consecutively) - 637 total, up from the 522
+  baseline, zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 5,
-  `work-order-creation`, when the user asks for it - not before, per this file's own Feature Roadmap
-  policy.
+- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 6,
+  `work-order-diagnosis-and-budget`, when the user asks for it - not before, per this file's own
+  Feature Roadmap policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 5 or a re-read of this one):
-1. AD-007 became running code for the first time here: the movement row and the item's new count
-   are written inside the same transaction by `TypeOrmInventoryItemRepository.save`, never by a
-   post-commit subscriber. A forced real unique-index violation mid-transaction proves a failed
-   write leaves neither the count nor the movement row behind.
-2. The project's first pessimistic row lock (`SELECT ... FOR UPDATE`, TypeORM's
-   `lock: { mode: 'pessimistic_write' }`). The naive alternative - writing the aggregate's own
-   precomputed `quantityOnHand` - would lose concurrent updates silently, because the
-   `CHECK (quantity_on_hand >= 0)` constraint cannot see two writers each landing on a value that
-   individually satisfies it. The concurrency test genuinely races two overlapping transactions
-   (`Promise.all`), but the Verifier's sensor found its kill rate for a dropped lock is
-   probabilistic (3/15 runs) rather than deterministic on a fast local Postgres - recorded as new
-   candidate lesson `L-005`. A future feature with a similar concurrency guarantee should consider
-   a deliberate synchronization point to force true overlap rather than relying on `Promise.all`
-   timing alone.
-3. `inventory-and-stock-movements` is the second module with a `Money`-backed column (after
-   `service-catalog`'s `services.price_cents`), now on two tables (`inventory_items`,
-   `stock_movements`) - the same explicit `Money.fromDatabase` pair-assertion pattern held on both.
-4. `L-003` (a sibling handler/route's test does not substitute for this one's own) recurred a third
-   time in this feature: the `/replenishments` mechanic-403 e2e case did not cover
-   `POST`/`PATCH`/`.../adjustments`, and the DTO-level `@IsIn`/`@IsPositive` validation proven
-   generically elsewhere in the codebase had no dedicated test for `kind`/`quantity` on these
-   specific routes. Both closed in T12 (Fix 2, Fix 3), merged as further evidence into `L-003`
-   rather than filed separately.
-5. Feature 7 (`work-order-execution-and-closing`) inherits a schema already shaped for it: the
-   `CONSUMPTION`/`RETURN` movement kinds, the `PENDING`/`SETTLED`/`WRITTEN_OFF` statuses,
-   `undoes_movement_id`, and the whole `stock_movement_transitions` table exist today, written by
-   nothing. Feature 8 (`tracking-and-metrics`) will need the `List Stock Shortages` read model this
-   feature deliberately deferred (spec.md's Out of Scope).
+**Notes from this feature's own implementation** (useful context for feature 6 or a re-read of this one):
+1. AD-007's third application: the trail row and the aggregate's own row are written inside the
+   same transaction by `TypeOrmWorkOrderRepository.save` (`typeorm-work-order.repository.ts`,
+   `appendTrail`), never by a post-commit subscriber. A forced real unique-violation mid-transaction
+   proves a failed write leaves neither the work order row nor the trail row behind.
+2. The shared `AggregateRoot` gained a non-draining `domainEvents` getter alongside the existing
+   draining `pullDomainEvents()`, so a repository can read recorded events for the publisher after
+   `save()` without clearing them first. The discrimination sensor confirmed this distinction is
+   load-bearing: swapping one call for the other inside `save()` fails a dedicated test.
+3. The DB-enforced "one non-terminal work order per vehicle" rule uses a partial unique index
+   written as the complement of the terminal states (`WHERE status NOT IN ('DELIVERED',
+   'CANCELED')`), not an enumeration of the non-terminal ones - so a state a future phase adds is
+   covered by default rather than by remembering to update the index.
+4. Feature 6 (`work-order-diagnosis-and-budget`) and feature 7
+   (`work-order-execution-and-closing`) inherit a `work_orders` schema already shaped for them: the
+   `CHECK` on `status` lists all seven states even though only `RECEIVED` is reachable through this
+   feature's routes, and `work_order_parts.withdrawn_quantity` exists today, written by nothing
+   until phase 11.
+5. This is the second feature (after `identity-foundation`) to go through a fix→re-verify pass with
+   a FAIL-to-PASS transition rather than a same-session PASS-with-non-blocking-gaps. Both times the
+   gaps were coverage-only (implementation already correct, missing the direct test proof) and the
+   fix round touched no production code - a pattern worth watching for a future lesson if it
+   recurs a third time.

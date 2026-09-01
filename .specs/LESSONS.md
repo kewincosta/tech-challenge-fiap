@@ -42,6 +42,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: typeorm-inventory-item.repository.ts:68 (pessimistic_write lock removed) against test/integration/inventory-item.repository.spec.ts:199-226's Promise.all()-raced concurrent-replenishment test - failed 3/15 runs (~20%) under the mutation, 0/2 false-positive on the unmutated tree across two full test:integration gate runs (concurrency-tests)
 - last seen: 2026-08-31T22:33:43Z
 
+### L-006 - Every read route, not only write routes, needs its own 403 test using an actor that genuinely lacks that route's permission - a suite where every e2e actor happens to hold the read permission leaves the 'lacks read permission' criterion completely untested.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `e2e-routes` · harmful: 0
+- features: work-order-creation
+- evidence: spec.md WO-05 AC6 / test/e2e/work-orders.e2e.spec.ts (no case) (e2e-routes)
+- last seen: 2026-09-01T01:38:08Z
+
+### L-007 - An edge case's task assignment in a tasks.md Edge Case Ownership table is not sufficient by itself - the owning task's own Done-when checklist must also list that edge case as a line item, or it can ship correctly implemented but with zero test evidence.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: work-order-creation
+- evidence: tasks.md Edge Case Ownership table row 6 / T19 Done-when (no matching line item) (planning)
+- last seen: 2026-09-01T01:38:13Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
