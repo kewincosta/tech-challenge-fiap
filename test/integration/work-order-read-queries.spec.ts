@@ -16,6 +16,7 @@ import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order
 import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
 import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
 import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
+import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
@@ -33,6 +34,7 @@ beforeAll(async () => {
     dataSource.getRepository(WorkOrderOrmEntity),
     dataSource.getRepository(WorkOrderServiceOrmEntity),
     dataSource.getRepository(WorkOrderPartOrmEntity),
+    dataSource.getRepository(WorkOrderBudgetOrmEntity),
     dataSource,
   );
   const queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);

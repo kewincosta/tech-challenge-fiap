@@ -10,6 +10,7 @@ import { WorkOrderTrailEvent } from '../../domain/events/work-order-trail.event'
 import { WorkOrderRepository } from '../../domain/repositories/work-order.repository';
 import { WorkOrderNumber } from '../../domain/value-objects/work-order-number';
 import { WorkOrderMapper } from './work-order.mapper';
+import { WorkOrderBudgetOrmEntity } from './work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './work-order-event.orm-entity';
 import { WorkOrderPartOrmEntity } from './work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './work-order-service.orm-entity';
@@ -28,6 +29,8 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     private readonly serviceItems: Repository<WorkOrderServiceOrmEntity>,
     @InjectRepository(WorkOrderPartOrmEntity)
     private readonly partItems: Repository<WorkOrderPartOrmEntity>,
+    @InjectRepository(WorkOrderBudgetOrmEntity)
+    private readonly budgets: Repository<WorkOrderBudgetOrmEntity>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -41,6 +44,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       where: { workOrderInternalId: row.id },
     });
     const partRows = await this.partItems.find({ where: { workOrderInternalId: row.id } });
+    const budgetRows = await this.budgets.find({ where: { workOrderInternalId: row.id } });
 
     const [
       customerExternalId,
@@ -69,10 +73,15 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       'inventory_items',
       partRows.map((partRow) => partRow.inventoryItemInternalId),
     );
+    const budgetDeciderExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
+      this.dataSource,
+      'users',
+      budgetRows
+        .map((budgetRow) => budgetRow.decidedByInternalId)
+        .filter((internalId): internalId is string => internalId !== null),
+    );
 
-    // Budget rows are not queried here yet - T11 adds the read alongside the write path, both in
-    // the same task. Every item comes back a draft in the meantime.
-    return WorkOrderMapper.toDomain(row, serviceRows, partRows, [], {
+    return WorkOrderMapper.toDomain(row, serviceRows, partRows, budgetRows, {
       customerExternalId,
       vehicleExternalId,
       createdByExternalId,
@@ -80,7 +89,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       budgetDecidedByExternalId,
       serviceExternalIdByInternalId,
       inventoryItemExternalIdByInternalId,
-      budgetDeciderExternalIdByInternalId: new Map(),
+      budgetDeciderExternalIdByInternalId,
     });
   }
 
@@ -95,7 +104,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
    * maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is never retried.
    */
   async save(workOrder: WorkOrder): Promise<void> {
-    const { workOrderRow, serviceRows, partRows } = WorkOrderMapper.toOrm(workOrder);
+    const { workOrderRow, serviceRows, partRows, budgetRows } = WorkOrderMapper.toOrm(workOrder);
     const events = workOrder.domainEvents;
 
     try {
@@ -126,10 +135,21 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
         workOrderRow.assignedMechanicInternalId = workOrder.assignedMechanicUserId
           ? await this.resolveInternalId(manager, 'users', workOrder.assignedMechanicUserId)
           : null;
+        workOrderRow.budgetDecidedByInternalId = workOrder.budgetDecidedByUserId
+          ? await this.resolveInternalId(manager, 'users', workOrder.budgetDecidedByUserId)
+          : null;
         await manager.save(WorkOrderOrmEntity, workOrderRow);
 
-        await this.replaceServiceItems(manager, workOrderRow.id, workOrder, serviceRows);
-        await this.replacePartItems(manager, workOrderRow.id, workOrder, partRows);
+        // Budgets before items: an item's budget_id is a foreign key to a budget row whose
+        // internal key does not exist until it is inserted (design.md's Tech Decisions).
+        const internalIdByRound = await this.replaceBudgets(
+          manager,
+          workOrderRow.id,
+          workOrder,
+          budgetRows,
+        );
+        await this.replaceServiceItems(manager, workOrderRow.id, workOrder, serviceRows, internalIdByRound);
+        await this.replacePartItems(manager, workOrderRow.id, workOrder, partRows, internalIdByRound);
         await this.appendTrail(manager, workOrderRow.id, events);
       });
     } catch (error) {
@@ -178,11 +198,44 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     await manager.save(WorkOrderEventOrmEntity, rows);
   }
 
+  /**
+   * A budget round is never removed once generated - unlike an item, nothing deletes an existing
+   * row here. Returns the round-to-internal-id map the item writers need for `budget_id`; a
+   * newly inserted row's `id` is filled in by `manager.save` itself.
+   */
+  private async replaceBudgets(
+    manager: EntityManager,
+    workOrderInternalId: string,
+    workOrder: WorkOrder,
+    budgetRows: WorkOrderBudgetOrmEntity[],
+  ): Promise<Map<number, string>> {
+    const existingRows = await manager.find(WorkOrderBudgetOrmEntity, {
+      where: { workOrderInternalId },
+    });
+    for (let index = 0; index < budgetRows.length; index += 1) {
+      const row = budgetRows[index];
+      const budget = workOrder.budgets[index];
+      const previous = existingRows.find((candidate) => candidate.externalId === row.externalId);
+      row.workOrderInternalId = workOrderInternalId;
+      row.decidedByInternalId = budget.decidedByUserId
+        ? await this.resolveInternalId(manager, 'users', budget.decidedByUserId)
+        : null;
+      if (previous) {
+        row.id = previous.id;
+      }
+    }
+    if (budgetRows.length > 0) {
+      await manager.save(WorkOrderBudgetOrmEntity, budgetRows);
+    }
+    return new Map(budgetRows.map((row) => [row.round, row.id]));
+  }
+
   private async replaceServiceItems(
     manager: EntityManager,
     workOrderInternalId: string,
     workOrder: WorkOrder,
     serviceRows: WorkOrderServiceOrmEntity[],
+    internalIdByRound: Map<number, string>,
   ): Promise<void> {
     const existingRows = await manager.find(WorkOrderServiceOrmEntity, {
       where: { workOrderInternalId },
@@ -198,6 +251,8 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       const previous = existingRows.find((candidate) => candidate.externalId === row.externalId);
       row.workOrderInternalId = workOrderInternalId;
       row.serviceInternalId = await this.resolveInternalId(manager, 'services', item.serviceId);
+      row.budgetInternalId =
+        item.budgetRound !== null ? (internalIdByRound.get(item.budgetRound) ?? null) : null;
       if (previous) {
         row.id = previous.id;
         row.createdAt = previous.createdAt;
@@ -215,6 +270,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     workOrderInternalId: string,
     workOrder: WorkOrder,
     partRows: WorkOrderPartOrmEntity[],
+    internalIdByRound: Map<number, string>,
   ): Promise<void> {
     const existingRows = await manager.find(WorkOrderPartOrmEntity, {
       where: { workOrderInternalId },
@@ -234,6 +290,8 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
         'inventory_items',
         item.inventoryItemId,
       );
+      row.budgetInternalId =
+        item.budgetRound !== null ? (internalIdByRound.get(item.budgetRound) ?? null) : null;
       if (previous) {
         row.id = previous.id;
         row.createdAt = previous.createdAt;

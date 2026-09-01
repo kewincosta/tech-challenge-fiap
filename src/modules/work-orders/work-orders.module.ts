@@ -12,6 +12,7 @@ import { GetWorkOrderHandler } from './application/queries/get-work-order/get-wo
 import { ListWorkOrdersHandler } from './application/queries/list-work-orders/list-work-orders.handler';
 import { WORK_ORDER_REPOSITORY } from './domain/repositories/work-order.repository';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
+import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderPartOrmEntity } from './infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './infrastructure/persistence/work-order-service.orm-entity';
@@ -27,6 +28,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       WorkOrderServiceOrmEntity,
       WorkOrderPartOrmEntity,
       WorkOrderEventOrmEntity,
+      WorkOrderBudgetOrmEntity,
     ]),
   ],
   controllers: [WorkOrdersController],

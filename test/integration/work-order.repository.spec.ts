@@ -11,6 +11,7 @@ import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-obje
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
 import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
+import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
 import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
@@ -26,6 +27,7 @@ beforeAll(async () => {
     dataSource.getRepository(WorkOrderOrmEntity),
     dataSource.getRepository(WorkOrderServiceOrmEntity),
     dataSource.getRepository(WorkOrderPartOrmEntity),
+    dataSource.getRepository(WorkOrderBudgetOrmEntity),
     dataSource,
   );
 });
