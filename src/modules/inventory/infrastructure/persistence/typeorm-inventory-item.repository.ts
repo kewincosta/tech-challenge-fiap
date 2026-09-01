@@ -42,6 +42,28 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
+   * The deadlock fix lives here, not in any caller: every batch, whatever order the client sent
+   * its lines in, locks the same items in internal-id order in one query (design.md's Risks &
+   * Concerns). Meant to run inside the caller's own open transaction - `ConsumeStockBatchHandler`
+   * and `RestoreStockBatchHandler` are always reached from inside `WithdrawPartsHandler`'s or
+   * `ReturnPartsHandler`'s `transactionRunner.run`, so the lock this takes is held for that whole
+   * transaction, not released when this query alone finishes.
+   */
+  async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows = await manager
+      .createQueryBuilder(InventoryItemOrmEntity, 'item')
+      .where('item.externalId IN (:...ids)', { ids: ids.map((id) => id.value) })
+      .orderBy('item.id', 'ASC')
+      .setLock('pessimistic_write')
+      .getMany();
+    return rows.map((row) => InventoryItemMapper.toDomain(row));
+  }
+
+  /**
    * Opens one transaction (copying `TypeOrmSessionRepository.save`), locks the item row
    * (`SELECT ... FOR UPDATE`) and writes the item plus every row in `item.newMovements` inside it.
    *

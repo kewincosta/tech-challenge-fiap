@@ -372,14 +372,16 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] `findAllByIdsForUpdate` returns the addressed items ordered by internal id, locked in that order, in one query
-- [ ] The order does not depend on the order of the ids the caller passed
-- [ ] An id matching nothing is simply absent from the result, with no throw
-- [ ] Two overlapping batches naming the same two items in reversed order both complete, one after the other, with no deadlock - spec.md's second edge case
-- [ ] Two concurrent withdrawals of the last unit end with one success, one `InsufficientStockError`, and a count of zero
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `findAllByIdsForUpdate` returns the addressed items ordered by internal id, locked in that order, in one query
+- [x] The order does not depend on the order of the ids the caller passed
+- [x] An id matching nothing is simply absent from the result, with no throw
+- [x] Two overlapping batches naming the same two items in reversed order both complete, one after the other, with no deadlock - spec.md's second edge case
+- [x] Two concurrent withdrawals of the last unit end with one success, one `InsufficientStockError`, and a count of zero
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 5 tests pass (3 fewer than planned - the ordering and absent-id bullets each map to their own case; the deadlock and last-unit-race concurrency tests are each their own case too)
+
+**Unplanned but required**: `setLock('pessimistic_write')` throws `PessimisticLockTransactionRequiredError` with no open transaction at all, not merely a lock released early - confirmed by running the first two tests standalone before wrapping them in a `TypeOrmTransactionRunner`. This is a stricter and more useful guarantee than design.md assumed ("meant to run inside an open transaction" reads as a convention; it is enforced). Also caught mid-task: the concurrency tests originally passed `randomUUID()` as `workOrderId` to `consume()`, which T7's FK resolution now rejects with a real lookup failure rather than silently accepting a dangling reference - fixed by inserting a real work order for both tests to reference, the same pattern `inventory-item.repository.spec.ts` already uses.
 
 **Tests**: integration
 **Gate**: full

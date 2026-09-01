@@ -12,6 +12,15 @@ export interface InventoryItemRepository {
    */
   existsActiveBySku(sku: Sku): Promise<boolean>;
   save(item: InventoryItem): Promise<void>;
+  /**
+   * Locks every addressed item in one query, ordered by internal id - the deadlock guarantee for
+   * a withdrawal batch, expressed here rather than left to the caller (design.md's Risks &
+   * Concerns): two overlapping batches naming the same items in different orders both take their
+   * locks in the same order, so one waits instead of Postgres killing either with `40P01`. An id
+   * matching nothing is simply absent from the result, no throw. Must run inside an open
+   * transaction - `save()`'s own `inTransaction` if there is an ambient one.
+   */
+  findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]>;
 }
 
 export const INVENTORY_ITEM_REPOSITORY = Symbol('InventoryItemRepository');

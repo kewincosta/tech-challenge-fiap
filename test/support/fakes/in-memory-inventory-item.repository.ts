@@ -22,4 +22,13 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     this.items.push(item);
     return Promise.resolve();
   }
+
+  /** No real lock in memory - ids matching nothing are simply absent, same as the real one. */
+  async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
+    return Promise.resolve(
+      ids
+        .map((id) => this.items.find((item) => item.id.equals(id)))
+        .filter((item): item is InventoryItem => item !== undefined),
+    );
+  }
 }
