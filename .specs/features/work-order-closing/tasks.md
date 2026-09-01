@@ -169,12 +169,12 @@ T20  T21  T22  T23
 
 **Done when**:
 
-- [ ] `DiscountExceedsChargedTotalError` carries kind `RuleViolation`
-- [ ] `CompletionForbiddenError` carries kind `Forbidden`
-- [ ] `CancelInExecutionForbiddenError` carries kind `Forbidden` and code `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`, the code H36 names verbatim
-- [ ] Each error's message names why it fired, not just what fired
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] `DiscountExceedsChargedTotalError` carries kind `RuleViolation`
+- [x] `CompletionForbiddenError` carries kind `Forbidden`
+- [x] `CancelInExecutionForbiddenError` carries kind `Forbidden` and code `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`, the code H36 names verbatim
+- [x] Each error's message names why it fired, not just what fired
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (planned 3; the existing two-test-per-error shape in `budget-rule-violation-errors.spec.ts` splits "code and kind" from "message names why" per class, so three error classes give six, not padding - no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
