@@ -69,6 +69,9 @@ function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
     diagnosisStartedAt: null,
     diagnosisCompletedAt: null,
     budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
   });
 }
 

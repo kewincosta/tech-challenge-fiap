@@ -1,12 +1,16 @@
 import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { BudgetStatus } from '../budget-status';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { BudgetApproved } from '../events/budget-approved.event';
 import { BudgetGenerated } from '../events/budget-generated.event';
+import { BudgetRejected } from '../events/budget-rejected.event';
 import { BudgetSent } from '../events/budget-sent.event';
 import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
+import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
@@ -42,6 +46,9 @@ interface WorkOrderProps {
   diagnosisStartedAt: Date | null;
   diagnosisCompletedAt: Date | null;
   budgets: Budget[];
+  budgetDecidedAt: Date | null;
+  budgetDecidedByUserId: string | null;
+  executionStartedAt: Date | null;
 }
 
 interface OpenWorkOrderInput {
@@ -101,6 +108,11 @@ interface CompleteDiagnosisInput {
   now: Date;
 }
 
+interface DecideBudgetActionInput {
+  actorUserId: string;
+  now: Date;
+}
+
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.Received,
@@ -144,6 +156,9 @@ export class WorkOrder extends AggregateRoot {
       diagnosisStartedAt: null,
       diagnosisCompletedAt: null,
       budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
     return workOrder;
@@ -272,6 +287,55 @@ export class WorkOrder extends AggregateRoot {
     return total;
   }
 
+  /**
+   * Approves the pending round, moves to `IN_EXECUTION`, and sets `executionStartedAt` only the
+   * first time - a later round returning the work order to execution is not a new execution
+   * (section 9's invariants).
+   */
+  approveBudget(input: DecideBudgetActionInput): void {
+    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+    const budget = this.pendingBudget();
+    budget.approve({ actorUserId: input.actorUserId, at: input.now });
+    this.props.status = WorkOrderStatus.InExecution;
+    this.props.budgetDecidedAt = input.now;
+    this.props.budgetDecidedByUserId = input.actorUserId;
+    if (this.props.executionStartedAt === null) {
+      this.props.executionStartedAt = input.now;
+    }
+    this.props.updatedAt = input.now;
+    this.record(new BudgetApproved(this.props.id.value, input.actorUserId, input.now));
+    this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * Round one returns the work order to `IN_DIAGNOSIS`. Any later round returns it to
+   * `IN_EXECUTION` and records `ExecutionStarted` too - the trail's record of every entry into
+   * execution, distinct from `executionStartedAt`, which stays at its first value (H38).
+   */
+  rejectBudget(input: DecideBudgetActionInput): void {
+    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+    const budget = this.pendingBudget();
+    budget.reject({ actorUserId: input.actorUserId, at: input.now });
+    const destination =
+      budget.round === 1 ? WorkOrderStatus.InDiagnosis : WorkOrderStatus.InExecution;
+    this.props.status = destination;
+    this.props.budgetDecidedAt = input.now;
+    this.props.budgetDecidedByUserId = input.actorUserId;
+    this.props.updatedAt = input.now;
+    this.record(new BudgetRejected(this.props.id.value, input.actorUserId, destination, input.now));
+    if (destination === WorkOrderStatus.InExecution) {
+      this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
+    }
+  }
+
+  private pendingBudget(): Budget {
+    const budget = this.props.budgets.find((candidate) => candidate.status === BudgetStatus.Pending);
+    if (!budget) {
+      throw new WorkOrderStateError(this.props.status);
+    }
+    return budget;
+  }
+
   assignMechanic(input: AssignMechanicInput): void {
     if (MECHANIC_ASSIGNABLE_TERMINAL_STATES.includes(this.props.status)) {
       throw new WorkOrderStateError(this.props.status);
@@ -361,5 +425,17 @@ export class WorkOrder extends AggregateRoot {
 
   get budgets(): readonly Budget[] {
     return [...this.props.budgets];
+  }
+
+  get budgetDecidedAt(): Date | null {
+    return this.props.budgetDecidedAt;
+  }
+
+  get budgetDecidedByUserId(): string | null {
+    return this.props.budgetDecidedByUserId;
+  }
+
+  get executionStartedAt(): Date | null {
+    return this.props.executionStartedAt;
   }
 }

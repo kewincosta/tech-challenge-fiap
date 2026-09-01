@@ -4,10 +4,13 @@ import { BudgetStatus } from '../budget-status';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { BudgetApproved } from '../events/budget-approved.event';
 import { BudgetGenerated } from '../events/budget-generated.event';
+import { BudgetRejected } from '../events/budget-rejected.event';
 import { BudgetSent } from '../events/budget-sent.event';
 import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
+import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
@@ -76,6 +79,9 @@ function restoreWorkOrder(status: WorkOrderStatus, assignedMechanicUserId: strin
     diagnosisStartedAt: null,
     diagnosisCompletedAt: null,
     budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
   });
 }
 
@@ -383,6 +389,9 @@ describe('WorkOrder', () => {
       diagnosisStartedAt: NOW,
       diagnosisCompletedAt: null,
       budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
     });
 
     expect(workOrder.diagnosisStartedAt).toEqual(NOW);
@@ -430,6 +439,9 @@ describe('WorkOrder.completeDiagnosis', () => {
       diagnosisStartedAt: NOW,
       diagnosisCompletedAt: null,
       budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
     });
   }
 
@@ -520,6 +532,9 @@ describe('WorkOrder.completeDiagnosis', () => {
       diagnosisStartedAt: NOW,
       diagnosisCompletedAt: NOW,
       budgets: [rejectedBudget],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
     });
 
     workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
@@ -541,5 +556,138 @@ describe('WorkOrder.completeDiagnosis', () => {
     expect(events[0]).toBeInstanceOf(DiagnosisCompleted);
     expect(events[1]).toBeInstanceOf(BudgetGenerated);
     expect(events[2]).toBeInstanceOf(BudgetSent);
+  });
+});
+
+describe('WorkOrder.approveBudget and rejectBudget', () => {
+  function awaitingApprovalWithPendingRound(
+    round: number,
+    executionStartedAt: Date | null = null,
+  ): WorkOrder {
+    const pendingBudget = Budget.generate({
+      id: BudgetId.create('cccccccc-cccc-4ccc-8ccc-cccccccccccc'),
+      round,
+      total: Money.fromCents(15099),
+      generatedAt: NOW,
+    });
+    const attachedServiceItem = WorkOrderServiceItem.restore({
+      id: WorkOrderItemId.create('66666666-6666-4666-8666-666666666666'),
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      budgetRound: round,
+      budgetedUnitPrice: Money.fromCents(15099),
+    });
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.AwaitingApproval,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [attachedServiceItem],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [pendingBudget],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt,
+    });
+  }
+
+  it('approves the pending round, moves to IN_EXECUTION and sets executionStartedAt the first time', () => {
+    const workOrder = awaitingApprovalWithPendingRound(1);
+
+    workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
+    expect(workOrder.budgets[0].status).toBe(BudgetStatus.Approved);
+    expect(workOrder.budgets[0].decidedByUserId).toBe(CUSTOMER_ID);
+    expect(workOrder.budgetDecidedAt).toEqual(NOW);
+    expect(workOrder.budgetDecidedByUserId).toBe(CUSTOMER_ID);
+    expect(workOrder.executionStartedAt).toEqual(NOW);
+  });
+
+  it('leaves executionStartedAt at its first value on a second entry into execution', () => {
+    const firstEntry = new Date('2026-08-30T09:00:00Z');
+    const workOrder = awaitingApprovalWithPendingRound(2, firstEntry);
+
+    workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.executionStartedAt).toEqual(firstEntry);
+  });
+
+  it('rejects round one and returns the work order to IN_DIAGNOSIS', () => {
+    const workOrder = awaitingApprovalWithPendingRound(1);
+
+    workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InDiagnosis);
+    expect(workOrder.budgets[0].status).toBe(BudgetStatus.Rejected);
+  });
+
+  it('rejects a round above one and returns to IN_EXECUTION, recording ExecutionStarted alongside BudgetRejected', () => {
+    const firstEntry = new Date('2026-08-30T09:00:00Z');
+    const workOrder = awaitingApprovalWithPendingRound(2, firstEntry);
+    workOrder.pullDomainEvents();
+
+    workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
+    expect(workOrder.executionStartedAt).toEqual(firstEntry);
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(2);
+    expect(events[0]).toBeInstanceOf(BudgetRejected);
+    expect(events[1]).toBeInstanceOf(ExecutionStarted);
+  });
+
+  it("keeps a rejected round's items attached with their budgeted price intact", () => {
+    const workOrder = awaitingApprovalWithPendingRound(1);
+
+    workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.serviceItems[0].budgetRound).toBe(1);
+    expect(workOrder.serviceItems[0].budgetedUnitPrice?.cents).toBe(15099);
+  });
+
+  it('refuses to decide outside AWAITING_APPROVAL', () => {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.InDiagnosis);
+
+    expect(() => workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+    expect(() => workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('records BudgetApproved then ExecutionStarted on approval', () => {
+    const workOrder = awaitingApprovalWithPendingRound(1);
+    workOrder.pullDomainEvents();
+
+    workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(2);
+    expect(events[0]).toBeInstanceOf(BudgetApproved);
+    expect(events[1]).toBeInstanceOf(ExecutionStarted);
+  });
+
+  it('mirrors the latest decision on budgetDecidedAt and budgetDecidedByUserId', () => {
+    const workOrder = awaitingApprovalWithPendingRound(1);
+
+    workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.budgetDecidedAt).toEqual(NOW);
+    expect(workOrder.budgetDecidedByUserId).toBe(CUSTOMER_ID);
   });
 });
