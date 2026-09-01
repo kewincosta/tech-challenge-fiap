@@ -152,14 +152,14 @@ T19
 
 **Done when**:
 
-- [ ] Accepts `A1B090-2026` and exposes it unchanged
-- [ ] Normalises a lower-case number to upper case and trims surrounding whitespace
-- [ ] Rejects a first block shorter or longer than six characters
-- [ ] Rejects a year block that is not exactly four digits
-- [ ] Rejects a character outside `A-Z0-9` in the first block
-- [ ] Rejects an empty or whitespace-only value
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Accepts `A1B090-2026` and exposes it unchanged
+- [x] Normalises a lower-case number to upper case and trims surrounding whitespace
+- [x] Rejects a first block shorter or longer than six characters
+- [x] Rejects a year block that is not exactly four digits
+- [x] Rejects a character outside `A-Z0-9` in the first block
+- [x] Rejects an empty or whitespace-only value
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
