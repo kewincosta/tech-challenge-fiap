@@ -97,11 +97,16 @@ interface WorkOrderProps extends ClosingProps {
   budgetDecidedAt: Date | null;
   budgetDecidedByUserId: string | null;
   executionStartedAt: Date | null;
+  /** AD-009: the row version this instance was loaded at. `save` checks it and bumps it; a
+   * mismatch means another write landed first. */
+  version: number;
 }
 
 /** What `restore` accepts: every prop `WorkOrderProps` carries, except the closing figures may be
- * omitted and default to `CLOSING_DEFAULTS` - the shape every pre-existing row has. */
-type RestoreWorkOrderProps = Omit<WorkOrderProps, keyof ClosingProps> & Partial<ClosingProps>;
+ * omitted and default to `CLOSING_DEFAULTS` - the shape every pre-existing row has - and `version`
+ * may be omitted, defaulting to 0, the value every pre-existing row's own column already carries. */
+type RestoreWorkOrderProps = Omit<WorkOrderProps, keyof ClosingProps | 'version'> &
+  Partial<ClosingProps> & { version?: number };
 
 interface OpenWorkOrderInput {
   id: WorkOrderId;
@@ -261,6 +266,7 @@ export class WorkOrder extends AggregateRoot {
       budgetDecidedByUserId: null,
       executionStartedAt: null,
       ...CLOSING_DEFAULTS,
+      version: 0,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
     return workOrder;
@@ -280,6 +286,7 @@ export class WorkOrder extends AggregateRoot {
       canceledAt: props.canceledAt ?? CLOSING_DEFAULTS.canceledAt,
       canceledByUserId: props.canceledByUserId ?? CLOSING_DEFAULTS.canceledByUserId,
       cancellationReason: props.cancellationReason ?? CLOSING_DEFAULTS.cancellationReason,
+      version: props.version ?? 0,
       serviceItems: [...props.serviceItems],
       partItems: [...props.partItems],
       budgets: [...props.budgets],
@@ -819,5 +826,10 @@ export class WorkOrder extends AggregateRoot {
   /** What `CancellationAuthorizer` reads: any part item withdrawn at all, in any state. */
   get hasOutstandingWithdrawals(): boolean {
     return this.props.partItems.some((item) => item.withdrawnQuantity > 0);
+  }
+
+  /** AD-009: the row version this instance was loaded at - never exposed on any response DTO. */
+  get version(): number {
+    return this.props.version;
   }
 }

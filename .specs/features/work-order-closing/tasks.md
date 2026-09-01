@@ -431,18 +431,20 @@ Unplanned but required: `WorkOrderMapper`'s own spec file (`work-order.mapper.sp
 
 **Done when**:
 
-- [ ] `ConcurrentModificationError` lives in `src/shared/application/errors/`, carries kind `Conflict` and is reachable by any module that later adopts the guard
-- [ ] `WorkOrder` carries a `version`, set by `restore` and readable by the mapper, and `create` starts it at zero
-- [ ] `save` updates with `WHERE id = :id AND version = :loadedVersion` and bumps the version in the same statement
-- [ ] Zero affected rows throws `ConcurrentModificationError`
-- [ ] A first insert writes version zero and does not throw
-- [ ] `version` is never exposed on any response DTO
-- [ ] An integration test loads the same work order twice, saves the first, and asserts the second save throws
-- [ ] An integration test asserts a sequential load-save-load-save pair both succeed, so the guard does not refuse an honest second write
-- [ ] An integration test asserts the version column actually advances by one per save
-- [ ] The whole existing suite stays green, which is the regression net for a change to a shared write path
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] `ConcurrentModificationError` lives in `src/shared/application/errors/`, carries kind `Conflict` and is reachable by any module that later adopts the guard
+- [x] `WorkOrder` carries a `version`, set by `restore` and readable by the mapper, and `create` starts it at zero
+- [x] `save` updates with `WHERE id = :id AND version = :loadedVersion` and bumps the version in the same statement
+- [x] Zero affected rows throws `ConcurrentModificationError`
+- [x] A first insert writes version zero and does not throw
+- [x] `version` is never exposed on any response DTO
+- [x] An integration test loads the same work order twice, saves the first, and asserts the second save throws
+- [x] An integration test asserts a sequential load-save-load-save pair both succeed, so the guard does not refuse an honest second write
+- [x] An integration test asserts the version column actually advances by one per save
+- [x] The whole existing suite stays green, which is the regression net for a change to a shared write path
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 3 tests pass (no silent deletions)
+
+Unplanned but required: the first implementation compared the freshly re-read database version against itself (`WHERE version = :version` using the very value `existing.version` had just read moments earlier in the same call), which can never mismatch and made the guard a no-op - the direct-conflict test caught it immediately (`loadedB`'s save resolved instead of throwing). Fixed by comparing against `workOrder.version`, the version the *aggregate instance* was loaded at, which is what a concurrent caller's stale copy actually carries. This is exactly the property optimistic concurrency depends on, and it only surfaced because the test exercised a genuine two-loads-one-write-between-them scenario rather than asserting the happy path alone.
 
 **Tests**: integration
 **Gate**: build

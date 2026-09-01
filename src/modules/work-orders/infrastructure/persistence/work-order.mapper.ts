@@ -95,6 +95,7 @@ export class WorkOrderMapper {
       canceledAt: row.canceledAt,
       canceledByUserId: resolved.canceledByExternalId,
       cancellationReason: row.cancellationReason,
+      version: row.version,
       serviceItems: serviceRows.map((serviceRow) => {
         const serviceExternalId = resolved.serviceExternalIdByInternalId.get(
           serviceRow.serviceInternalId,

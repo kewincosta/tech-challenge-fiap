@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import { ConcurrentModificationError } from '../../src/shared/application/errors/concurrent-modification.error';
 import { Money } from '../../src/shared/domain/value-objects/money';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../src/modules/work-orders/domain/errors/vehicle-already-has-active-work-order.error';
@@ -560,5 +561,72 @@ describe('TypeOrmWorkOrderRepository', () => {
 
     expect(reread?.chargedTotal).toBeNull();
     expect(reread?.discount.equals(Money.fromCents(0))).toBe(true);
+  });
+
+  it('should refuse a second save whose loaded version no longer matches the row (AD-009)', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+
+    const loadedA = await repository.findByNumber(workOrder.number);
+    const loadedB = await repository.findByNumber(workOrder.number);
+    loadedA?.assignMechanic({
+      mechanicUserId: fixture.creator.externalId,
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+    loadedB?.assignMechanic({
+      mechanicUserId: fixture.creator.externalId,
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+
+    await repository.save(loadedA!);
+
+    await expect(repository.save(loadedB!)).rejects.toThrow(ConcurrentModificationError);
+  });
+
+  it('should let a sequential load-save-load-save pair both succeed, never refusing honest traffic', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+
+    const loadedA = await repository.findByNumber(workOrder.number);
+    loadedA?.assignMechanic({
+      mechanicUserId: fixture.creator.externalId,
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+    await expect(repository.save(loadedA!)).resolves.not.toThrow();
+
+    const loadedB = await repository.findByNumber(workOrder.number);
+    loadedB?.assignMechanic({
+      mechanicUserId: fixture.creator.externalId,
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+    await expect(repository.save(loadedB!)).resolves.not.toThrow();
+  });
+
+  it('should advance the version column by exactly one on every save', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+
+    for (let i = 0; i < 2; i += 1) {
+      const loaded = await repository.findByNumber(workOrder.number);
+      loaded?.assignMechanic({
+        mechanicUserId: fixture.creator.externalId,
+        actorUserId: fixture.creator.externalId,
+        now: new Date(),
+      });
+      await repository.save(loaded!);
+    }
+
+    const rows: Array<{ version: number }> = await dataSource.query(
+      `SELECT version FROM work_orders WHERE external_id = $1`,
+      [workOrder.id.value],
+    );
+    expect(rows[0].version).toBe(2);
   });
 });

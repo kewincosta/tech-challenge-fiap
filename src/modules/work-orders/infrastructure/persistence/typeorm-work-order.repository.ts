@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { ConcurrentModificationError } from '../../../../shared/application/errors/concurrent-modification.error';
 import { DomainEvent } from '../../../../shared/domain/domain-event';
 import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { WorkOrder } from '../../domain/entities/work-order';
@@ -117,7 +118,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
    * non-draining read, so the handler's own `pullDomainEvents()` after `save` still sees them
    * (AD-007, H39). A violation of `ux_work_orders_number` maps to `WorkOrderNumberTakenError`,
    * which the handler retries with a fresh number; a violation of `ux_work_orders_active_vehicle`
-   * maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is never retried.
+   * maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is never retried. The row write
+   * itself is version-guarded (AD-009): an update only lands if the row's version still matches
+   * what this aggregate was loaded at, or `ConcurrentModificationError` (409) is thrown instead.
    */
   async save(workOrder: WorkOrder): Promise<void> {
     const { workOrderRow, serviceRows, partRows, budgetRows } = WorkOrderMapper.toOrm(workOrder);
@@ -163,7 +166,26 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
         workOrderRow.canceledByInternalId = workOrder.canceledByUserId
           ? await this.resolveInternalId(manager, 'users', workOrder.canceledByUserId)
           : null;
-        await manager.save(WorkOrderOrmEntity, workOrderRow);
+
+        // AD-009: an update is guarded by the version this aggregate was loaded at, bumped in the
+        // same statement. Zero rows affected means another write landed first - the version
+        // column no longer matches what `existing` read moments ago. An insert has no prior
+        // writer to race against, so it carries no guard, only the starting version.
+        if (existing) {
+          const result = await manager
+            .createQueryBuilder()
+            .update(WorkOrderOrmEntity)
+            .set({ ...workOrderRow, version: () => 'version + 1' })
+            .where('id = :id AND version = :version', { id: existing.id, version: workOrder.version })
+            .execute();
+          if (result.affected === 0) {
+            throw new ConcurrentModificationError();
+          }
+          workOrderRow.version = workOrder.version + 1;
+        } else {
+          workOrderRow.version = 0;
+          await manager.save(WorkOrderOrmEntity, workOrderRow);
+        }
 
         // Budgets before items: an item's budget_id is a foreign key to a budget row whose
         // internal key does not exist until it is inserted (design.md's Tech Decisions).

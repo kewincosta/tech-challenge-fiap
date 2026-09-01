@@ -94,4 +94,10 @@ export class WorkOrderOrmEntity {
 
   @Column({ name: 'cancellation_reason', type: 'varchar', length: 255, nullable: true })
   cancellationReason!: string | null;
+
+  /** AD-009. Not TypeORM's `@VersionColumn` - the repository's own `save` owns the check and the
+   * bump explicitly, so a mismatch maps to `ConcurrentModificationError` rather than a driver
+   * exception. */
+  @Column({ name: 'version', type: 'integer' })
+  version!: number;
 }
