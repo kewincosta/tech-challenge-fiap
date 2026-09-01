@@ -79,7 +79,7 @@ is specified when it is reached, never in advance.
 | 3 | `service-catalog` | 6 | Medium | Verified |
 | 4 | `inventory-and-stock-movements` | 7 | Large | Verified |
 | 5 | `work-order-creation` | 8 | Large | Verified |
-| 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Not started |
+| 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Verified |
 | 7 | `work-order-execution-and-closing` | 11, 12 | Complex | Not started |
 | 8 | `tracking-and-metrics` | 13 | Medium | Not started |
 
@@ -109,53 +109,63 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/work-order-creation` - **done**
-- **Phase / Task**: Verified, PASS on re-verification pass 2 (iteration 2 of the bounded
-  3-iteration fix→re-verify loop). Pass 1 (`04861a1..ca0261a`, T1-T19) returned FAIL with two
-  coverage-only gaps - WO-05 AC6 (403 for an actor lacking `work-orders:read` on list/detail) and
-  the "trail for a nonexistent number → 404" Edge Case - both behaviourally correct by code
-  inspection but with zero test evidence. T20 (`8b1a96b`) closed both with two new e2e tests and no
-  production code change. 20 tasks total (T1-T20) committed to `main`. Verifier report at
-  `.specs/features/work-order-creation/validation.md`.
-- **Completed**: every task in `tasks.md`; all 5 stories (WO-01 through WO-05, 45 ACs/edge cases)
-  independently re-derived and confirmed by the Verifier, evidence-or-zero. Discrimination sensor:
-  3/3 injected mutations killed - the non-draining `domainEvents` read after `save()`, the
-  RECEIVED-state part-planning guard, and the active-vehicle unique-index-to-`409` mapping (the
-  last one killed deterministically in both a real concurrent-write race and a sequential e2e form,
-  unlike `inventory-and-stock-movements`' probabilistic pessimistic-lock mutation, `L-005` - a
-  different mechanism, no update to `L-005` warranted). Sensor not re-run in pass 2 since T20
-  touched zero production files (`git diff --stat ca0261a..HEAD -- src/` empty); pass 1's result
-  carries forward. Final gate: lint clean, build clean, unit 369/369, integration 155/155 (run
-  twice consecutively), e2e 113/113 (run twice consecutively) - 637 total, up from the 522
-  baseline, zero regressions.
+- **Feature**: `.specs/features/work-order-diagnosis-and-budget` - **done**
+- **Phase / Task**: Verified, PASS on the first verification pass - no fix→re-verify loop needed.
+  20 tasks total (T1-T20) committed to `main` (`a79ab48..f97ea9d`, preceded by the spec/design/tasks
+  approval commits `3a0f1dd`, `5a7949d`, `f7b6235`). Verifier report at
+  `.specs/features/work-order-diagnosis-and-budget/validation.md`.
+- **Completed**: every task in `tasks.md`; all 5 stories (WOB-01 through WOB-05, 27 ACs plus 8
+  listed edge cases) independently re-derived and confirmed by the Verifier, evidence-or-zero.
+  Discrimination sensor: 3/3 injected mutations killed - dropping `generateRound`'s
+  `|| item.budgetRound === round` clause (breaks round-one regeneration), writing item rows before
+  budget rows in `TypeOrmWorkOrderRepository.save` (breaks the round-to-internal-id FK linkage,
+  caught against a real Postgres integration run), and flipping
+  `BudgetDecisionAuthorizer`'s `customer.id === workOrder.customerId` comparison (breaks both the
+  authorizer's own unit test and the approve/reject handlers' authorization tests). Final gate:
+  lint clean, build clean, unit 471/471, integration 172/172 (run twice consecutively), e2e 128/128
+  (run twice consecutively) - 771 total, up from the 637 baseline, zero regressions. Real counts
+  matched tasks.md's own closure-note estimate exactly.
 - **In-progress** (file:line): none
-- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 6,
-  `work-order-diagnosis-and-budget`, when the user asks for it - not before, per this file's own
+- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 7,
+  `work-order-execution-and-closing`, when the user asks for it - not before, per this file's own
   Feature Roadmap policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 6 or a re-read of this one):
-1. AD-007's third application: the trail row and the aggregate's own row are written inside the
-   same transaction by `TypeOrmWorkOrderRepository.save` (`typeorm-work-order.repository.ts`,
-   `appendTrail`), never by a post-commit subscriber. A forced real unique-violation mid-transaction
-   proves a failed write leaves neither the work order row nor the trail row behind.
-2. The shared `AggregateRoot` gained a non-draining `domainEvents` getter alongside the existing
-   draining `pullDomainEvents()`, so a repository can read recorded events for the publisher after
-   `save()` without clearing them first. The discrimination sensor confirmed this distinction is
-   load-bearing: swapping one call for the other inside `save()` fails a dedicated test.
-3. The DB-enforced "one non-terminal work order per vehicle" rule uses a partial unique index
-   written as the complement of the terminal states (`WHERE status NOT IN ('DELIVERED',
-   'CANCELED')`), not an enumeration of the non-terminal ones - so a state a future phase adds is
-   covered by default rather than by remembering to update the index.
-4. Feature 6 (`work-order-diagnosis-and-budget`) and feature 7
-   (`work-order-execution-and-closing`) inherit a `work_orders` schema already shaped for them: the
-   `CHECK` on `status` lists all seven states even though only `RECEIVED` is reachable through this
-   feature's routes, and `work_order_parts.withdrawn_quantity` exists today, written by nothing
-   until phase 11.
-5. This is the second feature (after `identity-foundation`) to go through a fix→re-verify pass with
-   a FAIL-to-PASS transition rather than a same-session PASS-with-non-blocking-gaps. Both times the
-   gaps were coverage-only (implementation already correct, missing the direct test proof) and the
-   fix round touched no production code - a pattern worth watching for a future lesson if it
-   recurs a third time.
+**Notes from this feature's own implementation** (useful context for feature 7 or a re-read of this one):
+1. Rule 29 ("no caller ever supplies a price or total") is held by construction, not validation:
+   every command and every aggregate method that generates or regenerates a round
+   (`CompleteDiagnosisCommand`, `SubmitSupplementaryBudgetCommand`,
+   `WorkOrder.completeDiagnosis`/`submitSupplementaryBudget`) carries no price/total field in its
+   signature at all, confirmed by reading the actual TypeScript interfaces rather than trusting a
+   comment.
+2. A rejected round one is regenerated in place (`Budget.regenerate`, called from
+   `WorkOrder.completeDiagnosis`) rather than opening a new round - `ux_work_order_budgets_round`
+   stays satisfiable and rounds above one stay reserved for work found during execution (H38). The
+   private `generateRound(round)` helper's `item.isDraft || item.budgetRound === round` condition is
+   what makes this regeneration path pick up the already-attached round-one items alongside any new
+   drafts; the discrimination sensor confirmed dropping the second clause is caught by a dedicated
+   unit test.
+3. `TypeOrmWorkOrderRepository.save` writes the work order row, then budget rows, then item rows,
+   in that order inside one transaction, because an item's `budget_id` is a foreign key to a budget
+   row whose internal id does not exist until it is inserted. `replaceBudgets` returns a
+   `Map<round, internalId>` that `replaceServiceItems`/`replacePartItems` read to fill `budget_id`.
+   The discrimination sensor confirmed this ordering is load-bearing against a real Postgres
+   integration run.
+4. `BudgetDecisionAuthorizer` is the one place that answers "the owning customer or a holder of
+   `work-orders:decide`" - both `approve-budget` and `reject-budget` handlers call it between the
+   load and the aggregate call, and it throws `WorkOrderNotFoundError` (never a forbidden error) for
+   anyone else, so the API never confirms a work order number exists to a stranger. The two decision
+   routes carry no `@RequirePermissions` decorator by design, since `PermissionsGuard.every()` cannot
+   express "either of two" - a comment on both routes names the authorizer as the reason.
+5. `work_order_events.occurred_at` ties happen for real in this feature: several transitions record
+   2-3 trail events sharing the exact same `now`, and `listTrail`'s `ORDER BY occurred_at ASC` has no
+   secondary tie-breaker. Verified directly against the real Postgres instance (forced seq scan and
+   forced index scan) that ties resolve to insertion order consistently - stable in practice, not a
+   documented SQL guarantee. Not treated as a gap; worth remembering if a future feature adds
+   concurrent writers to the same trail.
+6. The "coverage-only gap, fix touches zero production code" pattern flagged as worth watching after
+   `work-order-creation` (and `identity-foundation` before it) did **not** recur here - this feature
+   passed verification on the first attempt, no fix→re-verify loop at all. No lesson promotion
+   triggered by this feature.

@@ -163,17 +163,17 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| WOB-01 | P1: The diagnosis opens and holds a mechanic responsible | Design | In Design |
-| WOB-02 | P1: Completing the diagnosis prices what was found | Design | In Design |
-| WOB-03 | P1: The customer decides, and approval starts the work | Design | In Design |
-| WOB-04 | P1: Extra work found during execution goes to its own round | Design | In Design |
-| WOB-05 | P2: The budget and its rounds read back | Design | In Design |
+| WOB-01 | P1: The diagnosis opens and holds a mechanic responsible | Execute | Verified |
+| WOB-02 | P1: Completing the diagnosis prices what was found | Execute | Verified |
+| WOB-03 | P1: The customer decides, and approval starts the work | Execute | Verified |
+| WOB-04 | P1: Extra work found during execution goes to its own round | Execute | Verified |
+| WOB-05 | P2: The budget and its rounds read back | Execute | Verified |
 
 **ID format:** `WOB-NN`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 5 total, 0 mapped to tasks, 5 unmapped
+**Coverage:** 5 total, 5 mapped to tasks, 0 unmapped
 
 ---
 
