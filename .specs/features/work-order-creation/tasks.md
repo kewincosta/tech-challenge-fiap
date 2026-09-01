@@ -465,11 +465,11 @@ T19
 
 **Done when**:
 
-- [ ] Produces a number `WorkOrderNumber.create` accepts, for a given year
-- [ ] Uses only characters from `A-Z0-9` in the first block
-- [ ] Two consecutive draws differ, so a collision is a real event rather than a certainty
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] Produces a number `WorkOrderNumber.create` accepts, for a given year
+- [x] Uses only characters from `A-Z0-9` in the first block
+- [x] Two consecutive draws differ, so a collision is a real event rather than a certainty
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
