@@ -126,16 +126,16 @@ T19  T20
 
 **Done when**:
 
-- [ ] `BudgetStatus` carries exactly `PENDING`, `APPROVED` and `REJECTED`, the three the mandated `CHECK` allows
-- [ ] `BudgetId.create` refuses a non-uuid and `equals` compares by value
-- [ ] `Budget.generate` produces a `PENDING` round with the given number, total and generation moment, and no decision
-- [ ] `approve` and `reject` each set the status, the deciding user and the decision moment
-- [ ] `approve` and `reject` each refuse a round that is not `PENDING`
-- [ ] `regenerate` resets a `REJECTED` round to `PENDING` with a new total and a new generation moment, clearing the decision
-- [ ] `regenerate` refuses a round that is not `REJECTED`
-- [ ] `restore` round-trips every field
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `BudgetStatus` carries exactly `PENDING`, `APPROVED` and `REJECTED`, the three the mandated `CHECK` allows
+- [x] `BudgetId.create` refuses a non-uuid and `equals` compares by value
+- [x] `Budget.generate` produces a `PENDING` round with the given number, total and generation moment, and no decision
+- [x] `approve` and `reject` each set the status, the deciding user and the decision moment
+- [x] `approve` and `reject` each refuse a round that is not `PENDING`
+- [x] `regenerate` resets a `REJECTED` round to `PENDING` with a new total and a new generation moment, clearing the decision
+- [x] `regenerate` refuses a round that is not `REJECTED`
+- [x] `restore` round-trips every field
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 14 tests pass (2 more than planned - `BudgetId.create`'s uuid guard and `equals` each earned their own case rather than riding along, and `regenerate` on an `APPROVED` round is its own case beside the `PENDING` one)
 
 **Tests**: unit
 **Gate**: quick
