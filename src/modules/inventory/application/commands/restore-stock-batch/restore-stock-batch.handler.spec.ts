@@ -112,8 +112,15 @@ describe('RestoreStockBatchHandler', () => {
       (movement) => movement.kind === StockMovementKind.Return,
     );
     expect(returns).toHaveLength(2);
-    // Newest consumption (3 units) drawn from first and fully drained, then 1 more from the older one.
-    expect(returns?.map((movement) => movement.quantity).sort()).toEqual([1, 3]);
+    // Newest consumption (3 units, movement id ...0002) drawn from first and fully drained, then
+    // 1 more from the older one (2 units, movement id ...0001) - each RETURN must point at its
+    // own consumption, not both at the same one (validation.md's P2, round 3).
+    const newestConsumptionId = `${ITEM_A_ID.slice(0, 8)}-0000-4000-8000-000000000002`;
+    const oldestConsumptionId = `${ITEM_A_ID.slice(0, 8)}-0000-4000-8000-000000000001`;
+    const fromNewest = returns?.find((movement) => movement.quantity === 3);
+    const fromOldest = returns?.find((movement) => movement.quantity === 1);
+    expect(fromNewest?.undoesMovementId).toBe(newestConsumptionId);
+    expect(fromOldest?.undoesMovementId).toBe(oldestConsumptionId);
   });
 
   it('never edits the original consumption, and marks it fully drained after a full return', async () => {

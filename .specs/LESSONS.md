@@ -78,6 +78,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: N3: typeorm-inventory-query.adapter.ts:57,65 (SUM(planned_quantity - withdrawn_quantity) reduced to SUM(planned_quantity)) survived all 880 tests, because every shortage fixture leaves withdrawn_quantity at 0 (WOP-04 AC2) (query-adapters)
 - last seen: 2026-09-01T14:29:58Z
 
+### L-012 - When one computed expression both filters rows and fills a returned field, assert the returned field's value on a row the filter admits - a membership-only assertion proves the filter's copy of the expression and never the projection's.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: P1: typeorm-inventory-query.adapter.ts:57 (the shortage projection alone reduced to SUM(planned_quantity), the HAVING clause at :65 intact) survived all 882 tests, because the only fixture with a non-zero withdrawn quantity asserts absence from the list rather than the reported figure (WOP-04 AC2) (query-adapters)
+- last seen: 2026-09-01T14:55:18Z
+
+### L-013 - Assert a pointer field in a fixture with more than one possible target - a single-candidate fixture passes for any resolution logic, right or wrong.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `application-handlers` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: P2: restore-stock-batch.handler.ts:59 (every RETURN's undoesMovementId set to pending[0].movementId) survived all 882 tests, because undoesMovementId is asserted only in fixtures with one pending consumption, and the two-consumption split case asserts count and quantities only (WOP-03 AC2) (application-handlers)
+- last seen: 2026-09-01T14:55:24Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

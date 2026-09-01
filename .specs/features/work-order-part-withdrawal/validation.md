@@ -2,12 +2,287 @@
 
 **Date**: 2026-09-01
 **Spec**: `.specs/features/work-order-part-withdrawal/spec.md`
-**Diff range**: `639fe7e..HEAD` (`8ffb123`), 25 commits, 54 files
-**Verifier**: independent sub-agent (author != verifier), second pass
-**Verdict**: FAIL (2 surviving mutants, both newly found in this pass)
+**Diff range**: `639fe7e..HEAD` (`b85c999`), 25 commits, 57 files, +6237/-36
+**Verifier**: independent sub-agent (author != verifier), third pass
+**Verdict**: FAIL (2 surviving mutants, both new to this pass)
 
-This is a rewrite of the first-pass report, carrying its history forward. Round 1 is preserved in
-the "Round 1" section below; everything above it is the current state of the tree at `8ffb123`.
+Rounds 1 and 2 are preserved below. Everything above them is the state of the tree at `b85c999`.
+
+**Both of round 2's findings are fixed.** I re-injected N1 and N3 myself in a throwaway worktree and
+both die on the two cases the fix round added. The gate is green at 882 tests, and the fix round
+again changed no production code.
+
+The FAIL comes from four fresh mutations of my own, run in code the first two passes never probed.
+Two survived all 882 tests. Both are proven non-equivalent (a throwaway probe fails with the
+mutation active and passes once it is reverted), and both sit on an outcome `spec.md` states
+precisely. One of them, P1, is the half of round 2's own Fix 7 plan that the fix round did not
+carry out: that plan named a second assertion on `outstandingQuantity` for a partly withdrawn item
+and marked it "worth adding in the same case", and the case shipped without it.
+
+---
+
+## Round 3: what was re-checked
+
+### Round 2's two fix plans
+
+| Fix | Claim | Re-derived evidence | Holds? |
+| --- | --- | --- | --- |
+| Fix 6 (N1) | A multi-line return batch the inner guard cannot satisfy, killing N1 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1333-1353`: item A withdrawn 2, item B withdrawn 1, a batch returning 1 of A and 2 of B, `.toThrow(ReturnExceedsWithdrawnError)` at `:1351` and `expect(...withdrawnQuantity).toBe(2)` on A at `:1352`. N1 re-injected (`work-order.ts:447`, `< 0` to `< -1`): **killed**, `expected 1 to be 2` at `:1352` | Yes |
+| Fix 7 (N3) | A partly withdrawn fixture, killing N3 | `test/integration/stock-shortages.query.spec.ts:136-148`: count 2, planned 5, withdrawn 3, `expect(shortages.some(...)).toBe(false)` at `:147`. N3 re-injected (drop `- wop.withdrawn_quantity` from `typeorm-inventory-query.adapter.ts:57` and `:65`): **killed**, `expected true to be false` at `:147` | Yes for the mutation it was written against; the criterion behind it is still half proven, see P1 |
+
+### Diff surface of round 2's fix
+
+`git diff 8ffb123..HEAD --stat` touches 6 files: two test files (`work-order.spec.ts` +22,
+`stock-shortages.query.spec.ts` +14) and four documents (`tasks.md`, `validation.md`, `LESSONS.md`,
+`lessons.json`). No production file at all, so the 882-test gate covers the same behaviour it
+covered at `8ffb123` plus two cases. Both new cases carry a comment naming the mutant they exist
+for, and both sit in the file and block round 2's fix plan named.
+
+---
+
+## Spec-Anchored Acceptance Criteria - current state
+
+### The two criteria round 2 flagged
+
+| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
+| --- | --- | --- | --- |
+| WOP-03 AC4 (a return below zero withdrawn refuses the whole call and changes nothing) | HTTP 422; nothing changed, for every line in the batch | The multi-line half is now direct: `work-order.spec.ts:1352` `expect(workOrder.partItems.find((item) => item.id.equals(ITEM_A_ID))?.withdrawnQuantity).toBe(2)` after the batch throws. The single-line half stays where it was, `test/e2e/work-order-withdrawals.e2e.spec.ts:491` `.expect(422)`, `:494` count still 8, `:498` no `RETURN` on the ledger | PASS |
+| WOP-04 AC2 (demand is `SUM(planned - withdrawn)` over approved parts of work orders in `IN_EXECUTION`) | that exact difference, both as the threshold and as the figure the read model reports | `stock-shortages.query.spec.ts:147` proves the `HAVING` clause subtracts the withdrawn quantity: with count 2 / planned 5 / withdrawn 3 the item is absent, which `SUM(planned)` alone cannot produce. The reported `outstandingQuantity` is a separate copy of the same expression at `:57`, and it is asserted in exactly two places, `stock-shortages.query.spec.ts:132` (planned 3 / withdrawn 0) and `test/e2e/inventory-items.e2e.spec.ts:410` (planned 5 / withdrawn 0). **No listed item in the suite has a non-zero withdrawn quantity**, so the projection's copy of the formula is still unproven, see mutation P1 | GAP |
+
+### One criterion this pass downgrades
+
+| Criterion | Spec-defined outcome | What the evidence actually proves | Result |
+| --- | --- | --- | --- |
+| WOP-03 AC2 (one `RETURN` per consumption drawn from, each naming the consumption it undoes, the acting user and the returned quantity) | every pointer true, per the spec's Assumptions row: the return is split "to keep every pointer true" | Count and quantities of the split are proven: `restore-stock-batch.handler.spec.ts:114` `expect(returns).toHaveLength(2)` and `:116` `[1, 3]` for a return of 4 across consumptions of 2 and 3. The acting user is proven at `test/integration/inventory-item.repository.spec.ts:536`. **`undoesMovementId` is asserted only where a single consumption exists** (`test/e2e/work-order-withdrawals.e2e.spec.ts:484`, `inventory-item.spec.ts:327`, `inventory-item.repository.spec.ts:468`), a shape in which every candidate target is the same movement and any resolution logic passes. The split case, the only one where the pointer can be wrong, asserts everything about the two returns except which consumption each undoes, see mutation P2 | GAP |
+
+Rounds 1 and 2 both recorded WOP-03 AC2 as PASS. Round 1 graded it on the movement kind and
+quantity, round 2 on the acting user assertion Fix 3 added. Neither reached the pointer, because
+the assertion that exists for it sits in a fixture with one possible answer.
+
+### The other 34
+
+Unchanged from round 2 and re-confirmed by the green gate. Round 2's fix commit touched no
+production code, and its two added test cases inserted 22 lines into `work-order.spec.ts` from
+`:1333` and 14 lines into `stock-shortages.query.spec.ts` from `:136`, so citations into those two
+files past those points read low against the current tree by that much.
+
+**Status**: 35 of 37 criteria matched the spec-defined outcome. 2 have evidence that stops short of
+the outcome the spec names, each one the twin of a surviving mutant. No spec-precision gaps:
+`spec.md` pins a precise outcome for every criterion in scope.
+
+---
+
+## Discrimination Sensor
+
+Isolated in a temporary `git worktree` at `HEAD` with `node_modules` symlinked and `.env`/`.env.test`
+copied in. Real-tree `git status --porcelain` was empty before the sensor and empty after
+`git worktree remove --force`, with `HEAD` still at `b85c999` and no worktree left registered. No
+`git stash` at any point.
+
+| # | File:line | Mutation | Suite run | Result |
+| --- | --- | --- | --- | --- |
+| N1 (re-run) | `work-order.ts:447` | `returnParts`' outer below-zero guard `withdrawnQuantity - quantity < 0` becomes `< -1` | `src/modules/work-orders` unit (212 tests) | **Killed.** `work-order.spec.ts:1352` expected 2, got 1 |
+| N3 (re-run) | `typeorm-inventory-query.adapter.ts:57,65` | `SUM(planned_quantity - withdrawn_quantity)` becomes `SUM(planned_quantity)` in both the projection and the threshold | `stock-shortages.query.spec.ts` | **Killed.** `:147` expected false, got true |
+| P1 (new) | `typeorm-inventory-query.adapter.ts:57` | The projection alone loses the subtrahend; the `HAVING` clause at `:65` keeps it | full unit (534) + full integration (196) + full e2e (152) | **Survived** all 882 |
+| P2 (new) | `restore-stock-batch.handler.ts:59` | Every `RETURN` names `pending[0].movementId` instead of `consumption.movementId`, so a split return points every movement at the newest consumption | full unit (534) + full integration (196) + full e2e (152) | **Survived** all 882 |
+| P3 (new) | `work-order.ts:430` | The line handed to `ConsumeStockBatchCommand` carries `item.plannedQuantity.units` instead of the withdrawn quantity, so the shelf drops by what was planned | full unit (534) | **Killed.** 3 tests: `work-order.spec.ts` `WorkOrder.withdrawParts` twice, `withdraw-parts.handler.spec.ts` once |
+| P4 (new) | `work-order.ts:459` | The return-side mirror of P3 on `RestoreStockBatchCommand` | full unit (534) | **Killed.** 2 tests: `work-order.spec.ts` `WorkOrder.returnParts`, `return-parts.handler.spec.ts` |
+
+**Sensor depth**: P0-full across the three passes: 7 mutations in round 1, 5 in round 2, 6 here, 16
+distinct faults on a data-integrity path.
+**Result**: 4 of 6 killed this pass. FAIL.
+
+### P1, in detail
+
+`SELECT_SHORTAGES` writes WOP-04 AC2's formula twice: once at `:57` to fill the `outstanding`
+column the API returns as `outstandingQuantity`, once at `:65` to decide which items the list
+contains. Round 2's new fixture asserts membership only (`expect(shortages.some(...)).toBe(false)`),
+and membership is decided by `:65`. The projection at `:57` is read by two assertions, both over
+fixtures with `withdrawn_quantity` at 0:
+
+| Fixture | count / planned / withdrawn | Asserted | Sees the subtrahend? |
+| --- | --- | --- | --- |
+| `stock-shortages.query.spec.ts:122` | 1 / 3 / 0 | `outstandingQuantity` is 3 (`:132`) | No, `3 - 0 = 3` |
+| `test/e2e/inventory-items.e2e.spec.ts:397` | 2 / 5 / 0 | `outstandingQuantity` is 5 (`:410`) | No, `5 - 0 = 5` |
+| `stock-shortages.query.spec.ts:136` (round 2's fix) | 2 / 5 / 3 | absent from the list (`:147`) | Threshold only; the row is never listed, so its projection is never read |
+
+**Non-equivalence, proven.** Probe in the scratch worktree: count 1, approved round, planned 5,
+withdrawn 3, work order in `IN_EXECUTION`. True demand is 2, which exceeds a shelf of 1, so the item
+is listed and `outstandingQuantity` must be 2. With P1 active the probe fails (`expected 5 to be
+2`); with P1 reverted and the probe unchanged, it passes. Reverted before removing the worktree;
+the probe is not in the real tree.
+
+The consequence is the number the administration acts on. The list would name the right items and
+overstate every one of their outstanding quantities by whatever has already been withdrawn, which
+is the direction that makes someone order parts the shop already has.
+
+### P2, in detail
+
+`RestoreStockBatchHandler` splits a return across as many pending consumptions as it takes, newest
+first, and appends one `RETURN` per consumption drawn from, each carrying `undoesMovementId`
+(`restore-stock-batch.handler.ts:47-63`). The split itself is well covered. The pointer is not: the
+one test with two consumptions asserts how many returns were appended and their quantities, and
+never which consumption each one names, while every test that does assert `undoesMovementId` has a
+single pending consumption, where `pending[0]` and the drawn consumption are the same row.
+
+**Non-equivalence, proven.** Probe added to `restore-stock-batch.handler.spec.ts`'s existing split
+case (consumptions of 2 then 3, one return of 4): `expect(new Set(drawnFrom).size).toBe(2)` and the
+1-unit return naming the older consumption's movement id. With P2 active the probe fails
+(`expected 1 to be 2`, both returns naming the newest); with P2 reverted it passes.
+
+The consequence reaches beyond the ledger's readability. `findPendingConsumptions`
+(`typeorm-inventory-item.repository.ts:83-99`) subtracts prior returns per consumption and drops a
+drained one, so pointers that all name the newest consumption leave the older one looking fully
+pending and the newer one over-drained. The next return on the same item would then draw from a
+consumption that was already given back. Rule 22's "points at the consumption it undoes" and the
+spec's own reason for splitting are both unproven for the case the split exists to handle.
+
+---
+
+## Gate Check
+
+- **Gate command**: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- **Result**: lint clean, build clean, 534 unit passed (81 files), 196 integration passed (33 files), 152 e2e passed (13 files). **882 total, 0 failed, 0 skipped** on the clean runs.
+- **Test count at round 2** (`8ffb123`): 533 / 195 / 152 = 880. **At `b85c999`**: 534 / 196 / 152 = 882. **Delta: +2**, matching round 2's own accounting in `tasks.md` (+1 unit for N1, +1 integration for N3).
+- **Test count before the feature** (per `tasks.md` Preconditions): 471 / 172 / 128 = 771. **Feature delta: +111.**
+- **Test integrity**: no suite lost a test, no assertion was weakened. Both added cases assert a value the suite could not see before.
+
+### The e2e suite is still not deterministic, and it got worse
+
+Five `npm run test:e2e` runs in the real tree: runs 2 and 3 passed back to back at 152, runs 1, 4
+and 5 each failed with exactly one test. Two distinct signatures, both outside this feature's diff
+surface:
+
+- **Run 5**, the known one: `change-password.e2e.spec.ts` got `expected 201 "Created", got 409
+  "Conflict"` from `registerUser` (`test/support/http.ts:31`), the faker email colliding against a
+  never-truncated `workshop_test`. This is **L-004**, recorded from `customer-and-vehicle-registry`.
+- **Run 4**, new this pass: `work-orders.e2e.spec.ts > should list the board and filter by status`
+  timed out at 30000ms. `GET /api/v1/work-orders` has no pagination and hydrates each row with three
+  more queries (`typeorm-work-order-query.adapter.ts:131-137` calling `toDto` per row, which fires
+  the service, part and budget selects), so the board request now issues roughly four queries per
+  work order. The test database holds **4,750 work orders, 18,643 users and 3,525 stock movements**
+  accumulated across every run since the project started, so the endpoint is now near the 30s
+  timeout on this machine. The SQL itself is fast (a filtered count over `work_orders` answers in
+  2.6ms); the cost is the per-row fan-out.
+- **Run 1** failed one test whose name was not captured before the output scrolled.
+
+Neither belongs to this feature. `work-orders.e2e.spec.ts` and the board adapter are outside
+`639fe7e..HEAD` entirely: the adapter was last touched by `88ce1d5`, in feature 6's range. The
+accumulation is what changed, not the code. Round 2 measured this class of failure at about one run
+in five; this pass measured three in five, with the new timeout as the second cause. That belongs
+to L-004 and to whoever owns the test-support layer, and it is worth someone's attention soon:
+the gate that guards every feature is now failing more often than it passes cleanly on the first
+try.
+
+---
+
+## Code Quality
+
+| Principle | Status |
+| --- | --- |
+| Minimum code | Pass. Round 2's fix round added no production code |
+| Surgical changes | Pass. Two test files and four documents |
+| No scope creep | Pass |
+| Matches patterns | Pass. The return-batch case mirrors Fix 1's withdrawal-batch case; the shortage case follows its neighbours' fixture shape |
+| Spec-anchored outcome check | Fail. 2 criteria (WOP-03 AC2, WOP-04 AC2) have evidence that stops short of the stated outcome |
+| Per-layer Coverage Expectation | Pass at the route and domain layers; the two open gaps are a query projection and an application handler's resolution logic |
+| Every test maps to a spec requirement | Pass. Both new cases carry a comment naming the AC and the mutant |
+| Documented guidelines followed | Pass. `tasks.md`'s Test Coverage Matrix and Gate Check Commands; L-008 and L-011 visibly applied in round 2's fix |
+| `// SPEC_DEVIATION` markers | None in the tree |
+| Documentation accuracy | Pass. `tasks.md`'s round 2 subsection describes exactly what the commit contains, including the test-count delta |
+
+---
+
+## Edge Cases
+
+All six re-confirmed as covered, unchanged from rounds 1 and 2. The two open gaps sit on acceptance
+criteria, not on the Edge Cases list.
+
+---
+
+## Fix Plans (round 4)
+
+Both are test-only, both are one assertion or one case, and neither touches production behaviour.
+Round 2's fix round already wrote the fixture P1 needs; only its assertion is missing.
+
+### Fix 8: Assert the reported outstanding quantity on a listed, partly withdrawn item
+
+- **Priority**: Major
+- **Root cause**: WOP-04 AC2's formula appears twice in `SELECT_SHORTAGES`, at `:57` for the reported figure and at `:65` for membership. Round 2's new fixture asserts membership only, and the two assertions that read `outstandingQuantity` both use fixtures with `withdrawn_quantity` at 0, so the projection's copy of the formula has never been observed. Mutation P1 survives all 882 tests.
+- **Fix task**: Add a case to `test/integration/stock-shortages.query.spec.ts` with an item whose count on hand is 1, one approved planned part of 5 with `withdrawnQuantity: 3` on a work order in `IN_EXECUTION`. True demand is 2, which exceeds the shelf of 1, so the item is listed. Assert `found?.outstandingQuantity` is 2. `insertInventoryItem`, `insertBudget` and `insertWorkOrderPart` already take everything the fixture needs; this is the "second assertion" round 2's own Fix 7 plan described.
+- **Done when**: a listed item with `0 < withdrawn < planned` has its `outstandingQuantity` asserted, and re-injecting P1 (dropping `- wop.withdrawn_quantity` from `typeorm-inventory-query.adapter.ts:57` alone, leaving `:65` intact) fails the integration suite.
+
+### Fix 9: Assert which consumption each `RETURN` in a split undoes
+
+- **Priority**: Major
+- **Root cause**: `undoesMovementId` is asserted only in fixtures with a single pending consumption, where every candidate target is the same movement. The one test with two consumptions asserts the count and the quantities of the split and nothing about the pointers. Mutation P2 survives all 882 tests, and a wrong pointer corrupts `findPendingConsumptions`' per-consumption remaining calculation for every later return.
+- **Fix task**: Extend `restore-stock-batch.handler.spec.ts`'s existing "splits one return across two consumptions" case (`:96-117`). It already builds consumptions of 2 then 3 with deterministic movement ids and returns 4. Add two assertions: the two `RETURN` movements name two different consumptions, and the 1-unit return names the older consumption (`11111111-0000-4000-8000-000000000001`), which is the one it drew from.
+- **Done when**: the split case asserts each return's `undoesMovementId`, and re-injecting P2 (`consumption.movementId` to `pending[0].movementId` at `restore-stock-batch.handler.ts:59`) fails the unit suite.
+
+### Not a fix task, and now more urgent than it was
+
+The e2e suite failed 3 of 5 runs this pass, from two causes that both live in shared test
+infrastructure: L-004's faker email against a never-truncated database, and an unpaginated board
+endpoint whose per-row fan-out has grown into the 30s test timeout as the same database
+accumulated 4,750 work orders. Both are outside this feature. Both make every future gate check
+less trustworthy, and the second one will keep getting slower on its own.
+
+---
+
+## Requirement Traceability Update
+
+| Requirement | Round 1 | Round 2 | Round 3 |
+| --- | --- | --- | --- |
+| WOP-01 | Needs Fix (AC2, AC5, AC6, AC10) | Verified | Verified |
+| WOP-02 | Verified | Verified | Verified |
+| WOP-03 | Needs Fix (AC2, AC5) | Needs Fix (AC4 multi-line) | Needs Fix (AC2, the pointer in a split) |
+| WOP-04 | Needs Fix (AC1, AC4) | Needs Fix (AC2 demand formula) | Needs Fix (AC2, the projection half) |
+| WOP-05 | Verified | Verified | Verified |
+
+---
+
+## Summary
+
+**Overall**: Not ready. Two acceptance criteria out of 37 have evidence that cannot see the
+behaviour they claim to cover, each confirmed by a surviving, non-equivalent mutant.
+
+**Spec-anchored check**: 35 of 37 matched the spec-defined outcome. WOP-03 AC4 closed this pass;
+WOP-04 AC2 half closed; WOP-03 AC2 downgraded on evidence rounds 1 and 2 both graded too
+generously. 0 spec-precision gaps.
+**Sensor**: 4 of 6 killed this pass. N1 and N3 both die on the cases round 2 added. 16 distinct
+faults across three passes.
+**Gate**: 882 passed, 0 failed, 0 skipped on a clean run; 3 of 5 e2e runs hit one of two
+pre-existing infrastructure failures.
+
+**What round 2's fix round got right**: both fix plans hold, verified independently rather than
+taken on the commit's word. N1 and N3 are dead, the multi-line return batch is now proven to leave
+earlier lines untouched, and the shortage threshold is proven to subtract the withdrawn quantity.
+It did that with two test cases and no production code.
+
+**What is still open**: the shortage query reports a figure computed by a second copy of the same
+formula that no fixture has ever exercised with a non-zero withdrawn quantity (P1), and a split
+return's pointers are asserted only where there is exactly one possible answer (P2). Both are the
+same shape as the gaps the two previous rounds closed: a fixture that cannot distinguish the
+implementation from a simpler wrong one.
+
+**This is the third verification pass, and the fix loop's bound.** `validate.md` allows a maximum
+of 3 fix to re-verify iterations before escalation, so the next step belongs to the user rather than
+to another automatic fix round. Fixes 8 and 9 are one assertion and one case, in files the previous
+fix rounds already opened.
+
+---
+---
+
+# Round 2 (historical record)
+
+**Date**: 2026-09-01
+**Diff range**: `639fe7e..8ffb123`, re-verifying fix round 1
+**Verdict**: FAIL (2 surviving mutants, N1 and N3, both new to that pass)
+
+Preserved so round 2's fix round has something to be measured against. Line citations here are as
+of `8ffb123`; the round 2 fix commit inserted 22 lines into `work-order.spec.ts` from `:1333` and
+14 lines into `stock-shortages.query.spec.ts` from `:136`, so citations past those points read low
+against the current tree by that much.
 
 **All five of round 1's fix plans hold.** I re-ran the two mutants that survived round 1 and both
 are killed by the tests the fix round added, the eight acceptance criteria that had no assertion on
@@ -361,8 +636,9 @@ still returns `ConsumedLineDto[]` with no caller; the fix round recorded the dec
 
 ---
 
-**Final verdict (round 2, `8ffb123`): FAIL.** Gate green at 880 tests; 35 of 37 acceptance criteria
-matched the spec-defined outcome; all five of round 1's fix plans hold. Two surviving mutants remain,
-N1 (`work-order.ts:447`, the return batch's outer guard) and N3
-(`typeorm-inventory-query.adapter.ts:57,65`, WOP-04 AC2's demand formula), each with a one-case fix
-task above. Feature not done.
+**Final verdict (round 3, `b85c999`): FAIL.** Gate green at 882 tests; 35 of 37 acceptance criteria
+matched the spec-defined outcome; both of round 2's fix plans hold and N1 and N3 are dead. Two new
+surviving mutants remain, P1 (`typeorm-inventory-query.adapter.ts:57`, the shortage projection's
+copy of WOP-04 AC2's formula) and P2 (`restore-stock-batch.handler.ts:59`, which consumption each
+`RETURN` in a split undoes), each with a one-assertion fix task above. This was the third and last
+automatic verification pass, so the feature is not done and the decision escalates to the user.

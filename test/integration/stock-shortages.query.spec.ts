@@ -147,6 +147,22 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     expect(shortages.some((row) => row.inventoryItemId === item.externalId)).toBe(false);
   });
 
+  it('reports the net outstanding quantity, not the raw planned quantity, for a listed partly withdrawn item', async () => {
+    // The demand formula is written twice in SELECT_SHORTAGES - once in the HAVING threshold,
+    // once in the projected column. The previous case only reads the threshold copy (the row
+    // never appears, so outstandingQuantity is never read); this one keeps the item listed so the
+    // projected value itself is checked (validation.md's P1, round 3).
+    const item = await insertInventoryItem(1);
+    const workOrder = await insertWorkOrder('IN_EXECUTION');
+    const budgetId = await insertBudget(workOrder.id, 1, 'APPROVED');
+    await insertWorkOrderPart(workOrder.id, item.id, { budgetId, plannedQuantity: 5, withdrawnQuantity: 3 });
+
+    const shortages = await queryAdapter.listStockShortages();
+    const found = shortages.find((row) => row.inventoryItemId === item.externalId);
+
+    expect(found?.outstandingQuantity).toBe(2);
+  });
+
   it('leaves out an item whose count on hand covers its outstanding demand', async () => {
     const item = await insertInventoryItem(5);
     const workOrder = await insertWorkOrder('IN_EXECUTION');

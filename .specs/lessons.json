@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 12,
+  "next_id": 14,
   "lessons": [
     {
       "id": "L-001",
@@ -212,6 +212,42 @@
       ],
       "created": "2026-09-01T14:29:58Z",
       "last_seen": "2026-09-01T14:29:58Z"
+    },
+    {
+      "id": "L-012",
+      "key": "surviving_mutant::when one computed expression both filters rows and fills a returned field assert the returned field s value on a row the filter admits a membership only assertion proves the filter s copy of the expression and never the projection s",
+      "text": "When one computed expression both filters rows and fills a returned field, assert the returned field's value on a row the filter admits - a membership-only assertion proves the filter's copy of the expression and never the projection's.",
+      "signal": "surviving_mutant",
+      "scope": "query-adapters",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P1: typeorm-inventory-query.adapter.ts:57 (the shortage projection alone reduced to SUM(planned_quantity), the HAVING clause at :65 intact) survived all 882 tests, because the only fixture with a non-zero withdrawn quantity asserts absence from the list rather than the reported figure (WOP-04 AC2) (query-adapters)"
+      ],
+      "created": "2026-09-01T14:55:18Z",
+      "last_seen": "2026-09-01T14:55:18Z"
+    },
+    {
+      "id": "L-013",
+      "key": "surviving_mutant::assert a pointer field in a fixture with more than one possible target a single candidate fixture passes for any resolution logic right or wrong",
+      "text": "Assert a pointer field in a fixture with more than one possible target - a single-candidate fixture passes for any resolution logic, right or wrong.",
+      "signal": "surviving_mutant",
+      "scope": "application-handlers",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "P2: restore-stock-batch.handler.ts:59 (every RETURN's undoesMovementId set to pending[0].movementId) survived all 882 tests, because undoesMovementId is asserted only in fixtures with one pending consumption, and the two-consumption split case asserts count and quantities only (WOP-03 AC2) (application-handlers)"
+      ],
+      "created": "2026-09-01T14:55:24Z",
+      "last_seen": "2026-09-01T14:55:24Z"
     }
   ]
 }

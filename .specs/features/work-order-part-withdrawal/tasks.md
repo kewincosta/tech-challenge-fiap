@@ -739,6 +739,22 @@ Neither gap was a regression from round 1's fix commit; both pre-date it, in cod
 
 ---
 
+### Verifier fix round 3 (after round 2's re-verification)
+
+The round-3 Verifier (re-verifying commit `b85c999`) confirmed N1 and N3 both stay dead and all 8 round-1 AC gaps still hold, but still returned **FAIL**: two new surviving mutations, each a narrower half-miss inside code round 2's own fixes just touched.
+
+- **P1** (`typeorm-inventory-query.adapter.ts:57`, the projected `outstanding` column): `SELECT_SHORTAGES` writes the demand formula twice - once in the `HAVING` threshold (which round 2's N3 fix covers), once in the projected column that becomes `outstandingQuantity`. N3's fixture keeps the item off the list, so the projected copy is never read by any assertion. Added a second case to `stock-shortages.query.spec.ts`: count 1, planned 5, withdrawn 3 (true outstanding 2, which *does* exceed the shelf, so the row is listed), asserting `outstandingQuantity` is 2. Manually confirmed it kills dropping `- wop.withdrawn_quantity` from the projection alone before reverting the probe.
+- **P2** (`restore-stock-batch.handler.ts:59`, `undoesMovementId: consumption.movementId`): the one test that returns across two consumptions (T12's split-return case) asserted the two returned quantities but not which consumption each one names. Pointing every `RETURN` at the same (newest) consumption still produces the right quantities and survives every existing test. Extended that same test in `restore-stock-batch.handler.spec.ts` to assert each return's `undoesMovementId` against its own consumption's known movement id. Manually confirmed it kills routing every `RETURN` to `pending[0]` before reverting the probe.
+- **Flagged, not fixed here**: the round-3 Verifier's e2e reruns hit two pre-existing test-infrastructure issues outside this feature's diff surface - L-004's faker-email collision (already tracked), and a newly observed one where `work-orders.e2e.spec.ts`'s unpaginated board-listing route neared its 30s timeout against a test database that has accumulated thousands of rows across a long-running session. Recorded in `STATE.md`'s Handoff for a future feature to pick up; out of scope for `work-order-part-withdrawal`'s own spec.
+
+Neither P1 nor P2 was a regression from round 2's fix commit; both are narrower versions of gaps round 2 partially closed, in the exact lines round 2 touched.
+
+**Test count**: unit unchanged at 534 (P2 extended an existing test's assertions rather than adding a case), integration 196 -> 197 (+1, P1). Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`. The e2e suite passed twice consecutively (one interleaved run hit the pre-existing L-004 flake noted above, in a third sibling spec file's `registerCustomer` - unrelated to this fix round).
+
+**Commit**: `test(work-orders): close the verifier's third fix round on part withdrawal`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
