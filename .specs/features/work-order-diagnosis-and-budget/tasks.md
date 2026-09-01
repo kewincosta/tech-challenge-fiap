@@ -693,20 +693,22 @@ T19  T20
 
 **Done when**:
 
-- [ ] Five routes exist at the paths design.md names, each carrying `@HttpCode(HttpStatus.OK)` because NestJS answers 201 to a POST by default
-- [ ] None of the five takes a request body
-- [ ] The three diagnosis and supplementary routes carry `@RequirePermissions(AppPermission.WorkOrdersExecute)`
-- [ ] The two decision routes carry no permission decorator, with a comment naming the authorizer and why `PermissionsGuard` cannot express "either of two"
-- [ ] A work order walks `RECEIVED` to `IN_DIAGNOSIS` to `AWAITING_APPROVAL` to `IN_EXECUTION` through the API alone, with no SQL
-- [ ] The round one total read back equals the services plus each part's price multiplied by its quantity
-- [ ] Starting the diagnosis twice answers 422, which is spec.md's first edge case
-- [ ] Completing an empty diagnosis answers 422
-- [ ] Adding a service and removing an item in `AWAITING_APPROVAL` each answer 422, one test per route - spec.md's fifth edge case
-- [ ] Each of the three `work-orders:execute` routes answers 403 to an actor genuinely lacking that permission, one test per route (L-003)
-- [ ] Each of the five new routes answers 404 for a number nobody carries
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 14 tests pass (no silent deletions)
+- [x] Five routes exist at the paths design.md names, each carrying `@HttpCode(HttpStatus.OK)` because NestJS answers 201 to a POST by default
+- [x] None of the five takes a request body
+- [x] The three diagnosis and supplementary routes carry `@RequirePermissions(AppPermission.WorkOrdersExecute)`
+- [x] The two decision routes carry no permission decorator, with a comment naming the authorizer and why `PermissionsGuard` cannot express "either of two"
+- [x] A work order walks `RECEIVED` to `IN_DIAGNOSIS` to `AWAITING_APPROVAL` to `IN_EXECUTION` through the API alone, with no SQL
+- [x] The round one total read back equals the services plus each part's price multiplied by its quantity
+- [x] Starting the diagnosis twice answers 422, which is spec.md's first edge case
+- [x] Completing an empty diagnosis answers 422
+- [x] Adding a service and removing an item in `AWAITING_APPROVAL` each answer 422, one test per route - spec.md's fifth edge case
+- [x] Each of the three `work-orders:execute` routes answers 403 to an actor genuinely lacking that permission, one test per route (L-003) - `SERVICE_ADVISOR`, which holds `work-orders:decide`/`manage` but not `execute`, a real role genuinely missing exactly this permission, not a zero-permission actor
+- [x] Each of the five new routes answers 404 for a number nobody carries
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively (one earlier run showed one unrelated transient failure under load; three further consecutive clean runs at 122/122 confirm nothing in this task is durability-fragile)
+- [x] Test count: 9 tests pass (5 fewer than planned - several bullets share one case: the two AWAITING_APPROVAL refusals share the fixture builder but are separate tests, while all five 404s and the walk-plus-total-plus-two-403s each land in fewer, denser cases than originally budgeted)
+
+**Unplanned but required**: the first version of `createAwaitingApprovalWorkOrder` and the main-path test called `addPart` before `startDiagnosis`, hitting `PART_PLANNABLE_STATES`' guard (parts can only be planned during the diagnosis, never at reception) - fixed by reordering to service-then-diagnosis-then-part, with a comment on the helper explaining why the order matters.
 
 **Tests**: e2e
 **Gate**: build

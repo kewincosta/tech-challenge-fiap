@@ -20,6 +20,16 @@ export class WorkOrderServiceItemResponseDto {
 
   @ApiProperty({ example: 15099, description: 'Unit price in integer BRL cents' })
   unitPriceCents!: number;
+
+  @ApiPropertyOptional({ example: 1, nullable: true, description: 'Null while still a draft' })
+  budgetRound!: number | null;
+
+  @ApiPropertyOptional({
+    example: 15099,
+    nullable: true,
+    description: 'Frozen at generation, in integer BRL cents. Null while still a draft',
+  })
+  budgetedUnitPriceCents!: number | null;
 }
 
 export class WorkOrderPartItemResponseDto {
@@ -43,6 +53,39 @@ export class WorkOrderPartItemResponseDto {
 
   @ApiProperty({ example: 2500, description: 'Unit price in integer BRL cents' })
   unitPriceCents!: number;
+
+  @ApiPropertyOptional({ example: 1, nullable: true, description: 'Null while still a draft' })
+  budgetRound!: number | null;
+
+  @ApiPropertyOptional({
+    example: 2500,
+    nullable: true,
+    description: 'Frozen at generation, in integer BRL cents. Null while still a draft',
+  })
+  budgetedUnitPriceCents!: number | null;
+}
+
+export class WorkOrderBudgetResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 1 })
+  round!: number;
+
+  @ApiProperty({ example: 20099, description: 'Total in integer BRL cents' })
+  totalCents!: number;
+
+  @ApiProperty({ example: 'PENDING' })
+  status!: string;
+
+  @ApiProperty()
+  generatedAt!: Date;
+
+  @ApiPropertyOptional({ nullable: true })
+  decidedAt!: Date | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  decidedByUserId!: string | null;
 }
 
 export class WorkOrderResponseDto {
@@ -87,6 +130,9 @@ export class WorkOrderResponseDto {
 
   @ApiProperty({ type: [WorkOrderPartItemResponseDto] })
   partItems!: WorkOrderPartItemResponseDto[];
+
+  @ApiProperty({ type: [WorkOrderBudgetResponseDto], description: 'Ordered by round' })
+  budgets!: WorkOrderBudgetResponseDto[];
 }
 
 export class WorkOrderTrailEntryResponseDto {

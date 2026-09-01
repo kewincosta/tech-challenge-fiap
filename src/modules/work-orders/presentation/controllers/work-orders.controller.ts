@@ -32,13 +32,18 @@ import { Principal } from '../../../authentication/presentation/principal';
 import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
+import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
+import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
 import {
   CreatedWorkOrderDto,
   CreateWorkOrderCommand,
 } from '../../application/commands/create-work-order/create-work-order.command';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
+import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
+import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
+import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
 import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
@@ -206,6 +211,102 @@ export class WorkOrdersController {
     return this.getWorkOrderOrThrow(number);
   }
 
+  @Post(':number/diagnosis')
+  @RequirePermissions(AppPermission.WorkOrdersExecute)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Start the diagnosis of a work order that arrived' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async startDiagnosis(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<StartDiagnosisCommand, void>(
+      new StartDiagnosisCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/diagnosis/completion')
+  @RequirePermissions(AppPermission.WorkOrdersExecute)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete the diagnosis and generate the first budget round' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async completeDiagnosis(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<CompleteDiagnosisCommand, void>(
+      new CompleteDiagnosisCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/budget/supplementary')
+  @RequirePermissions(AppPermission.WorkOrdersExecute)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit a supplementary budget over the draft items added during execution' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async submitSupplementaryBudget(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<SubmitSupplementaryBudgetCommand, void>(
+      new SubmitSupplementaryBudgetCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  // No @RequirePermissions here: the rule is "the owning customer or a holder of
+  // work-orders:decide", and PermissionsGuard requires every permission it is given, so it
+  // cannot express an either-of-two. BudgetDecisionAuthorizer enforces it instead, inside the
+  // handler, answering 404 rather than 403 to a stranger (design.md).
+  @Post(':number/budget/approval')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Approve the pending budget round' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async approveBudget(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<ApproveBudgetCommand, void>(
+      new ApproveBudgetCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  // No @RequirePermissions here - see approveBudget above.
+  @Post(':number/budget/rejection')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reject the pending budget round' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async rejectBudget(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<RejectBudgetCommand, void>(
+      new RejectBudgetCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
   private async getWorkOrderOrThrow(number: string): Promise<WorkOrderResponseDto> {
     const workOrder = await this.queryBus.execute<GetWorkOrderQuery, WorkOrderSummaryDto | null>(
       new GetWorkOrderQuery(number),
@@ -232,6 +333,7 @@ export class WorkOrdersController {
       vehicleYear: workOrder.vehicleYear,
       serviceItems: workOrder.serviceItems,
       partItems: workOrder.partItems,
+      budgets: workOrder.budgets,
     };
   }
 
