@@ -137,7 +137,7 @@ describe('inventory schema migration', () => {
     expect(indexDef[0].indexdef).toContain("WHERE ((status)::text = 'ACTIVE'::text)");
   });
 
-  it('should give stock_movements.actor_user_id a real foreign key to users(id) while work_order_id has none', async () => {
+  it('should give stock_movements.actor_user_id a real foreign key to users(id)', async () => {
     const foreignKeys: Array<{ column_name: string; foreign_table_name: string }> =
       await dataSource.query(
         `SELECT kcu.column_name, ccu.table_name AS foreign_table_name
@@ -151,8 +151,13 @@ describe('inventory schema migration', () => {
 
     const byColumn = Object.fromEntries(foreignKeys.map((fk) => [fk.column_name, fk]));
     expect(byColumn.actor_user_id.foreign_table_name).toBe('users');
-    expect(byColumn.work_order_id).toBeUndefined();
   });
+
+  // work_order_id was deliberately unconstrained when this migration ran, because work_orders
+  // did not exist yet (this spec.md's own Out of Scope table). work-order-creation's own
+  // migration adds fk_stock_movements_work_order once that table exists - proven in
+  // work-orders-schema.migration.spec.ts, not re-asserted here to avoid the same fact owned by
+  // two specs drifting apart.
 
   it('should index the read paths on stock_movements and stock_movement_transitions', async () => {
     const movementIndexes: Array<{ indexname: string }> = await dataSource.query(
