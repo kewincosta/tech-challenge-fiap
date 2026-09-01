@@ -212,12 +212,12 @@ T19
 
 **Done when**:
 
-- [ ] `WorkOrderStatus` carries all seven states, including the five this feature never reaches
-- [ ] `WorkOrderCreated`, `ServiceAddedToWorkOrder`, `PartPlannedForWorkOrder`, `ItemRemovedFromWorkOrder` and `MechanicAssigned` each expose a distinct literal `eventType`, asserted per class so a rename fails a test instead of silently changing an append-only column
-- [ ] Each event carries the work order id, the acting user and the moment it happened
-- [ ] `WorkOrderCreated` carries `toStatus: RECEIVED` and a null `fromStatus`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] `WorkOrderStatus` carries all seven states, including the five this feature never reaches
+- [x] `WorkOrderCreated`, `ServiceAddedToWorkOrder`, `PartPlannedForWorkOrder`, `ItemRemovedFromWorkOrder` and `MechanicAssigned` each expose a distinct literal `eventType`, asserted per class so a rename fails a test instead of silently changing an append-only column
+- [x] Each event carries the work order id, the acting user and the moment it happened
+- [x] `WorkOrderCreated` carries `toStatus: RECEIVED` and a null `fromStatus`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
