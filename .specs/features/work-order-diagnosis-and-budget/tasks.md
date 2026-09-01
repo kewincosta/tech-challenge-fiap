@@ -189,14 +189,14 @@ T19  T20
 
 **Done when**:
 
-- [ ] Each class declares `eventType` from its own exported constant, so a rename cannot change an append-only row's meaning
-- [ ] The eight constants are distinct from each other and from the five feature 5 already exports
-- [ ] `DiagnosisStarted` carries `RECEIVED` to `IN_DIAGNOSIS`, `DiagnosisCompleted` carries `IN_DIAGNOSIS` to `AWAITING_APPROVAL`, `BudgetApproved` carries `AWAITING_APPROVAL` to `IN_EXECUTION`
-- [ ] `BudgetRejected` takes its destination status as an argument, since round one returns to `IN_DIAGNOSIS` and any later round to `IN_EXECUTION`
-- [ ] `BudgetGenerated`, `SupplementaryBudgetGenerated` and `BudgetSent` carry null for both statuses, describing a fact rather than a move
-- [ ] Every event carries its work order id, its acting user and its moment
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 11 tests pass (no silent deletions)
+- [x] Each class declares `eventType` from its own exported constant, so a rename cannot change an append-only row's meaning
+- [x] The eight constants are distinct from each other and from the five feature 5 already exports
+- [x] `DiagnosisStarted` carries `RECEIVED` to `IN_DIAGNOSIS`, `DiagnosisCompleted` carries `IN_DIAGNOSIS` to `AWAITING_APPROVAL`, `BudgetApproved` carries `AWAITING_APPROVAL` to `IN_EXECUTION`
+- [x] `BudgetRejected` takes its destination status as an argument, since round one returns to `IN_DIAGNOSIS` and any later round to `IN_EXECUTION`
+- [x] `BudgetGenerated`, `SupplementaryBudgetGenerated` and `BudgetSent` carry null for both statuses, describing a fact rather than a move
+- [x] Every event carries its work order id, its acting user and its moment
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 10 tests pass (1 fewer than planned - the two distinctness checks share one `describe` block instead of splitting into separate cases, both still asserted)
 
 **Tests**: unit
 **Gate**: quick
