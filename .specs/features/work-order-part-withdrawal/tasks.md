@@ -184,12 +184,12 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] Each class declares `eventType` from its own exported constant, so a rename cannot change an append-only row's meaning
-- [ ] Both constants are distinct from the thirteen the module already exports
-- [ ] Both carry null for `fromStatus` and `toStatus`: a withdrawal describes a fact, and the work order stays `IN_EXECUTION` either side
-- [ ] Both carry the work order id, the acting user and the moment
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Each class declares `eventType` from its own exported constant, so a rename cannot change an append-only row's meaning
+- [x] Both constants are distinct from the thirteen the module already exports
+- [x] Both carry null for `fromStatus` and `toStatus`: a withdrawal describes a fact, and the work order stays `IN_EXECUTION` either side
+- [x] Both carry the work order id, the acting user and the moment
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (2 fewer than planned - one case per event covers eventType/status/id/actor/moment together, plus one shared distinctness case)
 
 **Tests**: unit
 **Gate**: quick
