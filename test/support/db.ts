@@ -15,6 +15,7 @@ import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure
 import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
 import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderEventOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-event.orm-entity';
+import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 
 export function createTestDataSource(): DataSource {
   return new DataSource({
@@ -41,6 +42,7 @@ export function createTestDataSource(): DataSource {
       WorkOrderServiceOrmEntity,
       WorkOrderPartOrmEntity,
       WorkOrderEventOrmEntity,
+      WorkOrderBudgetOrmEntity,
     ],
   });
 }

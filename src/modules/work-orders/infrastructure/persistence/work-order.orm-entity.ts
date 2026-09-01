@@ -46,4 +46,19 @@ export class WorkOrderOrmEntity {
 
   @Column({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
+
+  @Column({ name: 'diagnosis_started_at', type: 'timestamptz', nullable: true })
+  diagnosisStartedAt!: Date | null;
+
+  @Column({ name: 'diagnosis_completed_at', type: 'timestamptz', nullable: true })
+  diagnosisCompletedAt!: Date | null;
+
+  @Column({ name: 'budget_decided_at', type: 'timestamptz', nullable: true })
+  budgetDecidedAt!: Date | null;
+
+  @Column({ name: 'budget_decided_by_user_id', type: 'bigint', nullable: true })
+  budgetDecidedByInternalId!: string | null;
+
+  @Column({ name: 'execution_started_at', type: 'timestamptz', nullable: true })
+  executionStartedAt!: Date | null;
 }

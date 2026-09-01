@@ -149,6 +149,12 @@ function restoreWorkOrder(fixture: Fixture, status: WorkOrderStatus): WorkOrder 
     updatedAt: new Date(),
     serviceItems: [],
     partItems: [],
+    diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
   });
 }
 

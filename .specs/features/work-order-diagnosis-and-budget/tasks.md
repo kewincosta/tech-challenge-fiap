@@ -378,15 +378,17 @@ T19  T20
 
 **Done when**:
 
-- [ ] `work_order_budgets` exists with every column the design names, including the `CHECK` on `status`
-- [ ] `ux_work_order_budgets_round` refuses a second round carrying the same number on one work order
-- [ ] The five new `work_orders` columns exist and are nullable, so every row feature 5 wrote survives
-- [ ] `work_order_services` and `work_order_parts` each carry a nullable `budget_id` foreign key to `work_order_budgets` and a nullable `budgeted_unit_price_cents`
-- [ ] `down` drops everything it added, in reverse order
-- [ ] The migration is registered in `test/support/global-setup.ts` and `WorkOrderBudgetOrmEntity` in `test/support/db.ts`, both in this commit
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively, since the database is never truncated
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `work_order_budgets` exists with every column the design names, including the `CHECK` on `status`
+- [x] `ux_work_order_budgets_round` refuses a second round carrying the same number on one work order
+- [x] The five new `work_orders` columns exist and are nullable, so every row feature 5 wrote survives
+- [x] `work_order_services` and `work_order_parts` each carry a nullable `budget_id` foreign key to `work_order_budgets` and a nullable `budgeted_unit_price_cents`
+- [x] `down` drops everything it added, in reverse order (verified by code review against `up`, matching the last three features' own migrations - no runtime `down` test exists anywhere in this suite)
+- [x] The migration is registered in `test/support/global-setup.ts` and `WorkOrderBudgetOrmEntity` in `test/support/db.ts`, both in this commit
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively, since the database is never truncated
+- [x] Test count: 8 tests pass (no silent deletions)
+
+**Unplanned but required**: `WorkOrderProps` (T6-T8) gained six new required fields, which broke `WorkOrder.restore` at runtime everywhere a fixture built one without them - `plan-part.handler.spec.ts` (already fixed in T6) plus three integration fixtures this task's gate reaches for the first time: `work-order.repository.spec.ts`, `work-order-query.adapter.spec.ts`, `work-order-read-queries.spec.ts` (all `props.budgets is not iterable`). Also `WorkOrderMapper.toDomain`/`toOrm` and `TypeOrmWorkOrderRepository.findByNumber` did not compile against the six new props at all - fixed with a **stopgap**: the four simple `work_orders` columns (`diagnosisStartedAt`, `diagnosisCompletedAt`, `budgetDecidedAt`, `executionStartedAt`) and `budgetDecidedByUserId` (resolved to its external id the same way `assignedMechanicUserId` already is) now round-trip for real, but `budgets` is hardcoded to `[]` on every read and every item comes back a draft - T10 replaces this with the real load, and T11 must also add `budgetDecidedByInternalId` resolution to `save()` (mirroring `assignedMechanicInternalId`), which this task deliberately left unresolved on write. No test count change from this fix - existing tests, no new cases.
 
 **Tests**: integration
 **Gate**: full
@@ -441,6 +443,7 @@ T19  T20
 **Done when**:
 
 - [ ] `save` writes the work order row, then the budget rows, then the item rows, all in the one existing transaction
+- [ ] `save` resolves `budgetDecidedByInternalId` the same way it already resolves `assignedMechanicInternalId`, closing the gap T9 deliberately left open
 - [ ] `replaceBudgets` returns a round-to-internal-id map, and the item writers fill `budget_id` from it
 - [ ] A round carrying three items persists each item's own budgeted price rather than one price repeated, which is design.md's second risk
 - [ ] `findByNumber` rebuilds the rounds and both item round fields

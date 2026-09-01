@@ -9,6 +9,7 @@ import { CreateVehiclesTable1787702400003 } from '../../src/shared/infrastructur
 import { CreateServicesTable1787702400004 } from '../../src/shared/infrastructure/database/migrations/1787702400004-create-services-table';
 import { CreateInventorySchema1787702400005 } from '../../src/shared/infrastructure/database/migrations/1787702400005-create-inventory-schema';
 import { CreateWorkOrdersSchema1787702400006 } from '../../src/shared/infrastructure/database/migrations/1787702400006-create-work-orders-schema';
+import { CreateWorkOrderBudgets1787702400007 } from '../../src/shared/infrastructure/database/migrations/1787702400007-create-work-order-budgets';
 
 const TEST_DATABASE_SUFFIX = '_test';
 
@@ -63,6 +64,7 @@ async function runMigrations(): Promise<void> {
       CreateServicesTable1787702400004,
       CreateInventorySchema1787702400005,
       CreateWorkOrdersSchema1787702400006,
+      CreateWorkOrderBudgets1787702400007,
     ],
   });
   await dataSource.initialize();

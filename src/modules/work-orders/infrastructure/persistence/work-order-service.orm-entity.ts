@@ -23,4 +23,10 @@ export class WorkOrderServiceOrmEntity {
 
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
+
+  @Column({ name: 'budget_id', type: 'bigint', nullable: true })
+  budgetInternalId!: string | null;
+
+  @Column({ name: 'budgeted_unit_price_cents', type: 'bigint', nullable: true })
+  budgetedUnitPriceCents!: string | null;
 }

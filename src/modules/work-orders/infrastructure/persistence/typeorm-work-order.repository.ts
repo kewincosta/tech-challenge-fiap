@@ -42,15 +42,23 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     });
     const partRows = await this.partItems.find({ where: { workOrderInternalId: row.id } });
 
-    const [customerExternalId, vehicleExternalId, createdByExternalId, assignedMechanicExternalId] =
-      await Promise.all([
-        this.resolveExternalId(this.dataSource, 'customers', row.customerInternalId),
-        this.resolveExternalId(this.dataSource, 'vehicles', row.vehicleInternalId),
-        this.resolveExternalId(this.dataSource, 'users', row.createdByInternalId),
-        row.assignedMechanicInternalId
-          ? this.resolveExternalId(this.dataSource, 'users', row.assignedMechanicInternalId)
-          : Promise.resolve(null),
-      ]);
+    const [
+      customerExternalId,
+      vehicleExternalId,
+      createdByExternalId,
+      assignedMechanicExternalId,
+      budgetDecidedByExternalId,
+    ] = await Promise.all([
+      this.resolveExternalId(this.dataSource, 'customers', row.customerInternalId),
+      this.resolveExternalId(this.dataSource, 'vehicles', row.vehicleInternalId),
+      this.resolveExternalId(this.dataSource, 'users', row.createdByInternalId),
+      row.assignedMechanicInternalId
+        ? this.resolveExternalId(this.dataSource, 'users', row.assignedMechanicInternalId)
+        : Promise.resolve(null),
+      row.budgetDecidedByInternalId
+        ? this.resolveExternalId(this.dataSource, 'users', row.budgetDecidedByInternalId)
+        : Promise.resolve(null),
+    ]);
     const serviceExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
       this.dataSource,
       'services',
@@ -67,6 +75,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       vehicleExternalId,
       createdByExternalId,
       assignedMechanicExternalId,
+      budgetDecidedByExternalId,
       serviceExternalIdByInternalId,
       inventoryItemExternalIdByInternalId,
     });

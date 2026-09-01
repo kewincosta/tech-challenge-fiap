@@ -153,6 +153,12 @@ function restoreWorkOrderInDiagnosis(fixture: Fixture): WorkOrder {
     updatedAt: new Date(),
     serviceItems: [],
     partItems: [],
+    diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
   });
 }
 

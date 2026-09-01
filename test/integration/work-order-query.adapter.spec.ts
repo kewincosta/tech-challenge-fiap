@@ -152,6 +152,12 @@ function openWorkOrder(
     updatedAt: new Date(),
     serviceItems: [],
     partItems: [],
+    diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
   });
 }
 

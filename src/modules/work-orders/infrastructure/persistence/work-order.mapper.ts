@@ -17,6 +17,7 @@ export interface ResolvedWorkOrderIds {
   vehicleExternalId: string;
   createdByExternalId: string;
   assignedMechanicExternalId: string | null;
+  budgetDecidedByExternalId: string | null;
   serviceExternalIdByInternalId: Map<string, string>;
   inventoryItemExternalIdByInternalId: Map<string, string>;
 }
@@ -49,6 +50,15 @@ export class WorkOrderMapper {
       vehicleYear: row.vehicleYear,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      diagnosisStartedAt: row.diagnosisStartedAt,
+      diagnosisCompletedAt: row.diagnosisCompletedAt,
+      // Budget rounds are not loaded here yet - T10 replaces this with the real read once the
+      // repository queries work_order_budgets. Every item comes back a draft in the meantime,
+      // which is the correct default for a work order that has none.
+      budgets: [],
+      budgetDecidedAt: row.budgetDecidedAt,
+      budgetDecidedByUserId: resolved.budgetDecidedByExternalId,
+      executionStartedAt: row.executionStartedAt,
       serviceItems: serviceRows.map((serviceRow) => {
         const serviceExternalId = resolved.serviceExternalIdByInternalId.get(
           serviceRow.serviceInternalId,
@@ -61,6 +71,9 @@ export class WorkOrderMapper {
           serviceId: serviceExternalId,
           serviceName: serviceRow.serviceName,
           unitPrice: Money.fromDatabase(serviceRow.unitPriceCents),
+          // Round attachment is not loaded here yet - T10's job, alongside the budgets array.
+          budgetRound: null,
+          budgetedUnitPrice: null,
         });
       }),
       partItems: partRows.map((partRow) => {
@@ -78,6 +91,9 @@ export class WorkOrderMapper {
           unitPrice: Money.fromDatabase(partRow.unitPriceCents),
           plannedQuantity: PlannedQuantity.create(partRow.plannedQuantity),
           withdrawnQuantity: partRow.withdrawnQuantity,
+          // Round attachment is not loaded here yet - T10's job, alongside the budgets array.
+          budgetRound: null,
+          budgetedUnitPrice: null,
         });
       }),
     });
@@ -100,6 +116,10 @@ export class WorkOrderMapper {
     workOrderRow.vehicleYear = workOrder.vehicleYear;
     workOrderRow.createdAt = workOrder.createdAt;
     workOrderRow.updatedAt = workOrder.updatedAt;
+    workOrderRow.diagnosisStartedAt = workOrder.diagnosisStartedAt;
+    workOrderRow.diagnosisCompletedAt = workOrder.diagnosisCompletedAt;
+    workOrderRow.budgetDecidedAt = workOrder.budgetDecidedAt;
+    workOrderRow.executionStartedAt = workOrder.executionStartedAt;
 
     const serviceRows = workOrder.serviceItems.map((item) => {
       const row = new WorkOrderServiceOrmEntity();
