@@ -27,6 +27,7 @@ import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { VehicleDelivered } from '../events/vehicle-delivered.event';
+import { WorkOrderCanceled } from '../events/work-order-canceled.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
@@ -197,6 +198,21 @@ interface CloseActionInput {
   actorUserId: string;
   now: Date;
 }
+
+interface CancelInput {
+  reason: string;
+  actorUserId: string;
+  now: Date;
+}
+
+/** Reachable from any state H4 lists - every non-terminal one. `COMPLETED`, `DELIVERED` and
+ * `CANCELED` itself are excluded: rule 39/40 make delivery and cancellation each terminal. */
+const CANCELABLE_STATES = [
+  WorkOrderStatus.Received,
+  WorkOrderStatus.InDiagnosis,
+  WorkOrderStatus.AwaitingApproval,
+  WorkOrderStatus.InExecution,
+];
 
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
@@ -644,6 +660,22 @@ export class WorkOrder extends AggregateRoot {
     this.props.deliveredByUserId = input.actorUserId;
     this.props.updatedAt = input.now;
     this.record(new VehicleDelivered(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * No permission check here - whether the elevated `work-orders:cancel-in-execution` is needed
+   * depends on `hasOutstandingWithdrawals`, which `CancellationAuthorizer` reads before this ever
+   * runs (T18). The aggregate only enforces which states H4 lists as reachable.
+   */
+  cancel(input: CancelInput): void {
+    this.assertStateAllows(CANCELABLE_STATES);
+    const fromStatus = this.props.status;
+    this.props.status = WorkOrderStatus.Canceled;
+    this.props.canceledAt = input.now;
+    this.props.canceledByUserId = input.actorUserId;
+    this.props.cancellationReason = input.reason;
+    this.props.updatedAt = input.now;
+    this.record(new WorkOrderCanceled(this.props.id.value, input.actorUserId, fromStatus, input.now));
   }
 
   private assertStateAllows(allowed: WorkOrderStatus[]): void {

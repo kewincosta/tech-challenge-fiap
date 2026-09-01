@@ -368,13 +368,13 @@ Unplanned but required: writing this task's tests surfaced that `WorkOrder.resto
 
 **Done when**:
 
-- [ ] Cancelling from `RECEIVED`, `IN_DIAGNOSIS`, `AWAITING_APPROVAL` and `IN_EXECUTION` each moves to `CANCELED`, stamps the reason, canceller and moment, and records `WorkOrderCanceled`
-- [ ] The recorded event carries the state the work order left, so the trail says where it was cancelled from
-- [ ] Cancelling from `COMPLETED` and from `DELIVERED` each throws `WorkOrderStateError`
-- [ ] Cancelling an already `CANCELED` work order throws `WorkOrderStateError` (spec.md edge case)
-- [ ] The aggregate does not check any permission - that belongs to the authorizer in T18
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] Cancelling from `RECEIVED`, `IN_DIAGNOSIS`, `AWAITING_APPROVAL` and `IN_EXECUTION` each moves to `CANCELED`, stamps the reason, canceller and moment, and records `WorkOrderCanceled`
+- [x] The recorded event carries the state the work order left, so the trail says where it was cancelled from
+- [x] Cancelling from `COMPLETED` and from `DELIVERED` each throws `WorkOrderStateError`
+- [x] Cancelling an already `CANCELED` work order throws `WorkOrderStateError` (spec.md edge case)
+- [x] The aggregate does not check any permission - that belongs to the authorizer in T18
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

@@ -27,6 +27,7 @@ import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { VehicleDelivered } from '../events/vehicle-delivered.event';
+import { WorkOrderCanceled } from '../events/work-order-canceled.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
@@ -1990,5 +1991,109 @@ describe('WorkOrder.deliver', () => {
     workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW });
 
     expect(workOrder.chargedTotal?.equals(Money.fromCents(20000))).toBe(true);
+  });
+});
+
+describe('WorkOrder.cancel', () => {
+  function restoreAt(status: WorkOrderStatus): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: null,
+      diagnosisCompletedAt: null,
+      budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
+    });
+  }
+
+  it('cancels from RECEIVED, stamping the reason, the canceller and the moment, and recording WorkOrderCanceled', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Received);
+
+    workOrder.cancel({ reason: 'Cliente desistiu', actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Canceled);
+    expect(workOrder.cancellationReason).toBe('Cliente desistiu');
+    expect(workOrder.canceledByUserId).toBe(CREATOR_ID);
+    expect(workOrder.canceledAt).toBe(NOW);
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(WorkOrderCanceled);
+  });
+
+  it('cancels from IN_DIAGNOSIS', () => {
+    const workOrder = restoreAt(WorkOrderStatus.InDiagnosis);
+
+    workOrder.cancel({ reason: 'Cliente desistiu', actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Canceled);
+  });
+
+  it('cancels from AWAITING_APPROVAL', () => {
+    const workOrder = restoreAt(WorkOrderStatus.AwaitingApproval);
+
+    workOrder.cancel({ reason: 'Cliente desistiu', actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Canceled);
+  });
+
+  it('cancels from IN_EXECUTION', () => {
+    const workOrder = restoreAt(WorkOrderStatus.InExecution);
+
+    workOrder.cancel({ reason: 'Cliente desistiu', actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Canceled);
+  });
+
+  it('records on the event whichever state it actually left, not a fixed one', () => {
+    const fromDiagnosis = restoreAt(WorkOrderStatus.InDiagnosis);
+    fromDiagnosis.cancel({ reason: 'x', actorUserId: CREATOR_ID, now: NOW });
+    const [diagnosisEvent] = fromDiagnosis.pullDomainEvents();
+
+    const fromExecution = restoreAt(WorkOrderStatus.InExecution);
+    fromExecution.cancel({ reason: 'x', actorUserId: CREATOR_ID, now: NOW });
+    const [executionEvent] = fromExecution.pullDomainEvents();
+
+    expect((diagnosisEvent as WorkOrderCanceled).fromStatus).toBe(WorkOrderStatus.InDiagnosis);
+    expect((executionEvent as WorkOrderCanceled).fromStatus).toBe(WorkOrderStatus.InExecution);
+  });
+
+  it('refuses from COMPLETED', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Completed);
+
+    expect(() => workOrder.cancel({ reason: 'x', actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('refuses from DELIVERED', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Delivered);
+
+    expect(() => workOrder.cancel({ reason: 'x', actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('refuses an already cancelled work order (spec.md edge case)', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Canceled);
+
+    expect(() => workOrder.cancel({ reason: 'x', actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
   });
 });
