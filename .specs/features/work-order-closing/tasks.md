@@ -561,13 +561,13 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] A holder of `work-orders:manage` passes, whoever they are
-- [ ] The assigned mechanic passes without holding `work-orders:manage`
-- [ ] A mechanic who is not the assignee is refused with `CompletionForbiddenError`
-- [ ] A work order with no assigned mechanic refuses anyone lacking `work-orders:manage`
-- [ ] It refuses with a forbidden error rather than a not-found one, unlike `BudgetDecisionAuthorizer`, because every actor in reach already holds `work-orders:read`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] A holder of `work-orders:manage` passes, whoever they are
+- [x] The assigned mechanic passes without holding `work-orders:manage`
+- [x] A mechanic who is not the assignee is refused with `CompletionForbiddenError`
+- [x] A work order with no assigned mechanic refuses anyone lacking `work-orders:manage`
+- [x] It refuses with a forbidden error rather than a not-found one, unlike `BudgetDecisionAuthorizer`, because every actor in reach already holds `work-orders:read`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
