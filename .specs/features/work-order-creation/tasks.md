@@ -269,12 +269,12 @@ T19
 
 **Done when**:
 
-- [ ] `add` builds an item carrying the inventory item identifier, its SKU, its name, its unit price and the planned quantity
-- [ ] A newly added item has a withdrawn quantity of zero
-- [ ] `restore` rebuilds an item from persisted props, withdrawn quantity included
-- [ ] A zero planned quantity is refused through `PlannedQuantity`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] `add` builds an item carrying the inventory item identifier, its SKU, its name, its unit price and the planned quantity
+- [x] A newly added item has a withdrawn quantity of zero
+- [x] `restore` rebuilds an item from persisted props, withdrawn quantity included
+- [x] A zero planned quantity is refused through `PlannedQuantity`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
