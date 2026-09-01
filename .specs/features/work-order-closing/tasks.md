@@ -709,14 +709,14 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] An unknown work order number throws `WorkOrderNotFoundError`
-- [ ] The authorizer runs between the load and the aggregate call
-- [ ] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `WriteOffStockMovementsCommand`
-- [ ] A work order with no outstanding withdrawn part still dispatches the command, which writes off nothing (spec.md edge case) - the handler does not decide what inventory owns
-- [ ] An error from the inventory side travels out untouched and leaves neither write applied
-- [ ] It publishes the recorded events after the transaction
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] An unknown work order number throws `WorkOrderNotFoundError`
+- [x] The authorizer runs between the load and the aggregate call
+- [x] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `WriteOffStockMovementsCommand`
+- [x] A work order with no outstanding withdrawn part still dispatches the command, which writes off nothing (spec.md edge case) - the handler does not decide what inventory owns
+- [x] An error from the inventory side travels out untouched and leaves neither write applied
+- [x] It publishes the recorded events after the transaction
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
