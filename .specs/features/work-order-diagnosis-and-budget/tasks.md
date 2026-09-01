@@ -561,7 +561,7 @@ T19  T20
 **What**: `CompleteDiagnosisCommand` and its handler, minting the `BudgetId` the aggregate needs for a new round.
 **Where**: `src/modules/work-orders/application/commands/complete-diagnosis/`
 **Depends on**: T6
-**Reuses**: The `randomUUID` id-minting the item handlers already do
+**Reuses**: The `ID_GENERATOR` port the item handlers already use to mint ids (backed by `randomUUID` in `CryptoIdGenerator`)
 **Requirement**: WOB-02
 
 **Tools**:
@@ -571,14 +571,14 @@ T19  T20
 
 **Done when**:
 
-- [ ] The handler mints a `BudgetId` from `randomUUID` and passes it to the aggregate
-- [ ] An unknown number throws `WorkOrderNotFoundError`
-- [ ] `DiagnosisWithoutItemsError` travels out untouched
-- [ ] The wrong-state error travels out untouched
-- [ ] All three recorded events are published
-- [ ] The command carries no price and no total
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] The handler mints a `BudgetId` from `randomUUID` (via `ID_GENERATOR`) and passes it to the aggregate
+- [x] An unknown number throws `WorkOrderNotFoundError`
+- [x] `DiagnosisWithoutItemsError` travels out untouched
+- [x] The wrong-state error travels out untouched
+- [x] All three recorded events are published
+- [x] The command carries no price and no total (structural: `CompleteDiagnosisCommand` has no such field)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (2 fewer than planned - one case covers both the id-minting and the three-event publish together)
 
 **Tests**: unit
 **Gate**: quick
