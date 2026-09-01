@@ -27,6 +27,25 @@ export interface RecordMovementInput {
   now: Date;
 }
 
+export interface ConsumeMovementInput {
+  id: StockMovementId;
+  quantity: number;
+  unitPrice: Money;
+  actorUserId: string;
+  workOrderId: string;
+  now: Date;
+}
+
+export interface UndoMovementInput {
+  id: StockMovementId;
+  quantity: number;
+  unitPrice: Money;
+  actorUserId: string;
+  workOrderId: string;
+  undoesMovementId: string;
+  now: Date;
+}
+
 /**
  * One line of the ledger. Recorded once, never edited: the class exposes read-only getters and
  * no setter or mutating method at all, so nothing in this codebase can change a movement after
@@ -37,8 +56,7 @@ export class StockMovement {
 
   /**
    * Builds an `INBOUND` or `ADJUSTMENT` movement. `status` and `workOrderId` are always null here
-   * - only a consumption carries either, and consumptions are not recorded until phases 11-12
-   * (section 9's invariant).
+   * - only a consumption or a return carries either.
    */
   static record(input: RecordMovementInput): StockMovement {
     if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
@@ -55,6 +73,52 @@ export class StockMovement {
       status: null,
       workOrderId: null,
       undoesMovementId: null,
+    });
+  }
+
+  /**
+   * A `CONSUMPTION`, starting `PENDING` because a part taken for a work order is not money
+   * entering the till until the vehicle is delivered (rule 22, phase 12). The unit price is the
+   * catalog price at the moment of withdrawal, for the movement record only - it never changes
+   * what the work order charges (rule 32, design.md's Risks & Concerns).
+   */
+  static consume(input: ConsumeMovementInput): StockMovement {
+    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+      throw new InvalidMovementQuantityError();
+    }
+    return new StockMovement({
+      id: input.id,
+      kind: StockMovementKind.Consumption,
+      quantity: input.quantity,
+      unitPrice: input.unitPrice,
+      actorUserId: input.actorUserId,
+      note: null,
+      occurredAt: input.now,
+      status: StockMovementStatus.Pending,
+      workOrderId: input.workOrderId,
+      undoesMovementId: null,
+    });
+  }
+
+  /**
+   * A `RETURN`, pointing at the consumption it undoes rather than editing it (rule 22, H32).
+   * Carries no status of its own - only a consumption has a lifecycle to settle or write off.
+   */
+  static undo(input: UndoMovementInput): StockMovement {
+    if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+      throw new InvalidMovementQuantityError();
+    }
+    return new StockMovement({
+      id: input.id,
+      kind: StockMovementKind.Return,
+      quantity: input.quantity,
+      unitPrice: input.unitPrice,
+      actorUserId: input.actorUserId,
+      note: null,
+      occurredAt: input.now,
+      status: null,
+      workOrderId: input.workOrderId,
+      undoesMovementId: input.undoesMovementId,
     });
   }
 

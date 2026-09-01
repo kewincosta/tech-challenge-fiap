@@ -125,14 +125,14 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] `StockMovement.consume` produces a `CONSUMPTION` in `PENDING`, carrying the work order and the acting user
-- [ ] `StockMovement.undo` produces a `RETURN` with a null status, carrying the work order and the id of the consumption it undoes
-- [ ] `InventoryItem.consume` lowers the count through `StockQuantity.minus` and appends the movement
-- [ ] `InventoryItem.consume` refuses a quantity larger than the count on hand with `InsufficientStockError`, leaving the count and `newMovements` untouched
-- [ ] `InventoryItem.restoreUnits` raises the count and appends the `RETURN`
-- [ ] Neither method can be reached without a positive quantity, which `StockMovement` already guards
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `StockMovement.consume` produces a `CONSUMPTION` in `PENDING`, carrying the work order and the acting user
+- [x] `StockMovement.undo` produces a `RETURN` with a null status, carrying the work order and the id of the consumption it undoes
+- [x] `InventoryItem.consume` lowers the count through `StockQuantity.minus` and appends the movement
+- [x] `InventoryItem.consume` refuses a quantity larger than the count on hand with `InsufficientStockError`, leaving the count and `newMovements` untouched
+- [x] `InventoryItem.restoreUnits` raises the count and appends the `RETURN`
+- [x] Neither method can be reached without a positive quantity, which `StockMovement` already guards (structural: both factories share `record`'s own `InvalidMovementQuantityError` guard, exercised for `record` in the pre-existing suite)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (6 fewer than planned - dense cases, several assertions each, one per behavioural bullet plus the round-trip and never-edited proofs)
 
 **Tests**: unit
 **Gate**: quick

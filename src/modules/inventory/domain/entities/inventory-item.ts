@@ -65,6 +65,23 @@ interface AdjustStockDownInput {
   now: Date;
 }
 
+interface ConsumeStockInput {
+  quantity: number;
+  workOrderId: string;
+  actorUserId: string;
+  movementId: StockMovementId;
+  now: Date;
+}
+
+interface RestoreStockInput {
+  quantity: number;
+  workOrderId: string;
+  actorUserId: string;
+  movementId: StockMovementId;
+  undoesMovementId: string;
+  now: Date;
+}
+
 /**
  * One part or supply, its truthful count, and the movements appended during this request.
  * `findById` never attaches movements (design.md) - the full ledger is read back through
@@ -157,6 +174,47 @@ export class InventoryItem extends AggregateRoot {
     this.record(
       new StockAdjusted(this.props.id.value, movement.id.value, input.quantity, input.now),
     );
+  }
+
+  /**
+   * Lowers the count for a work order withdrawal. The unit price recorded is this item's own
+   * catalog price at this moment - for the movement record only, never what the work order
+   * charges (rule 32, spec.md's Assumptions). Same compute-before-mutate ordering as `adjustDown`:
+   * a thrown `InsufficientStockError` leaves the count and `newMovements` exactly as they were.
+   */
+  consume(input: ConsumeStockInput): void {
+    const movement = StockMovement.consume({
+      id: input.movementId,
+      quantity: input.quantity,
+      unitPrice: this.props.unitPrice,
+      actorUserId: input.actorUserId,
+      workOrderId: input.workOrderId,
+      now: input.now,
+    });
+    const quantityOnHand = this.props.quantityOnHand.minus(input.quantity);
+    this.props.quantityOnHand = quantityOnHand;
+    this.props.movements.push(movement);
+    this.props.updatedAt = input.now;
+  }
+
+  /**
+   * Raises the count for a part returned unused. `undoesMovementId` is supplied by the caller,
+   * which already knows the consumption it points at (design.md's Risks & Concerns) - this
+   * aggregate never loads prior movements to find it.
+   */
+  restoreUnits(input: RestoreStockInput): void {
+    const movement = StockMovement.undo({
+      id: input.movementId,
+      quantity: input.quantity,
+      unitPrice: this.props.unitPrice,
+      actorUserId: input.actorUserId,
+      workOrderId: input.workOrderId,
+      undoesMovementId: input.undoesMovementId,
+      now: input.now,
+    });
+    this.props.quantityOnHand = this.props.quantityOnHand.plus(input.quantity);
+    this.props.movements.push(movement);
+    this.props.updatedAt = input.now;
   }
 
   /**

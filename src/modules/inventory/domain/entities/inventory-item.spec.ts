@@ -13,6 +13,8 @@ import { StockReplenished } from '../events/stock-replenished.event';
 import { InventoryItemKind } from '../inventory-item-kind';
 import { InventoryItemStatus } from '../inventory-item-status';
 import { ErrorKind } from '../../../../shared/domain/errors/error-kind';
+import { StockMovementKind } from '../stock-movement-kind';
+import { StockMovementStatus } from '../stock-movement-status';
 import { InventoryItemId } from '../value-objects/inventory-item-id';
 import { Sku } from '../value-objects/sku';
 import { StockMovementId } from '../value-objects/stock-movement-id';
@@ -223,5 +225,155 @@ describe('InventoryItem', () => {
     expect(new InvalidMovementQuantityError().kind).toBe(ErrorKind.Validation);
     expect(new AdjustmentNoteRequiredError().kind).toBe(ErrorKind.Validation);
     expect(new InsufficientStockError().kind).toBe(ErrorKind.RuleViolation);
+  });
+});
+
+const WORK_ORDER_ID = '44444444-4444-4444-8444-444444444444';
+
+function buildStockedItem(unitPriceCents = 2500): InventoryItem {
+  const item = InventoryItem.create({
+    id: ITEM_ID,
+    sku: Sku.create('FLT-001'),
+    name: 'Filtro de oleo',
+    description: 'Filtro padrao',
+    kind: InventoryItemKind.Part,
+    unitPrice: Money.fromCents(unitPriceCents),
+    now: NOW,
+  });
+  item.replenish({
+    quantity: 10,
+    unitPrice: Money.fromCents(unitPriceCents),
+    actorUserId: ACTOR_ID,
+    note: 'Estoque inicial',
+    movementId: movementId('1'),
+    now: NOW,
+  });
+  return item;
+}
+
+describe('InventoryItem.consume and restoreUnits', () => {
+  it('should lower the count and append a CONSUMPTION movement in PENDING, carrying the work order', () => {
+    const item = buildStockedItem();
+
+    item.consume({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      now: NOW,
+    });
+
+    expect(item.quantityOnHand.units).toBe(7);
+    const movement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Consumption);
+    expect(movement?.status).toBe(StockMovementStatus.Pending);
+    expect(movement?.workOrderId).toBe(WORK_ORDER_ID);
+    expect(movement?.quantity).toBe(3);
+  });
+
+  it("should write the item's own catalog price on the consumption, not a price the caller supplies", () => {
+    const item = buildStockedItem(2500);
+
+    item.consume({
+      quantity: 1,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      now: NOW,
+    });
+
+    const movement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Consumption);
+    expect(movement?.unitPrice.cents).toBe(2500);
+  });
+
+  it('should refuse a quantity larger than the count on hand with InsufficientStockError, leaving the count and newMovements unchanged', () => {
+    const item = buildStockedItem();
+    const before = item.newMovements.length;
+
+    expect(() =>
+      item.consume({
+        quantity: 11,
+        workOrderId: WORK_ORDER_ID,
+        actorUserId: ACTOR_ID,
+        movementId: movementId('2'),
+        now: NOW,
+      }),
+    ).toThrow(InsufficientStockError);
+    expect(item.quantityOnHand.units).toBe(10);
+    expect(item.newMovements).toHaveLength(before);
+  });
+
+  it('should raise the count and append a RETURN movement pointing at the consumption it undoes', () => {
+    const item = buildStockedItem();
+    item.consume({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      now: NOW,
+    });
+    const consumptionId = item.newMovements[1].id.value;
+
+    item.restoreUnits({
+      quantity: 1,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('3'),
+      undoesMovementId: consumptionId,
+      now: NOW,
+    });
+
+    expect(item.quantityOnHand.units).toBe(8);
+    const returnMovement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Return);
+    expect(returnMovement?.undoesMovementId).toBe(consumptionId);
+    expect(returnMovement?.status).toBeNull();
+  });
+
+  it('should never edit the original consumption when a return is registered', () => {
+    const item = buildStockedItem();
+    item.consume({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      now: NOW,
+    });
+    const consumption = item.newMovements[1];
+
+    item.restoreUnits({
+      quantity: 1,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('3'),
+      undoesMovementId: consumption.id.value,
+      now: NOW,
+    });
+
+    const stillThere = item.newMovements.find((candidate) => candidate.id.equals(consumption.id));
+    expect(stillThere?.status).toBe(StockMovementStatus.Pending);
+    expect(stillThere?.quantity).toBe(3);
+  });
+
+  it('should end a withdraw-then-return-in-full round trip at the starting count, with three movements on the ledger', () => {
+    const item = buildStockedItem();
+    item.consume({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      now: NOW,
+    });
+    const consumptionId = item.newMovements[1].id.value;
+
+    item.restoreUnits({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('3'),
+      undoesMovementId: consumptionId,
+      now: NOW,
+    });
+
+    expect(item.quantityOnHand.units).toBe(10);
+    expect(item.newMovements).toHaveLength(3);
   });
 });
