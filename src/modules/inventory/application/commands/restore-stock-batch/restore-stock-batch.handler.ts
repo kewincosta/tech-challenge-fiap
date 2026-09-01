@@ -18,6 +18,12 @@ import { RestoreStockBatchCommand } from './restore-stock-batch.command';
  * The inventory side of a return. Same shape as `ConsumeStockBatchHandler`: reached only from
  * inside `ReturnPartsHandler`'s `transactionRunner.run` (AD-008), validates every line before
  * saving any of them.
+ *
+ * Work-orders has no way to know which movement a return undoes - that data lives only in this
+ * module's own `stock_movements` ledger, so this handler resolves it itself: for each line, it
+ * draws from the item's pending consumptions on that work order, newest first, splitting the
+ * requested quantity across as many as it takes and appending one `RETURN` per consumption drawn
+ * from (spec.md's Assumptions).
  */
 @CommandHandler(RestoreStockBatchCommand)
 export class RestoreStockBatchHandler implements ICommandHandler<RestoreStockBatchCommand, void> {
@@ -38,16 +44,31 @@ export class RestoreStockBatchHandler implements ICommandHandler<RestoreStockBat
       if (!item) {
         throw new InventoryItemNotFoundError();
       }
-      // Never edits `line.undoesMovementId`'s own row - it only appends a new RETURN pointing
-      // at it (rule 22, H32).
-      item.restoreUnits({
-        quantity: line.quantity,
-        workOrderId: command.workOrderId,
-        actorUserId: command.actorUserId,
-        movementId: StockMovementId.create(this.idGenerator.generate()),
-        undoesMovementId: line.undoesMovementId,
-        now,
-      });
+      const pending = await this.items.findPendingConsumptions(item.id, command.workOrderId);
+      let remaining = line.quantity;
+      for (const consumption of pending) {
+        if (remaining <= 0) {
+          break;
+        }
+        const draw = Math.min(remaining, consumption.quantity);
+        item.restoreUnits({
+          quantity: draw,
+          workOrderId: command.workOrderId,
+          actorUserId: command.actorUserId,
+          movementId: StockMovementId.create(this.idGenerator.generate()),
+          undoesMovementId: consumption.movementId,
+          now,
+        });
+        remaining -= draw;
+      }
+      if (remaining > 0) {
+        // The work-orders aggregate already guards against returning more than was withdrawn
+        // (`WithdrawalExceedsPlannedError`'s sibling on the return side) - reaching here means the
+        // two ledgers disagree, which is a bug, not a user-facing rule violation.
+        throw new Error(
+          `No pending consumption covers a return of ${line.quantity} on item ${line.inventoryItemId} for work order ${command.workOrderId}`,
+        );
+      }
     }
 
     for (const item of loaded) {

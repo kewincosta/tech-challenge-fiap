@@ -2,6 +2,12 @@ import { InventoryItem } from '../entities/inventory-item';
 import { InventoryItemId } from '../value-objects/inventory-item-id';
 import { Sku } from '../value-objects/sku';
 
+export interface PendingConsumptionDto {
+  /** The consumption's own external id - what a RETURN's `undoes_movement_id` points at. */
+  movementId: string;
+  quantity: number;
+}
+
 export interface InventoryItemRepository {
   /** Never attaches movements - the full ledger is a read model, not part of this aggregate. */
   findById(id: InventoryItemId): Promise<InventoryItem | null>;
@@ -21,6 +27,16 @@ export interface InventoryItemRepository {
    * transaction - `save()`'s own `inTransaction` if there is an ambient one.
    */
   findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]>;
+  /**
+   * The `CONSUMPTION` movements a return draws from, newest first (spec.md's Assumptions: "the
+   * work order's pending consumptions for that item, drawn newest first"). Work-orders has no way
+   * to know a movement id - that data lives only in `stock_movements`, inventory's own ledger, so
+   * `RestoreStockBatchHandler` resolves it itself rather than the caller supplying it.
+   */
+  findPendingConsumptions(
+    inventoryItemId: InventoryItemId,
+    workOrderId: string,
+  ): Promise<PendingConsumptionDto[]>;
 }
 
 export const INVENTORY_ITEM_REPOSITORY = Symbol('InventoryItemRepository');

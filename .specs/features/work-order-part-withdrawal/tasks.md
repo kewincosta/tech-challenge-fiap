@@ -484,6 +484,25 @@ T16  T17  T18
 **Unplanned but required**: the first draft of the "never edits the original consumption" test read `newMovements` on the item *after* the handler ran - but a freshly loaded item never carries movements from an earlier lifecycle (`InventoryItem.restore` always starts empty, movements are a read model), so the original consumption was never there to inspect that way. Fixed by capturing the consumption from the object *before* the handler runs and asserting that same reference is untouched, which is the strongest proof a unit test without a real database can offer.
 
 **Tests**: unit
+
+---
+
+### T12 correction (surfaced while starting T13): `undoesMovementId` cannot be caller-supplied
+
+**What went wrong**: the design and the original T12 assumed `WithdrawPartsHandler` could record the movement ids `ConsumeStockBatchHandler` returns onto the work order item, for a later return to read back and pass as each line's `undoesMovementId`. Tracing the actual data lifecycle while starting T13 showed this cannot work: `WorkOrder.restore` rebuilds every item from `work_order_parts` columns alone on *every* load - there is no column for "which movement ids withdrew this item", and there is no viable place to persist one without a new migration this feature never scoped. Work-orders genuinely has no way to know a movement id after the request that minted it ends.
+
+**Fix, confirmed with the user**: `RestoreStockBatchCommand` drops `undoesMovementId` from its lines - the caller supplies only `{ inventoryItemId, quantity }`. `RestoreStockBatchHandler` resolves which consumption(s) to undo itself, through a new `InventoryItemRepository.findPendingConsumptions(inventoryItemId, workOrderId)` method: the item's `CONSUMPTION` movements for that work order, newest first, each net of whatever was already returned against it (a `RETURN` never edits the consumption it undoes, so "status" alone cannot tell a drained consumption from an untouched one - `quantity - SUM(returns pointing at it)` is the true remaining amount). The handler draws from that list, splitting one requested return across as many consumptions as it takes, appending one `RETURN` per consumption drawn from - exactly spec.md's own Assumption, which this correction now actually implements rather than approximates.
+
+**What changed**:
+- `InventoryItemRepository` gains `findPendingConsumptions`, implemented with a SQL `LEFT JOIN` summing prior returns per consumption, in `typeorm-inventory-item.repository.ts`.
+- `InMemoryInventoryItemRepository` gains a private ledger that accumulates across `save()` calls - a single restored `InventoryItem` cannot answer "every consumption ever recorded", so the fake needed its own memory of what the real `stock_movements` table would hold.
+- `RestoreStockBatchCommand`/`Handler` rewritten to draw from `findPendingConsumptions` instead of trusting a caller-supplied id; 5 unit tests, including a new one proving a single return splits correctly across two consumptions, newest one drawn from first.
+- 2 new integration tests on `findPendingConsumptions` itself: newest-first ordering, and the subtract-what-was-returned arithmetic including a consumption fully drained to zero and dropping out of the list.
+- T13 and T14 below no longer carry the "movement ids recorded on work order items" bullet that motivated this whole correction.
+
+**Gate check passes**: `npm run lint && npm run build && npm run test:unit && npm run test:integration (x2) && npm run test:e2e`. 517 unit (+1 net over T12's original close), 194 integration (+2), 128 e2e unchanged.
+
+**Commit**: `fix(inventory): resolve a return's undone consumption from the ledger, not the caller`
 **Gate**: quick
 
 **Commit**: `feat(inventory): add the restore stock batch command handler`
@@ -511,9 +530,10 @@ T16  T17  T18
 - [ ] It publishes the recorded events after the transaction, with `pullDomainEvents`
 - [ ] `InsufficientStockError` raised by the inventory side travels out untouched
 - [ ] Every aggregate guard error travels out untouched rather than being translated
-- [ ] The movement ids the inventory side returns are recorded on the work order items, so a later return can point at them
 - [ ] Gate check passes: `npm run test:unit`
 - [ ] Test count: 8 tests pass (no silent deletions)
+
+Note: the "movement ids recorded on work order items" bullet this task originally carried is gone - see the T12 correction above. `ConsumeStockBatchCommand`'s lines only ever need `{ inventoryItemId, quantity }`; this handler does not need the movement ids `ConsumeStockBatchHandler` returns for anything.
 
 **Tests**: unit
 **Gate**: quick
@@ -538,13 +558,11 @@ T16  T17  T18
 **Done when**:
 
 - [ ] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
-- [ ] It opens one `transactionRunner.run`, saves the work order, then dispatches `RestoreStockBatchCommand`
-- [ ] It resolves which consumptions each returned line undoes, newest first, and passes them to the inventory side
-- [ ] A return spanning two consumptions produces one `RETURN` per consumption drawn from
+- [ ] It opens one `transactionRunner.run`, saves the work order, then dispatches `RestoreStockBatchCommand` with `{ inventoryItemId, quantity }` lines - it does not resolve or pass any movement id, that is `RestoreStockBatchHandler`'s own job (see the T12 correction above)
 - [ ] Every aggregate guard error travels out untouched
 - [ ] It publishes the recorded events after the transaction
 - [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [ ] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

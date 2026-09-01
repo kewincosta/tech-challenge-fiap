@@ -1,11 +1,33 @@
 import { InventoryItem } from '../../../src/modules/inventory/domain/entities/inventory-item';
 import { InventoryItemStatus } from '../../../src/modules/inventory/domain/inventory-item-status';
-import { InventoryItemRepository } from '../../../src/modules/inventory/domain/repositories/inventory-item.repository';
+import {
+  InventoryItemRepository,
+  PendingConsumptionDto,
+} from '../../../src/modules/inventory/domain/repositories/inventory-item.repository';
+import { StockMovementKind } from '../../../src/modules/inventory/domain/stock-movement-kind';
+import { StockMovementStatus } from '../../../src/modules/inventory/domain/stock-movement-status';
 import { InventoryItemId } from '../../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../../src/modules/inventory/domain/value-objects/sku';
 
+interface LedgerEntry {
+  inventoryItemId: string;
+  workOrderId: string | null;
+  movementId: string;
+  quantity: number;
+  kind: StockMovementKind;
+  status: StockMovementStatus | null;
+  undoesMovementId: string | null;
+}
+
 export class InMemoryInventoryItemRepository implements InventoryItemRepository {
   items: InventoryItem[] = [];
+  /**
+   * `InventoryItem.restore` never attaches movements (design.md), so a fresh instance's own
+   * `newMovements` only ever shows what happened in *this* lifecycle - it cannot answer "every
+   * consumption ever recorded for this item". This ledger accumulates across every `save()` call,
+   * the same role `stock_movements` plays for the real repository.
+   */
+  private ledger: LedgerEntry[] = [];
 
   async findById(id: InventoryItemId): Promise<InventoryItem | null> {
     return Promise.resolve(this.items.find((item) => item.id.equals(id)) ?? null);
@@ -20,6 +42,17 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
   async save(item: InventoryItem): Promise<void> {
     this.items = this.items.filter((existing) => !existing.id.equals(item.id));
     this.items.push(item);
+    for (const movement of item.newMovements) {
+      this.ledger.push({
+        inventoryItemId: item.id.value,
+        workOrderId: movement.workOrderId,
+        movementId: movement.id.value,
+        quantity: movement.quantity,
+        kind: movement.kind,
+        status: movement.status,
+        undoesMovementId: movement.undoesMovementId,
+      });
+    }
     return Promise.resolve();
   }
 
@@ -49,6 +82,38 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
             updatedAt: item.updatedAt,
           }),
         ),
+    );
+  }
+
+  /** Newest first, net of whatever was already returned against each consumption. */
+  async findPendingConsumptions(
+    inventoryItemId: InventoryItemId,
+    workOrderId: string,
+  ): Promise<PendingConsumptionDto[]> {
+    const returnedByConsumption = new Map<string, number>();
+    for (const entry of this.ledger) {
+      if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {
+        returnedByConsumption.set(
+          entry.undoesMovementId,
+          (returnedByConsumption.get(entry.undoesMovementId) ?? 0) + entry.quantity,
+        );
+      }
+    }
+    return Promise.resolve(
+      this.ledger
+        .filter(
+          (entry) =>
+            entry.inventoryItemId === inventoryItemId.value &&
+            entry.workOrderId === workOrderId &&
+            entry.kind === StockMovementKind.Consumption &&
+            entry.status === StockMovementStatus.Pending,
+        )
+        .map((entry) => ({
+          movementId: entry.movementId,
+          quantity: entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0),
+        }))
+        .filter((entry) => entry.quantity > 0)
+        .reverse(),
     );
   }
 }

@@ -5,7 +5,10 @@ import { currentEntityManager } from '../../../../shared/infrastructure/database
 import { InventoryItem } from '../../domain/entities/inventory-item';
 import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
 import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
-import { InventoryItemRepository } from '../../domain/repositories/inventory-item.repository';
+import {
+  InventoryItemRepository,
+  PendingConsumptionDto,
+} from '../../domain/repositories/inventory-item.repository';
 import { StockMovementKind } from '../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../domain/value-objects/sku';
@@ -61,6 +64,39 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
       .setLock('pessimistic_write')
       .getMany();
     return rows.map((row) => InventoryItemMapper.toDomain(row));
+  }
+
+  /**
+   * Newest first, each carrying what is still un-returned on it - a `RETURN` never edits the
+   * consumption it undoes (rule 22), so "pending" alone would keep offering an already-exhausted
+   * consumption forever. `quantity - COALESCE(returned, 0)` is the true remaining amount, and a
+   * consumption drained to zero drops out of the result entirely. This is the only place a
+   * return's `undoesMovementId` comes from - work-orders has no way to know a movement id, since
+   * that data lives only in `stock_movements`, this module's own ledger (spec.md's Assumptions).
+   */
+  async findPendingConsumptions(
+    inventoryItemId: InventoryItemId,
+    workOrderId: string,
+  ): Promise<PendingConsumptionDto[]> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows: Array<{ external_id: string; remaining: number }> = await manager.query(
+      `SELECT sm.external_id, (sm.quantity - COALESCE(returned.total, 0))::integer AS remaining
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         JOIN work_orders wo ON wo.id = sm.work_order_id
+         LEFT JOIN (
+           SELECT undoes_movement_id, SUM(quantity) AS total
+             FROM stock_movements
+            WHERE kind = 'RETURN'
+            GROUP BY undoes_movement_id
+         ) returned ON returned.undoes_movement_id = sm.id
+        WHERE ii.external_id = $1 AND wo.external_id = $2
+          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND sm.quantity - COALESCE(returned.total, 0) > 0
+        ORDER BY sm.occurred_at DESC`,
+      [inventoryItemId.value, workOrderId],
+    );
+    return rows.map((row) => ({ movementId: row.external_id, quantity: row.remaining }));
   }
 
   /**

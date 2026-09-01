@@ -526,4 +526,100 @@ describe('TypeOrmInventoryItemRepository', () => {
     expect(rows[0].status).toBeNull();
     expect(rows[0].undoes_external_id).toBe(consumeMovementId.value);
   });
+
+  it('findPendingConsumptions returns the consumptions newest first', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+
+    const older = movementId();
+    const first = await repository.findById(item.id);
+    first!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: older,
+      now: new Date('2026-08-31T10:00:00.000Z'),
+    });
+    await repository.save(first!);
+    const newer = movementId();
+    const second = await repository.findById(item.id);
+    second!.consume({
+      quantity: 3,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: newer,
+      now: new Date('2026-08-31T11:00:00.000Z'),
+    });
+    await repository.save(second!);
+
+    const pending = await repository.findPendingConsumptions(item.id, workOrderExternalId);
+
+    expect(pending).toEqual([
+      { movementId: newer.value, quantity: 3 },
+      { movementId: older.value, quantity: 2 },
+    ]);
+  });
+
+  it('findPendingConsumptions subtracts what was already returned, and drops a fully drained consumption', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+
+    const consumeMovementId = movementId();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 3,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+
+    const partialReturn = await repository.findById(item.id);
+    partialReturn!.restoreUnits({
+      quantity: 1,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(partialReturn!);
+
+    const afterPartialReturn = await repository.findPendingConsumptions(
+      item.id,
+      workOrderExternalId,
+    );
+    expect(afterPartialReturn).toEqual([{ movementId: consumeMovementId.value, quantity: 2 }]);
+
+    const fullReturn = await repository.findById(item.id);
+    fullReturn!.restoreUnits({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(fullReturn!);
+
+    const afterFullReturn = await repository.findPendingConsumptions(item.id, workOrderExternalId);
+    expect(afterFullReturn).toEqual([]);
+  });
 });
