@@ -557,12 +557,12 @@ Note: the "movement ids recorded on work order items" bullet this task originall
 
 **Done when**:
 
-- [ ] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
-- [ ] It opens one `transactionRunner.run`, saves the work order, then dispatches `RestoreStockBatchCommand` with `{ inventoryItemId, quantity }` lines - it does not resolve or pass any movement id, that is `RestoreStockBatchHandler`'s own job (see the T12 correction above)
-- [ ] Every aggregate guard error travels out untouched
-- [ ] It publishes the recorded events after the transaction
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
+- [x] It opens one `transactionRunner.run`, saves the work order, then dispatches `RestoreStockBatchCommand` with `{ inventoryItemId, quantity }` lines - it does not resolve or pass any movement id, that is `RestoreStockBatchHandler`'s own job (see the T12 correction above)
+- [x] Every aggregate guard error travels out untouched
+- [x] It publishes the recorded events after the transaction
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (matches the plan exactly - no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
