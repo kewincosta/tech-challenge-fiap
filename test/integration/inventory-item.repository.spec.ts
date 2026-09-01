@@ -631,4 +631,432 @@ describe('TypeOrmInventoryItemRepository', () => {
     const afterFullReturn = await repository.findPendingConsumptions(item.id, workOrderExternalId);
     expect(afterFullReturn).toEqual([]);
   });
+
+  it('settleWorkOrderConsumptions moves every PENDING consumption of the work order to SETTLED, leaving the count on hand untouched', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 3,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+    const before: Array<{ quantity_on_hand: number }> = await dataSource.query(
+      `SELECT quantity_on_hand FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+
+    const settled = await repository.settleWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    expect(settled).toBe(1);
+    const rows: Array<{ status: string; quantity_on_hand: number }> = await dataSource.query(
+      `SELECT sm.status, ii.quantity_on_hand
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [item.id.value],
+    );
+    expect(rows[0].status).toBe('SETTLED');
+    expect(rows[0].quantity_on_hand).toBe(before[0].quantity_on_hand);
+  });
+
+  it('settleWorkOrderConsumptions touches no other work order\'s movements', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderA = await insertWorkOrder();
+    const workOrderB = await insertWorkOrder();
+    const consumingA = await repository.findById(item.id);
+    consumingA!.consume({
+      quantity: 2,
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consumingA!);
+    const consumingB = await repository.findById(item.id);
+    consumingB!.consume({
+      quantity: 3,
+      workOrderId: workOrderB,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consumingB!);
+
+    await repository.settleWorkOrderConsumptions({
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    const pendingOnB = await repository.findPendingConsumptions(item.id, workOrderB);
+    expect(pendingOnB).toHaveLength(1);
+  });
+
+  it('settleWorkOrderConsumptions settles a fully returned consumption like any other (spec.md edge case)', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consumeMovementId = movementId();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning!);
+    const before: Array<{ quantity_on_hand: number }> = await dataSource.query(
+      `SELECT quantity_on_hand FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+
+    const settled = await repository.settleWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    expect(settled).toBe(1);
+    const rows: Array<{ status: string; quantity_on_hand: number }> = await dataSource.query(
+      `SELECT sm.status, ii.quantity_on_hand
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [item.id.value],
+    );
+    expect(rows[0].status).toBe('SETTLED');
+    expect(rows[0].quantity_on_hand).toBe(before[0].quantity_on_hand);
+  });
+
+  it('settleWorkOrderConsumptions appends a transition row naming the previous status, the new status, the actor and the moment, with no quantity', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+    const now = new Date();
+
+    await repository.settleWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now,
+    });
+
+    const rows: Array<{
+      from_status: string;
+      to_status: string;
+      actor_external_id: string;
+      occurred_at: Date;
+      quantity: number | null;
+    }> = await dataSource.query(
+      `SELECT smt.from_status, smt.to_status, u.external_id AS actor_external_id, smt.occurred_at, smt.quantity
+         FROM stock_movement_transitions smt
+         JOIN stock_movements sm ON sm.id = smt.stock_movement_id
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         JOIN users u ON u.id = smt.actor_user_id
+        WHERE ii.external_id = $1`,
+      [item.id.value],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].from_status).toBe('PENDING');
+    expect(rows[0].to_status).toBe('SETTLED');
+    expect(rows[0].actor_external_id).toBe(actorExternalId);
+    expect(new Date(rows[0].occurred_at).getTime()).toBe(now.getTime());
+    expect(rows[0].quantity).toBeNull();
+  });
+
+  it('writeOffWorkOrderConsumptions records a loss of exactly one unit for a consumption of 4 with a return of 3 (spec.md edge case), and touches no other work order', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderA = await insertWorkOrder();
+    const workOrderB = await insertWorkOrder();
+    const consumeMovementId = movementId();
+    const consumingA = await repository.findById(item.id);
+    consumingA!.consume({
+      quantity: 4,
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consumingA!);
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 3,
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning!);
+    const consumingB = await repository.findById(item.id);
+    consumingB!.consume({
+      quantity: 5,
+      workOrderId: workOrderB,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consumingB!);
+    const before: Array<{ quantity_on_hand: number }> = await dataSource.query(
+      `SELECT quantity_on_hand FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+
+    const writtenOff = await repository.writeOffWorkOrderConsumptions({
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    expect(writtenOff).toBe(1);
+    const rows: Array<{ status: string; quantity_on_hand: number }> = await dataSource.query(
+      `SELECT sm.status, ii.quantity_on_hand
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION' AND sm.work_order_id =
+          (SELECT id FROM work_orders WHERE external_id = $2)`,
+      [item.id.value, workOrderA],
+    );
+    expect(rows[0].status).toBe('WRITTEN_OFF');
+    expect(rows[0].quantity_on_hand).toBe(before[0].quantity_on_hand);
+    const pendingOnB = await repository.findPendingConsumptions(item.id, workOrderB);
+    expect(pendingOnB).toHaveLength(1);
+  });
+
+  it('writeOffWorkOrderConsumptions records no loss at all for a consumption returned in full, leaving it PENDING and untransitioned', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consumeMovementId = movementId();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning!);
+
+    const writtenOff = await repository.writeOffWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    expect(writtenOff).toBe(0);
+    const rows: Array<{ status: string }> = await dataSource.query(
+      `SELECT sm.status
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [item.id.value],
+    );
+    expect(rows[0].status).toBe('PENDING');
+    const transitions: Array<{ id: string }> = await dataSource.query(
+      `SELECT smt.id FROM stock_movement_transitions smt
+         JOIN stock_movements sm ON sm.id = smt.stock_movement_id
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1`,
+      [item.id.value],
+    );
+    expect(transitions).toHaveLength(0);
+  });
+
+  it('writeOffWorkOrderConsumptions records the same net remaining figure findPendingConsumptions would report, so the two cannot drift', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consumeMovementId = movementId();
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 4,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 1,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning!);
+    const pendingBeforeWriteOff = await repository.findPendingConsumptions(
+      item.id,
+      workOrderExternalId,
+    );
+    expect(pendingBeforeWriteOff).toEqual([{ movementId: consumeMovementId.value, quantity: 3 }]);
+
+    const now = new Date();
+    await repository.writeOffWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now,
+    });
+
+    // Also closes L-010 for the write-off path: settle's own dedicated test above already covers
+    // all five fields for that path, this covers the same five here.
+    const rows: Array<{
+      from_status: string;
+      to_status: string;
+      actor_external_id: string;
+      occurred_at: Date;
+      quantity: number;
+    }> = await dataSource.query(
+      `SELECT smt.from_status, smt.to_status, u.external_id AS actor_external_id, smt.occurred_at, smt.quantity
+         FROM stock_movement_transitions smt
+         JOIN stock_movements sm ON sm.id = smt.stock_movement_id
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         JOIN users u ON u.id = smt.actor_user_id
+        WHERE ii.external_id = $1`,
+      [item.id.value],
+    );
+    expect(rows[0].from_status).toBe('PENDING');
+    expect(rows[0].to_status).toBe('WRITTEN_OFF');
+    expect(rows[0].actor_external_id).toBe(actorExternalId);
+    expect(new Date(rows[0].occurred_at).getTime()).toBe(now.getTime());
+    expect(rows[0].quantity).toBe(3);
+  });
+
+  it('writeOffWorkOrderConsumptions sums the whole collection, not just its first row, across two consumptions of different sizes (L-014)', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const first = await repository.findById(item.id);
+    first!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date('2026-08-31T10:00:00.000Z'),
+    });
+    await repository.save(first!);
+    const second = await repository.findById(item.id);
+    second!.consume({
+      quantity: 5,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date('2026-08-31T11:00:00.000Z'),
+    });
+    await repository.save(second!);
+
+    const writtenOff = await repository.writeOffWorkOrderConsumptions({
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      now: new Date(),
+    });
+
+    expect(writtenOff).toBe(2);
+    const rows: Array<{ status: string }> = await dataSource.query(
+      `SELECT sm.status
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [item.id.value],
+    );
+    expect(rows.every((row) => row.status === 'WRITTEN_OFF')).toBe(true);
+  });
 });

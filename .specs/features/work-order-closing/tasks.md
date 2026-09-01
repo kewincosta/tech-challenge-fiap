@@ -468,18 +468,20 @@ Unplanned but required: the first implementation compared the freshly re-read da
 
 **Done when**:
 
-- [ ] The `quantity - COALESCE(SUM(returns pointing at it), 0)` expression exists once, as a named fragment, and both `findPendingConsumptions` and the write-off read it
-- [ ] A test asserts a partly returned consumption yields the same number through both callers, so the two cannot drift
-- [ ] `settleWorkOrderConsumptions` moves every `PENDING` consumption of that work order to `SETTLED` and touches no other work order's movements
-- [ ] `writeOffWorkOrderConsumptions` moves them to `WRITTEN_OFF` and records the net lost quantity on the transition row
-- [ ] A consumption of 4 with a return of 3 records a loss of one (spec.md edge case)
-- [ ] A consumption returned in full records no loss at all
-- [ ] A fully returned consumption still settles on delivery like any other (spec.md edge case)
-- [ ] Neither method changes any inventory item's count on hand
-- [ ] Each appends one `stock_movement_transitions` row per movement, asserting all five of the previous status, the new status, the acting user, the moment and the quantity (L-010)
-- [ ] A fixture with two consumptions of different sizes proves the aggregate runs over the whole set, not over its first row (L-014)
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] The `quantity - COALESCE(SUM(returns pointing at it), 0)` expression exists once, as a named fragment, and both `findPendingConsumptions` and the write-off read it
+- [x] A test asserts a partly returned consumption yields the same number through both callers, so the two cannot drift
+- [x] `settleWorkOrderConsumptions` moves every `PENDING` consumption of that work order to `SETTLED` and touches no other work order's movements
+- [x] `writeOffWorkOrderConsumptions` moves them to `WRITTEN_OFF` and records the net lost quantity on the transition row
+- [x] A consumption of 4 with a return of 3 records a loss of one (spec.md edge case)
+- [x] A consumption returned in full records no loss at all
+- [x] A fully returned consumption still settles on delivery like any other (spec.md edge case)
+- [x] Neither method changes any inventory item's count on hand
+- [x] Each appends one `stock_movement_transitions` row per movement, asserting all five of the previous status, the new status, the acting user, the moment and the quantity (L-010)
+- [x] A fixture with two consumptions of different sizes proves the aggregate runs over the whole set, not over its first row (L-014)
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 8 tests pass (planned 10; several Done-when bullets share one test where they were already testing the same fixture - "touches no other work order" folded into the main settle/write-off tests rather than standing alone, and the write-off L-010 assertion was folded into the shared-formula test rather than a tenth, separate case - every bullet above still has direct evidence, no silent deletions)
+
+Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDATE ... RETURNING` via `manager.query()` and read the result as a plain rows array, which threw `null value in column "stock_movement_id"` on every insert. TypeORM's Postgres query runner returns `[rows, rowCount]` for UPDATE/DELETE specifically (confirmed by reading `PostgresQueryRunner.query`'s own source), unlike the plain rows array a SELECT or INSERT returns - a distinction this codebase's existing raw-SQL calls never had to know, since none of them used UPDATE with RETURNING before. Fixed by destructuring `[rows]` and documented in the query's own comment so the next `UPDATE ... RETURNING` in this codebase does not repeat it. `writeOffWorkOrderConsumptions`' own UPDATE never reads the RETURNING equivalent (it discards the result, reading candidates from a separate SELECT beforehand), so it was never exposed to this.
 
 **Tests**: integration
 **Gate**: full

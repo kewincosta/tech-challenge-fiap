@@ -8,6 +8,12 @@ export interface PendingConsumptionDto {
   quantity: number;
 }
 
+export interface MovementClosureInput {
+  workOrderId: string;
+  actorUserId: string;
+  now: Date;
+}
+
 export interface InventoryItemRepository {
   /** Never attaches movements - the full ledger is a read model, not part of this aggregate. */
   findById(id: InventoryItemId): Promise<InventoryItem | null>;
@@ -37,6 +43,22 @@ export interface InventoryItemRepository {
     inventoryItemId: InventoryItemId,
     workOrderId: string,
   ): Promise<PendingConsumptionDto[]>;
+  /**
+   * Every `PENDING` consumption of that work order moves to `SETTLED`, regardless of whether a
+   * later return already drained it - a fully returned consumption is still settled like any
+   * other, since delivery closes the book on every movement the work order caused (rule 23,
+   * spec.md's edge case). Never touches `quantity_on_hand`: the units already left at withdrawal.
+   * Returns how many it moved.
+   */
+  settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
+  /**
+   * Every `PENDING` consumption of that work order with anything still outstanding moves to
+   * `WRITTEN_OFF`, the transition row carrying the net lost quantity - `quantity` minus every
+   * `RETURN` pointing at it, the same expression `findPendingConsumptions` uses (rule 24). A
+   * consumption already drained to zero by prior returns is skipped: nothing was lost from it.
+   * Never touches `quantity_on_hand`. Returns how many it wrote off.
+   */
+  writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
 }
 
 export const INVENTORY_ITEM_REPOSITORY = Symbol('InventoryItemRepository');

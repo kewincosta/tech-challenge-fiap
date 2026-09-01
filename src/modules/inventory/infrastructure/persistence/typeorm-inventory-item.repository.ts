@@ -7,6 +7,7 @@ import { InsufficientStockError } from '../../domain/errors/insufficient-stock.e
 import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
 import {
   InventoryItemRepository,
+  MovementClosureInput,
   PendingConsumptionDto,
 } from '../../domain/repositories/inventory-item.repository';
 import { StockMovementKind } from '../../domain/stock-movement-kind';
@@ -20,6 +21,23 @@ const UNIQUE_VIOLATION = '23505';
 const CHECK_VIOLATION = '23514';
 const ACTIVE_SKU_CONSTRAINT = 'ux_inventory_items_active_sku';
 const QUANTITY_CHECK_CONSTRAINT = 'chk_inventory_items_quantity_on_hand';
+
+/**
+ * A RETURN never edits the consumption it undoes (rule 22), so a consumption's own `quantity`
+ * overstates what is still outstanding on it once a return has drawn from it. Every reader of
+ * "how much is still outstanding on this consumption" - `findPendingConsumptions` and the
+ * write-off - joins this same subquery and reads this same expression, so the two can never drift
+ * apart the way two independently written copies of the same formula did on a prior feature.
+ */
+const RETURNED_TOTALS_JOIN = `
+  LEFT JOIN (
+    SELECT undoes_movement_id, SUM(quantity) AS total
+      FROM stock_movements
+     WHERE kind = 'RETURN'
+     GROUP BY undoes_movement_id
+  ) returned ON returned.undoes_movement_id = sm.id
+`;
+const NET_REMAINING_EXPR = `(sm.quantity - COALESCE(returned.total, 0))::integer`;
 
 @Injectable()
 export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
@@ -80,23 +98,79 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   ): Promise<PendingConsumptionDto[]> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
     const rows: Array<{ external_id: string; remaining: number }> = await manager.query(
-      `SELECT sm.external_id, (sm.quantity - COALESCE(returned.total, 0))::integer AS remaining
+      `SELECT sm.external_id, ${NET_REMAINING_EXPR} AS remaining
          FROM stock_movements sm
          JOIN inventory_items ii ON ii.id = sm.inventory_item_id
          JOIN work_orders wo ON wo.id = sm.work_order_id
-         LEFT JOIN (
-           SELECT undoes_movement_id, SUM(quantity) AS total
-             FROM stock_movements
-            WHERE kind = 'RETURN'
-            GROUP BY undoes_movement_id
-         ) returned ON returned.undoes_movement_id = sm.id
+         ${RETURNED_TOTALS_JOIN}
         WHERE ii.external_id = $1 AND wo.external_id = $2
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
-          AND sm.quantity - COALESCE(returned.total, 0) > 0
+          AND ${NET_REMAINING_EXPR} > 0
         ORDER BY sm.occurred_at DESC`,
       [inventoryItemId.value, workOrderId],
     );
     return rows.map((row) => ({ movementId: row.external_id, quantity: row.remaining }));
+  }
+
+  /** Rule 23: every `PENDING` consumption of the work order, whatever its remaining balance,
+   * moves to `SETTLED` on delivery - see the interface doc for why netting does not apply here. */
+  async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    // TypeORM's raw `query()` returns `[rows, rowCount]` for UPDATE/DELETE, unlike the plain rows
+    // array a SELECT or INSERT returns - `PostgresQueryRunner.query`'s own switch on `raw.command`.
+    const [rows]: [Array<{ id: string }>, number] = await manager.query(
+      `UPDATE stock_movements sm
+          SET status = 'SETTLED'
+         FROM work_orders wo
+        WHERE wo.id = sm.work_order_id AND wo.external_id = $1
+          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+        RETURNING sm.id`,
+      [input.workOrderId],
+    );
+    if (rows.length === 0) {
+      return 0;
+    }
+    await manager.query(
+      `INSERT INTO stock_movement_transitions
+         (external_id, stock_movement_id, from_status, to_status, actor_user_id, occurred_at, quantity)
+       SELECT gen_random_uuid(), movement_id, 'PENDING', 'SETTLED', $2, $3, NULL
+         FROM unnest($1::bigint[]) AS movement_id`,
+      [rows.map((row) => row.id), actorInternalId, input.now],
+    );
+    return rows.length;
+  }
+
+  /** Rule 24: only what is still outstanding on a `PENDING` consumption is lost - a consumption a
+   * prior return already drained contributes nothing and is skipped entirely. */
+  async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    const candidates: Array<{ id: string; remaining: number }> = await manager.query(
+      `SELECT sm.id, ${NET_REMAINING_EXPR} AS remaining
+         FROM stock_movements sm
+         JOIN work_orders wo ON wo.id = sm.work_order_id
+         ${RETURNED_TOTALS_JOIN}
+        WHERE wo.external_id = $1
+          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${NET_REMAINING_EXPR} > 0`,
+      [input.workOrderId],
+    );
+    if (candidates.length === 0) {
+      return 0;
+    }
+    const ids = candidates.map((row) => row.id);
+    await manager.query(`UPDATE stock_movements SET status = 'WRITTEN_OFF' WHERE id = ANY($1::bigint[])`, [
+      ids,
+    ]);
+    await manager.query(
+      `INSERT INTO stock_movement_transitions
+         (external_id, stock_movement_id, from_status, to_status, actor_user_id, occurred_at, quantity)
+       SELECT gen_random_uuid(), t.movement_id, 'PENDING', 'WRITTEN_OFF', $3, $4, t.qty
+         FROM unnest($1::bigint[], $2::integer[]) AS t(movement_id, qty)`,
+      [ids, candidates.map((row) => row.remaining), actorInternalId, input.now],
+    );
+    return candidates.length;
   }
 
   /**

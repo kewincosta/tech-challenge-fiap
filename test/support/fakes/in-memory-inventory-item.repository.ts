@@ -2,6 +2,7 @@ import { InventoryItem } from '../../../src/modules/inventory/domain/entities/in
 import { InventoryItemStatus } from '../../../src/modules/inventory/domain/inventory-item-status';
 import {
   InventoryItemRepository,
+  MovementClosureInput,
   PendingConsumptionDto,
 } from '../../../src/modules/inventory/domain/repositories/inventory-item.repository';
 import { StockMovementKind } from '../../../src/modules/inventory/domain/stock-movement-kind';
@@ -115,5 +116,43 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         .filter((entry) => entry.quantity > 0)
         .reverse(),
     );
+  }
+
+  /** Every ledger entry is mutated in place, matching what a real UPDATE does to the row it
+   * represents - callers that captured a reference through `findPendingConsumptions` see this. */
+  async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    const matches = this.ledger.filter(
+      (entry) =>
+        entry.workOrderId === input.workOrderId &&
+        entry.kind === StockMovementKind.Consumption &&
+        entry.status === StockMovementStatus.Pending,
+    );
+    for (const entry of matches) {
+      entry.status = StockMovementStatus.Settled;
+    }
+    return Promise.resolve(matches.length);
+  }
+
+  async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    const returnedByConsumption = new Map<string, number>();
+    for (const entry of this.ledger) {
+      if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {
+        returnedByConsumption.set(
+          entry.undoesMovementId,
+          (returnedByConsumption.get(entry.undoesMovementId) ?? 0) + entry.quantity,
+        );
+      }
+    }
+    const candidates = this.ledger.filter(
+      (entry) =>
+        entry.workOrderId === input.workOrderId &&
+        entry.kind === StockMovementKind.Consumption &&
+        entry.status === StockMovementStatus.Pending &&
+        entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0) > 0,
+    );
+    for (const entry of candidates) {
+      entry.status = StockMovementStatus.WrittenOff;
+    }
+    return Promise.resolve(candidates.length);
   }
 }
