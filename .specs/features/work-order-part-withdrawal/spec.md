@@ -166,11 +166,11 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| WOP-01 | P1: The mechanic takes planned parts off the shelf | Design | Pending |
-| WOP-02 | P1: A short count refuses everything and moves nothing | Design | Pending |
-| WOP-03 | P2: A part that turned out unnecessary goes back | Design | Pending |
-| WOP-04 | P2: The administration sees what is blocking the shop | Design | Pending |
-| WOP-05 | P3: Planned against withdrawn reads back | Design | Pending |
+| WOP-01 | P1: The mechanic takes planned parts off the shelf | Design | In Design |
+| WOP-02 | P1: A short count refuses everything and moves nothing | Design | In Design |
+| WOP-03 | P2: A part that turned out unnecessary goes back | Design | In Design |
+| WOP-04 | P2: The administration sees what is blocking the shop | Design | In Design |
+| WOP-05 | P3: Planned against withdrawn reads back | Design | In Design |
 
 **ID format:** `WOP-NN`
 
