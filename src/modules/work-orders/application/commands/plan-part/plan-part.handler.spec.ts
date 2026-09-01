@@ -66,6 +66,9 @@ function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
     updatedAt: NOW,
     serviceItems: [],
     partItems: [],
+    diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
   });
 }
 

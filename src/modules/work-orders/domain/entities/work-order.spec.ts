@@ -1,18 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { BudgetStatus } from '../budget-status';
+import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { BudgetGenerated } from '../events/budget-generated.event';
+import { BudgetSent } from '../events/budget-sent.event';
+import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
+import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderId } from '../value-objects/work-order-id';
 import { WorkOrderItemId } from '../value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../value-objects/work-order-number';
 import { WorkOrderStatus } from '../work-order-status';
+import { Budget } from './budget';
 import { WorkOrder } from './work-order';
 import { WorkOrderServiceItem } from './work-order-service-item';
 
@@ -67,6 +74,8 @@ function restoreWorkOrder(status: WorkOrderStatus, assignedMechanicUserId: strin
     ],
     partItems: [],
     diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
   });
 }
 
@@ -372,8 +381,165 @@ describe('WorkOrder', () => {
       serviceItems: [],
       partItems: [],
       diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: null,
+      budgets: [],
     });
 
     expect(workOrder.diagnosisStartedAt).toEqual(NOW);
+  });
+});
+
+describe('WorkOrder.completeDiagnosis', () => {
+  const BUDGET_ID = BudgetId.create('88888888-8888-4888-8888-888888888888');
+  const PART_ID = WorkOrderItemId.create('99999999-9999-4999-8999-999999999999');
+  const INVENTORY_ITEM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+  function inDiagnosisWithServiceAndPart(): WorkOrder {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.InDiagnosis, MECHANIC_ID);
+    workOrder.planPart({
+      itemId: PART_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(2),
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+    return workOrder;
+  }
+
+  function emptyInDiagnosis(): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InDiagnosis,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: null,
+      budgets: [],
+    });
+  }
+
+  it('moves IN_DIAGNOSIS to AWAITING_APPROVAL and records diagnosisCompletedAt', () => {
+    const workOrder = inDiagnosisWithServiceAndPart();
+
+    workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(workOrder.diagnosisCompletedAt).toEqual(NOW);
+  });
+
+  it('refuses a work order carrying no service item and no part item', () => {
+    const workOrder = emptyInDiagnosis();
+
+    expect(() =>
+      workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW }),
+    ).toThrow(DiagnosisWithoutItemsError);
+  });
+
+  it('refuses to complete the diagnosis on any state other than IN_DIAGNOSIS', () => {
+    const workOrder = openWorkOrder();
+
+    expect(() =>
+      workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW }),
+    ).toThrow(WorkOrderStateError);
+  });
+
+  it('computes the round total as the service price plus each part price times its planned quantity', () => {
+    const workOrder = inDiagnosisWithServiceAndPart();
+
+    workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
+
+    // 150.99 (service) + 2 x 25.00 (part) = 200.99
+    expect(workOrder.budgets[0].total.cents).toBe(20099);
+    expect(workOrder.budgets[0].round).toBe(1);
+    expect(workOrder.budgets[0].status).toBe(BudgetStatus.Pending);
+  });
+
+  it('attaches every draft item to round one, copying unitPrice as the budgeted price and leaving unitPrice itself untouched', () => {
+    const workOrder = inDiagnosisWithServiceAndPart();
+
+    workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.serviceItems[0].budgetRound).toBe(1);
+    expect(workOrder.serviceItems[0].budgetedUnitPrice?.cents).toBe(15099);
+    expect(workOrder.serviceItems[0].unitPrice.cents).toBe(15099);
+    expect(workOrder.partItems[0].budgetRound).toBe(1);
+    expect(workOrder.partItems[0].budgetedUnitPrice?.cents).toBe(2500);
+    expect(workOrder.partItems[0].unitPrice.cents).toBe(2500);
+  });
+
+  it('regenerates an existing rejected round one in place rather than opening round two', () => {
+    const rejectedBudget = Budget.restore({
+      id: BudgetId.create('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+      round: 1,
+      total: Money.fromCents(9999),
+      status: BudgetStatus.Rejected,
+      generatedAt: new Date('2026-08-30T09:00:00Z'),
+      decidedAt: new Date('2026-08-30T10:00:00Z'),
+      decidedByUserId: CUSTOMER_ID,
+    });
+    const attachedServiceItem = WorkOrderServiceItem.restore({
+      id: WorkOrderItemId.create('66666666-6666-4666-8666-666666666666'),
+      serviceId: '77777777-7777-4777-8777-777777777777',
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(15099),
+    });
+    const workOrder = WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InDiagnosis,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [attachedServiceItem],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [rejectedBudget],
+    });
+
+    workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.budgets).toHaveLength(1);
+    expect(workOrder.budgets[0].status).toBe(BudgetStatus.Pending);
+    expect(workOrder.budgets[0].total.cents).toBe(15099);
+    expect(workOrder.budgets[0].decidedAt).toBeNull();
+  });
+
+  it('records DiagnosisCompleted, BudgetGenerated and BudgetSent in that order', () => {
+    const workOrder = inDiagnosisWithServiceAndPart();
+    workOrder.pullDomainEvents();
+
+    workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(3);
+    expect(events[0]).toBeInstanceOf(DiagnosisCompleted);
+    expect(events[1]).toBeInstanceOf(BudgetGenerated);
+    expect(events[2]).toBeInstanceOf(BudgetSent);
   });
 });

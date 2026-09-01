@@ -1,18 +1,24 @@
 import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { BudgetGenerated } from '../events/budget-generated.event';
+import { BudgetSent } from '../events/budget-sent.event';
+import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
+import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderId } from '../value-objects/work-order-id';
 import { WorkOrderItemId } from '../value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../value-objects/work-order-number';
 import { WorkOrderStatus } from '../work-order-status';
+import { Budget } from './budget';
 import { WorkOrderPartItem } from './work-order-part-item';
 import { WorkOrderServiceItem } from './work-order-service-item';
 
@@ -34,6 +40,8 @@ interface WorkOrderProps {
   serviceItems: WorkOrderServiceItem[];
   partItems: WorkOrderPartItem[];
   diagnosisStartedAt: Date | null;
+  diagnosisCompletedAt: Date | null;
+  budgets: Budget[];
 }
 
 interface OpenWorkOrderInput {
@@ -87,6 +95,12 @@ interface StartDiagnosisInput {
   now: Date;
 }
 
+interface CompleteDiagnosisInput {
+  budgetId: BudgetId;
+  actorUserId: string;
+  now: Date;
+}
+
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.Received,
@@ -128,6 +142,8 @@ export class WorkOrder extends AggregateRoot {
       serviceItems: [],
       partItems: [],
       diagnosisStartedAt: null,
+      diagnosisCompletedAt: null,
+      budgets: [],
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
     return workOrder;
@@ -138,6 +154,7 @@ export class WorkOrder extends AggregateRoot {
       ...props,
       serviceItems: [...props.serviceItems],
       partItems: [...props.partItems],
+      budgets: [...props.budgets],
     });
   }
 
@@ -194,6 +211,65 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new DiagnosisStarted(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * Guards `IN_DIAGNOSIS`, generates round one over every item eligible for it (drafts, plus - on
+   * a regeneration after a rejection - the items already attached to round one), and moves to
+   * `AWAITING_APPROVAL`. Regenerates the existing round one in place rather than opening round two
+   * when one already exists (spec.md's first Assumption), which is also why `removeItem` refuses
+   * a budgeted item even back in `IN_DIAGNOSIS`: the round's items are locked in once quoted.
+   */
+  completeDiagnosis(input: CompleteDiagnosisInput): void {
+    this.assertStateAllows([WorkOrderStatus.InDiagnosis]);
+    if (!this.hasItemsForRound(1)) {
+      throw new DiagnosisWithoutItemsError();
+    }
+    const total = this.generateRound(1);
+    const existingRoundOne = this.props.budgets.find((budget) => budget.round === 1);
+    if (existingRoundOne) {
+      existingRoundOne.regenerate({ total, generatedAt: input.now });
+    } else {
+      this.props.budgets.push(
+        Budget.generate({ id: input.budgetId, round: 1, total, generatedAt: input.now }),
+      );
+    }
+    this.props.status = WorkOrderStatus.AwaitingApproval;
+    this.props.diagnosisCompletedAt = input.now;
+    this.props.updatedAt = input.now;
+    this.record(new DiagnosisCompleted(this.props.id.value, input.actorUserId, input.now));
+    this.record(new BudgetGenerated(this.props.id.value, input.actorUserId, input.now));
+    this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /** True when at least one item is either a draft or already attached to `round`. */
+  private hasItemsForRound(round: number): boolean {
+    return (
+      this.props.serviceItems.some((item) => item.isDraft || item.budgetRound === round) ||
+      this.props.partItems.some((item) => item.isDraft || item.budgetRound === round)
+    );
+  }
+
+  /**
+   * Sums and attaches every item eligible for `round` - no I/O, no price supplied by any caller
+   * (rule 29 held by construction). A part contributes its budgeted price times its planned
+   * quantity; a service contributes its price once, carrying no quantity.
+   */
+  private generateRound(round: number): Money {
+    let total = Money.fromCents(0);
+    for (const item of this.props.serviceItems) {
+      if (item.isDraft || item.budgetRound === round) {
+        total = total.add(item.unitPrice);
+        item.attachToBudget(round);
+      }
+    }
+    for (const item of this.props.partItems) {
+      if (item.isDraft || item.budgetRound === round) {
+        total = total.add(item.unitPrice.multiply(item.plannedQuantity.units));
+        item.attachToBudget(round);
+      }
+    }
+    return total;
   }
 
   assignMechanic(input: AssignMechanicInput): void {
@@ -277,5 +353,13 @@ export class WorkOrder extends AggregateRoot {
 
   get diagnosisStartedAt(): Date | null {
     return this.props.diagnosisStartedAt;
+  }
+
+  get diagnosisCompletedAt(): Date | null {
+    return this.props.diagnosisCompletedAt;
+  }
+
+  get budgets(): readonly Budget[] {
+    return [...this.props.budgets];
   }
 }

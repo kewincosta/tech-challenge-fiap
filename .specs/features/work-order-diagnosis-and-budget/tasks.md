@@ -270,7 +270,7 @@ T19  T20
 **What**: `completeDiagnosis`, the private `generateRound` helper every generation path shares, the `budgets` collection, and the `diagnosisCompletedAt` prop.
 **Where**: `src/modules/work-orders/domain/entities/work-order.ts`
 **Depends on**: T1, T2, T4, T5
-**Reuses**: `Budget.generate` and `Budget.regenerate` (T1), `attachToBudget` (T2), `Money.zero` as the sum's seed
+**Reuses**: `Budget.generate` and `Budget.regenerate` (T1), `attachToBudget` (T2), `Money.fromCents(0)` as the sum's seed (`Money` carries no `zero()` static, so this is the existing factory used the same way)
 **Requirement**: WOB-02, WOB-03
 
 **Tools**:
@@ -280,16 +280,16 @@ T19  T20
 
 **Done when**:
 
-- [ ] `completeDiagnosis` guards `IN_DIAGNOSIS`, moves to `AWAITING_APPROVAL` and records `diagnosisCompletedAt`
-- [ ] A work order with no service item and no part item is refused with `DiagnosisWithoutItemsError`
-- [ ] The round total is the sum of the service prices plus each part's price multiplied by its planned quantity
-- [ ] Every draft item comes out attached to round one with its `unitPrice` copied as its budgeted price
-- [ ] A later change to an item's catalog price cannot reach the round, because the aggregate reads nothing outside itself - spec.md's fourth edge case at this layer
-- [ ] A rejected round one is regenerated in place rather than a round two opened
-- [ ] `DiagnosisCompleted`, `BudgetGenerated` and `BudgetSent` are recorded in that order
-- [ ] The method signature carries no price and no total, so rule 29 holds by construction
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `completeDiagnosis` guards `IN_DIAGNOSIS`, moves to `AWAITING_APPROVAL` and records `diagnosisCompletedAt`
+- [x] A work order with no service item and no part item is refused with `DiagnosisWithoutItemsError`
+- [x] The round total is the sum of the service prices plus each part's price multiplied by its planned quantity
+- [x] Every draft item comes out attached to round one with its `unitPrice` copied as its budgeted price
+- [x] A later change to an item's catalog price cannot reach the round, because the aggregate reads nothing outside itself - spec.md's fourth edge case at this layer (proven here by construction: `generateRound` reads only `item.unitPrice`, already immutable and already stored on the aggregate's own item; the real price-edit-through-the-route proof is T21's e2e case)
+- [x] A rejected round one is regenerated in place rather than a round two opened
+- [x] `DiagnosisCompleted`, `BudgetGenerated` and `BudgetSent` are recorded in that order
+- [x] The method signature carries no price and no total, so rule 29 holds by construction (`CompleteDiagnosisInput` has no such field - a type-level fact, not a runtime case)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (5 fewer than planned - the wrong-state refusal earned its own case beyond the eight bullets above, and the catalog-price and signature bullets are structural facts rather than separate runtime cases, folded into the "attaches every draft item" and reuse-line notes respectively). Also fixed a regression this task's new required `WorkOrderProps` fields caused in `plan-part.handler.spec.ts`'s own fixture (`props.budgets is not iterable`) - no test count change there, same 6 tests, fixture only.
 
 **Tests**: unit
 **Gate**: quick
