@@ -75,4 +75,21 @@ export class StockMovementResponseDto {
 
   @ApiProperty()
   occurredAt!: Date;
+
+  @ApiPropertyOptional({
+    example: 'PENDING',
+    nullable: true,
+    description: 'Only a CONSUMPTION carries a lifecycle status. Null for every other kind.',
+  })
+  status!: string | null;
+
+  @ApiPropertyOptional({ format: 'uuid', nullable: true, description: 'Set on a CONSUMPTION or a RETURN' })
+  workOrderId!: string | null;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    description: 'The consumption a RETURN points at. Null for every other kind.',
+  })
+  undoesMovementId!: string | null;
 }

@@ -102,14 +102,22 @@ async function getInventoryItem(
   return response.body as { quantityOnHand: number; unitPriceCents: number };
 }
 
-async function getMovements(
-  inventoryItemId: string,
-): Promise<Array<{ kind: string; quantity: number; unitPriceCents: number }>> {
+interface Movement {
+  id: string;
+  kind: string;
+  quantity: number;
+  unitPriceCents: number;
+  status: string | null;
+  workOrderId: string | null;
+  undoesMovementId: string | null;
+}
+
+async function getMovements(inventoryItemId: string): Promise<Movement[]> {
   const response = await api(app)
     .get(`/api/v1/inventory-items/${inventoryItemId}/movements`)
     .set('Authorization', `Bearer ${admin.accessToken}`)
     .expect(200);
-  return response.body as Array<{ kind: string; quantity: number; unitPriceCents: number }>;
+  return response.body as Movement[];
 }
 
 interface PartItem {
@@ -122,16 +130,38 @@ interface PartItem {
   budgetedUnitPriceCents: number | null;
 }
 
-async function getWorkOrder(number: string): Promise<{ status: string; partItems: PartItem[] }> {
+async function getWorkOrder(number: string): Promise<{ id: string; status: string; partItems: PartItem[] }> {
   const response = await api(app)
     .get(`/api/v1/work-orders/${number}`)
     .set('Authorization', `Bearer ${admin.accessToken}`)
     .expect(200);
-  return response.body as { status: string; partItems: PartItem[] };
+  return response.body as { id: string; status: string; partItems: PartItem[] };
+}
+
+interface TrailEntry {
+  eventType: string;
+  actorUserId: string;
+}
+
+async function getTrail(number: string): Promise<TrailEntry[]> {
+  const response = await api(app)
+    .get(`/api/v1/work-orders/${number}/trail`)
+    .set('Authorization', `Bearer ${admin.accessToken}`)
+    .expect(200);
+  return response.body as TrailEntry[];
+}
+
+async function getShortages(): Promise<Array<{ inventoryItemId: string }>> {
+  const response = await api(app)
+    .get('/api/v1/inventory-items/shortages')
+    .set('Authorization', `Bearer ${admin.accessToken}`)
+    .expect(200);
+  return response.body as Array<{ inventoryItemId: string }>;
 }
 
 interface InExecutionWorkOrder {
   number: string;
+  id: string;
   inventoryItemId: string;
   approvedItemId: string;
   plannedQuantity: number;
@@ -184,11 +214,26 @@ async function createInExecutionWorkOrder(
   const approved = workOrder.partItems[0];
   return {
     number,
+    id: workOrder.id,
     inventoryItemId,
     approvedItemId: approved.id,
     plannedQuantity,
     priceCentsAtApproval: approved.unitPriceCents,
   };
+}
+
+function withdraw(number: string, itemId: string, quantity: number) {
+  return api(app)
+    .post(`/api/v1/work-orders/${number}/withdrawals`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .send({ lines: [{ itemId, quantity }] });
+}
+
+function returnParts(number: string, itemId: string, quantity: number) {
+  return api(app)
+    .post(`/api/v1/work-orders/${number}/returns`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .send({ lines: [{ itemId, quantity }] });
 }
 
 describe('Work order part withdrawal - main path', () => {
@@ -343,5 +388,113 @@ describe('Work order part withdrawal - main path', () => {
       .set('Authorization', `Bearer ${mechanic.accessToken}`)
       .send({ lines: [{ itemId: unknownItemId, quantity: 1 }] })
       .expect(404);
+  });
+});
+
+describe('Work order part withdrawal - returns and cross-module atomicity', () => {
+  it("withdrawn, returned in full, withdrawn again ends at a single withdrawal's count, with three movements on the item's history", async () => {
+    const workOrder = await createInExecutionWorkOrder(5, 10, 2500);
+
+    await withdraw(workOrder.number, workOrder.approvedItemId, 3).expect(200);
+    await returnParts(workOrder.number, workOrder.approvedItemId, 3).expect(200);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 3).expect(200);
+
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems[0].withdrawnQuantity).toBe(3);
+    const item = await getInventoryItem(workOrder.inventoryItemId);
+    expect(item.quantityOnHand).toBe(7);
+    const movements = await getMovements(workOrder.inventoryItemId);
+    const own = movements.filter((movement) => movement.kind !== 'INBOUND');
+    expect(own.map((movement) => movement.kind)).toEqual(['CONSUMPTION', 'RETURN', 'CONSUMPTION']);
+  });
+
+  it("puts the units back on the shelf and lowers the work order item's withdrawn quantity", async () => {
+    const workOrder = await createInExecutionWorkOrder(4, 10, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 2).expect(200);
+
+    await returnParts(workOrder.number, workOrder.approvedItemId, 1).expect(200);
+
+    const item = await getInventoryItem(workOrder.inventoryItemId);
+    expect(item.quantityOnHand).toBe(9);
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems[0].withdrawnQuantity).toBe(1);
+  });
+
+  it('shows the CONSUMPTION and the RETURN on the movement history, each naming the work order and the consumption a return undoes', async () => {
+    const workOrder = await createInExecutionWorkOrder(4, 10, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 2).expect(200);
+    await returnParts(workOrder.number, workOrder.approvedItemId, 1).expect(200);
+
+    const movements = await getMovements(workOrder.inventoryItemId);
+    const consumption = movements.find((movement) => movement.kind === 'CONSUMPTION');
+    expect(consumption).toMatchObject({ status: 'PENDING', workOrderId: workOrder.id, quantity: 2 });
+    const returned = movements.find((movement) => movement.kind === 'RETURN');
+    expect(returned).toMatchObject({ status: null, workOrderId: workOrder.id, quantity: 1 });
+    expect(returned?.undoesMovementId).toBe(consumption?.id);
+  });
+
+  it('answers 422 when a return exceeds what was withdrawn, and changes nothing', async () => {
+    const workOrder = await createInExecutionWorkOrder(5, 10, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 2).expect(200);
+
+    await returnParts(workOrder.number, workOrder.approvedItemId, 3).expect(422);
+
+    const item = await getInventoryItem(workOrder.inventoryItemId);
+    expect(item.quantityOnHand).toBe(8);
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems[0].withdrawnQuantity).toBe(2);
+    const movements = await getMovements(workOrder.inventoryItemId);
+    expect(movements.some((movement) => movement.kind === 'RETURN')).toBe(false);
+  });
+
+  it('leaves the count on hand, the movement history and the work order item exactly as they were on a refused batch, read back through the API', async () => {
+    const workOrder = await createInExecutionWorkOrder(5, 10, 2500);
+
+    // Two lines addressing the same item in one batch - spec.md's Assumptions refuses this
+    // outright, before either line is applied (DuplicateBatchLineError).
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/withdrawals`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .send({
+        lines: [
+          { itemId: workOrder.approvedItemId, quantity: 1 },
+          { itemId: workOrder.approvedItemId, quantity: 1 },
+        ],
+      })
+      .expect(422);
+
+    const item = await getInventoryItem(workOrder.inventoryItemId);
+    expect(item.quantityOnHand).toBe(10);
+    const movements = await getMovements(workOrder.inventoryItemId);
+    expect(movements.every((movement) => movement.kind === 'INBOUND')).toBe(true);
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems[0].withdrawnQuantity).toBe(0);
+  });
+
+  it('makes a refused withdrawal appear on the shortages list, and lets replenishing make the same withdrawal succeed', async () => {
+    const workOrder = await createInExecutionWorkOrder(5, 2, 2500);
+
+    await withdraw(workOrder.number, workOrder.approvedItemId, 3).expect(422);
+
+    const shortages = await getShortages();
+    expect(shortages.some((row) => row.inventoryItemId === workOrder.inventoryItemId)).toBe(true);
+
+    await replenish(workOrder.inventoryItemId, 3, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 3).expect(200);
+
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems[0].withdrawnQuantity).toBe(3);
+  });
+
+  it('shows the withdrawal and the return on the trail, each naming the acting mechanic', async () => {
+    const workOrder = await createInExecutionWorkOrder(4, 10, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 2).expect(200);
+    await returnParts(workOrder.number, workOrder.approvedItemId, 1).expect(200);
+
+    const trail = await getTrail(workOrder.number);
+    const withdrawn = trail.find((entry) => entry.eventType === 'PART_WITHDRAWN');
+    const returned = trail.find((entry) => entry.eventType === 'PART_RETURNED');
+    expect(withdrawn?.actorUserId).toBe(mechanic.userId);
+    expect(returned?.actorUserId).toBe(mechanic.userId);
   });
 });

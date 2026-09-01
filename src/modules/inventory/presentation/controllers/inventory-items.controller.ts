@@ -263,6 +263,9 @@ export class InventoryItemsController {
       actorUserId: movement.actorUserId,
       note: movement.note,
       occurredAt: movement.occurredAt,
+      status: movement.status,
+      workOrderId: movement.workOrderId,
+      undoesMovementId: movement.undoesMovementId,
     };
   }
 }

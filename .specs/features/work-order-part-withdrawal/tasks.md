@@ -686,18 +686,20 @@ Unplanned but required: registered `ListStockShortagesHandler` (T15) as a provid
 
 **Done when**:
 
-- [ ] A part withdrawn, returned in full and withdrawn again ends at a single withdrawal's count, with three movements on the item's history - spec.md's third edge case
-- [ ] A return puts the units back on the shelf and lowers the work order item's withdrawn quantity
-- [ ] `StockMovementResponseDto` and `toMovementResponseDto` expose `status`, `workOrderId` and `undoesMovementId`
-- [ ] The item's movement history shows the `CONSUMPTION` and the `RETURN`, each naming the work order
-- [ ] Returning more than was withdrawn answers 422 and changes nothing
-- [ ] A refused withdrawal leaves the count on hand, the movement history and the work order item all exactly as they were, read back through the API
-- [ ] A refused withdrawal makes the item appear on the shortages list, which is the whole signal path H31 describes
-- [ ] Replenishing after a refusal lets the same withdrawal succeed
-- [ ] The trail shows the withdrawal and the return, each naming the acting mechanic
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] A part withdrawn, returned in full and withdrawn again ends at a single withdrawal's count, with three movements on the item's history - spec.md's third edge case
+- [x] A return puts the units back on the shelf and lowers the work order item's withdrawn quantity
+- [x] `StockMovementResponseDto` and `toMovementResponseDto` expose `status`, `workOrderId` and `undoesMovementId`
+- [x] The item's movement history shows the `CONSUMPTION` and the `RETURN`, each naming the work order
+- [x] Returning more than was withdrawn answers 422 and changes nothing
+- [x] A refused withdrawal leaves the count on hand, the movement history and the work order item all exactly as they were, read back through the API
+- [x] A refused withdrawal makes the item appear on the shortages list, which is the whole signal path H31 describes
+- [x] Replenishing after a refusal lets the same withdrawal succeed
+- [x] The trail shows the withdrawal and the return, each naming the acting mechanic
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively
+- [x] Test count: 7 tests pass (planned 8; "makes the item appear on shortages" and "replenishing lets the same withdrawal succeed" share one test as one continuous scenario rather than two - every bullet above still has direct coverage, no silent deletions)
+
+Note: one interleaved full-suite run hit an unrelated flake in `registerUser`'s generic faker-based email, inside a sibling spec file's own fixture, not this task's code - three immediate reruns (including the required back-to-back pair below) came back clean, so this is pre-existing test-infrastructure noise, not a defect this task introduced.
 
 **Tests**: e2e
 **Gate**: build
