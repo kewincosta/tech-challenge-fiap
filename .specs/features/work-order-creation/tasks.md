@@ -435,13 +435,13 @@ T19
 
 **Done when**:
 
-- [ ] `getByNumber` returns the work order with its snapshot, status, assigned mechanic and both item lists, or null
-- [ ] `listByStatus` returns every work order when no status is supplied
-- [ ] `listByStatus` returns only the matching ones when a status is supplied
-- [ ] `listTrail` returns every entry of one work order in chronological order, with the actor's **external** id, never the internal one (AD-001)
-- [ ] Prices come back as numbers on both read paths, not the driver's string
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] `getByNumber` returns the work order with its snapshot, status, assigned mechanic and both item lists, or null
+- [x] `listByStatus` returns every work order when no status is supplied
+- [x] `listByStatus` returns only the matching ones when a status is supplied
+- [x] `listTrail` returns every entry of one work order in chronological order, with the actor's **external** id, never the internal one (AD-001)
+- [x] Prices come back as numbers on both read paths, not the driver's string
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
