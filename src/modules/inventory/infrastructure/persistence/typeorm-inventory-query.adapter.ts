@@ -5,6 +5,7 @@ import {
   InventoryItemSummaryDto,
   InventoryQueryPort,
   StockMovementSummaryDto,
+  StockShortageDto,
 } from '../../application/ports/inventory-query.port';
 
 interface InventoryItemRow {
@@ -31,9 +32,37 @@ interface StockMovementRow {
   undoes_movement_external_id: string | null;
 }
 
+interface StockShortageRow {
+  external_id: string;
+  sku: string;
+  name: string;
+  quantity_on_hand: number;
+  outstanding: string;
+  work_order_numbers: string[];
+}
+
 const SELECT_ITEMS = `
   SELECT external_id, sku, name, description, kind, unit_price_cents, quantity_on_hand, status
     FROM inventory_items
+`;
+
+// Never touches stock_movements: a PENDING consumption is stock already gone, the opposite of
+// what "outstanding" means here (design.md's Risks & Concerns). Demand is read straight off
+// work_order_parts, only from approved rounds of work orders in execution - a draft item, a part
+// on a rejected round, and a part on a round still awaiting approval are all excluded by the two
+// JOIN conditions, not filtered afterward. GROUP BY ii.id alone is enough to select the other
+// inventory_items columns: Postgres derives them from the primary key functional dependency.
+const SELECT_SHORTAGES = `
+  SELECT ii.external_id, ii.sku, ii.name, ii.quantity_on_hand,
+         SUM(wop.planned_quantity - wop.withdrawn_quantity) AS outstanding,
+         array_agg(DISTINCT wo.number) AS work_order_numbers
+    FROM work_order_parts wop
+    JOIN work_orders wo ON wo.id = wop.work_order_id AND wo.status = 'IN_EXECUTION'
+    JOIN work_order_budgets wob ON wob.id = wop.budget_id AND wob.status = 'APPROVED'
+    JOIN inventory_items ii ON ii.id = wop.inventory_item_id
+   WHERE wop.planned_quantity > wop.withdrawn_quantity
+   GROUP BY ii.id
+  HAVING SUM(wop.planned_quantity - wop.withdrawn_quantity) > ii.quantity_on_hand
 `;
 
 // Raw SQL, not a TypeORM relation: users belongs to the users module, and AD-003 forbids
@@ -85,6 +114,11 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
     return rows.map((row) => this.movementToDto(row));
   }
 
+  async listStockShortages(): Promise<StockShortageDto[]> {
+    const rows: StockShortageRow[] = await this.dataSource.query(SELECT_SHORTAGES);
+    return rows.map((row) => this.shortageToDto(row));
+  }
+
   private itemToDto(row: InventoryItemRow): InventoryItemSummaryDto {
     return {
       id: row.external_id,
@@ -112,6 +146,18 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
       status: row.status,
       workOrderId: row.work_order_external_id,
       undoesMovementId: row.undoes_movement_external_id,
+    };
+  }
+
+  private shortageToDto(row: StockShortageRow): StockShortageDto {
+    return {
+      inventoryItemId: row.external_id,
+      sku: row.sku,
+      name: row.name,
+      quantityOnHand: row.quantity_on_hand,
+      // integer arithmetic in Postgres, but the driver hands a SUM(...) back as a string.
+      outstandingQuantity: Number(row.outstanding),
+      workOrderNumbers: row.work_order_numbers,
     };
   }
 }

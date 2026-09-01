@@ -405,16 +405,18 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] The query returns an item whose summed `planned - withdrawn` over approved rounds of work orders in `IN_EXECUTION` exceeds its count on hand
-- [ ] It names the work orders waiting on each listed item
-- [ ] It leaves out an item whose count on hand covers its outstanding demand
-- [ ] It ignores demand from work orders in any state other than `IN_EXECUTION`
-- [ ] It leaves out a part on a round that was rejected, and a draft item on no round at all - spec.md's sixth edge case
-- [ ] It never reads `stock_movements`: an item with a large `PENDING` consumption and nothing outstanding is absent from the list
-- [ ] It returns an empty list rather than an error when nothing is short
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] The query returns an item whose summed `planned - withdrawn` over approved rounds of work orders in `IN_EXECUTION` exceeds its count on hand
+- [x] It names the work orders waiting on each listed item
+- [x] It leaves out an item whose count on hand covers its outstanding demand
+- [x] It ignores demand from work orders in any state other than `IN_EXECUTION`
+- [x] It leaves out a part on a round that was rejected, and a draft item on no round at all - spec.md's sixth edge case
+- [x] It never reads `stock_movements`: an item with a large `PENDING` consumption and nothing outstanding is absent from the list
+- [x] It returns an empty list rather than an error when nothing is short
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 6 tests pass (2 fewer than planned - the rejected-round and draft-item exclusions share one case)
+
+**Unplanned but required**: the first draft of `insertWorkOrder` reused this file's single shared `actorInternalId` as every customer's `user_id`, hitting `ux_customers_user_id` on the second call across tests - fixed by giving each work order its own dedicated user, the same fix `inventory-item.repository.spec.ts` and `inventory-item-batch-lock.spec.ts` needed for the identical reason.
 
 **Tests**: integration
 **Gate**: full

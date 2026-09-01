@@ -25,11 +25,23 @@ export interface StockMovementSummaryDto {
   undoesMovementId: string | null;
 }
 
+export interface StockShortageDto {
+  inventoryItemId: string;
+  sku: string;
+  name: string;
+  quantityOnHand: number;
+  /** Sum, over approved planned parts of work orders in IN_EXECUTION, of planned - withdrawn. */
+  outstandingQuantity: number;
+  workOrderNumbers: string[];
+}
+
 export interface InventoryQueryPort {
   getById(externalId: string): Promise<InventoryItemSummaryDto | null>;
   listActive(kind?: string): Promise<InventoryItemSummaryDto[]>;
   /** Chronological order. Empty for an item with no movements, not an error. */
   listMovements(itemExternalId: string): Promise<StockMovementSummaryDto[]>;
+  /** Empty list when nothing is short, never an error (H31, spec.md WOP-04). */
+  listStockShortages(): Promise<StockShortageDto[]>;
 }
 
 export const INVENTORY_QUERY_PORT = Symbol('InventoryQueryPort');
