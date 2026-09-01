@@ -339,12 +339,12 @@ Unplanned but required: writing this task's tests surfaced that `WorkOrder.resto
 
 **Done when**:
 
-- [ ] Delivering from `COMPLETED` moves to `DELIVERED`, stamps `deliveredAt` and `deliveredByUserId`, and records `VehicleDelivered`
-- [ ] Delivering from `RECEIVED` throws `WorkOrderStateError` (spec.md edge case)
-- [ ] Delivering from `IN_EXECUTION`, `DELIVERED` and `CANCELED` each throws `WorkOrderStateError`
-- [ ] Delivering leaves the charged total exactly as completion froze it
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] Delivering from `COMPLETED` moves to `DELIVERED`, stamps `deliveredAt` and `deliveredByUserId`, and records `VehicleDelivered`
+- [x] Delivering from `RECEIVED` throws `WorkOrderStateError` (spec.md edge case)
+- [x] Delivering from `IN_EXECUTION`, `DELIVERED` and `CANCELED` each throws `WorkOrderStateError`
+- [x] Delivering leaves the charged total exactly as completion froze it
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

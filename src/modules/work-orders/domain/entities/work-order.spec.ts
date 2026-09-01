@@ -26,6 +26,7 @@ import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
+import { VehicleDelivered } from '../events/vehicle-delivered.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
@@ -1916,5 +1917,78 @@ describe('WorkOrder.complete', () => {
     });
 
     expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(WorkOrderStateError);
+  });
+});
+
+describe('WorkOrder.deliver', () => {
+  function restoreAt(status: WorkOrderStatus): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [],
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+      chargedTotal: Money.fromCents(20000),
+      completedAt: NOW,
+    });
+  }
+
+  it('moves COMPLETED to DELIVERED, stamps deliveredAt and deliveredByUserId, and records VehicleDelivered', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Completed);
+
+    workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Delivered);
+    expect(workOrder.deliveredAt).toBe(NOW);
+    expect(workOrder.deliveredByUserId).toBe(CREATOR_ID);
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(VehicleDelivered);
+  });
+
+  it('refuses from RECEIVED (spec.md edge case)', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Received);
+
+    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(WorkOrderStateError);
+  });
+
+  it('refuses from IN_EXECUTION', () => {
+    const workOrder = restoreAt(WorkOrderStatus.InExecution);
+
+    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(WorkOrderStateError);
+  });
+
+  it('refuses from DELIVERED and from CANCELED', () => {
+    expect(() => restoreAt(WorkOrderStatus.Delivered).deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+    expect(() => restoreAt(WorkOrderStatus.Canceled).deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('leaves the charged total exactly as completion froze it', () => {
+    const workOrder = restoreAt(WorkOrderStatus.Completed);
+
+    workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW });
+
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(20000))).toBe(true);
   });
 });

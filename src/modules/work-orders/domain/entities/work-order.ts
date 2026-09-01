@@ -26,6 +26,7 @@ import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
+import { VehicleDelivered } from '../events/vehicle-delivered.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
@@ -629,6 +630,20 @@ export class WorkOrder extends AggregateRoot {
     this.props.completedAt = input.now;
     this.props.updatedAt = input.now;
     this.record(new WorkOrderCompleted(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * Only records who took the handover and when - `chargedTotal` was already frozen by
+   * `complete` and is untouched here. Settling the pending consumptions is
+   * `SettleStockMovementsHandler`'s job, inside the same transaction (T12, T17).
+   */
+  deliver(input: CloseActionInput): void {
+    this.assertStateAllows([WorkOrderStatus.Completed]);
+    this.props.status = WorkOrderStatus.Delivered;
+    this.props.deliveredAt = input.now;
+    this.props.deliveredByUserId = input.actorUserId;
+    this.props.updatedAt = input.now;
+    this.record(new VehicleDelivered(this.props.id.value, input.actorUserId, input.now));
   }
 
   private assertStateAllows(allowed: WorkOrderStatus[]): void {
