@@ -591,12 +591,12 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] An unknown work order number throws `WorkOrderNotFoundError`
-- [ ] The authorizer runs between the load and the aggregate call, so a refused actor never mutates anything
-- [ ] Every aggregate guard error travels out untouched
-- [ ] It publishes the recorded events after the save
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] An unknown work order number throws `WorkOrderNotFoundError`
+- [x] The authorizer runs between the load and the aggregate call, so a refused actor never mutates anything
+- [x] Every aggregate guard error travels out untouched
+- [x] It publishes the recorded events after the save
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
