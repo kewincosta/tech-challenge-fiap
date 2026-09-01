@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AddRequestedServiceHandler } from './application/commands/add-requested-service/add-requested-service.handler';
+import { ApplyDiscountHandler } from './application/commands/apply-discount/apply-discount.handler';
 import { ApproveBudgetHandler } from './application/commands/approve-budget/approve-budget.handler';
 import { AssignMechanicHandler } from './application/commands/assign-mechanic/assign-mechanic.handler';
+import { CancelWorkOrderHandler } from './application/commands/cancel-work-order/cancel-work-order.handler';
 import { CompleteDiagnosisHandler } from './application/commands/complete-diagnosis/complete-diagnosis.handler';
+import { CompleteWorkOrderHandler } from './application/commands/complete-work-order/complete-work-order.handler';
 import { CreateWorkOrderHandler } from './application/commands/create-work-order/create-work-order.handler';
+import { DeliverVehicleHandler } from './application/commands/deliver-vehicle/deliver-vehicle.handler';
 import { PlanPartHandler } from './application/commands/plan-part/plan-part.handler';
 import { RejectBudgetHandler } from './application/commands/reject-budget/reject-budget.handler';
 import { RemoveWorkOrderItemHandler } from './application/commands/remove-work-order-item/remove-work-order-item.handler';
@@ -18,6 +22,8 @@ import { GetWorkOrderTrailHandler } from './application/queries/get-work-order-t
 import { GetWorkOrderHandler } from './application/queries/get-work-order/get-work-order.handler';
 import { ListWorkOrdersHandler } from './application/queries/list-work-orders/list-work-orders.handler';
 import { BudgetDecisionAuthorizer } from './application/services/budget-decision.authorizer';
+import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
+import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
 import { WORK_ORDER_REPOSITORY } from './domain/repositories/work-order.repository';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
@@ -53,7 +59,13 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     RejectBudgetHandler,
     WithdrawPartsHandler,
     ReturnPartsHandler,
+    CompleteWorkOrderHandler,
+    DeliverVehicleHandler,
+    ApplyDiscountHandler,
+    CancelWorkOrderHandler,
     BudgetDecisionAuthorizer,
+    WorkOrderCompletionAuthorizer,
+    CancellationAuthorizer,
     GetWorkOrderHandler,
     ListWorkOrdersHandler,
     GetWorkOrderTrailHandler,

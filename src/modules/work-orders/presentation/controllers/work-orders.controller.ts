@@ -32,13 +32,17 @@ import { Principal } from '../../../authentication/presentation/principal';
 import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
+import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
+import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
+import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
 import {
   CreatedWorkOrderDto,
   CreateWorkOrderCommand,
 } from '../../application/commands/create-work-order/create-work-order.command';
+import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
@@ -55,7 +59,9 @@ import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
 import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
+import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
+import { CancellationRequestDto } from '../dtos/cancellation.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
 import { PlanPartRequestDto } from '../dtos/plan-part.request.dto';
 import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
@@ -352,6 +358,97 @@ export class WorkOrdersController {
     return this.getWorkOrderOrThrow(number);
   }
 
+  // work-orders:read is the route-level gate - every actor able to reach it holds it, so the
+  // work order's existence is not a secret from them. WorkOrderCompletionAuthorizer narrows to
+  // the assigned mechanic or an administrator inside the handler (design.md).
+  @Post(':number/completion')
+  @RequirePermissions(AppPermission.WorkOrdersRead)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete a work order in execution, charging what was withdrawn' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  async completeWorkOrder(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<CompleteWorkOrderCommand, void>(
+      new CompleteWorkOrderCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/delivery')
+  @RequirePermissions(AppPermission.WorkOrdersManage)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deliver a completed work order, settling its consumptions' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  async deliverVehicle(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<DeliverVehicleCommand, void>(
+      new DeliverVehicleCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  // work-orders:cancel is the route-level gate. CancellationAuthorizer additionally requires
+  // work-orders:cancel-in-execution inside the handler when the work order carries an
+  // outstanding withdrawn part - the guard runs after the load, because the state is only known
+  // then (H36, design.md).
+  @Post(':number/cancellation')
+  @RequirePermissions(AppPermission.WorkOrdersCancel)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel a work order, writing off any parts already withdrawn' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  async cancelWorkOrder(
+    @Param('number') number: string,
+    @Body() body: CancellationRequestDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<CancelWorkOrderCommand, void>(
+      new CancelWorkOrderCommand(number, body.reason, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/discount')
+  @RequirePermissions(AppPermission.WorkOrdersDiscount)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Apply a discount to the charged total, with a mandatory reason' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  async applyDiscount(
+    @Param('number') number: string,
+    @Body() body: ApplyDiscountRequestDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<ApplyDiscountCommand, void>(
+      new ApplyDiscountCommand(number, body.amountCents, body.note, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
   private async getWorkOrderOrThrow(number: string): Promise<WorkOrderResponseDto> {
     const workOrder = await this.queryBus.execute<GetWorkOrderQuery, WorkOrderSummaryDto | null>(
       new GetWorkOrderQuery(number),
@@ -379,6 +476,13 @@ export class WorkOrdersController {
       serviceItems: workOrder.serviceItems,
       partItems: workOrder.partItems,
       budgets: workOrder.budgets,
+      chargedTotalCents: workOrder.chargedTotalCents,
+      discountCents: workOrder.discountCents,
+      discountNote: workOrder.discountNote,
+      completedAt: workOrder.completedAt,
+      deliveredAt: workOrder.deliveredAt,
+      canceledAt: workOrder.canceledAt,
+      cancellationReason: workOrder.cancellationReason,
     };
   }
 

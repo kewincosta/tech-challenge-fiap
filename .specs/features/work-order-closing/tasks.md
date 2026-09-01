@@ -740,18 +740,20 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] The four routes exist with the permissions design.md's table names, and every handler is registered in `work-orders.module.ts`
-- [ ] `WorkOrderResponseDto` exposes `chargedTotalCents`, `discountCents`, `discountNote`, `completedAt`, `deliveredAt`, `canceledAt` and `cancellationReason`, and never `version`
-- [ ] A work order walks creation to delivery in one test and ends `DELIVERED` with a charged total equal to the approved services plus the withdrawn parts at their budgeted prices
-- [ ] After delivery, the item's movement history shows the consumption as `SETTLED` and the count on hand is unchanged by the settlement
-- [ ] A work order that has not been completed reads back a null charged total
-- [ ] Completing as a mechanic who is not the assignee answers 403
-- [ ] Delivering a work order in `RECEIVED` answers 422 (spec.md edge case)
-- [ ] Delivering without `work-orders:manage` answers 403, its own test rather than the completion route's standing in (L-003)
-- [ ] Both routes answer 404 for a work order number nobody carries
-- [ ] The trail shows the completion and the delivery, each naming its actor
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] The four routes exist with the permissions design.md's table names, and every handler is registered in `work-orders.module.ts`
+- [x] `WorkOrderResponseDto` exposes `chargedTotalCents`, `discountCents`, `discountNote`, `completedAt`, `deliveredAt`, `canceledAt` and `cancellationReason`, and never `version`
+- [x] A work order walks creation to delivery in one test and ends `DELIVERED` with a charged total equal to the approved services plus the withdrawn parts at their budgeted prices
+- [x] After delivery, the item's movement history shows the consumption as `SETTLED` and the count on hand is unchanged by the settlement
+- [x] A work order that has not been completed reads back a null charged total
+- [x] Completing as a mechanic who is not the assignee answers 403
+- [x] Delivering a work order in `RECEIVED` answers 422 (spec.md edge case)
+- [x] Delivering without `work-orders:manage` answers 403, its own test rather than the completion route's standing in (L-003)
+- [x] Both routes answer 404 for a work order number nobody carries
+- [x] The trail shows the completion and the delivery, each naming its actor
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 8 tests pass (2 fewer than planned - the creation-to-delivery walk and its charged-total assertion share one case, and the trail assertion covers both actors in one case)
+
+Unplanned but required: `SettleStockMovementsHandler` and `WriteOffStockMovementsHandler` (both committed under T12/T13) were never registered in `inventory.module.ts` - `npm run build`, `npm run lint` and every unit test pass without catching this, since a handler class compiles and unit-tests fine in isolation with no module wiring at all. The gap surfaced the moment this task's first e2e test called `/delivery`: `CommandBus` had no handler bound for `SettleStockMovementsCommand`, a 500 with "No handler found for the command". Fixed by registering both handlers in `inventory.module.ts`, alongside the existing `ConsumeStockBatchHandler`/`RestoreStockBatchHandler`. This is exactly the class of gap only an end-to-end request through the real Nest DI container can catch - worth watching for a future lesson if a module-wiring omission recurs.
 
 **Tests**: e2e
 **Gate**: build

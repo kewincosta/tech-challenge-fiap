@@ -133,6 +133,31 @@ export class WorkOrderResponseDto {
 
   @ApiProperty({ type: [WorkOrderBudgetResponseDto], description: 'Ordered by round' })
   budgets!: WorkOrderBudgetResponseDto[];
+
+  @ApiPropertyOptional({
+    example: 20099,
+    nullable: true,
+    description: 'Services plus withdrawn parts minus the discount, in integer BRL cents. Null before completion',
+  })
+  chargedTotalCents!: number | null;
+
+  @ApiProperty({ example: 0, description: 'Integer BRL cents' })
+  discountCents!: number;
+
+  @ApiPropertyOptional({ nullable: true })
+  discountNote!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  completedAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  deliveredAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  canceledAt!: Date | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  cancellationReason!: string | null;
 }
 
 export class WorkOrderTrailEntryResponseDto {

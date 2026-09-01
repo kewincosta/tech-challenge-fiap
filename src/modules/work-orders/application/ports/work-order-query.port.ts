@@ -46,6 +46,15 @@ export interface WorkOrderSummaryDto {
   partItems: WorkOrderPartItemDto[];
   /** Ordered by round. Empty while the work order has no budget yet. */
   budgets: WorkOrderBudgetDto[];
+  /** Null before completion (WOC-01). Integer BRL cents. */
+  chargedTotalCents: number | null;
+  /** Integer BRL cents, zero when no discount was applied. */
+  discountCents: number;
+  discountNote: string | null;
+  completedAt: Date | null;
+  deliveredAt: Date | null;
+  canceledAt: Date | null;
+  cancellationReason: string | null;
 }
 
 export interface WorkOrderTrailEntryDto {

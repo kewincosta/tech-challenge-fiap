@@ -24,6 +24,13 @@ interface WorkOrderRow {
   vehicle_external_id: string;
   created_by_external_id: string;
   mechanic_external_id: string | null;
+  charged_total_cents: string | null;
+  discount_cents: string;
+  discount_note: string | null;
+  completed_at: Date | null;
+  delivered_at: Date | null;
+  canceled_at: Date | null;
+  cancellation_reason: string | null;
 }
 
 interface ServiceItemRow {
@@ -76,7 +83,9 @@ const SELECT_WORK_ORDERS = `
   SELECT wo.id AS internal_id, wo.external_id, wo.number, wo.status,
          wo.customer_name, wo.vehicle_plate, wo.vehicle_brand, wo.vehicle_model, wo.vehicle_year,
          c.external_id AS customer_external_id, v.external_id AS vehicle_external_id,
-         creator.external_id AS created_by_external_id, mechanic.external_id AS mechanic_external_id
+         creator.external_id AS created_by_external_id, mechanic.external_id AS mechanic_external_id,
+         wo.charged_total_cents, wo.discount_cents, wo.discount_note,
+         wo.completed_at, wo.delivered_at, wo.canceled_at, wo.cancellation_reason
     FROM work_orders wo
     JOIN customers c ON c.id = wo.customer_id
     JOIN vehicles v ON v.id = wo.vehicle_id
@@ -179,6 +188,14 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
       serviceItems: serviceRows.map((serviceRow) => this.serviceItemToDto(serviceRow)),
       partItems: partRows.map((partRow) => this.partItemToDto(partRow)),
       budgets: budgetRows.map((budgetRow) => this.budgetToDto(budgetRow)),
+      chargedTotalCents:
+        row.charged_total_cents !== null ? Money.fromDatabase(row.charged_total_cents).cents : null,
+      discountCents: Money.fromDatabase(row.discount_cents).cents,
+      discountNote: row.discount_note,
+      completedAt: row.completed_at,
+      deliveredAt: row.delivered_at,
+      canceledAt: row.canceled_at,
+      cancellationReason: row.cancellation_reason,
     };
   }
 

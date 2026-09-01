@@ -5,7 +5,9 @@ import { ConsumeStockBatchHandler } from './application/commands/consume-stock-b
 import { CreateInventoryItemHandler } from './application/commands/create-inventory-item/create-inventory-item.handler';
 import { ReplenishStockHandler } from './application/commands/replenish-stock/replenish-stock.handler';
 import { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
+import { SettleStockMovementsHandler } from './application/commands/settle-stock-movements/settle-stock-movements.handler';
 import { UpdateInventoryItemHandler } from './application/commands/update-inventory-item/update-inventory-item.handler';
+import { WriteOffStockMovementsHandler } from './application/commands/write-off-stock-movements/write-off-stock-movements.handler';
 import { INVENTORY_QUERY_PORT } from './application/ports/inventory-query.port';
 import { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
 import { GetItemMovementHistoryHandler } from './application/queries/get-item-movement-history/get-item-movement-history.handler';
@@ -32,6 +34,8 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     ListStockShortagesHandler,
     ConsumeStockBatchHandler,
     RestoreStockBatchHandler,
+    SettleStockMovementsHandler,
+    WriteOffStockMovementsHandler,
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },
   ],
