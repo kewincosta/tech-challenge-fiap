@@ -2,6 +2,7 @@ import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { DiagnosisStarted } from '../events/diagnosis-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
@@ -32,6 +33,7 @@ interface WorkOrderProps {
   updatedAt: Date;
   serviceItems: WorkOrderServiceItem[];
   partItems: WorkOrderPartItem[];
+  diagnosisStartedAt: Date | null;
 }
 
 interface OpenWorkOrderInput {
@@ -80,6 +82,11 @@ interface AssignMechanicInput {
   now: Date;
 }
 
+interface StartDiagnosisInput {
+  actorUserId: string;
+  now: Date;
+}
+
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.Received,
@@ -120,6 +127,7 @@ export class WorkOrder extends AggregateRoot {
       updatedAt: input.now,
       serviceItems: [],
       partItems: [],
+      diagnosisStartedAt: null,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
     return workOrder;
@@ -175,6 +183,17 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new ItemRemovedFromWorkOrder(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  startDiagnosis(input: StartDiagnosisInput): void {
+    this.assertStateAllows([WorkOrderStatus.Received]);
+    this.props.status = WorkOrderStatus.InDiagnosis;
+    this.props.diagnosisStartedAt = input.now;
+    if (this.props.assignedMechanicUserId === null) {
+      this.props.assignedMechanicUserId = input.actorUserId;
+    }
+    this.props.updatedAt = input.now;
+    this.record(new DiagnosisStarted(this.props.id.value, input.actorUserId, input.now));
   }
 
   assignMechanic(input: AssignMechanicInput): void {
@@ -254,5 +273,9 @@ export class WorkOrder extends AggregateRoot {
 
   get partItems(): readonly WorkOrderPartItem[] {
     return [...this.props.partItems];
+  }
+
+  get diagnosisStartedAt(): Date | null {
+    return this.props.diagnosisStartedAt;
   }
 }

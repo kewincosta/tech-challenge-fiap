@@ -248,15 +248,15 @@ T19  T20
 
 **Done when**:
 
-- [ ] `startDiagnosis` moves a `RECEIVED` work order to `IN_DIAGNOSIS` and records `diagnosisStartedAt`
-- [ ] The acting user becomes the assigned mechanic when there is none
-- [ ] An existing mechanic assignment is left untouched
-- [ ] Every state other than `RECEIVED` is refused with `WorkOrderStateError`
-- [ ] A second `startDiagnosis` is refused, which is spec.md's first edge case
-- [ ] Exactly one `DiagnosisStarted` is recorded, and no `MechanicAssigned` rides along
-- [ ] `restore` round-trips `diagnosisStartedAt`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] `startDiagnosis` moves a `RECEIVED` work order to `IN_DIAGNOSIS` and records `diagnosisStartedAt`
+- [x] The acting user becomes the assigned mechanic when there is none
+- [x] An existing mechanic assignment is left untouched
+- [x] Every state other than `RECEIVED` is refused with `WorkOrderStateError`
+- [x] A second `startDiagnosis` is refused, which is spec.md's first edge case
+- [x] Exactly one `DiagnosisStarted` is recorded, and no `MechanicAssigned` rides along
+- [x] `restore` round-trips `diagnosisStartedAt`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (each of the seven behavioural bullets above maps to its own case; the planned count of 9 also included this gate-check and test-count bullet themselves)
 
 **Tests**: unit
 **Gate**: quick

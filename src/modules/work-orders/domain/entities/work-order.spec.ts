@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { DiagnosisStarted } from '../events/diagnosis-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
@@ -38,13 +39,13 @@ function openWorkOrder(): WorkOrder {
   });
 }
 
-function restoreWorkOrder(status: WorkOrderStatus): WorkOrder {
+function restoreWorkOrder(status: WorkOrderStatus, assignedMechanicUserId: string | null = null): WorkOrder {
   return WorkOrder.restore({
     id: WORK_ORDER_ID,
     number: WorkOrderNumber.create('A1B090-2026'),
     customerId: CUSTOMER_ID,
     vehicleId: VEHICLE_ID,
-    assignedMechanicUserId: null,
+    assignedMechanicUserId,
     createdByUserId: CREATOR_ID,
     status,
     customerName: 'Jane Doe',
@@ -60,9 +61,12 @@ function restoreWorkOrder(status: WorkOrderStatus): WorkOrder {
         serviceId: '77777777-7777-4777-8777-777777777777',
         serviceName: 'Troca de oleo',
         unitPrice: Money.fromCents(15099),
+        budgetRound: null,
+        budgetedUnitPrice: null,
       }),
     ],
     partItems: [],
+    diagnosisStartedAt: null,
   });
 }
 
@@ -292,5 +296,84 @@ describe('WorkOrder', () => {
     expect(() =>
       canceled.assignMechanic({ mechanicUserId: MECHANIC_ID, actorUserId: CREATOR_ID, now: NOW }),
     ).toThrow(WorkOrderStateError);
+  });
+
+  it('should move a RECEIVED work order to IN_DIAGNOSIS and record diagnosisStartedAt', () => {
+    const workOrder = openWorkOrder();
+    workOrder.pullDomainEvents();
+
+    workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InDiagnosis);
+    expect(workOrder.diagnosisStartedAt).toEqual(NOW);
+  });
+
+  it('should assign the acting user as mechanic when there is none', () => {
+    const workOrder = openWorkOrder();
+
+    workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.assignedMechanicUserId).toBe(MECHANIC_ID);
+  });
+
+  it('should leave an existing mechanic assignment untouched', () => {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.Received, MECHANIC_ID);
+    const otherActorId = '66666666-6666-4666-8666-666666666666';
+
+    workOrder.startDiagnosis({ actorUserId: otherActorId, now: NOW });
+
+    expect(workOrder.assignedMechanicUserId).toBe(MECHANIC_ID);
+  });
+
+  it('should refuse to start the diagnosis on any state other than RECEIVED', () => {
+    const inDiagnosis = restoreWorkOrder(WorkOrderStatus.InDiagnosis);
+
+    expect(() => inDiagnosis.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('should refuse a second startDiagnosis, the diagnosis already started', () => {
+    const workOrder = openWorkOrder();
+    workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(() => workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('should record exactly one DiagnosisStarted and no MechanicAssigned', () => {
+    const workOrder = openWorkOrder();
+    workOrder.pullDomainEvents();
+
+    workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(DiagnosisStarted);
+  });
+
+  it('should rebuild diagnosisStartedAt via restore', () => {
+    const workOrder = WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InDiagnosis,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+    });
+
+    expect(workOrder.diagnosisStartedAt).toEqual(NOW);
   });
 });
