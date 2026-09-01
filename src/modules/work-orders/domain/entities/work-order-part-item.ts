@@ -10,6 +10,8 @@ export interface WorkOrderPartItemProps {
   unitPrice: Money;
   plannedQuantity: PlannedQuantity;
   withdrawnQuantity: number;
+  budgetRound: number | null;
+  budgetedUnitPrice: Money | null;
 }
 
 export interface AddPartItemInput {
@@ -38,11 +40,27 @@ export class WorkOrderPartItem {
       unitPrice: input.unitPrice,
       plannedQuantity: input.plannedQuantity,
       withdrawnQuantity: 0,
+      budgetRound: null,
+      budgetedUnitPrice: null,
     });
   }
 
   static restore(props: WorkOrderPartItemProps): WorkOrderPartItem {
     return new WorkOrderPartItem({ ...props });
+  }
+
+  /**
+   * Called only by `WorkOrder`'s private `generateRound` while completing a diagnosis or
+   * submitting a supplementary budget. Copies `unitPrice` as the price this item is now
+   * charged at - the only price ever charged for it (design.md).
+   */
+  attachToBudget(round: number): void {
+    this.props.budgetRound = round;
+    this.props.budgetedUnitPrice = this.props.unitPrice;
+  }
+
+  get isDraft(): boolean {
+    return this.props.budgetRound === null;
   }
 
   get id(): WorkOrderItemId {
@@ -71,5 +89,13 @@ export class WorkOrderPartItem {
 
   get withdrawnQuantity(): number {
     return this.props.withdrawnQuantity;
+  }
+
+  get budgetRound(): number | null {
+    return this.props.budgetRound;
+  }
+
+  get budgetedUnitPrice(): Money | null {
+    return this.props.budgetedUnitPrice;
   }
 }

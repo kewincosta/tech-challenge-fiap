@@ -6,6 +6,8 @@ export interface WorkOrderServiceItemProps {
   serviceId: string;
   serviceName: string;
   unitPrice: Money;
+  budgetRound: number | null;
+  budgetedUnitPrice: Money | null;
 }
 
 export interface AddServiceItemInput {
@@ -28,11 +30,27 @@ export class WorkOrderServiceItem {
       serviceId: input.serviceId,
       serviceName: input.serviceName,
       unitPrice: input.unitPrice,
+      budgetRound: null,
+      budgetedUnitPrice: null,
     });
   }
 
   static restore(props: WorkOrderServiceItemProps): WorkOrderServiceItem {
     return new WorkOrderServiceItem({ ...props });
+  }
+
+  /**
+   * Called only by `WorkOrder`'s private `generateRound` while completing a diagnosis or
+   * submitting a supplementary budget. Copies `unitPrice` as the price this item is now
+   * charged at - the only price ever charged for it (design.md).
+   */
+  attachToBudget(round: number): void {
+    this.props.budgetRound = round;
+    this.props.budgetedUnitPrice = this.props.unitPrice;
+  }
+
+  get isDraft(): boolean {
+    return this.props.budgetRound === null;
   }
 
   get id(): WorkOrderItemId {
@@ -49,5 +67,13 @@ export class WorkOrderServiceItem {
 
   get unitPrice(): Money {
     return this.props.unitPrice;
+  }
+
+  get budgetRound(): number | null {
+    return this.props.budgetRound;
+  }
+
+  get budgetedUnitPrice(): Money | null {
+    return this.props.budgetedUnitPrice;
   }
 }

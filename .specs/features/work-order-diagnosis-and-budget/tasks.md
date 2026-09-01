@@ -159,13 +159,13 @@ T19  T20
 
 **Done when**:
 
-- [ ] A newly added item of either kind is a draft: `budgetRound` null, `budgetedUnitPrice` null, `isDraft` true
-- [ ] `attachToBudget(n)` sets the round and copies `unitPrice` into `budgetedUnitPrice`, leaving `unitPrice` itself untouched
-- [ ] `isDraft` is false once the item is attached
-- [ ] `restore` round-trips both new fields, including the null pair
-- [ ] `attachToBudget` called again with the same round is idempotent, which is what a round-one replacement does
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] A newly added item of either kind is a draft: `budgetRound` null, `budgetedUnitPrice` null, `isDraft` true
+- [x] `attachToBudget(n)` sets the round and copies `unitPrice` into `budgetedUnitPrice`, leaving `unitPrice` itself untouched
+- [x] `isDraft` is false once the item is attached
+- [x] `restore` round-trips both new fields, including the null pair
+- [x] `attachToBudget` called again with the same round is idempotent, which is what a round-one replacement does
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 15 tests pass (5 more than planned - restoring an already-attached item and the read-only-prototype check, both updated for the new field pair, are their own cases on each of the two entities)
 
 **Tests**: unit
 **Gate**: quick
