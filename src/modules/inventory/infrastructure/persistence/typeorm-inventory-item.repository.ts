@@ -53,12 +53,17 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
    */
   async save(item: InventoryItem): Promise<void> {
     const { itemRow, movementRows } = InventoryItemMapper.toOrm(item);
-    const delta = item.newMovements.reduce(
-      (sum, movement) =>
-        sum +
-        (movement.kind === StockMovementKind.Inbound ? movement.quantity : -movement.quantity),
-      0,
-    );
+    // Keyed on the movement's own kind, not on "anything but INBOUND" - INBOUND and RETURN both
+    // put units back on the shelf, CONSUMPTION and ADJUSTMENT both take them off. Getting this
+    // wrong once RETURN movements exist would double a return's loss instead of undoing it
+    // (design.md's Risks & Concerns, first row).
+    const delta = item.newMovements.reduce((sum, movement) => {
+      const sign =
+        movement.kind === StockMovementKind.Inbound || movement.kind === StockMovementKind.Return
+          ? 1
+          : -1;
+      return sum + sign * movement.quantity;
+    }, 0);
     try {
       await this.dataSource.transaction(async (manager) => {
         const existing = await manager.findOne(InventoryItemOrmEntity, {
@@ -73,11 +78,19 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
 
         if (movementRows.length > 0) {
           for (let index = 0; index < movementRows.length; index += 1) {
+            const movement = item.newMovements[index];
             movementRows[index].inventoryItemInternalId = itemRow.id;
-            movementRows[index].actorInternalId = await this.resolveUserInternalId(
+            movementRows[index].actorInternalId = await this.resolveInternalId(
               manager,
-              item.newMovements[index].actorUserId,
+              'users',
+              movement.actorUserId,
             );
+            movementRows[index].workOrderInternalId = movement.workOrderId
+              ? await this.resolveInternalId(manager, 'work_orders', movement.workOrderId)
+              : null;
+            movementRows[index].undoesMovementInternalId = movement.undoesMovementId
+              ? await this.resolveInternalId(manager, 'stock_movements', movement.undoesMovementId)
+              : null;
           }
           await manager.save(StockMovementOrmEntity, movementRows);
         }
@@ -93,16 +106,18 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     }
   }
 
-  private async resolveUserInternalId(
+  /** `table` is always a literal this file controls, never external input. */
+  private async resolveInternalId(
     manager: EntityManager,
-    userExternalId: string,
+    table: string,
+    externalId: string,
   ): Promise<string> {
     const rows: Array<{ id: string }> = await manager.query(
-      `SELECT id FROM users WHERE external_id = $1`,
-      [userExternalId],
+      `SELECT id FROM ${table} WHERE external_id = $1`,
+      [externalId],
     );
     if (rows.length === 0) {
-      throw new Error(`User ${userExternalId} not found`);
+      throw new Error(`${table} row for external id ${externalId} not found`);
     }
     return rows[0].id;
   }

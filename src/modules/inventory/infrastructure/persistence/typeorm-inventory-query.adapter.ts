@@ -26,6 +26,9 @@ interface StockMovementRow {
   actor_external_id: string;
   note: string | null;
   occurred_at: Date;
+  status: string | null;
+  work_order_external_id: string | null;
+  undoes_movement_external_id: string | null;
 }
 
 const SELECT_ITEMS = `
@@ -37,12 +40,18 @@ const SELECT_ITEMS = `
 // importing another module's repository or entities across module boundaries at this layer -
 // a plain join, the same way TypeOrmCustomerQueryAdapter reads across users, keeps the ledger
 // read to one query while still returning the actor's external id, never the internal one.
+// LEFT JOINs for the two consumption-era references: an INBOUND or ADJUSTMENT movement carries
+// neither a work order nor a movement it undoes.
 const SELECT_MOVEMENTS = `
   SELECT sm.external_id, sm.kind, sm.quantity, sm.unit_price_cents,
-         u.external_id AS actor_external_id, sm.note, sm.occurred_at
+         u.external_id AS actor_external_id, sm.note, sm.occurred_at, sm.status,
+         wo.external_id AS work_order_external_id,
+         undone.external_id AS undoes_movement_external_id
     FROM stock_movements sm
     JOIN inventory_items ii ON ii.id = sm.inventory_item_id
     JOIN users u ON u.id = sm.actor_user_id
+    LEFT JOIN work_orders wo ON wo.id = sm.work_order_id
+    LEFT JOIN stock_movements undone ON undone.id = sm.undoes_movement_id
 `;
 
 @Injectable()
@@ -100,6 +109,9 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
       actorUserId: row.actor_external_id,
       note: row.note,
       occurredAt: row.occurred_at,
+      status: row.status,
+      workOrderId: row.work_order_external_id,
+      undoesMovementId: row.undoes_movement_external_id,
     };
   }
 }

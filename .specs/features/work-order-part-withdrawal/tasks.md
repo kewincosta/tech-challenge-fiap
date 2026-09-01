@@ -308,14 +308,16 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] The delta adds for `INBOUND` and `RETURN`, and subtracts for `CONSUMPTION` and `ADJUSTMENT`, keyed on the kind rather than on "not inbound" - design.md's first risk
-- [ ] A `CONSUMPTION` movement persists its `status`, `work_order_id` and catalog unit price
-- [ ] A `RETURN` movement persists its `undoes_movement_id` and a null status
-- [ ] A withdraw-then-return-in-full round trip leaves the count on hand exactly where it started, with three movements on the ledger - spec.md's third edge case at this layer
-- [ ] The mapper round-trips all three columns in both directions
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] The delta adds for `INBOUND` and `RETURN`, and subtracts for `CONSUMPTION` and `ADJUSTMENT`, keyed on the kind rather than on "not inbound" - design.md's first risk
+- [x] A `CONSUMPTION` movement persists its `status`, `work_order_id` and catalog unit price
+- [x] A `RETURN` movement persists its `undoes_movement_id` and a null status
+- [x] A withdraw-then-return-in-full round trip leaves the count on hand exactly where it started, with three movements on the ledger - spec.md's third edge case at this layer
+- [x] The mapper round-trips all three columns in both directions (revised during implementation: `work_order_id` and `undoes_movement_id` are external ids on the domain entity despite the ORM column names, so the mapper leaves both null and the repository resolves them, matching how `actorInternalId` already worked - the round trip is proven end to end through the repository and the query adapter, not inside the mapper itself)
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 6 tests pass (3 fewer than planned - 3 in the repository spec proving the write side, 3 more added to `inventory-query.adapter.spec.ts` proving the read side, listed separately below)
+
+**Unplanned but required**: `InventoryQueryPort.StockMovementSummaryDto`, `typeorm-inventory-query.adapter.ts`'s `SELECT_MOVEMENTS` and `movementToDto` needed the same three-column extension on the read side - without it, a `CONSUMPTION`'s work order and a `RETURN`'s undone movement would persist correctly but read back as `undefined`. Not named in this task's own `Where`, but the natural pairing of write-path and read-path for the same three columns, and both are `integration`-tested here rather than left for T18's e2e-only gate. 3 more tests added to `test/integration/inventory-query.adapter.spec.ts` (10 total in that file now), for 6 new tests this task overall against the 9 planned - each Done-when bullet above is covered, several sharing one dense case. The presentation-layer response DTO (`StockMovementResponseDto`) is deliberately left for T18, which already touches the controller and proves the read through the API.
 
 **Tests**: integration
 **Gate**: full
@@ -641,10 +643,10 @@ T16  T17  T18
 
 ### T18: Cover the return path and the cross-module atomicity end to end
 
-**What**: The e2e return round trip, the shortage signal appearing after a refused withdrawal, and the proof that a refused batch moved nothing in either module.
+**What**: The e2e return round trip, the shortage signal appearing after a refused withdrawal, and the proof that a refused batch moved nothing in either module. Also extends `StockMovementResponseDto` and `toMovementResponseDto` on the inventory controller (T7 extended the query port and adapter; the presentation layer was deliberately left for here, proven only through this task's own e2e assertions).
 **Where**: `test/e2e/work-order-withdrawals.e2e.spec.ts`
 **Depends on**: T16
-**Reuses**: T16's fixtures
+**Reuses**: T16's fixtures, `StockMovementSummaryDto`'s three new fields from T7
 **Requirement**: WOP-02, WOP-03, WOP-05
 
 **Tools**:
@@ -656,6 +658,7 @@ T16  T17  T18
 
 - [ ] A part withdrawn, returned in full and withdrawn again ends at a single withdrawal's count, with three movements on the item's history - spec.md's third edge case
 - [ ] A return puts the units back on the shelf and lowers the work order item's withdrawn quantity
+- [ ] `StockMovementResponseDto` and `toMovementResponseDto` expose `status`, `workOrderId` and `undoesMovementId`
 - [ ] The item's movement history shows the `CONSUMPTION` and the `RETURN`, each naming the work order
 - [ ] Returning more than was withdrawn answers 422 and changes nothing
 - [ ] A refused withdrawal leaves the count on hand, the movement history and the work order item all exactly as they were, read back through the API

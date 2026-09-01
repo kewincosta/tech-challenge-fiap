@@ -43,6 +43,43 @@ async function insertUser(): Promise<string> {
   return externalId;
 }
 
+// A work order over its own freshly created user, customer and vehicle - see
+// inventory-item.repository.spec.ts's own copy of this helper for why a dedicated user avoids
+// `ux_customers_user_id`.
+async function insertWorkOrder(): Promise<string> {
+  const workOrderExternalId = randomUUID();
+  const userRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, 'hash', 'Jane Doe', $2, 'ACTIVE', now(), now())
+     RETURNING id`,
+    [`${randomUUID()}@example.com`, Math.random().toString().slice(2, 13)],
+  );
+  const customerRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO customers (external_id, user_id, status, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, 'ACTIVE', now(), now())
+     RETURNING id`,
+    [userRows[0].id],
+  );
+  const vehicleRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO vehicles (external_id, customer_id, plate, brand, model, year, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, $2, 'Toyota', 'Corolla', 2020, now(), now())
+     RETURNING id`,
+    [customerRows[0].id, Math.random().toString(36).slice(2, 9).toUpperCase()],
+  );
+  await dataSource.query(
+    `INSERT INTO work_orders (external_id, number, customer_id, vehicle_id, created_by_user_id, status, customer_name, vehicle_plate, vehicle_brand, vehicle_model, vehicle_year, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, 'IN_EXECUTION', 'Jane Doe', 'ABC1234', 'Toyota', 'Corolla', 2020, now(), now())`,
+    [
+      workOrderExternalId,
+      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      customerRows[0].id,
+      vehicleRows[0].id,
+      userRows[0].id,
+    ],
+  );
+  return workOrderExternalId;
+}
+
 async function saveItem(
   overrides: {
     sku?: string;
@@ -156,5 +193,96 @@ describe('TypeOrmInventoryQueryAdapter', () => {
     expect(found?.unitPriceCents).toBe(4321);
     expect(typeof movements[0].unitPriceCents).toBe('number');
     expect(movements[0].unitPriceCents).toBe(1234);
+  });
+
+  it('should leave status, workOrderId and undoesMovementId null on an INBOUND movement', async () => {
+    const item = await saveItem();
+    const loaded = await repository.findById(item.id);
+    loaded!.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: StockMovementId.create(randomUUID()),
+      now: new Date(),
+    });
+    await repository.save(loaded!);
+
+    const movements = await queryAdapter.listMovements(item.id.value);
+
+    expect(movements[0].status).toBeNull();
+    expect(movements[0].workOrderId).toBeNull();
+    expect(movements[0].undoesMovementId).toBeNull();
+  });
+
+  it("should read back a CONSUMPTION's PENDING status and the work order's own external id", async () => {
+    const item = await saveItem();
+    const workOrderExternalId = await insertWorkOrder();
+    const stocked = await repository.findById(item.id);
+    stocked!.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: StockMovementId.create(randomUUID()),
+      note: null,
+      now: new Date(),
+    });
+    await repository.save(stocked!);
+    const loaded = await repository.findById(item.id);
+    loaded!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: StockMovementId.create(randomUUID()),
+      now: new Date(),
+    });
+    await repository.save(loaded!);
+
+    const movements = await queryAdapter.listMovements(item.id.value);
+    const consumption = movements.find((movement) => movement.kind === 'CONSUMPTION');
+
+    expect(consumption?.status).toBe('PENDING');
+    expect(consumption?.workOrderId).toBe(workOrderExternalId);
+  });
+
+  it("should read back a RETURN's null status and its undoesMovementId pointing at the consumption's own external id", async () => {
+    const item = await saveItem();
+    const workOrderExternalId = await insertWorkOrder();
+    const stocked = await repository.findById(item.id);
+    stocked!.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: StockMovementId.create(randomUUID()),
+      note: null,
+      now: new Date(),
+    });
+    await repository.save(stocked!);
+    const consumeMovementId = StockMovementId.create(randomUUID());
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming!);
+
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 1,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: StockMovementId.create(randomUUID()),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning!);
+
+    const movements = await queryAdapter.listMovements(item.id.value);
+    const returnMovement = movements.find((movement) => movement.kind === 'RETURN');
+
+    expect(returnMovement?.status).toBeNull();
+    expect(returnMovement?.undoesMovementId).toBe(consumeMovementId.value);
   });
 });

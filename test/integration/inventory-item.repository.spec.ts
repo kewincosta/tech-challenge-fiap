@@ -9,6 +9,7 @@ import { InventoryItemKind } from '../../src/modules/inventory/domain/inventory-
 import { InventoryItemId } from '../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../src/modules/inventory/domain/value-objects/sku';
 import { StockMovementId } from '../../src/modules/inventory/domain/value-objects/stock-movement-id';
+import { StockQuantity } from '../../src/modules/inventory/domain/value-objects/stock-quantity';
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
 import { uniqueSku } from '../support/factories/sku.factory';
@@ -46,6 +47,45 @@ async function insertUser(): Promise<string> {
 
 function movementId(): StockMovementId {
   return StockMovementId.create(randomUUID());
+}
+
+// A work order is created here through a raw insert, over its own freshly created user, customer
+// and vehicle - this module has no reason to depend on the work-orders repository, and AD-003
+// forbids importing it (typeorm-work-order-query.adapter.ts follows the same raw-SQL-across-
+// modules precedent for reads). A dedicated user avoids colliding with `ux_customers_user_id`,
+// which the shared `actorExternalId` would hit on a second call.
+async function insertWorkOrder(): Promise<string> {
+  const workOrderExternalId = randomUUID();
+  const userRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, 'hash', 'Jane Doe', $2, 'ACTIVE', now(), now())
+     RETURNING id`,
+    [`${randomUUID()}@example.com`, Math.random().toString().slice(2, 13)],
+  );
+  const customerRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO customers (external_id, user_id, status, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, 'ACTIVE', now(), now())
+     RETURNING id`,
+    [userRows[0].id],
+  );
+  const vehicleRows: Array<{ id: number }> = await dataSource.query(
+    `INSERT INTO vehicles (external_id, customer_id, plate, brand, model, year, created_at, updated_at)
+     VALUES (gen_random_uuid(), $1, $2, 'Toyota', 'Corolla', 2020, now(), now())
+     RETURNING id`,
+    [customerRows[0].id, Math.random().toString(36).slice(2, 9).toUpperCase()],
+  );
+  await dataSource.query(
+    `INSERT INTO work_orders (external_id, number, customer_id, vehicle_id, created_by_user_id, status, customer_name, vehicle_plate, vehicle_brand, vehicle_model, vehicle_year, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, 'IN_EXECUTION', 'Jane Doe', 'ABC1234', 'Toyota', 'Corolla', 2020, now(), now())`,
+    [
+      workOrderExternalId,
+      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      customerRows[0].id,
+      vehicleRows[0].id,
+      userRows[0].id,
+    ],
+  );
+  return workOrderExternalId;
 }
 
 function buildItem(overrides: { sku?: string } = {}): InventoryItem {
@@ -292,5 +332,198 @@ describe('TypeOrmInventoryItemRepository', () => {
       [item.id.value],
     );
     expect(rows[0].external_id).toBe(actorExternalId);
+  });
+
+  it('should end a withdraw-then-return-in-full round trip at the starting count, with three movements on the ledger', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+
+    const reloaded: Array<{ quantity_on_hand: number }> = await dataSource.query(
+      `SELECT quantity_on_hand FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+    expect(reloaded[0].quantity_on_hand).toBe(10);
+
+    const consuming = InventoryItem.restore({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      kind: item.kind,
+      unitPrice: item.unitPrice,
+      quantityOnHand: item.quantityOnHand,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+    const consumeMovementId = movementId();
+    consuming.consume({
+      quantity: 3,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming);
+
+    const returning = InventoryItem.restore({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      kind: item.kind,
+      unitPrice: item.unitPrice,
+      quantityOnHand: StockQuantity.of(7),
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+    returning.restoreUnits({
+      quantity: 3,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning);
+
+    const final: Array<{ quantity_on_hand: number }> = await dataSource.query(
+      `SELECT quantity_on_hand FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+    expect(final[0].quantity_on_hand).toBe(10);
+    const movementRows: Array<{ kind: string }> = await dataSource.query(
+      `SELECT sm.kind FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1`,
+      [item.id.value],
+    );
+    expect(movementRows).toHaveLength(3);
+  });
+
+  it("should persist a CONSUMPTION's status, resolved work order internal id and catalog unit price", async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(3000),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+
+    const consuming = InventoryItem.restore({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      kind: item.kind,
+      unitPrice: Money.fromCents(3000),
+      quantityOnHand: item.quantityOnHand,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+    consuming.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(consuming);
+
+    const rows: Array<{ status: string; unit_price_cents: string; work_order_external_id: string }> =
+      await dataSource.query(
+        `SELECT sm.status, sm.unit_price_cents, wo.external_id AS work_order_external_id
+           FROM stock_movements sm
+           JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+           JOIN work_orders wo ON wo.id = sm.work_order_id
+          WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+        [item.id.value],
+      );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('PENDING');
+    expect(Number(rows[0].unit_price_cents)).toBe(3000);
+    expect(rows[0].work_order_external_id).toBe(workOrderExternalId);
+  });
+
+  it('should persist a RETURN movement with a null status and undoes_movement_id resolved to the original consumption', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const consumeMovementId = movementId();
+    const consuming = InventoryItem.restore({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      kind: item.kind,
+      unitPrice: item.unitPrice,
+      quantityOnHand: item.quantityOnHand,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+    consuming.consume({
+      quantity: 2,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: consumeMovementId,
+      now: new Date(),
+    });
+    await repository.save(consuming);
+
+    const returning = InventoryItem.restore({
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      kind: item.kind,
+      unitPrice: item.unitPrice,
+      quantityOnHand: StockQuantity.of(3),
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+    returning.restoreUnits({
+      quantity: 1,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: consumeMovementId.value,
+      now: new Date(),
+    });
+    await repository.save(returning);
+
+    const rows: Array<{ status: string | null; undoes_external_id: string }> =
+      await dataSource.query(
+        `SELECT sm.status, undone.external_id AS undoes_external_id
+           FROM stock_movements sm
+           JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+           JOIN stock_movements undone ON undone.id = sm.undoes_movement_id
+          WHERE ii.external_id = $1 AND sm.kind = 'RETURN'`,
+        [item.id.value],
+      );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBeNull();
+    expect(rows[0].undoes_external_id).toBe(consumeMovementId.value);
   });
 });

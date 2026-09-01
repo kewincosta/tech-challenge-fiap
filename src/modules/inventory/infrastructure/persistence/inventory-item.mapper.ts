@@ -50,15 +50,16 @@ export class InventoryItemMapper {
       const movementRow = new StockMovementOrmEntity();
       movementRow.externalId = movement.id.value;
       movementRow.kind = movement.kind;
-      movementRow.undoesMovementInternalId = movement.undoesMovementId;
       movementRow.quantity = movement.quantity;
       movementRow.unitPriceCents = String(movement.unitPrice.cents);
-      movementRow.workOrderInternalId = movement.workOrderId;
       movementRow.status = movement.status;
       movementRow.occurredAt = movement.occurredAt;
       movementRow.note = movement.note;
-      // inventoryItemInternalId and actorInternalId are resolved by the repository, which is the
-      // only place that knows the parent's freshly-saved internal id and can look a user up.
+      // inventoryItemInternalId, actorInternalId, workOrderInternalId and undoesMovementInternalId
+      // are all resolved by the repository, which is the only place that knows the parent's
+      // freshly-saved internal id and can look an external id up against another table - the
+      // mapper stays pure. `movement.workOrderId` and `movement.undoesMovementId` are external
+      // ids on the domain entity despite the ORM column names.
       return movementRow;
     });
 

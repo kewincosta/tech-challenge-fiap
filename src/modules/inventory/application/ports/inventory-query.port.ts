@@ -18,6 +18,11 @@ export interface StockMovementSummaryDto {
   actorUserId: string;
   note: string | null;
   occurredAt: Date;
+  /** Only a CONSUMPTION or a RETURN carries either. Null for INBOUND and ADJUSTMENT. */
+  status: string | null;
+  workOrderId: string | null;
+  /** The consumption a RETURN points at, its own external id. Null for every other kind. */
+  undoesMovementId: string | null;
 }
 
 export interface InventoryQueryPort {
