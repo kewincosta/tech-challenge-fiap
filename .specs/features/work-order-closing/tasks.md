@@ -198,14 +198,14 @@ T20  T21  T22  T23
 
 **Done when**:
 
-- [ ] `WorkOrderCompleted` carries `fromStatus` `IN_EXECUTION` and `toStatus` `COMPLETED`
-- [ ] `VehicleDelivered` carries `fromStatus` `COMPLETED` and `toStatus` `DELIVERED`
-- [ ] `WorkOrderCanceled` carries the state it left and `toStatus` `CANCELED`
-- [ ] `DiscountApplied` carries null on both statuses, since it changes no state
-- [ ] Each declares its own `eventType` constant rather than deriving it from the class name
-- [ ] Every event carries its acting user, which AD-007's trail needs
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] `WorkOrderCompleted` carries `fromStatus` `IN_EXECUTION` and `toStatus` `COMPLETED`
+- [x] `VehicleDelivered` carries `fromStatus` `COMPLETED` and `toStatus` `DELIVERED`
+- [x] `WorkOrderCanceled` carries the state it left and `toStatus` `CANCELED`
+- [x] `DiscountApplied` carries null on both statuses, since it changes no state
+- [x] Each declares its own `eventType` constant rather than deriving it from the class name
+- [x] Every event carries its acting user, which AD-007's trail needs
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (planned 4; `WorkOrderCanceled`'s dynamic `fromStatus` needed its own case beyond the one-test-per-event baseline, plus the constants-uniqueness check the sibling `part-withdrawal-events.spec.ts` also carries - no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
