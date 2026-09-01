@@ -40,10 +40,12 @@ import { UpdateInventoryItemCommand } from '../../application/commands/update-in
 import {
   InventoryItemSummaryDto,
   StockMovementSummaryDto,
+  StockShortageDto,
 } from '../../application/ports/inventory-query.port';
 import { GetInventoryItemQuery } from '../../application/queries/get-inventory-item/get-inventory-item.query';
 import { GetItemMovementHistoryQuery } from '../../application/queries/get-item-movement-history/get-item-movement-history.query';
 import { ListInventoryItemsQuery } from '../../application/queries/list-inventory-items/list-inventory-items.query';
+import { ListStockShortagesQuery } from '../../application/queries/list-stock-shortages/list-stock-shortages.query';
 import { InventoryItemNotFoundError } from '../../domain/errors/inventory-item-not-found.error';
 import { AdjustStockRequestDto } from '../dtos/adjust-stock.request.dto';
 import { CreateInventoryItemRequestDto } from '../dtos/create-inventory-item.request.dto';
@@ -51,6 +53,7 @@ import {
   CreatedInventoryItemResponseDto,
   InventoryItemResponseDto,
   StockMovementResponseDto,
+  StockShortageResponseDto,
 } from '../dtos/inventory-item.response.dto';
 import { ReplenishStockRequestDto } from '../dtos/replenish-stock.request.dto';
 import { UpdateInventoryItemRequestDto } from '../dtos/update-inventory-item.request.dto';
@@ -99,6 +102,22 @@ export class InventoryItemsController {
       new ListInventoryItemsQuery(kind),
     );
     return items.map((item) => this.toItemResponseDto(item));
+  }
+
+  // Declared above `:externalId` on purpose: Nest matches routes in registration order, and
+  // `:externalId` carries a `ParseUUIDPipe` that would otherwise try to parse the literal
+  // "shortages" as a uuid and answer 400 instead of running this handler (design.md's Risks).
+  @Get('shortages')
+  @RequirePermissions(AppPermission.InventoryRead)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List items whose demand from work orders in execution exceeds the shelf' })
+  @ApiOkResponse({ type: [StockShortageResponseDto] })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async shortages(): Promise<StockShortageResponseDto[]> {
+    const shortages = await this.queryBus.execute<ListStockShortagesQuery, StockShortageDto[]>(
+      new ListStockShortagesQuery(),
+    );
+    return shortages.map((shortage) => this.toShortageResponseDto(shortage));
   }
 
   @Get(':externalId')
@@ -221,6 +240,17 @@ export class InventoryItemsController {
       unitPriceCents: item.unitPriceCents,
       quantityOnHand: item.quantityOnHand,
       status: item.status,
+    };
+  }
+
+  private toShortageResponseDto(shortage: StockShortageDto): StockShortageResponseDto {
+    return {
+      inventoryItemId: shortage.inventoryItemId,
+      sku: shortage.sku,
+      name: shortage.name,
+      quantityOnHand: shortage.quantityOnHand,
+      outstandingQuantity: shortage.outstandingQuantity,
+      workOrderNumbers: shortage.workOrderNumbers,
     };
   }
 

@@ -652,15 +652,17 @@ Unplanned but required: `ConsumeStockBatchHandler` and `RestoreStockBatchHandler
 
 **Done when**:
 
-- [ ] The route is declared **before** `GET /api/v1/inventory-items/:externalId`, with a comment saying why, and answers 200 rather than the 400 a `ParseUUIDPipe` would give
-- [ ] It carries `@RequirePermissions(AppPermission.InventoryRead)`
-- [ ] An administrator sees an item whose demand from a work order in execution exceeds the shelf, named with the work order waiting on it
-- [ ] Replenishing to cover the demand removes the item from the list
-- [ ] It answers 403 to an actor genuinely lacking `inventory:read`
-- [ ] It answers an empty list, not an error, when nothing is short
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] The route is declared **before** `GET /api/v1/inventory-items/:externalId`, with a comment saying why, and answers 200 rather than the 400 a `ParseUUIDPipe` would give
+- [x] It carries `@RequirePermissions(AppPermission.InventoryRead)`
+- [x] An administrator sees an item whose demand from a work order in execution exceeds the shelf, named with the work order waiting on it
+- [x] Replenishing to cover the demand removes the item from the list
+- [x] It answers 403 to an actor genuinely lacking `inventory:read`
+- [x] It answers an empty list, not an error, when nothing is short
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively
+- [x] Test count: 5 tests pass (matches the plan exactly - no silent deletions)
+
+Unplanned but required: registered `ListStockShortagesHandler` (T15) as a provider in `inventory.module.ts`, same gap the previous task's note flagged for it.
 
 **Tests**: e2e
 **Gate**: build

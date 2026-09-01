@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
+import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { uniqueSku } from '../support/factories/sku.factory';
 import {
   api,
@@ -312,5 +313,140 @@ describe('Inventory items', () => {
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .send({ quantity: -1, note: 'nota' })
       .expect(400);
+  });
+});
+
+describe('Inventory items - stock shortages', () => {
+  async function registerCustomer(): Promise<{ customerId: string }> {
+    const target = await registerUser(app);
+    const response = await api(app)
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ userId: target.userId })
+      .expect(201);
+    return { customerId: (response.body as { id: string }).id };
+  }
+
+  async function registerVehicle(customerId: string): Promise<string> {
+    const response = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .expect(201);
+    return (response.body as { id: string }).id;
+  }
+
+  /**
+   * Builds a work order in IN_EXECUTION carrying one approved part planned above the item's own
+   * quantity on hand - a shortage by construction, with no withdrawal needed: `outstanding =
+   * planned - withdrawn` already exceeds the shelf the moment the round is approved.
+   */
+  async function createShortage(
+    plannedQuantity: number,
+    stockOnHand: number,
+  ): Promise<{ workOrderNumber: string; inventoryItemId: string }> {
+    const mechanic = await loginAs('MECHANIC');
+    const serviceAdvisor = await loginAs('SERVICE_ADVISOR');
+    const { customerId } = await registerCustomer();
+    const vehicleId = await registerVehicle(customerId);
+    const created = await api(app)
+      .post('/api/v1/work-orders')
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ customerId, vehicleId })
+      .expect(201);
+    const workOrderNumber = (created.body as { number: string }).number;
+
+    const item = await createItem();
+    if (stockOnHand > 0) {
+      await api(app)
+        .post(`/api/v1/inventory-items/${item.id}/replenishments`)
+        .set('Authorization', `Bearer ${admin.accessToken}`)
+        .send({ quantity: stockOnHand, unitPriceCents: 2500, note: 'Reposicao inicial' })
+        .expect(200);
+    }
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/diagnosis`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/parts`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ inventoryItemId: item.id, quantity: plannedQuantity })
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/diagnosis/completion`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/budget/approval`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .expect(200);
+
+    return { workOrderNumber, inventoryItemId: item.id };
+  }
+
+  it('is declared above :externalId, answering 200 rather than the 400 a ParseUUIDPipe would give', async () => {
+    await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+  });
+
+  it('names an item whose demand from a work order in execution exceeds the shelf, with the work order waiting on it', async () => {
+    const { workOrderNumber, inventoryItemId } = await createShortage(5, 2);
+
+    const response = await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const rows = response.body as Array<{
+      inventoryItemId: string;
+      quantityOnHand: number;
+      outstandingQuantity: number;
+      workOrderNumbers: string[];
+    }>;
+    const row = rows.find((candidate) => candidate.inventoryItemId === inventoryItemId);
+    expect(row).toMatchObject({ quantityOnHand: 2, outstandingQuantity: 5 });
+    expect(row?.workOrderNumbers).toContain(workOrderNumber);
+  });
+
+  it('removes the item once replenishing covers the demand', async () => {
+    const { inventoryItemId } = await createShortage(5, 2);
+
+    await api(app)
+      .post(`/api/v1/inventory-items/${inventoryItemId}/replenishments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: 5, unitPriceCents: 2500, note: 'Cobre a demanda' })
+      .expect(200);
+
+    const response = await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const rows = response.body as Array<{ inventoryItemId: string }>;
+    expect(rows.some((candidate) => candidate.inventoryItemId === inventoryItemId)).toBe(false);
+  });
+
+  it('refuses an actor genuinely lacking inventory:read with 403', async () => {
+    const outsider = await registerAndLogin(app);
+
+    const response = await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${outsider.accessToken}`)
+      .expect(403);
+    expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('answers a list, not an error, when an item is not short', async () => {
+    const item = await createItem();
+
+    const response = await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const rows = response.body as Array<{ inventoryItemId: string }>;
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.some((candidate) => candidate.inventoryItemId === item.id)).toBe(false);
   });
 });

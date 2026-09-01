@@ -10,6 +10,7 @@ import { INVENTORY_QUERY_PORT } from './application/ports/inventory-query.port';
 import { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
 import { GetItemMovementHistoryHandler } from './application/queries/get-item-movement-history/get-item-movement-history.handler';
 import { ListInventoryItemsHandler } from './application/queries/list-inventory-items/list-inventory-items.handler';
+import { ListStockShortagesHandler } from './application/queries/list-stock-shortages/list-stock-shortages.handler';
 import { INVENTORY_ITEM_REPOSITORY } from './domain/repositories/inventory-item.repository';
 import { InventoryItemOrmEntity } from './infrastructure/persistence/inventory-item.orm-entity';
 import { StockMovementOrmEntity } from './infrastructure/persistence/stock-movement.orm-entity';
@@ -28,6 +29,7 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     GetInventoryItemHandler,
     ListInventoryItemsHandler,
     GetItemMovementHistoryHandler,
+    ListStockShortagesHandler,
     ConsumeStockBatchHandler,
     RestoreStockBatchHandler,
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },

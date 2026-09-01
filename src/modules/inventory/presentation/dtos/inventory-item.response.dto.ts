@@ -31,6 +31,29 @@ export class InventoryItemResponseDto {
   status!: string;
 }
 
+export class StockShortageResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  inventoryItemId!: string;
+
+  @ApiProperty({ example: 'FLT-001' })
+  sku!: string;
+
+  @ApiProperty({ example: 'Filtro de oleo' })
+  name!: string;
+
+  @ApiProperty({ example: 1 })
+  quantityOnHand!: number;
+
+  @ApiProperty({
+    example: 4,
+    description: 'Sum, over approved planned parts of work orders in execution, of planned minus withdrawn',
+  })
+  outstandingQuantity!: number;
+
+  @ApiProperty({ example: ['A1B090-2026'], type: [String] })
+  workOrderNumbers!: string[];
+}
+
 export class StockMovementResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
