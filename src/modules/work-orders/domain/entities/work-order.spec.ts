@@ -1330,6 +1330,28 @@ describe('WorkOrder.returnParts', () => {
     expect(workOrder.partItems[0].withdrawnQuantity).toBe(1);
   });
 
+  it('leaves the first line untouched when only the second line alone exceeds what was withdrawn', () => {
+    // WorkOrderPartItem.returnUnits carries the same below-zero check as a second line of
+    // defense, so a test that lets either guard fire cannot tell them apart (validation.md's N1,
+    // the return-side twin of the withdrawal-side M3 fix).
+    const workOrder = restoreInExecution([
+      withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2),
+      withdrawnPart(ITEM_B_ID, ITEM_B_INVENTORY_ID, 1),
+    ]);
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [
+          { itemId: ITEM_A_ID, quantity: 1 },
+          { itemId: ITEM_B_ID, quantity: 2 },
+        ],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(ReturnExceedsWithdrawnError);
+    expect(workOrder.partItems.find((item) => item.id.equals(ITEM_A_ID))?.withdrawnQuantity).toBe(2);
+  });
+
   it('refuses an item that was never withdrawn on this work order', () => {
     const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 0)]);
 

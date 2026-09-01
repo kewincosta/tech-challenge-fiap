@@ -708,7 +708,7 @@ Note: one interleaved full-suite run hit an unrelated flake in `registerUser`'s 
 
 ---
 
-### Verifier fix round (after T18, before closing the feature)
+### Verifier fix round 1 (after T18, before closing the feature)
 
 The first Verifier pass (`.specs/features/work-order-part-withdrawal/validation.md`, dated 2026-09-01) returned **FAIL**: the implementation was correct everywhere it was probed, but two injected mutations survived and eight acceptance criteria had no assertion targeting the outcome the spec names. Five fix tasks, all Major or Minor, none touching production behaviour:
 
@@ -721,6 +721,21 @@ The first Verifier pass (`.specs/features/work-order-part-withdrawal/validation.
 **Test count**: unit 532 -> 533 (+1, Fix 1), integration 194 -> 195 (+1, Fix 2; Fix 3 extended two existing assertions rather than adding cases), e2e 150 -> 152 (+2, Fix 4). Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`. The e2e suite passed twice consecutively (one interleaved run hit the same pre-existing L-004 flake T18's note already describes, in a sibling spec file's `registerCustomer`, unrelated to this fix round - two immediate reruns came back clean at 152).
 
 **Commit**: `test(work-orders): close the verifier's fix round on part withdrawal`
+
+---
+
+### Verifier fix round 2 (after round 1's re-verification)
+
+The round-2 Verifier (a fresh sub-agent, re-verifying commit `8ffb123`) confirmed all five of round 1's fixes hold - M3 and M7 both stay dead, all 8 previously-gapped ACs now have evidence - but still returned **FAIL**: two new mutations it ran on its own initiative survived, in code round 1 never probed.
+
+- **N1** (`work-order.ts:447`, `returnParts`'s outer below-zero guard): the exact return-side twin of M3. `WorkOrderPartItem.returnUnits` enforces the same rule, so every existing return test fired both guards at once and the outer one had no independent evidence for a multi-line batch. Added a two-line-batch test to `work-order.spec.ts`'s `WorkOrder.returnParts` block, mirroring Fix 1's shape: only the second line exceeds what was withdrawn, and the first line's `withdrawnQuantity` must stay unchanged. Manually confirmed it kills the exact mutation (`< 0` to `< -1`) before reverting the probe.
+- **N3** (`typeorm-inventory-query.adapter.ts:57,65`, WOP-04 AC2's demand formula): every existing shortage fixture left `withdrawn_quantity` at 0, so `SUM(planned_quantity - withdrawn_quantity)` and `SUM(planned_quantity)` were indistinguishable - round 1's own AC2 evidence (`outstandingQuantity` 3, with withdrawn 0) could not tell them apart either. Added a case to `stock-shortages.query.spec.ts` with count 2, planned 5, withdrawn 3 (true outstanding 2, which does not exceed the shelf - the item must be absent). Manually confirmed it kills the exact mutation (dropping `- wop.withdrawn_quantity` from both the projection and the `HAVING` clause) before reverting the probe.
+
+Neither gap was a regression from round 1's fix commit; both pre-date it, in code round 1's own mutations never touched.
+
+**Test count**: unit 533 -> 534 (+1, N1), integration 195 -> 196 (+1, N3), e2e unchanged at 152. Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`. The e2e suite passed twice consecutively.
+
+**Commit**: `test(work-orders): close the verifier's second fix round on part withdrawal`
 
 ---
 

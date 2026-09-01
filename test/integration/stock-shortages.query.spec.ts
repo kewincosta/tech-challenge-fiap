@@ -133,6 +133,20 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     expect(found?.workOrderNumbers).toEqual([workOrder.number]);
   });
 
+  it('reads demand as planned minus withdrawn, not planned alone', async () => {
+    // count 2, planned 5, withdrawn 3: true outstanding is 2, which does not exceed the count on
+    // hand, so the item must be absent. Dropping `withdrawn` from the sum would compute 5,
+    // which does exceed 2 and would wrongly list it (validation.md's N3).
+    const item = await insertInventoryItem(2);
+    const workOrder = await insertWorkOrder('IN_EXECUTION');
+    const budgetId = await insertBudget(workOrder.id, 1, 'APPROVED');
+    await insertWorkOrderPart(workOrder.id, item.id, { budgetId, plannedQuantity: 5, withdrawnQuantity: 3 });
+
+    const shortages = await queryAdapter.listStockShortages();
+
+    expect(shortages.some((row) => row.inventoryItemId === item.externalId)).toBe(false);
+  });
+
   it('leaves out an item whose count on hand covers its outstanding demand', async () => {
     const item = await insertInventoryItem(5);
     const workOrder = await insertWorkOrder('IN_EXECUTION');

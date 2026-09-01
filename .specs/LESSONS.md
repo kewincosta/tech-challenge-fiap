@@ -57,8 +57,8 @@ Seen once or not yet corroborated. Tracked, not trusted.
 ### L-008 - When two layers enforce the same rule, the outer guard needs a test the inner guard cannot satisfy - otherwise loosening or deleting the outer one changes behaviour that no test can see.
 - signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `domain-aggregates` · harmful: 0
 - features: work-order-part-withdrawal
-- evidence: M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates)
-- last seen: 2026-09-01T14:04:16Z
+- evidence: M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates) (+1 more)
+- last seen: 2026-09-01T14:29:49Z
 
 ### L-009 - Give every threshold comparison a fixture sitting exactly on its boundary - fixtures that clear the threshold by a margin on both sides cannot tell a strict comparison from a non-strict one.
 - signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
@@ -71,6 +71,12 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - features: work-order-part-withdrawal
 - evidence: WOP-01 AC2 and WOP-03 AC2 (the acting user on a CONSUMPTION and on a RETURN movement has no assertion; inventory-item.repository.spec.ts:334 covers only INBOUND) (persistence)
 - last seen: 2026-09-01T14:04:24Z
+
+### L-011 - Give every term of a computed formula a fixture where it is non-zero - a term left at its identity value is indistinguishable from a term that is not in the expression at all.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-part-withdrawal
+- evidence: N3: typeorm-inventory-query.adapter.ts:57,65 (SUM(planned_quantity - withdrawn_quantity) reduced to SUM(planned_quantity)) survived all 880 tests, because every shortage fixture leaves withdrawn_quantity at 0 (WOP-04 AC2) (query-adapters)
+- last seen: 2026-09-01T14:29:58Z
 
 ## Quarantined (failed when applied - ignore)
 

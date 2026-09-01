@@ -2,185 +2,202 @@
 
 **Date**: 2026-09-01
 **Spec**: `.specs/features/work-order-part-withdrawal/spec.md`
-**Diff range**: `639fe7e..HEAD` (`ac810aa`), 24 commits, 54 files, +5583/-27
-**Verifier**: independent sub-agent (author != verifier)
-**Verdict**: FAIL (2 surviving mutants, 8 acceptance criteria with no evidence at the layer the spec names)
+**Diff range**: `639fe7e..HEAD` (`8ffb123`), 25 commits, 54 files
+**Verifier**: independent sub-agent (author != verifier), second pass
+**Verdict**: FAIL (2 surviving mutants, both newly found in this pass)
 
-The implementation is correct in every behaviour I could probe. The failing grade measures test discrimination: five of the seven injected faults were caught, two were not, and eight acceptance criteria state an outcome that no assertion targets. Those eight trace back to four root causes, each one a small, bounded fix task.
+This is a rewrite of the first-pass report, carrying its history forward. Round 1 is preserved in
+the "Round 1" section below; everything above it is the current state of the tree at `8ffb123`.
+
+**All five of round 1's fix plans hold.** I re-ran the two mutants that survived round 1 and both
+are killed by the tests the fix round added, the eight acceptance criteria that had no assertion on
+the spec-defined outcome now have one, and the documentation no longer describes the superseded
+design. The gate is green at 880 tests.
+
+The FAIL comes from three fresh mutations of my own, run to check that the fix round did not weaken
+discrimination elsewhere. Two of them survived the entire 880-test gate. Neither is a regression the
+fix round introduced: both holes pre-date it and round 1 simply did not probe those two places. Both
+are proven non-equivalent (a throwaway probe fails with the mutation active and passes once it is
+reverted), and both sit on an outcome `spec.md` states precisely.
 
 ---
 
-## Task Completion
+## Round 2: what was re-checked
 
-All 18 tasks plus the documented T12 correction are marked done in `tasks.md`, with 147 checked Done-when boxes and none left open. Each task maps to exactly one commit in the range, and the commit subjects match the `Commit:` lines in `tasks.md`.
+### The five fix plans
 
-| Task | Status | Notes |
+| Fix | Claim | Re-derived evidence | Holds? |
+| --- | --- | --- | --- |
+| Fix 1 | A two-line batch test the inner guard cannot satisfy, killing M3 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1139-1171`, asserting `withdrawnQuantity` on line one is still 0 after the throw at `:1170`. M3 re-injected: killed | Yes |
+| Fix 2 | A demand-equals-count fixture, killing M7 | `test/integration/stock-shortages.query.spec.ts:147-159`, `expect(shortages.some(...)).toBe(false)` at `:158` for count 3 against demand 3. M7 re-injected: killed | Yes |
+| Fix 3 | The acting user asserted on both movement kinds | `test/integration/inventory-item.repository.spec.ts:465` (`CONSUMPTION`) and `:536` (`RETURN`), both `expect(rows[0].actor_external_id).toBe(actorExternalId)` through a `JOIN users`; plus `withdraw-parts.handler.spec.ts:151` and `return-parts.handler.spec.ts:149` on the dispatched command. Mutation N2 confirms the handler-layer assertion bites | Yes |
+| Fix 4 | Route-level tests for the three missing HTTP statuses | `test/e2e/work-order-withdrawals.e2e.spec.ts:433` (404), `:440` and `:441` (422 on each route), over the new `createAwaitingApprovalWorkOrder` fixture at `:231` | Yes |
+| Fix 5 | Documentation back in line with the shipped design | `inventory-item.ts:200-205` now names `RestoreStockBatchHandler` and `findPendingConsumptions`; `design.md:190` and `:202` both marked **Superseded during Execute**. A tree-wide grep for "supplied by the caller", "already knows the movement id" and "passes the target back" returns nothing outside this report's own history section | Yes |
+
+### Diff surface of the fix round
+
+`git diff ac810aa..HEAD --stat` touches 12 files. Exactly one is non-test production code:
+`src/modules/inventory/domain/entities/inventory-item.ts`, and its change is the JSDoc block on
+`restoreUnits` with no line of executable code altered. The other src changes are three `.spec.ts`
+files. The rest is `test/`, `design.md`, `tasks.md`, this report and the lessons store. No migration,
+no schema change, no handler, no route, no repository. **The fix round changed no behaviour**, which
+is what a test-only fix round should look like.
+
+### Spot-check of criteria round 1 already confirmed
+
+Four of the 29, chosen across layers, re-derived independently and all still holding:
+
+| Criterion | `file:line` + assertion | Result |
 | --- | --- | --- |
-| T1 to T6 | Done | Domain: movement factories, four errors, two trail events, part-item arithmetic, both batch validators |
-| T7 | Done | Stock delta keyed on movement kind; the read-path extension it names as unplanned is real and integration-tested |
-| T8 | Done | AD-008 `inTransaction` helper on both repositories |
-| T9 | Done | `findAllByIdsForUpdate` with the ordering guarantee inside the repository |
-| T10 | Done | Shortage SQL, no read of `stock_movements` |
-| T11 to T15 | Done | Four command handlers plus the shortages query handler |
-| T12 correction | Done | `undoesMovementId` resolved from the ledger; see the dedicated section below |
-| T16 to T18 | Done | Three routes, wiring, and the two e2e specs |
+| WOP-01 AC13 / WOP-03 AC8 (trail names the actor) | `test/e2e/work-order-withdrawals.e2e.spec.ts:548-549` `expect(withdrawn?.actorUserId).toBe(mechanic.userId)`, same for `returned` | PASS |
+| WOP-02 AC2 (a refused call changes nothing) | `test/e2e/work-order-withdrawals.e2e.spec.ts:363` `expect(item.quantityOnHand).toBe(2)`, `:365` no `CONSUMPTION` on the ledger, `:367` `withdrawnQuantity` still 0 | PASS |
+| WOP-02 AC5 (a mid-transaction failure persists neither module) | `test/integration/cross-module-transaction.spec.ts:183-184` | PASS |
+| WOP-05 AC3 (withdrawn reads back as the net) | `test/e2e/work-order-withdrawals.e2e.spec.ts:471` `expect(reread.partItems[0].withdrawnQuantity).toBe(1)` after withdrawing 2 and returning 1 | PASS |
 
 ---
 
-## Spec-Anchored Acceptance Criteria
+## Spec-Anchored Acceptance Criteria - current state
 
-### WOP-01: The mechanic takes planned parts off the shelf
-
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
-| --- | --- | --- | --- |
-| AC1 withdrawal lowers the count, raises the withdrawn quantity, appends one `CONSUMPTION` per part | count down by exactly the withdrawn quantity; withdrawn up by the same; one movement per part | `test/e2e/work-order-withdrawals.e2e.spec.ts:250` `expect(body.partItems[0].withdrawnQuantity).toBe(3)`; `:253` `expect(item.quantityOnHand).toBe(7)`; `:408` `expect(own.map(m => m.kind)).toEqual(['CONSUMPTION','RETURN','CONSUMPTION'])` | PASS |
-| AC2 the movement records the work order, the acting user, `PENDING`, and the catalog price | four named fields | work order and status: `test/integration/inventory-item.repository.spec.ts:456-458` `expect(rows[0].status).toBe('PENDING')`, `expect(rows[0].work_order_external_id).toBe(workOrderExternalId)`; price: `test/e2e/work-order-withdrawals.e2e.spec.ts:350` `expect(consumption?.unitPriceCents).toBe(3200)`. **Acting user: no assertion anywhere on a `CONSUMPTION`** | GAP |
-| AC3 several parts in one call, one movement each | every line registered | `src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.handler.spec.ts:71-77` `expect(results).toHaveLength(2)`, `expect(updatedA?.quantityOnHand.units).toBe(3)`, `expect(updatedB?.quantityOnHand.units).toBe(4)` | PASS |
-| AC4 withdrawal across several calls accumulates up to planned | running total, capped at planned | `src/modules/work-orders/domain/entities/work-order-part-item.spec.ts:139-155` accumulation across calls; `:156-170` refusal at the cap | PASS |
-| AC5 past the planned quantity refuses the whole call with 422 and changes nothing | HTTP 422; nothing changed, for every line in the batch | 422: `test/e2e/work-order-withdrawals.e2e.spec.ts:288` `.expect(422)`; single-line refusal: `src/modules/work-orders/domain/entities/work-order.spec.ts:1117` `toThrow(WithdrawalExceedsPlannedError)`. **"changes nothing" is untested for a multi-line batch on this guard** (see mutation M3) | GAP |
-| AC6 a part that is not an item of that work order refuses with 404 | HTTP 404 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1063` `toThrow(WorkOrderItemNotFoundError)` plus `ErrorKind.NotFound` on the class. **No test asserts HTTP 404 on either new route for this path** | GAP |
-| AC7 no round, or a round that is not `APPROVED`, refuses with 422 | HTTP 422 | `test/e2e/work-order-withdrawals.e2e.spec.ts:308` `.expect(422)` for a draft item, with `:311-315` proving the approved line on the same work order still answers 200 | PASS |
-| AC8 the same item twice in one call refuses with 422 | HTTP 422 | `test/e2e/work-order-withdrawals.e2e.spec.ts:464` `.expect(422)` on a two-line batch naming one item twice | PASS |
-| AC9 zero or negative quantity refuses with 400 | HTTP 400 | `test/e2e/work-order-withdrawals.e2e.spec.ts:273` and `:278` `.expect(400)` for 0 and -1 | PASS |
-| AC10 any state other than `IN_EXECUTION` refuses with 422 | HTTP 422 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1035` `toThrow(WorkOrderStateError)`; `withdraw-parts.handler.spec.ts:118-121` same error before any transaction. **No test asserts HTTP 422 on the route for this path** | GAP |
-| AC11 an actor without `work-orders:execute` gets 403 | HTTP 403 | `test/e2e/work-order-withdrawals.e2e.spec.ts:362` `.expect(403)` with `:363` `toMatchObject({ code: 'AUTH_FORBIDDEN' })` | PASS |
-| AC12 an unknown work order number answers 404 | HTTP 404 | `test/e2e/work-order-withdrawals.e2e.spec.ts:385` and `:390` `.expect(404)`, both routes | PASS |
-| AC13 a successful withdrawal appends `Part Withdrawn` naming the actor | trail entry with the acting user | `test/e2e/work-order-withdrawals.e2e.spec.ts:497` `expect(withdrawn?.actorUserId).toBe(mechanic.userId)` | PASS |
-
-### WOP-02: A short count refuses everything and moves nothing
+### The eight criteria round 1 flagged, re-checked
 
 | Criterion | Spec-defined outcome | `file:line` + assertion | Result |
 | --- | --- | --- | --- |
-| AC1 a count that cannot cover any line refuses with 422 and a rule violation naming insufficient stock | HTTP 422 | `test/e2e/work-order-withdrawals.e2e.spec.ts:324` `.expect(422)`; the error identity at `src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.handler.spec.ts:102-105` `rejects.toThrow(InsufficientStockError)` | PASS |
-| AC2 a refused call leaves the count, the withdrawn quantity and the ledger exactly as they were | all three unchanged | `test/e2e/work-order-withdrawals.e2e.spec.ts:327` `expect(item.quantityOnHand).toBe(2)`, `:329` no `CONSUMPTION` on the ledger, `:331` `expect(reread.partItems[0].withdrawnQuantity).toBe(0)` | PASS |
-| AC3 the count on hand never goes below zero | floor of zero under any command | `test/integration/inventory-item-batch-lock.spec.ts:209` `expect(final?.quantityOnHand.units).toBe(0)` under a real race; the `chk_inventory_items_quantity_on_hand` backstop mapped at `typeorm-inventory-item.repository.ts:162` | PASS |
-| AC4 one short part refuses the whole call, covered parts included | every line refused | `src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.handler.spec.ts:150` `expect(untouchedA?.quantityOnHand.units).toBe(5)` after a later line was refused | PASS |
-| AC5 a failure after one module applied persists neither | both aggregates unchanged | `test/integration/cross-module-transaction.spec.ts:183` `expect(finalWorkOrder?.assignedMechanicUserId).toBeNull()` and `:184` `expect(finalItem?.quantityOnHand.units).toBe(0)` after a throw inside the shared transaction | PASS |
-| AC6 a refusal for insufficient stock leaves the work order in `IN_EXECUTION` | status unchanged | `test/e2e/work-order-withdrawals.e2e.spec.ts:477-486`: 422, then replenish, then the same withdrawal answers 200 and `expect(reread.partItems[0].withdrawnQuantity).toBe(3)`. The proof is behavioural (the aggregate refuses a withdrawal outside `IN_EXECUTION`, so the retry could not succeed otherwise) rather than a direct status read | PASS |
+| WOP-01 AC2 (the movement carries the acting user) | the user who made the call | `test/integration/inventory-item.repository.spec.ts:465` `expect(rows[0].actor_external_id).toBe(actorExternalId)` on the `CONSUMPTION` row, joined through `users` | PASS |
+| WOP-01 AC5 (past planned refuses the whole call and changes nothing) | HTTP 422; every line in the batch untouched | route status `test/e2e/work-order-withdrawals.e2e.spec.ts:324` `.expect(422)`; the multi-line half at `src/modules/work-orders/domain/entities/work-order.spec.ts:1169-1170` - throws, and line one's `withdrawnQuantity` is still 0 | PASS |
+| WOP-01 AC6 (an item of another work order refuses with 404) | HTTP 404 | `test/e2e/work-order-withdrawals.e2e.spec.ts:433` `await withdraw(workOrder.number, otherWorkOrder.approvedItemId, 1).expect(404)` - a real item id from a real sibling work order, so the 404 can only come from `WorkOrderItemNotFoundError`, not from an unresolved work order number | PASS |
+| WOP-01 AC10 (any state but `IN_EXECUTION` refuses with 422) | HTTP 422 | `test/e2e/work-order-withdrawals.e2e.spec.ts:440` `.expect(422)` against an `AWAITING_APPROVAL` work order. The batch names an item id that exists on no work order, so a missing state guard would answer 404 - the test discriminates the guard rather than resting on it | PASS |
+| WOP-03 AC2 (the `RETURN` carries the acting user) | the user who made the call | `test/integration/inventory-item.repository.spec.ts:536` `expect(rows[0].actor_external_id).toBe(actorExternalId)` on the `RETURN` row | PASS |
+| WOP-03 AC5 (any state but `IN_EXECUTION` refuses the return with 422) | HTTP 422 | `test/e2e/work-order-withdrawals.e2e.spec.ts:441` `.expect(422)` on the returns route, same fixture and the same discrimination as AC10 | PASS |
+| WOP-04 AC1 (lists items whose demand *exceeds* the count) | strictly greater | `test/integration/stock-shortages.query.spec.ts:131-133` for the listed case, and the boundary at `:158` proving an equal-demand item is absent | PASS |
+| WOP-04 AC4 (an item whose count *covers* its demand stays off) | absent, equality included | `test/integration/stock-shortages.query.spec.ts:144` (count 5, demand 3) and `:158` (count 3, demand 3) | PASS |
 
-### WOP-03: A part that turned out unnecessary goes back
+**All eight are closed.** Each now has an assertion whose value is the one `spec.md` names, at the
+layer `tasks.md`'s Test Coverage Matrix assigns to it.
 
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
+### Two criteria this pass downgrades
+
+| Criterion | Spec-defined outcome | What the evidence actually proves | Result |
 | --- | --- | --- | --- |
-| AC1 a return raises the count and lowers the withdrawn quantity | both by the returned quantity | `test/e2e/work-order-withdrawals.e2e.spec.ts:418` `expect(item.quantityOnHand).toBe(9)` and `:420` `expect(reread.partItems[0].withdrawnQuantity).toBe(1)` after returning 1 of 2 | PASS |
-| AC2 one `RETURN` per consumption drawn from, each naming the consumption, the actor and the quantity | pointer, actor, quantity | pointer and quantity: `test/e2e/work-order-withdrawals.e2e.spec.ts:432-433` `toMatchObject({ status: null, workOrderId, quantity: 1 })`, `expect(returned?.undoesMovementId).toBe(consumption?.id)`; the split across two consumptions: `restore-stock-batch.handler.spec.ts:114-116` `expect(returns).toHaveLength(2)`, quantities `[1, 3]`. **Acting user: no assertion anywhere on a `RETURN`** | GAP |
-| AC3 the original `CONSUMPTION` is never edited or deleted | consumption untouched | `src/modules/inventory/domain/entities/inventory-item.spec.ts:352-353` `expect(stillThere?.status).toBe(Pending)`, `expect(stillThere?.quantity).toBe(3)`; persisted proof at `test/integration/inventory-item.repository.spec.ts:461-529` | PASS |
-| AC4 a return below zero withdrawn refuses with 422 and changes nothing | HTTP 422; nothing changed | `test/e2e/work-order-withdrawals.e2e.spec.ts:440` `.expect(422)`, `:443` count still 8, `:445` withdrawn still 2, `:447` no `RETURN` on the ledger | PASS |
-| AC5 any state other than `IN_EXECUTION` refuses with 422 | HTTP 422 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1255` `toThrow(WorkOrderStateError)`; `return-parts.handler.spec.ts:113-120`. **No test asserts HTTP 422 on the returns route for this path** | GAP |
-| AC6 a part never withdrawn on that work order refuses with 422 | HTTP 422 | `src/modules/work-orders/domain/entities/work-order.spec.ts:1308` `toThrow(ReturnExceedsWithdrawnError)` for a never-withdrawn item; the route-level 422 for the same error class at `test/e2e/work-order-withdrawals.e2e.spec.ts:440` | PASS |
-| AC7 an actor without `work-orders:execute` gets 403 | HTTP 403 | `test/e2e/work-order-withdrawals.e2e.spec.ts:373` `.expect(403)` on the returns route, its own test per L-003 | PASS |
-| AC8 a successful return appends `Part Returned` naming the actor | trail entry with the acting user | `test/e2e/work-order-withdrawals.e2e.spec.ts:498` `expect(returned?.actorUserId).toBe(mechanic.userId)` | PASS |
+| WOP-03 AC4 (a return below zero withdrawn refuses the whole call and changes nothing) | HTTP 422; nothing changed, for every line in the batch | The single-line case is proven end to end (`test/e2e/work-order-withdrawals.e2e.spec.ts:491` `.expect(422)`, `:494` count still 8, `:498` no `RETURN` on the ledger) and at the aggregate (`work-order.spec.ts` returnParts block, "refuses returning more than was withdrawn ... leaving it unchanged"). **No test covers a multi-line return batch where one line overflows**, so "change nothing" for the covered lines is unproven - see mutation N1 | GAP |
+| WOP-04 AC2 (demand is `SUM(planned - withdrawn)` over approved parts of work orders in `IN_EXECUTION`) | that exact difference | Every shortage fixture in the suite leaves `withdrawn_quantity` at 0, where `planned - withdrawn` and `planned` are the same number. `stock-shortages.query.spec.ts:132` `expect(found?.outstandingQuantity).toBe(3)` is planned 3 / withdrawn 0; the e2e at `inventory-items.e2e.spec.ts:410` is planned 5 / withdrawn 0, and its own helper comment says "a shortage by construction, with no withdrawal needed". The one fixture that does set `withdrawn_quantity` (`:191`, planned 3 / withdrawn 3) is excluded by the `WHERE planned_quantity > withdrawn_quantity` filter before the sum is reached. **The `- withdrawn` term has no fixture that can see it** - see mutation N3 | GAP |
 
-### WOP-04: The administration sees what is blocking the shop
+Round 1 recorded both of these as PASS. WOP-03 AC4 was graded on the single-line evidence, which is
+real but does not reach the multi-line half of the same sentence. WOP-04 AC2 was graded on
+`outstandingQuantity).toBe(3)`, an assertion that cannot distinguish the spec's formula from
+`SUM(planned)` because the subtrahend is zero. Correcting a round-1 grade is what a second
+independent pass is for.
 
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
-| --- | --- | --- | --- |
-| AC1 lists every item whose outstanding demand exceeds its count on hand | strictly greater | `test/integration/stock-shortages.query.spec.ts:131-132` `expect(found).toBeDefined()`, `expect(found?.outstandingQuantity).toBe(3)`; `test/e2e/inventory-items.e2e.spec.ts:410` `toMatchObject({ quantityOnHand: 2, outstandingQuantity: 5 })`. **The `demand == count` boundary is untested** (see mutation M7) | GAP |
-| AC2 demand is `SUM(planned - withdrawn)` over approved parts of work orders in `IN_EXECUTION` | that exact sum | `test/integration/stock-shortages.query.spec.ts:132` `expect(found?.outstandingQuantity).toBe(3)` against planned 3 / withdrawn 0 on an approved round | PASS |
-| AC3 a listed item names the work orders waiting on it | the work order numbers | `test/integration/stock-shortages.query.spec.ts:133` `expect(found?.workOrderNumbers).toEqual([workOrder.number])`; `test/e2e/inventory-items.e2e.spec.ts:411` `expect(row?.workOrderNumbers).toContain(workOrderNumber)` | PASS |
-| AC4 an item whose count covers its demand stays off the list | absent | `test/integration/stock-shortages.query.spec.ts:144` `expect(shortages.some(...)).toBe(false)` for count 5 against demand 3. Same boundary gap as AC1 | GAP |
-| AC5 demand from any state other than `IN_EXECUTION` is ignored | absent | `test/integration/stock-shortages.query.spec.ts:155` `expect(shortages.some(...)).toBe(false)` for an `AWAITING_APPROVAL` work order | PASS |
-| AC6 nothing short returns an empty list, not an error | empty list | `test/integration/stock-shortages.query.spec.ts:202-203` `expect(Array.isArray(shortages)).toBe(true)`; `test/e2e/inventory-items.e2e.spec.ts:449-450` at HTTP 200 | PASS |
-| AC7 an actor without `inventory:read` gets 403 | HTTP 403 | `test/e2e/inventory-items.e2e.spec.ts:437-438` `.expect(403)`, `toMatchObject({ code: 'AUTH_FORBIDDEN' })` with an actor holding neither inventory permission | PASS |
+### The other 27
 
-### WOP-05: Planned against withdrawn reads back
+Unchanged from round 1 and re-confirmed by the green gate. The fix round touched no code they cover.
+Their evidence is in the Round 1 section below; where the fix commit inserted lines into
+`test/e2e/work-order-withdrawals.e2e.spec.ts`, the citations there have shifted by 36 lines from
+`:222` onward.
 
-| Criterion | Spec-defined outcome | `file:line` + assertion | Result |
-| --- | --- | --- | --- |
-| AC1 a read work order returns planned and withdrawn per planned part | both figures | `test/e2e/work-order-withdrawals.e2e.spec.ts:249-250` `expect(...plannedQuantity).toBe(5)`, `expect(...withdrawnQuantity).toBe(3)` | PASS |
-| AC2 the movement history includes every `CONSUMPTION` and `RETURN`, each naming the work order | both kinds, each with its work order | `test/e2e/work-order-withdrawals.e2e.spec.ts:430` and `:432` both `toMatchObject({ ..., workOrderId: workOrder.id, ... })` | PASS |
-| AC3 a partly returned part reports the net | withdrawn minus returned | `test/e2e/work-order-withdrawals.e2e.spec.ts:420` `expect(reread.partItems[0].withdrawnQuantity).toBe(1)` after withdrawing 2 and returning 1 | PASS |
-
-**Status**: 29 of 37 criteria matched the spec-defined outcome. 8 have no assertion targeting the outcome the spec names, and they trace to four root causes: the acting-user leg of WOP-01 AC2 and WOP-03 AC2; the multi-line half of WOP-01 AC5; the route-level HTTP status of WOP-01 AC6, WOP-01 AC10 and WOP-03 AC5; the threshold boundary shared by WOP-04 AC1 and AC4. No spec-precision gaps: `spec.md` pins a precise outcome for every criterion in scope, so every gap below is a test gap rather than an ambiguous requirement.
-
----
-
-## Edge Cases
-
-- [x] **An empty batch answers 400** rather than succeeding silently. `test/e2e/work-order-withdrawals.e2e.spec.ts:263` `.expect(400)` through `@ArrayNotEmpty` on the request DTO.
-- [x] **Two mechanics take the last unit at the same moment**: one succeeds, one 422, the count never below zero. `test/integration/inventory-item-batch-lock.spec.ts:202-209` `expect(fulfilled).toHaveLength(1)`, `expect(rejected[0].reason).toBeInstanceOf(InsufficientStockError)`, `expect(final?.quantityOnHand.units).toBe(0)`.
-- [x] **Withdraw, return in full, withdraw again** ends at a single withdrawal's count with three movements. `test/e2e/work-order-withdrawals.e2e.spec.ts:403-408`; the delta arithmetic underneath it at `test/integration/inventory-item.repository.spec.ts:403` `expect(final[0].quantity_on_hand).toBe(10)`.
-- [x] **A catalog price change between approval and withdrawal** writes the new price and leaves the budgeted price alone. `test/e2e/work-order-withdrawals.e2e.spec.ts:350` `expect(consumption?.unitPriceCents).toBe(3200)` and `:352` `expect(reread.partItems[0].budgetedUnitPriceCents).toBe(2500)`.
-- [x] **The same item on an approved round and on a round awaiting approval**: the approved line only. `src/modules/work-orders/domain/entities/work-order.spec.ts:1086-1107`; end to end at `test/e2e/work-order-withdrawals.e2e.spec.ts:291-315`.
-- [x] **A part on a rejected round stays off the shortage list.** `test/integration/stock-shortages.query.spec.ts:173-174`, covering the rejected round and the draft item on no round in one case.
-
-All six edge cases are handled and each has direct evidence at the layer `tasks.md`'s Edge Case Ownership table assigns to it.
-
----
-
-## The T12 correction
-
-`tasks.md` records that the original design (work-orders records the movement ids `ConsumeStockBatchHandler` returns, and passes them back on the return call) cannot survive a reload, because `WorkOrder.restore` rebuilds every part item from `work_order_parts` columns and no column holds a movement id. I re-derived the final shape and it is consistent end to end.
-
-**Code**: `RestoreStockBatchCommand` carries `{ inventoryItemId, quantity }` and nothing else (`restore-stock-batch.command.ts:1-11`). `ReturnPartsHandler` builds exactly those lines (`return-parts.handler.ts:52-62`). `RestoreStockBatchHandler` resolves the target itself through `findPendingConsumptions`, drawing newest first and splitting one requested return across as many consumptions as it takes (`restore-stock-batch.handler.ts:45-71`). The SQL subtracts prior returns per consumption and drops a drained one, which is the only correct reading given that a `RETURN` never edits the consumption it undoes (`typeorm-inventory-item.repository.ts:83-99`).
-
-**Tests**: the split behaviour at `restore-stock-batch.handler.spec.ts:96-117`, the ordering at `test/integration/inventory-item.repository.spec.ts:530-570`, the drained-consumption arithmetic at `:571-620`. Mutation M5 confirms the ordering is genuinely enforced by a test.
-
-**No leftover in code or tests.** Nothing constructs a `RestoreStockBatchCommand` with a caller-supplied `undoesMovementId`, and no test passes one.
-
-**Two stale references remain, both documentation:**
-
-1. `src/modules/inventory/domain/entities/inventory-item.ts:201-203` still reads "`undoesMovementId` is supplied by the caller, which already knows the consumption it points at (design.md's Risks & Concerns)". The caller no longer knows it; it looks it up. The code is correct and the comment describes the superseded design.
-2. `design.md` was never amended for the correction. Its Risks & Concerns last row ("The work-orders side already knows the movement ids: `ConsumeStockBatchHandler` returns them and the return path passes the target back in") and its Tech Decisions row "Where the movement id for a return comes from" both still describe the design that was replaced. `tasks.md` documents the correction, so the history is not lost, but `design.md` read alone is now wrong about the shipped system.
-
-**One leftover in code, unused rather than wrong:** `ConsumeStockBatchHandler` still returns `ConsumedLineDto[]`, one minted movement id per line (`consume-stock-batch.handler.ts:34-62`). Its only stated purpose was feeding the superseded return path, and nothing in `src/` reads it now. It is harmless and asserted by `consume-stock-batch.handler.spec.ts:71-73`, but it is surface with no caller.
+**Status**: 35 of 37 criteria matched the spec-defined outcome. 2 have evidence that does not reach
+the outcome the spec names, each one the direct twin of a surviving mutant. No spec-precision gaps:
+`spec.md` pins a precise outcome for every criterion in scope.
 
 ---
 
 ## Discrimination Sensor
 
-Isolated in a temporary `git worktree` at `HEAD` with `node_modules` symlinked. Real-tree `git status --porcelain` was empty before the sensor and empty after `git worktree remove --force`, with `HEAD` still at `ac810aa`. No `git stash` was used at any point.
+Isolated in a temporary `git worktree` at `HEAD` with `node_modules` symlinked. Real-tree
+`git status --porcelain` was empty before the sensor and empty after `git worktree remove --force`,
+with `HEAD` still at `8ffb123`. No `git stash` at any point.
 
 | # | File:line | Mutation | Suite run | Result |
 | --- | --- | --- | --- | --- |
-| M1 | `typeorm-inventory-item.repository.ts:118-122` | Stock delta drops `RETURN` from the adding branch, restoring the pre-T7 "anything but INBOUND subtracts" bug | `test:integration` | Killed. `inventory-item.repository.spec.ts:403` expected 10, got 4 |
-| M2 | `work-order.ts:414` | `assertNoDuplicateLines(input.lines)` removed from `withdrawParts` | `work-order.spec.ts` | Killed. `work-order.spec.ts:1050` expected a throw, got none |
-| M3 | `work-order.ts:473` | Off-by-one on the planned guard: `withdrawnQuantity + quantity > plannedQuantity.units` becomes `> plannedQuantity.units + 1` | `work-order.spec.ts` + `work-order-part-item.spec.ts` (72 tests) | **Survived** |
-| M4 | `withdraw-parts.handler.ts:64` | `eventBus.publishAll(workOrder.pullDomainEvents())` removed after the transaction | `src/modules/work-orders/application` | Killed. `withdraw-parts.handler.spec.ts:161` |
-| M5 | `typeorm-inventory-item.repository.ts:96` | `findPendingConsumptions` orders `ORDER BY sm.occurred_at ASC` instead of `DESC` | `inventory-item.repository.spec.ts` | Killed. `:565` newest-first list came back oldest-first |
-| M6 | `typeorm-work-order.repository.ts:317` | The work order repository ignores `currentEntityManager()` and always opens its own transaction, violating AD-008 | `cross-module-transaction.spec.ts` | Killed. `:183` the work order write survived a rollback that should have undone it |
-| M7 | `typeorm-inventory-query.adapter.ts:65` | Shortage threshold `HAVING SUM(...) > ii.quantity_on_hand` becomes `>=` | `stock-shortages.query.spec.ts`, then `inventory-items.e2e.spec.ts` + `work-order-withdrawals.e2e.spec.ts` (38 tests) | **Survived** in both |
+| M3 (re-run) | `work-order.ts:473` | Planned guard loosened by one: `> plannedQuantity.units` becomes `> plannedQuantity.units + 1` | `work-order.spec.ts` + `work-order-part-item.spec.ts` (73 tests) | **Killed.** `work-order.spec.ts:1170` expected 0, got 1 |
+| M7 (re-run) | `typeorm-inventory-query.adapter.ts:65` | Shortage threshold `HAVING SUM(...) > ii.quantity_on_hand` becomes `>=` | `stock-shortages.query.spec.ts` | **Killed.** `:158` expected false, got true |
+| N1 (new) | `work-order.ts:447` | The mirror of M3 on the return side: `returnParts`' outer guard `withdrawnQuantity - quantity < 0` becomes `< -1` | full `src/modules/work-orders` unit suite (211 tests) | **Survived** |
+| N2 (new) | `withdraw-parts.handler.ts:61` | The wrong actor threaded into the cross-module consumption: `command.actorUserId` becomes `workOrder.createdByUserId` | unit + full integration + `work-order-withdrawals.e2e.spec.ts` | **Killed.** `withdraw-parts.handler.spec.ts:151` - Fix 3's own new assertion |
+| N3 (new) | `typeorm-inventory-query.adapter.ts:57,65` | WOP-04 AC2's demand formula loses its subtrahend: `SUM(wop.planned_quantity - wop.withdrawn_quantity)` becomes `SUM(wop.planned_quantity)`, in both the projection and the threshold | full unit (533) + full integration (195) + full e2e (152) | **Survived** all 880 |
 
-**Sensor depth**: P0-full (7 mutations, above the >= 5 the tier requires; this is a data-integrity path).
-**Result**: 5 of 7 killed. FAIL.
+**Sensor depth**: P0-full for the feature across both passes (7 mutations in round 1, 5 here, 12
+distinct faults; this is a data-integrity path).
+**Result**: 3 of 5 killed this pass. FAIL.
 
-### M3, in detail
+### N1, in detail
 
-`WorkOrderPartItem.withdraw` (`work-order-part-item.ts:73-79`) carries the same planned-quantity guard as `WorkOrder.assertWithdrawable`. That redundancy is why the single-line test at `work-order.spec.ts:1108` cannot see the mutation: the inner guard throws the same `WithdrawalExceedsPlannedError` either way.
+`WorkOrder.returnParts` (`work-order.ts:444-450`) and `WorkOrderPartItem.returnUnits`
+(`work-order-part-item.ts:82-88`) enforce the same below-zero rule, exactly the redundant-guard shape
+M3 exposed on the withdrawal side. Every existing return test fires a single line, so the inner guard
+throws the identical `ReturnExceedsWithdrawnError` whether the outer one is intact or not, and the
+`withdrawnQuantity` assertion still reads the unchanged value because there is no earlier line to
+have been applied.
 
-The mutation is not equivalent. `withdrawParts` documents and depends on validate-everything-then-apply-everything, and with the outer guard loosened, a two-line batch whose second line exceeds its planned quantity passes validation, applies line one, then throws on line two, leaving line one mutated. I confirmed this with a throwaway probe spec in the scratch worktree: it failed with the mutation active and passed once the mutation was reverted, so the behaviour genuinely differs and no existing test covers it.
+**Non-equivalence, proven.** I added a throwaway probe in the scratch worktree: two withdrawn items
+(A at 2, B at 1), returning 1 of A and 2 of B in one batch. With N1 active the probe fails
+(`expected 1 to be 2` - A was decremented before B threw); with N1 reverted and the probe unchanged,
+it passes. Reverted before removing the worktree; the probe is not in the real tree.
 
-The consequence is contained today, because `WithdrawPartsHandler` validates before opening a transaction and the aggregate is discarded when it throws. It is still WOP-01 AC5's "refuse the whole call and change nothing" going unproven for the multi-line case, and it is exactly the property the aggregate's own comment claims.
+The consequence is contained today, because `ReturnPartsHandler` validates before opening a
+transaction and discards the aggregate when it throws. It is still WOP-03 AC4's "refuse the whole
+call and change nothing" going unproven for the multi-line case. The fix round closed this exact
+class of hole on the withdrawal side (Fix 1) and left its mirror open, which is what lesson L-008
+already warns about in general terms.
 
-### M7, in detail
+### N3, in detail
 
-`spec.md` is precise here: WOP-04 AC1 lists an item whose demand *exceeds* the count, and AC4 leaves it out while the count *covers* the demand, which includes exact equality. No fixture in the suite sits on that boundary. The integration case at `stock-shortages.query.spec.ts:136` uses count 5 against demand 3, and the e2e at `inventory-items.e2e.spec.ts:414` replenishes 2 to 7 against demand 5, so both clear the boundary by a margin. Swapping `>` for `>=` lists every item whose demand exactly equals its shelf, and the whole covering suite stays green.
+`spec.md` WOP-04 AC2 is precise: outstanding demand is "the sum, over the approved planned part items
+of work orders in `IN_EXECUTION`, of the planned quantity minus the withdrawn quantity". Dropping the
+subtrahend leaves every current fixture green because every one of them has `withdrawn_quantity` at 0
+or is filtered out before the sum:
 
----
+| Fixture | count / planned / withdrawn | True demand | Mutated demand | Listed either way? |
+| --- | --- | --- | --- | --- |
+| `stock-shortages.query.spec.ts:122` | 1 / 3 / 0 | 3 | 3 | listed, `outstandingQuantity` 3 both ways |
+| `:136` | 5 / 3 / 0 | 3 | 3 | absent both ways |
+| `:147` (Fix 2's boundary) | 3 / 3 / 0 | 3 | 3 | absent both ways |
+| `:191` | 0 / 3 / 3 | 0 | 3 | absent both ways - the `WHERE planned_quantity > withdrawn_quantity` filter drops the row before `HAVING` |
+| `inventory-items.e2e.spec.ts:397` | 2 / 5 / 0 | 5 | 5 | listed both ways |
 
-## Payload and conjunction check
+**Non-equivalence, proven.** Probe: count 2, approved round, planned 5, withdrawn 3 on a work order
+in `IN_EXECUTION`. True demand is 2, which does not exceed a shelf of 2, so the item must be absent.
+With N3 active the probe fails (demand reads 5, the item is listed); with N3 reverted it passes.
 
-Cross-module dispatch assertions target field values, not call counts:
-
-- `withdraw-parts.handler.spec.ts:147-150`: `expect(dispatched).toBeInstanceOf(ConsumeStockBatchCommand)`, `expect(dispatched.lines).toEqual([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 }])`, `expect(dispatched.workOrderId).toBe(updated.id.value)`.
-- `return-parts.handler.spec.ts:145-148`: the same three assertions for `RestoreStockBatchCommand`.
-
-Both stop short of `actorUserId` on the dispatched command. That is the same missing leg as WOP-01 AC2 and WOP-03 AC2: the acting user is threaded from the controller into the movement row correctly, and the `actor_user_id NOT NULL REFERENCES users (id)` column means a missing value fails the write loudly, but no test would notice a wrong one. The only actor assertion on a stock movement in the suite is `test/integration/inventory-item.repository.spec.ts:334`, and that exercises an `INBOUND` from `replenish`, which is a sibling call site of exactly the kind L-003 says cannot stand in.
+This one matters more than N1. The shortage list is the whole point of WOP-04 - the signal the
+administration acts on without a mechanic telling them - and with the subtrahend gone it names items
+that are in fact covered, which is the false-positive direction that trains people to ignore the
+list. A future edit that "simplifies" the SQL would ship silently past all 880 tests.
 
 ---
 
 ## Gate Check
 
 - **Gate command**: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- **Result**: exit 0. 532 unit passed (81 files), 194 integration passed (33 files), 150 e2e passed (13 files). 876 total, 0 failed, 0 skipped.
-- **Second e2e run**: exit 0, 150 passed. No flake reproduced.
-- **Test count before feature** (per `tasks.md` Preconditions): 471 unit, 172 integration, 128 e2e = 771.
-- **Test count after**: 532 / 194 / 150 = 876. **Delta: +105** (+61 unit, +22 integration, +22 e2e).
-- **Skipped**: none.
-- **Failures**: none.
-- **Test integrity**: no count decreased in any suite, and no pre-existing assertion in the diff was weakened. The two repositories T8 changed keep their original `dataSource.transaction` call as the no-ambient-manager branch, so every pre-feature test exercises the untouched path.
+- **Result**: exit 0. Lint clean, build clean, 533 unit passed (81 files), 195 integration passed (33 files), 152 e2e passed (13 files). **880 total, 0 failed, 0 skipped.**
+- **Test count at round 1** (`ac810aa`): 532 / 194 / 150 = 876. **At `8ffb123`**: 533 / 195 / 152 = 880. **Delta: +4**, matching the fix round's own accounting in `tasks.md` (+1 unit for Fix 1, +1 integration for Fix 2, +2 e2e for Fix 4; Fix 3 extended existing assertions rather than adding cases).
+- **Test count before the feature** (per `tasks.md` Preconditions): 471 / 172 / 128 = 771. **Feature delta: +109.**
+- **Test integrity**: no suite lost a test, and no assertion in the fix-round diff was weakened. Every change in it is an added test or a strengthened assertion.
 
-**On the flake `tasks.md` T18 records.** I ran the e2e suite twice in full and once partially in the scratch worktree, with no failure. That neither confirms nor refutes a one-off. The note is credible on its mechanism: `LESSONS.md` L-004 already documents `registerUser`'s faker-based email colliding against a never-truncated test database, recorded from `customer-and-vehicle-registry`, and the failure T18 describes has that exact signature in that exact fixture. It is pre-existing test-infrastructure entropy rather than anything this feature introduced, and it belongs to L-004 rather than to this validation, which had no gate failure of its own to ground it.
+### The e2e suite is not deterministic
+
+I ran the e2e suite five times in the real tree. Four passed at 152. **One failed**, and it took out
+this feature's own spec file:
+
+```
+FAIL  test/e2e/work-order-withdrawals.e2e.spec.ts
+Error: expected 201 "Created", got 409 "Conflict"
+ ❯ registerUser test/support/http.ts:31:6
+ ❯ test/e2e/work-order-withdrawals.e2e.spec.ts:26:34
+Test Files  1 failed | 12 passed (13)
+Tests  133 passed | 19 skipped (152)
+```
+
+`registerUser` builds its email from `faker.internet.email()` (`test/support/http.ts:25`) against a
+`workshop_test` database that is never truncated between runs, so a collision on the unique email
+constraint answers 409. Because it fires in `beforeAll`, all 19 of the file's tests are skipped
+rather than failed. Three immediate re-runs came back clean at 152.
+
+This is pre-existing infrastructure entropy, already recorded as **L-004** from
+`customer-and-vehicle-registry`, and `tasks.md` T18 notes the same signature. It is **not** a defect
+this feature introduced and it does not change the verdict on its own. It is worth recording that the
+failure reproduced here at roughly one run in five, and that the file it disables is this feature's
+main e2e evidence - `document` is generated by a `uniqueValidCpf()` helper while `email` is not, so
+the fix is one line in a shared helper whenever someone picks it up. That belongs to L-004 and to
+whoever owns the test-support layer, not to this feature's fix round.
 
 ---
 
@@ -188,82 +205,164 @@ Both stop short of `actorUserId` on the dispatched command. That is the same mis
 
 | Principle | Status |
 | --- | --- |
-| Minimum code | Pass, with one leftover: `ConsumedLineDto` on `ConsumeStockBatchHandler` no longer has a caller |
-| Surgical changes | Pass. The two pre-existing repositories gained one private helper each, with the original call preserved as the fallback branch |
-| No scope creep | Pass. No migration, no new table, no new column, exactly as `tasks.md` Preconditions promised |
-| Matches patterns | Pass. `RegisterUserHandler`'s cross-module shape, `TypeOrmUserRepository`'s ambient-manager `repo()` helper, and `TypeOrmWorkOrderQueryAdapter`'s raw cross-module join are each followed where `design.md` names them |
-| Route ordering | Pass. `@Get('shortages')` at `inventory-items.controller.ts:110` sits above `@Get(':externalId')` at `:123`, with the comment explaining why, and `test/e2e/inventory-items.e2e.spec.ts:389` proves 200 rather than the `ParseUUIDPipe` 400 |
-| Wiring | Pass. All five handlers registered (`inventory.module.ts:32-34`, `work-orders.module.ts:54-55`) |
-| Spec-anchored outcome check | Fail. 8 criteria have no assertion on the outcome the spec names |
-| Per-layer Coverage Expectation | Fail. The matrix promises e2e coverage of "every error path" per route; the wrong-state 422 and the item-not-found 404 have no e2e case on either new route |
-| Every test maps to a spec requirement | Pass. No unclaimed tests in the diff |
-| Documented guidelines followed | Pass. `tasks.md`'s Test Coverage Matrix and Gate Check Commands; `LESSONS.md` L-002 and L-003 were both applied to the breakdown, L-003 partially (see above) |
+| Minimum code | Pass. The fix round added no production code at all |
+| Surgical changes | Pass. One comment, three spec files, three test files, two docs |
+| No scope creep | Pass |
+| Matches patterns | Pass. The new e2e fixture follows `createInExecutionWorkOrder`'s shape; the new integration case follows its neighbours' |
+| Spec-anchored outcome check | Fail. 2 criteria (WOP-03 AC4, WOP-04 AC2) have evidence that does not reach the stated outcome |
+| Per-layer Coverage Expectation | Pass. Fix 4 closed the route-level error paths the matrix promised; the two remaining gaps are domain and query-adapter, not route |
+| Every test maps to a spec requirement | Pass. Each of the four new tests carries a comment naming the AC or the mutant it exists for |
+| Documented guidelines followed | Pass. `tasks.md`'s Test Coverage Matrix and Gate Check Commands; L-002, L-003, L-008, L-009 and L-010 all visibly applied in the fix round |
 | `// SPEC_DEVIATION` markers | None in the tree |
-| Documentation accuracy | Fail. `design.md` still describes the pre-T12-correction return path, and `inventory-item.ts:201` repeats it |
+| Documentation accuracy | Pass. Fix 5 verified by grep; `design.md` and `inventory-item.ts` both describe the shipped `findPendingConsumptions` design |
 
 ---
 
-## Fix Plans
+## Fix Plans (round 3)
 
-### Fix 1: The batch guard needs a test the inner guard cannot pass
+Both are test-only, both are one case, and neither touches production behaviour.
 
-- **Priority**: Major
-- **Root cause**: `WorkOrder.assertWithdrawable` and `WorkOrderPartItem.withdraw` enforce the same planned-quantity rule. Every current test fires both at once, so the outer one has no independent evidence, and mutation M3 survives.
-- **Fix task**: Add a case to `work-order.spec.ts`'s `WorkOrder.withdrawParts` block: a two-line batch where line one is fully withdrawable and line two exceeds its planned quantity. Assert the throw and assert line one's `withdrawnQuantity` is still 0. Re-run M3 to confirm it is killed.
-- **Done when**: `withdrawnQuantity` on the first item is asserted unchanged after the batch throws, and M3 fails the suite.
-
-### Fix 2: The shortage threshold needs its boundary
+### Fix 6: The return batch needs the same multi-line test the withdrawal batch got
 
 - **Priority**: Major
-- **Root cause**: no fixture places outstanding demand exactly equal to the count on hand, so `>` and `>=` are indistinguishable to the suite.
-- **Fix task**: Add a case to `test/integration/stock-shortages.query.spec.ts`: an item with count 3 and a single approved planned part of 3 on a work order in `IN_EXECUTION`, asserted absent from the list. Re-run M7 to confirm it is killed.
-- **Done when**: the equal-demand item is asserted absent, and M7 fails the suite.
+- **Root cause**: `WorkOrder.returnParts` and `WorkOrderPartItem.returnUnits` enforce the same below-zero rule. Every return test fires one line, so the inner guard satisfies the assertion whether or not the outer guard is intact, and mutation N1 survives. This is Fix 1's problem on the other side of the aggregate; Fix 1 solved the instance, not the class.
+- **Fix task**: Add a case to `work-order.spec.ts`'s `WorkOrder.returnParts` block, mirroring `:1139-1171`: two withdrawn items, a batch returning a valid quantity from the first and one more than was withdrawn from the second. Assert `ReturnExceedsWithdrawnError`, then assert the first item's `withdrawnQuantity` is unchanged. The existing `withdrawnPart(id, inventoryItemId, withdrawnQuantity)` and `restoreInExecution` helpers already take everything the fixture needs.
+- **Done when**: the first item's `withdrawnQuantity` is asserted unchanged after the batch throws, and re-injecting N1 (`< 0` to `< -1` at `work-order.ts:447`) fails the unit suite.
 
-### Fix 3: Assert the acting user on both movement kinds
+### Fix 7: The shortage query needs a fixture with a partly withdrawn part
 
 - **Priority**: Major
-- **Root cause**: WOP-01 AC2 and WOP-03 AC2 each name four things the movement must carry; three are asserted. The only actor assertion on a movement covers `INBOUND`.
-- **Fix task**: Extend `test/integration/inventory-item.repository.spec.ts:413`'s `CONSUMPTION` query to join `users` and assert the actor's external id, and do the same for the `RETURN` case at `:461`. Optionally assert `actorUserId` on the dispatched command in both handler specs.
-- **Done when**: a `CONSUMPTION` row and a `RETURN` row each have their acting user asserted against the id the caller supplied.
+- **Root cause**: every shortage fixture leaves `withdrawn_quantity` at 0, where WOP-04 AC2's `planned - withdrawn` is indistinguishable from `planned`. The one fixture that sets it (`:191`) is fully withdrawn and the `WHERE` filter drops it before the sum. Mutation N3 survives all 880 tests.
+- **Fix task**: Add a case to `test/integration/stock-shortages.query.spec.ts`: an item with count 2, one approved planned part of 5 with `withdrawnQuantity: 3` on a work order in `IN_EXECUTION`, asserted absent from the list (true demand 2 does not exceed a shelf of 2). `insertWorkOrderPart` already accepts `withdrawnQuantity` in its overrides. A second assertion on `outstandingQuantity` for a still-short partly-withdrawn item would pin the reported figure as well as the membership, and is worth adding in the same case.
+- **Done when**: a fixture with `0 < withdrawn < planned` is asserted, and re-injecting N3 (dropping `- wop.withdrawn_quantity` from `typeorm-inventory-query.adapter.ts:57` and `:65`) fails the integration suite.
 
-### Fix 4: Route-level tests for the two missing error paths
+### Not a fix task, but worth someone's attention
 
-- **Priority**: Minor
-- **Root cause**: T16's Done-when list never asked for them. WOP-01 AC6, WOP-01 AC10 and WOP-03 AC5 state HTTP statuses that no test asserts on either route; the domain unit test plus the `ErrorKind` mapping is the substitution L-003 rules out.
-- **Fix task**: Add to `test/e2e/work-order-withdrawals.e2e.spec.ts`: an item id that belongs to another work order answering 404 on the withdrawals route, and a work order in `AWAITING_APPROVAL` answering 422 on each of the two routes.
-- **Done when**: 404 and 422 are asserted at the route for those three criteria.
-
-### Fix 5: Bring the documentation back in line with the shipped design
-
-- **Priority**: Minor
-- **Root cause**: the T12 correction was recorded in `tasks.md` and never propagated to `design.md` or to the aggregate's own comment.
-- **Fix task**: Amend `design.md`'s Risks & Concerns last row and its "Where the movement id for a return comes from" Tech Decision to describe `findPendingConsumptions`. Rewrite `inventory-item.ts:201-203` to say the caller resolves the consumption from the ledger. Decide whether `ConsumedLineDto` stays on `ConsumeStockBatchHandler` or is dropped now that nothing reads it.
-- **Done when**: no document or comment in the tree describes the caller as knowing the movement id.
+`test/support/http.ts:25` generates `registerUser`'s email from bare faker against a database that is
+never truncated. It cost one e2e run in five during this pass and it disables whole spec files when
+it fires. It belongs to L-004 and to the test-support layer, not to this feature.
 
 ---
 
 ## Requirement Traceability Update
 
-| Requirement | Previous Status | New Status |
+| Requirement | Round 1 | Round 2 |
 | --- | --- | --- |
-| WOP-01 | Implementing | Needs Fix (AC2 acting user, AC5 multi-line atomicity, AC6 and AC10 route status) |
-| WOP-02 | Implementing | Verified |
-| WOP-03 | Implementing | Needs Fix (AC2 acting user, AC5 route status) |
-| WOP-04 | Implementing | Needs Fix (AC1 and AC4 boundary) |
-| WOP-05 | Implementing | Verified |
+| WOP-01 | Needs Fix (AC2, AC5, AC6, AC10) | Verified |
+| WOP-02 | Verified | Verified |
+| WOP-03 | Needs Fix (AC2, AC5) | Needs Fix (AC4 multi-line, found this pass) |
+| WOP-04 | Needs Fix (AC1, AC4) | Needs Fix (AC2 demand formula, found this pass) |
+| WOP-05 | Verified | Verified |
 
 ---
 
 ## Summary
 
-**Overall**: Issues. The feature behaves correctly everywhere I could probe it, and the gaps are all in test discrimination.
+**Overall**: Not ready. Two acceptance criteria out of 37 have evidence that cannot see the behaviour
+they claim to cover, each one confirmed by a surviving, non-equivalent mutant.
 
-**Spec-anchored check**: 29 of 37 acceptance criteria matched the spec-defined outcome; 8 have no assertion on the outcome the spec names, tracing to four root causes. 0 spec-precision gaps.
-**Sensor**: 5 of 7 mutations killed.
-**Gate**: 876 passed, 0 failed, 0 skipped, across two consecutive e2e runs.
+**Spec-anchored check**: 35 of 37 matched the spec-defined outcome (up from 29 of 37 at round 1). 2
+gaps, both new to this pass. 0 spec-precision gaps.
+**Sensor**: 3 of 5 killed this pass (M3 and M7 both now die; N2 dies on Fix 3's own assertion). 12
+distinct faults across both passes.
+**Gate**: 880 passed, 0 failed, 0 skipped. One of five e2e runs hit the pre-existing L-004 email
+collision.
 
-**What works**: The cross-module transaction is proven by an actual rollback that leaves neither write behind (M6 died immediately). The stock delta keys on the movement kind, which was `design.md`'s top-listed risk and a live trap in feature 4's code (M1 died). The deterministic lock order holds under two genuinely concurrent batches against a real database. The T12 correction is fully implemented: a return really does split across consumptions newest first, and the ordering has a test that kills a reversal. All six edge cases have direct evidence at the assigned layer, and the shortages route is declared above `:externalId` with an e2e proving 200.
+**What the fix round got right**: all five fix plans hold, verified independently rather than taken
+on the commit's word. M3 and M7 are dead. The acting user is now asserted on a `CONSUMPTION` row, on
+a `RETURN` row, and on both dispatched cross-module commands. The three route-level HTTP statuses are
+asserted at the route, over fixtures built so the guard under test is the only thing that can produce
+the status. `design.md` and the aggregate comment describe the shipped design. And it did all of that
+without changing a line of executable production code.
 
-**Issues found**: Two surviving mutants (a redundant inner guard hiding the outer one; an untested threshold boundary) and one missing conjunct repeated across two criteria (the acting user on a movement). Three ACs state an HTTP status that only the domain layer proves. `design.md` still documents the return path the T12 correction replaced.
+**What is still open**: the return path has the same redundant-guard hole the withdrawal path had
+(N1), and the shortage query's demand formula has never been tested with a part that was partly
+withdrawn (N3), which is the arithmetic WOP-04 exists to get right.
 
-**Next steps**: Fixes 1 through 3 are the blockers; each is one test case. Fixes 4 and 5 are small and can ride along. Re-run the sensor on M3 and M7 after Fixes 1 and 2 to confirm both die.
+**Next steps**: Fixes 6 and 7, one test case each, then re-inject N1 and N3 to confirm both die. This
+is fix round 2 of the 3 the skill allows; a third FAIL escalates to the user.
+
+---
+---
+
+# Round 1 (historical record)
+
+**Date**: 2026-09-01
+**Diff range**: `639fe7e..ac810aa`, 24 commits, 54 files, +5583/-27
+**Verdict**: FAIL (2 surviving mutants, 8 acceptance criteria with no evidence at the layer the spec names)
+
+Preserved so the fix round has something to be measured against. Line citations here are as of
+`ac810aa`; the fix commit inserted 36 lines into `test/e2e/work-order-withdrawals.e2e.spec.ts` from
+`:222` onward, so citations into that file past that point read 36 lines low against the current tree.
+
+## Task completion
+
+All 18 tasks plus the documented T12 correction marked done in `tasks.md`, 147 checked Done-when
+boxes, none open. Each task maps to exactly one commit in the range and the subjects match the
+`Commit:` lines. T1-T6 domain (movement factories, four errors, two trail events, part-item
+arithmetic, both batch validators); T7 stock delta keyed on movement kind; T8 the AD-008
+`inTransaction` helper on both repositories; T9 `findAllByIdsForUpdate` with its ordering guarantee;
+T10 the shortage SQL; T11-T15 four command handlers plus the shortages query handler; T16-T18 three
+routes, wiring, two e2e specs.
+
+## The eight gaps round 1 found
+
+| Criterion | What was missing |
+| --- | --- |
+| WOP-01 AC2 | The acting user on a `CONSUMPTION` had no assertion anywhere; work order, status and price did |
+| WOP-01 AC5 | "Changes nothing" untested for a multi-line batch on the planned guard (mutation M3) |
+| WOP-01 AC6 | Domain-level `WorkOrderItemNotFoundError` only; no test asserted HTTP 404 on either route |
+| WOP-01 AC10 | Domain-level `WorkOrderStateError` only; no test asserted HTTP 422 on the withdrawals route |
+| WOP-03 AC2 | The acting user on a `RETURN` had no assertion anywhere |
+| WOP-03 AC5 | Domain-level only; no test asserted HTTP 422 on the returns route |
+| WOP-04 AC1 | The `demand == count` boundary untested (mutation M7) |
+| WOP-04 AC4 | Same boundary, other direction |
+
+29 of 37 criteria matched the spec-defined outcome; 0 spec-precision gaps. All six edge cases had
+direct evidence at the layer `tasks.md` assigns to them.
+
+## Round 1 sensor
+
+| # | File:line | Mutation | Result |
+| --- | --- | --- | --- |
+| M1 | `typeorm-inventory-item.repository.ts:118-122` | Stock delta drops `RETURN` from the adding branch, restoring the pre-T7 bug | Killed - `inventory-item.repository.spec.ts:403` expected 10, got 4 |
+| M2 | `work-order.ts:414` | `assertNoDuplicateLines` removed from `withdrawParts` | Killed - `work-order.spec.ts:1050` |
+| M3 | `work-order.ts:473` | Planned guard off-by-one | **Survived** -> Fix 1 |
+| M4 | `withdraw-parts.handler.ts:64` | `eventBus.publishAll` removed after the transaction | Killed - `withdraw-parts.handler.spec.ts:161` |
+| M5 | `typeorm-inventory-item.repository.ts:96` | `findPendingConsumptions` ordered `ASC` instead of `DESC` | Killed - `:565` |
+| M6 | `typeorm-work-order.repository.ts:317` | The work order repository ignores `currentEntityManager()`, violating AD-008 | Killed - `cross-module-transaction.spec.ts:183` |
+| M7 | `typeorm-inventory-query.adapter.ts:65` | Shortage threshold `>` becomes `>=` | **Survived** -> Fix 2 |
+
+5 of 7 killed. Gate at round 1: 876 passed, 0 failed, 0 skipped, across two consecutive e2e runs.
+
+## Round 1 fix plans
+
+1. **Fix 1** (Major) - a two-line batch test the inner guard cannot pass, to kill M3.
+2. **Fix 2** (Major) - a demand-equals-count fixture, to kill M7.
+3. **Fix 3** (Major) - assert the acting user on a `CONSUMPTION` row and a `RETURN` row.
+4. **Fix 4** (Minor) - route-level tests for the 404 and the two 422s.
+5. **Fix 5** (Minor) - bring `design.md` and `inventory-item.ts`'s comment in line with the shipped T12 correction.
+
+All five were addressed in `8ffb123` and all five are confirmed holding in the round 2 section above.
+
+## The T12 correction (round 1's finding, still accurate)
+
+The original design had work-orders record the movement ids `ConsumeStockBatchHandler` returns and
+pass them back on the return call. That cannot survive a reload: `WorkOrder.restore` rebuilds every
+part item from `work_order_parts` columns and no column holds a movement id. The shipped shape is
+`RestoreStockBatchCommand` carrying `{ inventoryItemId, quantity }` only
+(`restore-stock-batch.command.ts:1-11`), with `RestoreStockBatchHandler` resolving the target itself
+through `findPendingConsumptions`, drawing newest first and splitting one requested return across as
+many consumptions as it takes (`restore-stock-batch.handler.ts:45-71`). The SQL subtracts prior
+returns per consumption and drops a drained one
+(`typeorm-inventory-item.repository.ts:83-99`). Nothing in the tree constructs a
+`RestoreStockBatchCommand` with a caller-supplied `undoesMovementId`. `ConsumeStockBatchHandler`
+still returns `ConsumedLineDto[]` with no caller; the fix round recorded the decision to keep it.
+
+---
+
+**Final verdict (round 2, `8ffb123`): FAIL.** Gate green at 880 tests; 35 of 37 acceptance criteria
+matched the spec-defined outcome; all five of round 1's fix plans hold. Two surviving mutants remain,
+N1 (`work-order.ts:447`, the return batch's outer guard) and N3
+(`typeorm-inventory-query.adapter.ts:57,65`, WOP-04 AC2's demand formula), each with a one-case fix
+task above. Feature not done.

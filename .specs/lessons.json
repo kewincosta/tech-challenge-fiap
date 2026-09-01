@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 11,
+  "next_id": 12,
   "lessons": [
     {
       "id": "L-001",
@@ -153,10 +153,11 @@
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
-        "M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates)"
+        "M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates)",
+        "N1: work-order.ts:447 (returnParts' outer below-zero guard loosened to < -1) survived the full src/modules/work-orders unit suite, because work-order-part-item.ts:85 enforces the same rule (domain-aggregates)"
       ],
       "created": "2026-09-01T14:04:16Z",
-      "last_seen": "2026-09-01T14:04:16Z"
+      "last_seen": "2026-09-01T14:29:49Z"
     },
     {
       "id": "L-009",
@@ -193,6 +194,24 @@
       ],
       "created": "2026-09-01T14:04:24Z",
       "last_seen": "2026-09-01T14:04:24Z"
+    },
+    {
+      "id": "L-011",
+      "key": "surviving_mutant::give every term of a computed formula a fixture where it is non zero a term left at its identity value is indistinguishable from a term that is not in the expression at all",
+      "text": "Give every term of a computed formula a fixture where it is non-zero - a term left at its identity value is indistinguishable from a term that is not in the expression at all.",
+      "signal": "surviving_mutant",
+      "scope": "query-adapters",
+      "status": "candidate",
+      "features": [
+        "work-order-part-withdrawal"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "N3: typeorm-inventory-query.adapter.ts:57,65 (SUM(planned_quantity - withdrawn_quantity) reduced to SUM(planned_quantity)) survived all 880 tests, because every shortage fixture leaves withdrawn_quantity at 0 (WOP-04 AC2) (query-adapters)"
+      ],
+      "created": "2026-09-01T14:29:58Z",
+      "last_seen": "2026-09-01T14:29:58Z"
     }
   ]
 }
