@@ -263,6 +263,17 @@ async function withdraw(number: string, itemId: string, quantity: number, access
     .expect(200);
 }
 
+async function returnPart(number: string, itemId: string, quantity: number, accessToken: string): Promise<void> {
+  const workOrder = await getWorkOrder(number);
+  const line = workOrder.partItems.find((item) => item.inventoryItemId === itemId);
+  if (!line) throw new Error('part item not found');
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/returns`)
+    .set('Authorization', `Bearer ${accessToken}`)
+    .send({ lines: [{ itemId: line.id, quantity }] })
+    .expect(200);
+}
+
 describe('Work order closing - main path', () => {
   it('walks creation to delivery, ending DELIVERED with the charged total equal to the approved services plus the withdrawn parts', async () => {
     const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
@@ -387,5 +398,123 @@ describe('Work order closing - main path', () => {
     const delivery = trail.find((entry) => entry.eventType === 'VEHICLE_DELIVERED');
     expect(completion?.actorUserId).toBeTruthy();
     expect(delivery?.actorUserId).toBeTruthy();
+  });
+});
+
+describe('Work order closing - cancellation and its write-off', () => {
+  it('cancels cleanly with nothing withdrawn, and nothing is written off (spec.md edge case)', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(200);
+    const body = response.body as WorkOrderDetail;
+
+    expect(body.status).toBe('CANCELED');
+    expect(body.cancellationReason).toBe('Cliente desistiu do servico');
+    const movements = await getMovements(workOrder.inventoryItemId);
+    expect(movements.some((movement) => movement.status === 'WRITTEN_OFF')).toBe(false);
+  });
+
+  it('records a loss of exactly one unit and leaves the three returned units on the shelf, on a part withdrawn 4 and returned 3 (spec.md edge case)', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 4, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 4, workOrder.assigneeAccessToken);
+    await returnPart(workOrder.number, workOrder.inventoryItemId, 3, workOrder.assigneeAccessToken);
+    const afterReturn = await getInventoryItem(workOrder.inventoryItemId);
+    expect(afterReturn.quantityOnHand).toBe(9);
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(200);
+
+    const afterCancel = await getInventoryItem(workOrder.inventoryItemId);
+    expect(afterCancel.quantityOnHand).toBe(afterReturn.quantityOnHand);
+    const movements = await getMovements(workOrder.inventoryItemId);
+    const consumption = movements.find((movement) => movement.kind === 'CONSUMPTION');
+    expect(consumption?.status).toBe('WRITTEN_OFF');
+  });
+
+  it('refuses a service advisor cancelling a work order carrying withdrawn parts, in IN_EXECUTION and again in AWAITING_APPROVAL after a supplementary round, until an administrator cancels it and the movements read WRITTEN_OFF', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+    await withdraw(workOrder.number, workOrder.inventoryItemId, workOrder.plannedQuantity, workOrder.assigneeAccessToken);
+
+    const refusedInExecution = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(403);
+    expect(refusedInExecution.body).toMatchObject({ code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN' });
+
+    const extraServiceId = await createCatalogService(3000);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/services`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ serviceId: extraServiceId })
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/budget/supplementary`)
+      .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
+      .expect(200);
+    const awaitingApproval = await getWorkOrder(workOrder.number);
+    expect(awaitingApproval.status).toBe('AWAITING_APPROVAL');
+
+    const refusedAwaitingApproval = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(403);
+    expect(refusedAwaitingApproval.body).toMatchObject({ code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN' });
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(200);
+
+    const movements = await getMovements(workOrder.inventoryItemId);
+    const consumption = movements.find((movement) => movement.kind === 'CONSUMPTION');
+    expect(consumption?.status).toBe('WRITTEN_OFF');
+  });
+
+  it('answers 422 when cancelling an already cancelled work order (spec.md edge case)', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(200);
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Segunda tentativa' })
+      .expect(422);
+  });
+
+  it('answers 400 when cancelling without a reason', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({})
+      .expect(400);
+  });
+
+  it('shows the cancellation on the trail, naming its actor', async () => {
+    const workOrder = await createInExecutionWorkOrder();
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ reason: 'Cliente desistiu do servico' })
+      .expect(200);
+
+    const trail = await getTrail(workOrder.number);
+    const cancellation = trail.find((entry) => entry.eventType === 'WORK_ORDER_CANCELED');
+    expect(cancellation?.actorUserId).toBeTruthy();
   });
 });

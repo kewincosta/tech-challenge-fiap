@@ -777,16 +777,18 @@ Unplanned but required: `SettleStockMovementsHandler` and `WriteOffStockMovement
 
 **Done when**:
 
-- [ ] A service advisor cancels a work order with nothing withdrawn, and it answers 200 with nothing written off (spec.md edge case)
-- [ ] A part withdrawn 4 and returned 3, then cancelled, records a loss of exactly one unit and leaves the three returned units on the shelf (spec.md edge case)
-- [ ] A service advisor cancelling a work order carrying withdrawn parts answers 403 with the code `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`
-- [ ] The same refusal happens in `AWAITING_APPROVAL` after a supplementary round, not only in `IN_EXECUTION` (spec.md edge case)
-- [ ] An administrator cancels the same work order and the movements read `WRITTEN_OFF`
-- [ ] Cancelling an already cancelled work order answers 422 (spec.md edge case)
-- [ ] Cancelling without a reason answers 400
-- [ ] The trail shows the cancellation naming its actor
-- [ ] Gate check passes: `npm run test:e2e`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] A service advisor cancels a work order with nothing withdrawn, and it answers 200 with nothing written off (spec.md edge case)
+- [x] A part withdrawn 4 and returned 3, then cancelled, records a loss of exactly one unit and leaves the three returned units on the shelf (spec.md edge case)
+- [x] A service advisor cancelling a work order carrying withdrawn parts answers 403 with the code `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`
+- [x] The same refusal happens in `AWAITING_APPROVAL` after a supplementary round, not only in `IN_EXECUTION` (spec.md edge case)
+- [x] An administrator cancels the same work order and the movements read `WRITTEN_OFF`
+- [x] Cancelling an already cancelled work order answers 422 (spec.md edge case)
+- [x] Cancelling without a reason answers 400
+- [x] The trail shows the cancellation naming its actor
+- [x] Gate check passes: `npm run test:e2e`
+- [x] Test count: 6 tests pass (2 fewer than planned - the three bullets about the refused-then-successful cancellation on one work order (403 in IN_EXECUTION, the same 403 again in AWAITING_APPROVAL after a supplementary round, then the admin's successful cancellation reading WRITTEN_OFF) are one flowing scenario and one test, not three)
+
+Note: `stock_movement_transitions.quantity` (the net-loss figure a write-off records) has no API route exposing it at all - confirmed by re-reading design.md, tasks.md and spec.md, none of which name a query for it. The "loss of exactly one unit" bullet is proven the only way the API allows: through `quantityOnHand` arithmetic (10 initial - 4 withdrawn + 3 returned = 9, unchanged by the write-off itself) plus the consumption movement's own status reading `WRITTEN_OFF`, matching design.md's own note that neither the trail nor the movement history drives a calculation - both are evidence, and the loss is a fact about the stock count, not a labelled field.
 
 **Tests**: e2e
 **Gate**: full
