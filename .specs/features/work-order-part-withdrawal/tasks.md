@@ -156,11 +156,11 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] Each error carries a distinct `code` and `ErrorKind.RuleViolation`
-- [ ] The four codes are distinct from the twenty the module already exports
-- [ ] `PartNotWithdrawableError`'s message names both reasons it fires: no round, or a round that is not approved
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] Each error carries a distinct `code` and `ErrorKind.RuleViolation`
+- [x] The four codes are distinct from the twenty the module already exports
+- [x] `PartNotWithdrawableError`'s message names both reasons it fires: no round, or a round that is not approved
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (matches the plan exactly)
 
 **Tests**: unit
 **Gate**: quick
