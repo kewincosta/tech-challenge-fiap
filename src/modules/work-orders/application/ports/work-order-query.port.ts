@@ -3,6 +3,8 @@ export interface WorkOrderServiceItemDto {
   serviceId: string;
   serviceName: string;
   unitPriceCents: number;
+  budgetRound: number | null;
+  budgetedUnitPriceCents: number | null;
 }
 
 export interface WorkOrderPartItemDto {
@@ -13,6 +15,18 @@ export interface WorkOrderPartItemDto {
   plannedQuantity: number;
   withdrawnQuantity: number;
   unitPriceCents: number;
+  budgetRound: number | null;
+  budgetedUnitPriceCents: number | null;
+}
+
+export interface WorkOrderBudgetDto {
+  id: string;
+  round: number;
+  totalCents: number;
+  status: string;
+  generatedAt: Date;
+  decidedAt: Date | null;
+  decidedByUserId: string | null;
 }
 
 export interface WorkOrderSummaryDto {
@@ -30,6 +44,8 @@ export interface WorkOrderSummaryDto {
   vehicleYear: number;
   serviceItems: WorkOrderServiceItemDto[];
   partItems: WorkOrderPartItemDto[];
+  /** Ordered by round. Empty while the work order has no budget yet. */
+  budgets: WorkOrderBudgetDto[];
 }
 
 export interface WorkOrderTrailEntryDto {

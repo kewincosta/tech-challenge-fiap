@@ -480,13 +480,15 @@ T19  T20
 
 **Done when**:
 
-- [ ] `WorkOrderSummaryDto` carries `budgets`, ordered by round, each with its number, total in cents, status, generation moment, and its decision when it has one
-- [ ] Both item DTOs carry `budgetRound` and `budgetedUnitPriceCents`, null while the item is a draft
-- [ ] A work order carrying no budget returns an empty round list rather than an error
-- [ ] The list route's summaries carry the same fields as the detail read
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] `WorkOrderSummaryDto` carries `budgets`, ordered by round, each with its number, total in cents, status, generation moment, and its decision when it has one
+- [x] Both item DTOs carry `budgetRound` and `budgetedUnitPriceCents`, null while the item is a draft
+- [x] A work order carrying no budget returns an empty round list rather than an error
+- [x] The list route's summaries carry the same fields as the detail read
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 4 tests pass (3 fewer than planned - one test walks a full round/decision/supplementary cycle and asserts the whole `budgets` array shape in one case rather than splitting it into per-field cases)
+
+**Unplanned but required**: one `prefer-const` lint error in this task's own new file, fixed with `eslint --fix`.
 
 **Tests**: integration
 **Gate**: full

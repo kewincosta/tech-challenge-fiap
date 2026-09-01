@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import {
+  WorkOrderBudgetDto,
   WorkOrderPartItemDto,
   WorkOrderQueryPort,
   WorkOrderServiceItemDto,
@@ -30,6 +31,8 @@ interface ServiceItemRow {
   service_external_id: string;
   service_name: string;
   unit_price_cents: string;
+  budget_round: number | null;
+  budgeted_unit_price_cents: string | null;
 }
 
 interface PartItemRow {
@@ -40,6 +43,18 @@ interface PartItemRow {
   planned_quantity: number;
   withdrawn_quantity: number;
   unit_price_cents: string;
+  budget_round: number | null;
+  budgeted_unit_price_cents: string | null;
+}
+
+interface BudgetRow {
+  external_id: string;
+  round: number;
+  total_cents: string;
+  status: string;
+  generated_at: Date;
+  decided_at: Date | null;
+  decided_by_external_id: string | null;
 }
 
 interface TrailRow {
@@ -70,16 +85,27 @@ const SELECT_WORK_ORDERS = `
 `;
 
 const SELECT_SERVICE_ITEMS = `
-  SELECT wos.external_id, s.external_id AS service_external_id, wos.service_name, wos.unit_price_cents
+  SELECT wos.external_id, s.external_id AS service_external_id, wos.service_name, wos.unit_price_cents,
+         wob.round AS budget_round, wos.budgeted_unit_price_cents
     FROM work_order_services wos
     JOIN services s ON s.id = wos.service_id
+    LEFT JOIN work_order_budgets wob ON wob.id = wos.budget_id
 `;
 
 const SELECT_PART_ITEMS = `
   SELECT wop.external_id, ii.external_id AS inventory_item_external_id, wop.sku, wop.item_name,
-         wop.planned_quantity, wop.withdrawn_quantity, wop.unit_price_cents
+         wop.planned_quantity, wop.withdrawn_quantity, wop.unit_price_cents,
+         wob.round AS budget_round, wop.budgeted_unit_price_cents
     FROM work_order_parts wop
     JOIN inventory_items ii ON ii.id = wop.inventory_item_id
+    LEFT JOIN work_order_budgets wob ON wob.id = wop.budget_id
+`;
+
+const SELECT_BUDGETS = `
+  SELECT wb.external_id, wb.round, wb.total_cents, wb.status, wb.generated_at, wb.decided_at,
+         decider.external_id AS decided_by_external_id
+    FROM work_order_budgets wb
+    LEFT JOIN users decider ON decider.id = wb.decided_by_user_id
 `;
 
 const SELECT_TRAIL = `
@@ -128,7 +154,15 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
       `${SELECT_PART_ITEMS} WHERE wop.work_order_id = $1`,
       [row.internal_id],
     );
-    const [serviceRows, partRows] = await Promise.all([fetchServiceRows, fetchPartRows]);
+    const fetchBudgetRows: Promise<BudgetRow[]> = this.dataSource.query(
+      `${SELECT_BUDGETS} WHERE wb.work_order_id = $1 ORDER BY wb.round ASC`,
+      [row.internal_id],
+    );
+    const [serviceRows, partRows, budgetRows] = await Promise.all([
+      fetchServiceRows,
+      fetchPartRows,
+      fetchBudgetRows,
+    ]);
     return {
       id: row.external_id,
       number: row.number,
@@ -144,6 +178,7 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
       vehicleYear: row.vehicle_year,
       serviceItems: serviceRows.map((serviceRow) => this.serviceItemToDto(serviceRow)),
       partItems: partRows.map((partRow) => this.partItemToDto(partRow)),
+      budgets: budgetRows.map((budgetRow) => this.budgetToDto(budgetRow)),
     };
   }
 
@@ -155,6 +190,11 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
       // Same explicit bigint conversion the mapper does - a read model that skipped it would
       // hand the API a string where the contract says number (AD-002).
       unitPriceCents: Money.fromDatabase(row.unit_price_cents).cents,
+      budgetRound: row.budget_round,
+      budgetedUnitPriceCents:
+        row.budgeted_unit_price_cents !== null
+          ? Money.fromDatabase(row.budgeted_unit_price_cents).cents
+          : null,
     };
   }
 
@@ -167,6 +207,23 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
       plannedQuantity: row.planned_quantity,
       withdrawnQuantity: row.withdrawn_quantity,
       unitPriceCents: Money.fromDatabase(row.unit_price_cents).cents,
+      budgetRound: row.budget_round,
+      budgetedUnitPriceCents:
+        row.budgeted_unit_price_cents !== null
+          ? Money.fromDatabase(row.budgeted_unit_price_cents).cents
+          : null,
+    };
+  }
+
+  private budgetToDto(row: BudgetRow): WorkOrderBudgetDto {
+    return {
+      id: row.external_id,
+      round: row.round,
+      totalCents: Money.fromDatabase(row.total_cents).cents,
+      status: row.status,
+      generatedAt: row.generated_at,
+      decidedAt: row.decided_at,
+      decidedByUserId: row.decided_by_external_id,
     };
   }
 
