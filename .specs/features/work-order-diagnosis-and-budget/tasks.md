@@ -602,14 +602,14 @@ T19  T20
 
 **Done when**:
 
-- [ ] The handler mints a `BudgetId` and passes it to the aggregate
-- [ ] An unknown number throws `WorkOrderNotFoundError`
-- [ ] `EmptyDraftBudgetError` travels out untouched
-- [ ] The wrong-state error travels out untouched
-- [ ] Both recorded events are published
-- [ ] The command carries no price and no total
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] The handler mints a `BudgetId` and passes it to the aggregate
+- [x] An unknown number throws `WorkOrderNotFoundError`
+- [x] `EmptyDraftBudgetError` travels out untouched
+- [x] The wrong-state error travels out untouched
+- [x] Both recorded events are published
+- [x] The command carries no price and no total (structural)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (1 fewer than planned - id-minting and the two-event publish share one case)
 
 **Tests**: unit
 **Gate**: quick
