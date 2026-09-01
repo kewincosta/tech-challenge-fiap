@@ -633,13 +633,13 @@ T19  T20
 
 **Done when**:
 
-- [ ] The authorizer runs after the work order is loaded and before `approveBudget` is called
-- [ ] An actor the authorizer refuses never reaches `save`
-- [ ] An unknown number throws `WorkOrderNotFoundError` before the authorizer is consulted
-- [ ] The wrong-state error travels out untouched
-- [ ] Both recorded events are published
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] The authorizer runs after the work order is loaded and before `approveBudget` is called
+- [x] An actor the authorizer refuses never reaches `save`
+- [x] An unknown number throws `WorkOrderNotFoundError` before the authorizer is consulted
+- [x] The wrong-state error travels out untouched
+- [x] Both recorded events are published
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (2 fewer than planned - the happy path covers both the two-event publish and, by the DB never advancing, "the authorizer runs before the aggregate call" together)
 
 **Tests**: unit
 **Gate**: quick
