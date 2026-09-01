@@ -4,7 +4,14 @@ import { createTestApp } from '../support/app';
 import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { uniqueServiceName } from '../support/factories/service.factory';
 import { uniqueSku } from '../support/factories/sku.factory';
-import { api, grantRole, login, registerUser, type AuthenticatedClient } from '../support/http';
+import {
+  api,
+  grantRole,
+  login,
+  registerAndLogin,
+  registerUser,
+  type AuthenticatedClient,
+} from '../support/http';
 
 let app: INestApplication;
 let close: () => Promise<void>;
@@ -334,5 +341,29 @@ describe('Work orders', () => {
       .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
       .expect(200);
     expect(found.body).toMatchObject({ vehicleBrand: 'Toyota', vehicleModel: 'Corolla' });
+  });
+
+  it('should refuse an actor lacking work-orders:read on the list and on the detail (validation.md Gap 1)', async () => {
+    const { number } = await createWorkOrder();
+    const outsider = await registerAndLogin(app);
+
+    const listed = await api(app)
+      .get('/api/v1/work-orders')
+      .set('Authorization', `Bearer ${outsider.accessToken}`)
+      .expect(403);
+    expect(listed.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+
+    const found = await api(app)
+      .get(`/api/v1/work-orders/${number}`)
+      .set('Authorization', `Bearer ${outsider.accessToken}`)
+      .expect(403);
+    expect(found.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('should return 404 for the trail of a number no work order carries, not an empty list (validation.md Gap 2)', async () => {
+    await api(app)
+      .get('/api/v1/work-orders/ZZZZZZ-2026/trail')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
   });
 });

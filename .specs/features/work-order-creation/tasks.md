@@ -705,6 +705,33 @@ T19
 
 ---
 
+### T20: Close the coverage gaps validation.md flagged
+
+**What**: Two e2e tests closing `validation.md`'s Gap 1 and Gap 2. No production code changes: the Verifier confirmed both outcomes are already correct (`work-orders.controller.ts:88,102` and `:120-129`); what is missing is the direct proof.
+**Where**: `test/e2e/work-orders.e2e.spec.ts`
+**Depends on**: T19
+**Reuses**: The `loginAs()` and `createWorkOrder()` fixtures already in `work-orders.e2e.spec.ts`
+**Requirement**: WO-05
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [x] An actor lacking `work-orders:read` answers 403 on `GET /api/v1/work-orders` and on `GET /api/v1/work-orders/:number` (Gap 1)
+- [x] `GET /api/v1/work-orders/:number/trail` for a number no work order carries answers 404, not an empty list (Gap 2)
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 2 new e2e tests. Unit 369/369, integration 155/155 (run twice), e2e 113/113 (run twice) = 637 total, up from 635. No production code touched - both outcomes were already correct, and the Verifier had confirmed as much; this closed the proof, not a defect.
+
+**Tests**: e2e
+**Gate**: build
+
+**Commit**: `test(work-orders): close the coverage gaps validation.md flagged`
+
+---
+
 ## Phase Execution Map
 
 Every arrow is a real `Depends on`. Tasks with no arrow into them have no dependency.
@@ -724,6 +751,7 @@ T13 -> T15 -> T19
 T13 -> T16 -> T19
 T13 -> T17 -> T19
 T18 -> T19
+T19 -> T20
 ```
 
 Execution is strictly sequential, with no intra-phase parallelism.
