@@ -26,6 +26,7 @@ import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
+import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
@@ -1722,5 +1723,198 @@ describe('WorkOrder.applyDiscount', () => {
     });
 
     expect(workOrder.chargedTotal?.equals(Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS - 3000))).toBe(true);
+  });
+});
+
+describe('WorkOrder.complete', () => {
+  const APPROVED_BUDGET = Budget.restore({
+    id: BudgetId.create('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+    round: 1,
+    total: Money.fromCents(25000),
+    status: BudgetStatus.Approved,
+    generatedAt: NOW,
+    decidedAt: NOW,
+    decidedByUserId: CUSTOMER_ID,
+  });
+  const REJECTED_BUDGET = Budget.restore({
+    id: BudgetId.create('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+    round: 2,
+    total: Money.fromCents(9999),
+    status: BudgetStatus.Rejected,
+    generatedAt: NOW,
+    decidedAt: NOW,
+    decidedByUserId: CUSTOMER_ID,
+  });
+
+  function service(id: string, priceCents: number, budgetRound: number | null): WorkOrderServiceItem {
+    return WorkOrderServiceItem.restore({
+      id: WorkOrderItemId.create(id),
+      serviceId: '99999999-9999-4999-8999-999999999999',
+      serviceName: 'Servico',
+      unitPrice: Money.fromCents(priceCents),
+      budgetRound,
+      budgetedUnitPrice: budgetRound === null ? null : Money.fromCents(priceCents),
+    });
+  }
+
+  function part(
+    id: string,
+    priceCents: number,
+    withdrawnQuantity: number,
+    budgetRound: number | null,
+  ): WorkOrderPartItem {
+    return WorkOrderPartItem.restore({
+      id: WorkOrderItemId.create(id),
+      inventoryItemId: '77777777-7777-4777-8777-777777777777',
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(priceCents),
+      plannedQuantity: PlannedQuantity.create(3),
+      withdrawnQuantity,
+      budgetRound,
+      budgetedUnitPrice: budgetRound === null ? null : Money.fromCents(priceCents),
+    });
+  }
+
+  function restoreInExecution(
+    serviceItems: WorkOrderServiceItem[],
+    partItems: WorkOrderPartItem[],
+    budgets: Budget[] = [APPROVED_BUDGET],
+    overrides: { status?: WorkOrderStatus; discount?: Money } = {},
+  ): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: overrides.status ?? WorkOrderStatus.InExecution,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems,
+      partItems,
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets,
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+      discount: overrides.discount,
+    });
+  }
+
+  it('moves IN_EXECUTION to COMPLETED, stamps completedAt and records WorkOrderCompleted', () => {
+    const workOrder = restoreInExecution([service('11111111-1111-4111-8111-111111111111', 20000, 1)], []);
+
+    workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Completed);
+    expect(workOrder.completedAt).toBe(NOW);
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(WorkOrderCompleted);
+  });
+
+  it('stores the pre-discount total minus the recorded discount as the charged total', () => {
+    const workOrder = restoreInExecution(
+      [service('11111111-1111-4111-8111-111111111111', 20000, 1)],
+      [part('22222222-2222-4222-8222-222222222222', 2500, 2, 1)],
+      [APPROVED_BUDGET],
+      { discount: Money.fromCents(1000) },
+    );
+
+    workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
+
+    // 20000 (service) + 2 * 2500 (part) - 1000 (discount) = 24000
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(24000))).toBe(true);
+  });
+
+  it('stores the approved services alone for a work order with no part withdrawn (spec.md edge case)', () => {
+    const workOrder = restoreInExecution(
+      [service('11111111-1111-4111-8111-111111111111', 20000, 1)],
+      [part('22222222-2222-4222-8222-222222222222', 2500, 0, 1)],
+    );
+
+    workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(20000))).toBe(true);
+  });
+
+  it('adds nothing for an item on a rejected round, and nothing for an item on no round at all', () => {
+    const workOrder = restoreInExecution(
+      [
+        service('11111111-1111-4111-8111-111111111111', 20000, 1),
+        service('33333333-3333-4333-8333-333333333333', 9999, 2),
+        service('44444444-4444-4444-8444-444444444444', 5000, null),
+      ],
+      [],
+      [APPROVED_BUDGET, REJECTED_BUDGET],
+    );
+
+    workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
+
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(20000))).toBe(true);
+  });
+
+  it('sums the whole collection, not just its first row, across two services and two part items (L-014)', () => {
+    const workOrder = restoreInExecution(
+      [
+        service('11111111-1111-4111-8111-111111111111', 20000, 1),
+        service('33333333-3333-4333-8333-333333333333', 15000, 1),
+      ],
+      [
+        part('22222222-2222-4222-8222-222222222222', 2500, 2, 1),
+        part('55555555-5555-4555-8555-555555555555', 4000, 1, 1),
+      ],
+    );
+
+    workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
+
+    // 20000 + 15000 + 2*2500 + 1*4000 = 44000
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(44000))).toBe(true);
+  });
+
+  it('refuses when the recorded discount exceeds the pre-discount total, leaving IN_EXECUTION (spec.md edge case)', () => {
+    const workOrder = restoreInExecution(
+      [service('11111111-1111-4111-8111-111111111111', 20000, 1)],
+      [],
+      [APPROVED_BUDGET],
+      { discount: Money.fromCents(20001) },
+    );
+
+    expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(
+      DiscountExceedsChargedTotalError,
+    );
+    expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
+  });
+
+  it('refuses a discount that was valid when applied but a later return dropped the total below it (L-008)', () => {
+    // applyDiscount accepted 21000 against a total of 25000 (service 20000 + part 2*2500). A
+    // return then drops the part's withdrawn quantity to 0, leaving only the 20000 service - now
+    // 21000 exceeds it. complete's own revalidation is the only guard that can still catch this.
+    const workOrder = restoreInExecution(
+      [service('11111111-1111-4111-8111-111111111111', 20000, 1)],
+      [part('22222222-2222-4222-8222-222222222222', 2500, 0, 1)],
+      [APPROVED_BUDGET],
+      { discount: Money.fromCents(21000) },
+    );
+
+    expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(
+      DiscountExceedsChargedTotalError,
+    );
+  });
+
+  it('refuses from any state other than IN_EXECUTION', () => {
+    const workOrder = restoreInExecution([], [], [APPROVED_BUDGET], {
+      status: WorkOrderStatus.AwaitingApproval,
+    });
+
+    expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(WorkOrderStateError);
   });
 });

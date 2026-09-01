@@ -304,16 +304,18 @@ Both the default-handling fix and the test-scope correction land inside T4's own
 
 **Done when** (four bullets below absorbed from T4's correction - `complete` is the earliest public method that can exercise `chargedTotalBeforeDiscount`):
 
-- [ ] Completing from `IN_EXECUTION` moves to `COMPLETED`, stamps `completedAt` and records `WorkOrderCompleted`
-- [ ] The stored charged total is the pre-discount total minus the recorded discount, where the pre-discount total sums the service items on approved rounds plus each part item's withdrawn quantity times its budgeted unit price
-- [ ] A work order with no part withdrawn stores the approved services alone (spec.md edge case)
-- [ ] An item on a rejected round adds nothing to the total, and an item on no round at all adds nothing (from T4)
-- [ ] A fixture with two services and two part items proves the total sums over the whole collection, not just the first row (L-014, from T4)
-- [ ] A discount larger than the pre-discount total throws `DiscountExceedsChargedTotalError` and leaves the state `IN_EXECUTION` (spec.md edge case: a return dropped the total after the discount was accepted)
-- [ ] That refusal has a case only `complete` can fail: the discount was valid when `applyDiscount` accepted it, and a return lowered the total afterwards (L-008 - the inner guard cannot see this)
-- [ ] Completing from any other state throws `WorkOrderStateError`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (planned 7, +2 for the two criteria absorbed from T4 - no silent deletions)
+- [x] Completing from `IN_EXECUTION` moves to `COMPLETED`, stamps `completedAt` and records `WorkOrderCompleted`
+- [x] The stored charged total is the pre-discount total minus the recorded discount, where the pre-discount total sums the service items on approved rounds plus each part item's withdrawn quantity times its budgeted unit price
+- [x] A work order with no part withdrawn stores the approved services alone (spec.md edge case)
+- [x] An item on a rejected round adds nothing to the total, and an item on no round at all adds nothing (from T4)
+- [x] A fixture with two services and two part items proves the total sums over the whole collection, not just the first row (L-014, from T4)
+- [x] A discount larger than the pre-discount total throws `DiscountExceedsChargedTotalError` and leaves the state `IN_EXECUTION` (spec.md edge case: a return dropped the total after the discount was accepted)
+- [x] That refusal has a case only `complete` can fail: the discount was valid when `applyDiscount` accepted it, and a return lowered the total afterwards (L-008 - the inner guard cannot see this)
+- [x] Completing from any other state throws `WorkOrderStateError`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (planned 9; L-008's refusal case and the plain over-ceiling refusal both assert via the same `DiscountExceedsChargedTotalError` type, and the L-014 fixture doubles as the "sums the whole collection" bullet, so one fewer standalone case was needed than estimated - no silent deletions, every bullet above has a direct assertion)
+
+Unplanned but required: writing this task's tests surfaced that `WorkOrder.restore` used a blind object spread (`{...CLOSING_DEFAULTS, ...props}`) to default the closing props, which silently breaks when a caller passes a key explicitly set to `undefined` (object spread does not fall back to the earlier value in that case, unlike `??`) - exactly what this task's own test helper did for `discount` when no override was given. Fixed by replacing the spread with a per-field `??` fallback in `restore`, which is immune to that shape regardless of caller. No test regression; the whole existing suite still passes unchanged.
 
 **Tests**: unit
 **Gate**: quick

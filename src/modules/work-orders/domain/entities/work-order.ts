@@ -26,6 +26,7 @@ import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
+import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
@@ -191,6 +192,11 @@ interface ApplyDiscountInput {
   now: Date;
 }
 
+interface CloseActionInput {
+  actorUserId: string;
+  now: Date;
+}
+
 /** `addService` and `removeItem` both allow this set - section 11's table. */
 const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.Received,
@@ -245,8 +251,18 @@ export class WorkOrder extends AggregateRoot {
 
   static restore(props: RestoreWorkOrderProps): WorkOrder {
     return new WorkOrder({
-      ...CLOSING_DEFAULTS,
       ...props,
+      chargedTotal: props.chargedTotal ?? CLOSING_DEFAULTS.chargedTotal,
+      discount: props.discount ?? CLOSING_DEFAULTS.discount,
+      discountNote: props.discountNote ?? CLOSING_DEFAULTS.discountNote,
+      discountAppliedByUserId: props.discountAppliedByUserId ?? CLOSING_DEFAULTS.discountAppliedByUserId,
+      discountAppliedAt: props.discountAppliedAt ?? CLOSING_DEFAULTS.discountAppliedAt,
+      completedAt: props.completedAt ?? CLOSING_DEFAULTS.completedAt,
+      deliveredAt: props.deliveredAt ?? CLOSING_DEFAULTS.deliveredAt,
+      deliveredByUserId: props.deliveredByUserId ?? CLOSING_DEFAULTS.deliveredByUserId,
+      canceledAt: props.canceledAt ?? CLOSING_DEFAULTS.canceledAt,
+      canceledByUserId: props.canceledByUserId ?? CLOSING_DEFAULTS.canceledByUserId,
+      cancellationReason: props.cancellationReason ?? CLOSING_DEFAULTS.cancellationReason,
       serviceItems: [...props.serviceItems],
       partItems: [...props.partItems],
       budgets: [...props.budgets],
@@ -592,6 +608,27 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new DiscountApplied(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * Freezes the charged total for good - the only other write that can touch it afterwards is
+   * `applyDiscount`, which recomputes it explicitly for a `COMPLETED` work order. Revalidates the
+   * discount against the current pre-discount total rather than trusting the value
+   * `applyDiscount` already checked: a return between the discount and the completion can have
+   * lowered the total since (spec.md edge case, L-008 - `applyDiscount`'s own check cannot see a
+   * later return).
+   */
+  complete(input: CloseActionInput): void {
+    this.assertStateAllows([WorkOrderStatus.InExecution]);
+    const preDiscountTotal = this.chargedTotalBeforeDiscount();
+    if (this.props.discount.isGreaterThan(preDiscountTotal)) {
+      throw new DiscountExceedsChargedTotalError();
+    }
+    this.props.chargedTotal = preDiscountTotal.subtract(this.props.discount);
+    this.props.status = WorkOrderStatus.Completed;
+    this.props.completedAt = input.now;
+    this.props.updatedAt = input.now;
+    this.record(new WorkOrderCompleted(this.props.id.value, input.actorUserId, input.now));
   }
 
   private assertStateAllows(allowed: WorkOrderStatus[]): void {
