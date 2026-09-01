@@ -518,3 +518,128 @@ describe('Work order closing - cancellation and its write-off', () => {
     expect(cancellation?.actorUserId).toBeTruthy();
   });
 });
+
+describe('Work order closing - discount', () => {
+  it('applies a discount with a reason as an administrator and reads it back', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 1000, note: 'Cliente fidelizado' })
+      .expect(200);
+    const body = response.body as WorkOrderDetail;
+
+    expect(body.discountCents).toBe(1000);
+    expect(body.discountNote).toBe('Cliente fidelizado');
+    const trail = await getTrail(workOrder.number);
+    expect(trail.some((entry) => entry.eventType === 'DISCOUNT_APPLIED')).toBe(true);
+  });
+
+  it('replaces the first discount with a second, reading back the second amount, note and actor', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+    const firstAdmin = admin;
+    const secondAdmin = await loginAs('ADMIN');
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${firstAdmin.accessToken}`)
+      .send({ amountCents: 1000, note: 'Primeira tentativa' })
+      .expect(200);
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${secondAdmin.accessToken}`)
+      .send({ amountCents: 500, note: 'Segunda tentativa' })
+      .expect(200);
+    const body = response.body as WorkOrderDetail;
+
+    expect(body.discountCents).toBe(500);
+    expect(body.discountNote).toBe('Segunda tentativa');
+    const trail = await getTrail(workOrder.number);
+    const discountEntries = trail.filter((entry) => entry.eventType === 'DISCOUNT_APPLIED');
+    expect(discountEntries.at(-1)?.actorUserId).toBe(secondAdmin.userId);
+  });
+
+  it('answers 422 for a discount above the pre-discount total', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 20100, note: 'Acima do total' })
+      .expect(422);
+  });
+
+  it('accepts a discount exactly equal to the pre-discount total (L-009 boundary)', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 20099, note: 'Igual ao total' })
+      .expect(200);
+
+    expect((response.body as WorkOrderDetail).discountCents).toBe(20099);
+  });
+
+  it('answers 400 for a discount with no reason', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 500 })
+      .expect(400);
+  });
+
+  it('answers 403 for a service advisor, who lacks work-orders:discount, its own test rather than another route standing in', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ amountCents: 500, note: 'Tentativa negada' })
+      .expect(403);
+    expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('refuses completion with 422 when a return after the discount drops the pre-discount total below it (spec.md edge case)', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 20099, note: 'Desconto total' })
+      .expect(200);
+
+    await returnPart(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/completion`)
+      .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
+      .expect(422);
+  });
+
+  it('charges the pre-discount total minus the discount on completion', async () => {
+    const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
+    await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/discount`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ amountCents: 1000, note: 'Cliente fidelizado' })
+      .expect(200);
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/completion`)
+      .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
+      .expect(200);
+
+    expect((response.body as WorkOrderDetail).chargedTotalCents).toBe(20099 - 1000);
+  });
+});

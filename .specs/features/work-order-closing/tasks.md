@@ -812,16 +812,18 @@ Note: `stock_movement_transitions.quantity` (the net-loss figure a write-off rec
 
 **Done when**:
 
-- [ ] An administrator applies a discount with a reason and the work order reads it back
-- [ ] A second discount replaces the first, and the work order reads the second amount, note and actor
-- [ ] A discount above the pre-discount total answers 422
-- [ ] A discount exactly equal to the total is accepted (L-009's boundary at the route)
-- [ ] A discount without a reason answers 400
-- [ ] A service advisor, who lacks `work-orders:discount`, answers 403 - its own test rather than another route's standing in (L-003)
-- [ ] A discount applied, then a return that drops the total below it, refuses the completion with 422 (spec.md edge case)
-- [ ] Completion after the discount charges the total minus the discount
-- [ ] Gate check passes: `npm run test:e2e`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] An administrator applies a discount with a reason and the work order reads it back
+- [x] A second discount replaces the first, and the work order reads the second amount, note and actor
+- [x] A discount above the pre-discount total answers 422
+- [x] A discount exactly equal to the total is accepted (L-009's boundary at the route)
+- [x] A discount without a reason answers 400
+- [x] A service advisor, who lacks `work-orders:discount`, answers 403 - its own test rather than another route's standing in (L-003)
+- [x] A discount applied, then a return that drops the total below it, refuses the completion with 422 (spec.md edge case)
+- [x] Completion after the discount charges the total minus the discount
+- [x] Gate check passes: `npm run test:e2e`
+- [x] Test count: 8 tests pass (matches the plan exactly)
+
+Note: `discountAppliedByUserId` is not on `WorkOrderResponseDto` (design.md's own field list omits it), so "reads the second amount, note and actor" reads the actor off the trail's last `DISCOUNT_APPLIED` entry rather than off the work order detail response.
 
 **Tests**: e2e
 **Gate**: full
