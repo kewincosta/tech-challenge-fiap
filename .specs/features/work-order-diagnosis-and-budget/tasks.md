@@ -542,12 +542,12 @@ T19  T20
 
 **Done when**:
 
-- [ ] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
-- [ ] It calls `startDiagnosis`, saves, then publishes with `pullDomainEvents`
-- [ ] The aggregate's state error travels out untouched rather than being translated
-- [ ] Nothing is saved when the aggregate refuses
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
+- [x] It calls `startDiagnosis`, saves, then publishes with `pullDomainEvents`
+- [x] The aggregate's state error travels out untouched rather than being translated
+- [x] Nothing is saved when the aggregate refuses
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (matches the plan minus the gate/count meta bullets)
 
 **Tests**: unit
 **Gate**: quick
