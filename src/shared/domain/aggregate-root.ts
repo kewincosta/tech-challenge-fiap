@@ -12,4 +12,13 @@ export abstract class AggregateRoot {
     this.events = [];
     return pulled;
   }
+
+  /**
+   * Non-draining: reading this twice returns the same events. A repository that writes a trail
+   * from the aggregate's own recorded events (AD-007) needs to read them without emptying the
+   * list the publisher still drains through `pullDomainEvents` after `save` returns (H39).
+   */
+  get domainEvents(): readonly DomainEvent[] {
+    return [...this.events];
+  }
 }

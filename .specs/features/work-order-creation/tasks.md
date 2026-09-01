@@ -123,12 +123,12 @@ T19
 
 **Done when**:
 
-- [ ] `domainEvents` returns every recorded event
-- [ ] Reading `domainEvents` twice returns the same events, proving it does not drain
-- [ ] `pullDomainEvents` still returns the events and still empties the list after `domainEvents` was read
-- [ ] The seven aggregates that already extend `AggregateRoot` are untouched
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] `domainEvents` returns every recorded event
+- [x] Reading `domainEvents` twice returns the same events, proving it does not drain
+- [x] `pullDomainEvents` still returns the events and still empties the list after `domainEvents` was read
+- [x] The seven aggregates that already extend `AggregateRoot` are untouched
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
