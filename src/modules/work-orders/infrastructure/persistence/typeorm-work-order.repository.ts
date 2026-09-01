@@ -1,13 +1,23 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { DomainEvent } from '../../../../shared/domain/domain-event';
 import { WorkOrder } from '../../domain/entities/work-order';
+import { VehicleAlreadyHasActiveWorkOrderError } from '../../domain/errors/vehicle-already-has-active-work-order.error';
+import { WorkOrderNumberTakenError } from '../../domain/errors/work-order-number-taken.error';
+import { WorkOrderTrailEvent } from '../../domain/events/work-order-trail.event';
 import { WorkOrderRepository } from '../../domain/repositories/work-order.repository';
 import { WorkOrderNumber } from '../../domain/value-objects/work-order-number';
 import { WorkOrderMapper } from './work-order.mapper';
+import { WorkOrderEventOrmEntity } from './work-order-event.orm-entity';
 import { WorkOrderPartOrmEntity } from './work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './work-order-service.orm-entity';
 import { WorkOrderOrmEntity } from './work-order.orm-entity';
+
+const UNIQUE_VIOLATION = '23505';
+const ACTIVE_VEHICLE_CONSTRAINT = 'ux_work_orders_active_vehicle';
+const NUMBER_CONSTRAINT = 'ux_work_orders_number';
 
 @Injectable()
 export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
@@ -64,45 +74,96 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
 
   /**
    * Opens one transaction (copying `TypeOrmSessionRepository.save`), resolves every external id
-   * to its internal key, writes the work order row, and replaces its item rows: rows whose
-   * external id is no longer on the aggregate are deleted, the rest are written (design.md's
-   * Tech Decisions). The trail write and the constraint-violation mapping are T10.
+   * to its internal key, writes the work order row, replaces its item rows (rows whose external
+   * id is no longer on the aggregate are deleted, the rest are written - design.md's Tech
+   * Decisions), and appends one trail row per event read from `workOrder.domainEvents` - a
+   * non-draining read, so the handler's own `pullDomainEvents()` after `save` still sees them
+   * (AD-007, H39). A violation of `ux_work_orders_number` maps to `WorkOrderNumberTakenError`,
+   * which the handler retries with a fresh number; a violation of `ux_work_orders_active_vehicle`
+   * maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is never retried.
    */
   async save(workOrder: WorkOrder): Promise<void> {
     const { workOrderRow, serviceRows, partRows } = WorkOrderMapper.toOrm(workOrder);
+    const events = workOrder.domainEvents;
 
-    await this.dataSource.transaction(async (manager) => {
-      const existing = await manager.findOne(WorkOrderOrmEntity, {
-        where: { externalId: workOrder.id.value },
-        select: { id: true, createdAt: true },
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const existing = await manager.findOne(WorkOrderOrmEntity, {
+          where: { externalId: workOrder.id.value },
+          select: { id: true, createdAt: true },
+        });
+        if (existing) {
+          workOrderRow.id = existing.id;
+          workOrderRow.createdAt = existing.createdAt;
+        }
+        workOrderRow.customerInternalId = await this.resolveInternalId(
+          manager,
+          'customers',
+          workOrder.customerId,
+        );
+        workOrderRow.vehicleInternalId = await this.resolveInternalId(
+          manager,
+          'vehicles',
+          workOrder.vehicleId,
+        );
+        workOrderRow.createdByInternalId = await this.resolveInternalId(
+          manager,
+          'users',
+          workOrder.createdByUserId,
+        );
+        workOrderRow.assignedMechanicInternalId = workOrder.assignedMechanicUserId
+          ? await this.resolveInternalId(manager, 'users', workOrder.assignedMechanicUserId)
+          : null;
+        await manager.save(WorkOrderOrmEntity, workOrderRow);
+
+        await this.replaceServiceItems(manager, workOrderRow.id, workOrder, serviceRows);
+        await this.replacePartItems(manager, workOrderRow.id, workOrder, partRows);
+        await this.appendTrail(manager, workOrderRow.id, events);
       });
-      if (existing) {
-        workOrderRow.id = existing.id;
-        workOrderRow.createdAt = existing.createdAt;
+    } catch (error) {
+      if (this.isViolation(error, ACTIVE_VEHICLE_CONSTRAINT)) {
+        throw new VehicleAlreadyHasActiveWorkOrderError();
       }
-      workOrderRow.customerInternalId = await this.resolveInternalId(
-        manager,
-        'customers',
-        workOrder.customerId,
-      );
-      workOrderRow.vehicleInternalId = await this.resolveInternalId(
-        manager,
-        'vehicles',
-        workOrder.vehicleId,
-      );
-      workOrderRow.createdByInternalId = await this.resolveInternalId(
-        manager,
-        'users',
-        workOrder.createdByUserId,
-      );
-      workOrderRow.assignedMechanicInternalId = workOrder.assignedMechanicUserId
-        ? await this.resolveInternalId(manager, 'users', workOrder.assignedMechanicUserId)
-        : null;
-      await manager.save(WorkOrderOrmEntity, workOrderRow);
+      if (this.isViolation(error, NUMBER_CONSTRAINT)) {
+        throw new WorkOrderNumberTakenError();
+      }
+      throw error;
+    }
+  }
 
-      await this.replaceServiceItems(manager, workOrderRow.id, workOrder, serviceRows);
-      await this.replacePartItems(manager, workOrderRow.id, workOrder, partRows);
+  private async appendTrail(
+    manager: EntityManager,
+    workOrderInternalId: string,
+    events: readonly DomainEvent[],
+  ): Promise<void> {
+    const trailEvents = events.filter(
+      (event): event is WorkOrderTrailEvent => event instanceof WorkOrderTrailEvent,
+    );
+    if (trailEvents.length === 0) {
+      return;
+    }
+    const actorInternalIdByExternalId = new Map<string, string>();
+    for (const actorExternalId of new Set(trailEvents.map((event) => event.actorUserId))) {
+      actorInternalIdByExternalId.set(
+        actorExternalId,
+        await this.resolveInternalId(manager, 'users', actorExternalId),
+      );
+    }
+    const rows = trailEvents.map((event) => {
+      const row = new WorkOrderEventOrmEntity();
+      // Trail rows carry no domain-assigned id - unlike a StockMovement, an event class has no
+      // caller-supplied id to serialise, so the repository mints one for the column alone.
+      row.externalId = randomUUID();
+      row.workOrderInternalId = workOrderInternalId;
+      row.eventType = event.eventType;
+      row.fromStatus = event.fromStatus;
+      row.toStatus = event.toStatus;
+      row.actorInternalId = actorInternalIdByExternalId.get(event.actorUserId) ?? null;
+      row.occurredAt = event.occurredAt;
+      row.note = null;
+      return row;
     });
+    await manager.save(WorkOrderEventOrmEntity, rows);
   }
 
   private async replaceServiceItems(
@@ -215,5 +276,13 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       [uniqueIds],
     );
     return new Map(rows.map((row) => [row.id, row.external_id]));
+  }
+
+  private isViolation(error: unknown, constraint: string): boolean {
+    return (
+      error instanceof QueryFailedError &&
+      (error.driverError as { code?: string }).code === UNIQUE_VIOLATION &&
+      (error.driverError as { constraint?: string }).constraint === constraint
+    );
   }
 }

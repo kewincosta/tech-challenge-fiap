@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
+import { VehicleAlreadyHasActiveWorkOrderError } from '../../src/modules/work-orders/domain/errors/vehicle-already-has-active-work-order.error';
+import { WorkOrderNumberTakenError } from '../../src/modules/work-orders/domain/errors/work-order-number-taken.error';
 import { PlannedQuantity } from '../../src/modules/work-orders/domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
@@ -109,10 +111,17 @@ async function seedWorkOrderRefs(): Promise<Fixture> {
   return { creator, customer, vehicle };
 }
 
-function openWorkOrder(fixture: Fixture): WorkOrder {
+function uniqueNumber(): WorkOrderNumber {
+  return WorkOrderNumber.create(`${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`);
+}
+
+function openWorkOrder(
+  fixture: Fixture,
+  overrides: { number?: WorkOrderNumber; now?: Date } = {},
+): WorkOrder {
   return WorkOrder.open({
     id: WorkOrderId.create(randomUUID()),
-    number: WorkOrderNumber.create(`${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`),
+    number: overrides.number ?? uniqueNumber(),
     customerId: fixture.customer.externalId,
     vehicleId: fixture.vehicle.externalId,
     createdByUserId: fixture.creator.externalId,
@@ -121,7 +130,7 @@ function openWorkOrder(fixture: Fixture): WorkOrder {
     vehicleBrand: 'Toyota',
     vehicleModel: 'Corolla',
     vehicleYear: 2020,
-    now: new Date(),
+    now: overrides.now ?? new Date(),
   });
 }
 
@@ -129,7 +138,7 @@ function openWorkOrder(fixture: Fixture): WorkOrder {
 function restoreWorkOrderInDiagnosis(fixture: Fixture): WorkOrder {
   return WorkOrder.restore({
     id: WorkOrderId.create(randomUUID()),
-    number: WorkOrderNumber.create(`${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`),
+    number: uniqueNumber(),
     customerId: fixture.customer.externalId,
     vehicleId: fixture.vehicle.externalId,
     assignedMechanicUserId: null,
@@ -311,5 +320,138 @@ describe('TypeOrmWorkOrderRepository', () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].external_id).toBe(keptItemId.value);
+  });
+
+  it('should write one trail row per recorded event inside the same transaction that persists the aggregate', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const service = await insertService();
+    const workOrder = openWorkOrder(fixture);
+    workOrder.addService({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+
+    await repository.save(workOrder);
+
+    const rows: Array<{ id: number }> = await dataSource.query(
+      `SELECT we.id FROM work_order_events we
+         JOIN work_orders wo ON wo.id = we.work_order_id
+        WHERE wo.external_id = $1`,
+      [workOrder.id.value],
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it('should leave neither the work order changes nor any trail row when the write fails', async () => {
+    const fixture1 = await seedWorkOrderRefs();
+    const service = await insertService();
+    const reusedItemId = WorkOrderItemId.create(randomUUID());
+    const first = restoreWorkOrderInDiagnosis(fixture1);
+    first.addService({
+      itemId: reusedItemId,
+      serviceId: service.externalId,
+      serviceName: 'Alinhamento',
+      unitPrice: Money.fromCents(8000),
+      actorUserId: fixture1.creator.externalId,
+      now: new Date(),
+    });
+    await repository.save(first);
+
+    // Forces a real database failure mid-transaction (a duplicate item external_id violates
+    // ux_work_order_services_external_id) - the domain layer cannot see this coming.
+    const fixture2 = await seedWorkOrderRefs();
+    const second = restoreWorkOrderInDiagnosis(fixture2);
+    second.addService({
+      itemId: reusedItemId,
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: fixture2.creator.externalId,
+      now: new Date(),
+    });
+
+    await expect(repository.save(second)).rejects.toThrow();
+
+    const workOrderRows: Array<{ id: number }> = await dataSource.query(
+      `SELECT id FROM work_orders WHERE external_id = $1`,
+      [second.id.value],
+    );
+    expect(workOrderRows).toHaveLength(0);
+    const trailRows: Array<{ id: number }> = await dataSource.query(
+      `SELECT we.id FROM work_order_events we
+         JOIN work_orders wo ON wo.id = we.work_order_id
+        WHERE wo.external_id = $1`,
+      [second.id.value],
+    );
+    expect(trailRows).toHaveLength(0);
+  });
+
+  it('should leave the recorded events available to the publisher after save returns', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+
+    await repository.save(workOrder);
+
+    // Proves save() read through the non-draining domainEvents getter, not pullDomainEvents -
+    // otherwise the handler's own pullDomainEvents() after save would find nothing to publish.
+    expect(workOrder.pullDomainEvents()).toHaveLength(1);
+  });
+
+  it("should carry the event type, the actor's internal key, the from/to statuses and the moment on a freshly created work order's trail entry", async () => {
+    const fixture = await seedWorkOrderRefs();
+    const now = new Date('2026-08-31T12:00:00.000Z');
+    const workOrder = openWorkOrder(fixture, { now });
+
+    await repository.save(workOrder);
+
+    const rows: Array<{
+      event_type: string;
+      from_status: string | null;
+      to_status: string;
+      actor_user_id: number;
+      occurred_at: Date;
+    }> = await dataSource.query(
+      `SELECT we.event_type, we.from_status, we.to_status, we.actor_user_id, we.occurred_at
+         FROM work_order_events we
+         JOIN work_orders wo ON wo.id = we.work_order_id
+        WHERE wo.external_id = $1`,
+      [workOrder.id.value],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].event_type).toBe('WORK_ORDER_CREATED');
+    expect(rows[0].from_status).toBeNull();
+    expect(rows[0].to_status).toBe('RECEIVED');
+    expect(rows[0].actor_user_id).toBe(fixture.creator.internalId);
+    expect(new Date(rows[0].occurred_at).getTime()).toBe(now.getTime());
+  });
+
+  it('should map a duplicate number to WorkOrderNumberTakenError', async () => {
+    const fixture1 = await seedWorkOrderRefs();
+    const fixture2 = await seedWorkOrderRefs();
+    const number = uniqueNumber();
+    await repository.save(openWorkOrder(fixture1, { number }));
+
+    await expect(repository.save(openWorkOrder(fixture2, { number }))).rejects.toThrow(
+      WorkOrderNumberTakenError,
+    );
+  });
+
+  it('should map a second non-terminal work order for the same vehicle to VehicleAlreadyHasActiveWorkOrderError, never the number error, via two overlapping writes', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const first = openWorkOrder(fixture);
+    const second = openWorkOrder(fixture);
+
+    const results = await Promise.allSettled([repository.save(first), repository.save(second)]);
+
+    const fulfilled = results.filter((result) => result.status === 'fulfilled');
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    );
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected?.reason).toBeInstanceOf(VehicleAlreadyHasActiveWorkOrderError);
   });
 });

@@ -403,15 +403,15 @@ T19
 
 **Done when**:
 
-- [ ] A save writes one trail row per recorded event, inside the transaction that persists the aggregate (AD-007)
-- [ ] **A failure inside the write leaves neither the work order changes nor any trail row**, proven by a forced rollback against real PostgreSQL
-- [ ] The recorded events are still available to the publisher after `save` returns, proven at the repository seam and not only on the base class
-- [ ] Each trail row carries its event type, the acting user resolved to an internal key, the from and to statuses, and the moment
-- [ ] A freshly created work order already has its creation entry on the trail (owns half of that edge case, L-002)
-- [ ] A duplicate number maps to `WorkOrderNumberTakenError`, which the handler retries
-- [ ] **A second non-terminal work order for the same vehicle maps to `VehicleAlreadyHasActiveWorkOrderError`**, never to the number error, proven by two overlapping writes (owns that edge case)
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] A save writes one trail row per recorded event, inside the transaction that persists the aggregate (AD-007)
+- [x] **A failure inside the write leaves neither the work order changes nor any trail row**, proven by a forced rollback against real PostgreSQL
+- [x] The recorded events are still available to the publisher after `save` returns, proven at the repository seam and not only on the base class
+- [x] Each trail row carries its event type, the acting user resolved to an internal key, the from and to statuses, and the moment
+- [x] A freshly created work order already has its creation entry on the trail (owns half of that edge case, L-002)
+- [x] A duplicate number maps to `WorkOrderNumberTakenError`, which the handler retries
+- [x] **A second non-terminal work order for the same vehicle maps to `VehicleAlreadyHasActiveWorkOrderError`**, never to the number error, proven by two overlapping writes (owns that edge case)
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
