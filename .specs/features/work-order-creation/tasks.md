@@ -590,11 +590,11 @@ T19
 
 **Done when**:
 
-- [ ] Removes an item and leaves every other item of that work order in place
-- [ ] Refuses an item identifier the addressed work order does not hold, with `WorkOrderItemNotFoundError`
-- [ ] Refuses an unknown work order with `WorkOrderNotFoundError` (its own test at this layer, L-003)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] Removes an item and leaves every other item of that work order in place
+- [x] Refuses an item identifier the addressed work order does not hold, with `WorkOrderItemNotFoundError`
+- [x] Refuses an unknown work order with `WorkOrderNotFoundError` (its own test at this layer, L-003)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
