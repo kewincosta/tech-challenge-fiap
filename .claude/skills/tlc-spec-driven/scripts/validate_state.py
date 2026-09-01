@@ -49,25 +49,79 @@ def _feature_dirs(root):
     return base, dirs
 
 
-def _verdict(text):
-    """Return 'pass', 'fail', 'unfilled', or None from a validation report."""
-    # Look at the '## Validation' heading first, then a '**Result**' line.
-    lines = text.splitlines()
-    candidates = [
-        ln for ln in lines
-        if re.search(r"^#{1,4}\s*validation\b", ln.strip(), re.IGNORECASE)
-        or re.search(r"\*{0,2}result\*{0,2}\s*:", ln.strip(), re.IGNORECASE)
-    ]
-    hay = " ".join(candidates) if candidates else text
-    has_pass = re.search(r"\bPASS\b", hay) is not None
-    has_fail = re.search(r"\bFAIL\b", hay) is not None
+_HEADING_RE = re.compile(r"^#{1,4}\s*validation\b", re.IGNORECASE)
+_LABEL_RE = re.compile(r"\*{0,2}(?:verdict|result)\*{0,2}\s*:", re.IGNORECASE)
+# A value at the end of a label line, after a dash: "**Result**: 3/3 killed - PASS".
+_TRAILING_RE = re.compile(r"-\s*\**\s*(PASS|FAIL)\b[^A-Za-z]*$", re.IGNORECASE)
+# The unfilled template idiom right after a label: "[PASS | FAIL]" (with or without emoji).
+_PLACEHOLDER_RE = re.compile(
+    r"^\**\s*(?:PASS|FAIL)\b[^|]{0,4}\|[^A-Za-z]{0,4}(?:PASS|FAIL)\b", re.IGNORECASE
+)
+
+
+def _line_verdict(line):
+    """Return 'pass', 'fail', 'unfilled', or None for a single stripped line.
+
+    None means the line does not declare a verdict at all - distinct from a
+    line that merely mentions the word PASS or FAIL somewhere in prose (a
+    Discrimination Sensor summary like "5 of 7 killed this pass. FAIL."
+    describes one round's sensor result, not the report's own verdict).
+    """
+    if _HEADING_RE.match(line):
+        # '## Validation: [Feature] - [PASS | FAIL]' - the value sits after the
+        # last dash, regardless of how long the feature name in between is.
+        tail = line.rsplit("-", 1)[-1] if "-" in line else line
+        has_pass = re.search(r"\bPASS\b", tail) is not None
+        has_fail = re.search(r"\bFAIL\b", tail) is not None
+        if has_pass and has_fail:
+            return "unfilled"
+        if has_pass:
+            return "pass"
+        if has_fail:
+            return "fail"
+        return None
+    m = _LABEL_RE.search(line)
+    if not m:
+        return None
+    rest = line[m.end():].lstrip(" *:-[")
+    if _PLACEHOLDER_RE.match(rest):
+        return "unfilled"
+    # The value is recognized only immediately after the label ("**Verdict**:
+    # PASS", "**Result**: PASS ..."), or as the line's trailing "- PASS"/"-
+    # FAIL". A FAIL appearing later in an unrelated sentence, with neither of
+    # those shapes, does not count - this is what lets a multi-round report
+    # keep a prior round's FAIL as history below its current PASS without the
+    # historical text making the whole file misread as failing.
+    first_word = rest.split(None, 1)[0] if rest.split(None, 1) else ""
+    leads_pass = first_word.upper().startswith("PASS")
+    leads_fail = first_word.upper().startswith("FAIL")
+    trailing = _TRAILING_RE.search(rest)
+    trails_pass = bool(trailing) and trailing.group(1).upper() == "PASS"
+    trails_fail = bool(trailing) and trailing.group(1).upper() == "FAIL"
+    has_pass = leads_pass or trails_pass
+    has_fail = leads_fail or trails_fail
     if has_pass and has_fail:
-        # Both present on the verdict line = unfilled template "[PASS | FAIL]".
         return "unfilled"
     if has_pass:
         return "pass"
     if has_fail:
         return "fail"
+    return None
+
+
+def _verdict(text):
+    """Return 'pass', 'fail', 'unfilled', or None from a validation report.
+
+    Scans top to bottom and returns the first line that declares a verdict.
+    A report that keeps prior rounds' history below its current verdict (the
+    tlc-spec-driven convention for a feature that went through a fix-and-
+    re-verify loop) writes its current, authoritative verdict first - the
+    first declaration in the file is the one that governs.
+    """
+    for raw in text.splitlines():
+        v = _line_verdict(raw.strip())
+        if v is not None:
+            return v
     return None
 
 
