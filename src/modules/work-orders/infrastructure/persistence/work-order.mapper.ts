@@ -1,12 +1,16 @@
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { BudgetStatus } from '../../domain/budget-status';
+import { Budget } from '../../domain/entities/budget';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { WorkOrderPartItem } from '../../domain/entities/work-order-part-item';
 import { WorkOrderServiceItem } from '../../domain/entities/work-order-service-item';
+import { BudgetId } from '../../domain/value-objects/budget-id';
 import { PlannedQuantity } from '../../domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../domain/work-order-status';
+import { WorkOrderBudgetOrmEntity } from './work-order-budget.orm-entity';
 import { WorkOrderPartOrmEntity } from './work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './work-order-service.orm-entity';
 import { WorkOrderOrmEntity } from './work-order.orm-entity';
@@ -20,12 +24,15 @@ export interface ResolvedWorkOrderIds {
   budgetDecidedByExternalId: string | null;
   serviceExternalIdByInternalId: Map<string, string>;
   inventoryItemExternalIdByInternalId: Map<string, string>;
+  /** Keyed by each budget row's own `decided_by_user_id` internal id. */
+  budgetDeciderExternalIdByInternalId: Map<string, string>;
 }
 
 export interface WorkOrderOrmSnapshot {
   workOrderRow: WorkOrderOrmEntity;
   serviceRows: WorkOrderServiceOrmEntity[];
   partRows: WorkOrderPartOrmEntity[];
+  budgetRows: WorkOrderBudgetOrmEntity[];
 }
 
 export class WorkOrderMapper {
@@ -33,8 +40,26 @@ export class WorkOrderMapper {
     row: WorkOrderOrmEntity,
     serviceRows: WorkOrderServiceOrmEntity[],
     partRows: WorkOrderPartOrmEntity[],
+    budgetRows: WorkOrderBudgetOrmEntity[],
     resolved: ResolvedWorkOrderIds,
   ): WorkOrder {
+    const roundByBudgetInternalId = new Map(budgetRows.map((budgetRow) => [budgetRow.id, budgetRow.round]));
+    const budgets = [...budgetRows]
+      .sort((a, b) => a.round - b.round)
+      .map((budgetRow) =>
+        Budget.restore({
+          id: BudgetId.create(budgetRow.externalId),
+          round: budgetRow.round,
+          total: Money.fromDatabase(budgetRow.totalCents),
+          status: budgetRow.status as BudgetStatus,
+          generatedAt: budgetRow.generatedAt,
+          decidedAt: budgetRow.decidedAt,
+          decidedByUserId: budgetRow.decidedByInternalId
+            ? (resolved.budgetDeciderExternalIdByInternalId.get(budgetRow.decidedByInternalId) ?? null)
+            : null,
+        }),
+      );
+
     return WorkOrder.restore({
       id: WorkOrderId.create(row.externalId),
       number: WorkOrderNumber.create(row.number),
@@ -52,10 +77,7 @@ export class WorkOrderMapper {
       updatedAt: row.updatedAt,
       diagnosisStartedAt: row.diagnosisStartedAt,
       diagnosisCompletedAt: row.diagnosisCompletedAt,
-      // Budget rounds are not loaded here yet - T10 replaces this with the real read once the
-      // repository queries work_order_budgets. Every item comes back a draft in the meantime,
-      // which is the correct default for a work order that has none.
-      budgets: [],
+      budgets,
       budgetDecidedAt: row.budgetDecidedAt,
       budgetDecidedByUserId: resolved.budgetDecidedByExternalId,
       executionStartedAt: row.executionStartedAt,
@@ -71,9 +93,12 @@ export class WorkOrderMapper {
           serviceId: serviceExternalId,
           serviceName: serviceRow.serviceName,
           unitPrice: Money.fromDatabase(serviceRow.unitPriceCents),
-          // Round attachment is not loaded here yet - T10's job, alongside the budgets array.
-          budgetRound: null,
-          budgetedUnitPrice: null,
+          budgetRound: serviceRow.budgetInternalId
+            ? (roundByBudgetInternalId.get(serviceRow.budgetInternalId) ?? null)
+            : null,
+          budgetedUnitPrice: serviceRow.budgetedUnitPriceCents
+            ? Money.fromDatabase(serviceRow.budgetedUnitPriceCents)
+            : null,
         });
       }),
       partItems: partRows.map((partRow) => {
@@ -91,9 +116,12 @@ export class WorkOrderMapper {
           unitPrice: Money.fromDatabase(partRow.unitPriceCents),
           plannedQuantity: PlannedQuantity.create(partRow.plannedQuantity),
           withdrawnQuantity: partRow.withdrawnQuantity,
-          // Round attachment is not loaded here yet - T10's job, alongside the budgets array.
-          budgetRound: null,
-          budgetedUnitPrice: null,
+          budgetRound: partRow.budgetInternalId
+            ? (roundByBudgetInternalId.get(partRow.budgetInternalId) ?? null)
+            : null,
+          budgetedUnitPrice: partRow.budgetedUnitPriceCents
+            ? Money.fromDatabase(partRow.budgetedUnitPriceCents)
+            : null,
         });
       }),
     });
@@ -126,6 +154,7 @@ export class WorkOrderMapper {
       row.externalId = item.id.value;
       row.serviceName = item.serviceName;
       row.unitPriceCents = String(item.unitPrice.cents);
+      row.budgetedUnitPriceCents = item.budgetedUnitPrice ? String(item.budgetedUnitPrice.cents) : null;
       return row;
     });
 
@@ -137,9 +166,23 @@ export class WorkOrderMapper {
       row.plannedQuantity = item.plannedQuantity.units;
       row.withdrawnQuantity = item.withdrawnQuantity;
       row.unitPriceCents = String(item.unitPrice.cents);
+      row.budgetedUnitPriceCents = item.budgetedUnitPrice ? String(item.budgetedUnitPrice.cents) : null;
       return row;
     });
 
-    return { workOrderRow, serviceRows, partRows };
+    // `workOrderInternalId` and `decidedByInternalId` are left unset - the repository resolves
+    // them, the round's own internal id filled in after this row is inserted (T11).
+    const budgetRows = workOrder.budgets.map((budget) => {
+      const row = new WorkOrderBudgetOrmEntity();
+      row.externalId = budget.id.value;
+      row.round = budget.round;
+      row.totalCents = String(budget.total.cents);
+      row.status = budget.status;
+      row.generatedAt = budget.generatedAt;
+      row.decidedAt = budget.decidedAt;
+      return row;
+    });
+
+    return { workOrderRow, serviceRows, partRows, budgetRows };
   }
 }

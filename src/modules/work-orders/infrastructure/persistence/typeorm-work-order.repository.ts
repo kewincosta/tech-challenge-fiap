@@ -70,7 +70,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       partRows.map((partRow) => partRow.inventoryItemInternalId),
     );
 
-    return WorkOrderMapper.toDomain(row, serviceRows, partRows, {
+    // Budget rows are not queried here yet - T11 adds the read alongside the write path, both in
+    // the same task. Every item comes back a draft in the meantime.
+    return WorkOrderMapper.toDomain(row, serviceRows, partRows, [], {
       customerExternalId,
       vehicleExternalId,
       createdByExternalId,
@@ -78,6 +80,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       budgetDecidedByExternalId,
       serviceExternalIdByInternalId,
       inventoryItemExternalIdByInternalId,
+      budgetDeciderExternalIdByInternalId: new Map(),
     });
   }
 

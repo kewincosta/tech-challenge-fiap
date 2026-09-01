@@ -412,13 +412,15 @@ T19  T20
 
 **Done when**:
 
-- [ ] `toOrm` emits one budget row per round, with the total in cents as a string
-- [ ] `toDomain` rebuilds the rounds ordered by round number
-- [ ] An item's round and budgeted price survive both directions
-- [ ] A draft item maps to null in both columns and comes back a draft
-- [ ] A round carrying a decision maps its decider and moment both ways
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `toOrm` emits one budget row per round, with the total in cents as a string
+- [x] `toDomain` rebuilds the rounds ordered by round number
+- [x] An item's round and budgeted price survive both directions (write: `toOrm` emits `budgetedUnitPriceCents`; read: `toDomain` cross-references an item's `budgetInternalId` against the loaded budget rows to recover the round number - `budgetInternalId` itself is filled in on write by the repository in T11, not by this pure mapper)
+- [x] A draft item maps to null in both columns and comes back a draft
+- [x] A round carrying a decision maps its decider and moment both ways
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (matches the plan exactly)
+
+**Unplanned but required**: `toDomain` gained a fourth positional parameter (`budgetRows`) and `ResolvedWorkOrderIds` gained `budgetDeciderExternalIdByInternalId`, so `TypeOrmWorkOrderRepository.findByNumber` (the only call site) needed updating to keep compiling and passing - it now passes `[]` and `new Map()` as an explicit stopgap, with a comment that T11 replaces both with a real query. Verified integration still passes (163/163) even though this task's own gate is `quick` and doesn't require it, since the last two tasks' lesson was that a signature change reaches further than its own gate.
 
 **Tests**: unit
 **Gate**: quick
