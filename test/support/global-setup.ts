@@ -10,6 +10,7 @@ import { CreateServicesTable1787702400004 } from '../../src/shared/infrastructur
 import { CreateInventorySchema1787702400005 } from '../../src/shared/infrastructure/database/migrations/1787702400005-create-inventory-schema';
 import { CreateWorkOrdersSchema1787702400006 } from '../../src/shared/infrastructure/database/migrations/1787702400006-create-work-orders-schema';
 import { CreateWorkOrderBudgets1787702400007 } from '../../src/shared/infrastructure/database/migrations/1787702400007-create-work-order-budgets';
+import { AddWorkOrderClosingColumns1787702400008 } from '../../src/shared/infrastructure/database/migrations/1787702400008-add-work-order-closing-columns';
 
 const TEST_DATABASE_SUFFIX = '_test';
 
@@ -65,6 +66,7 @@ async function runMigrations(): Promise<void> {
       CreateInventorySchema1787702400005,
       CreateWorkOrdersSchema1787702400006,
       CreateWorkOrderBudgets1787702400007,
+      AddWorkOrderClosingColumns1787702400008,
     ],
   });
   await dataSource.initialize();

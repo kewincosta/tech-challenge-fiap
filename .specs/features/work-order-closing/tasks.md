@@ -137,15 +137,15 @@ T20  T21  T22  T23
 
 **Done when**:
 
-- [ ] `work_orders` gains `charged_total_cents`, `discount_cents`, `discount_note`, `discount_applied_by_user_id`, `discount_applied_at`, `completed_at`, `delivered_at`, `delivered_by_user_id`, `canceled_at`, `canceled_by_user_id`, `cancellation_reason` and `version`
-- [ ] `discount_cents` is `NOT NULL DEFAULT 0` and `version` is `NOT NULL DEFAULT 0`; every other new column is nullable
-- [ ] The three user columns carry a foreign key to `users (id)` with `ON DELETE RESTRICT`, matching `budget_decided_by_user_id`
-- [ ] `stock_movement_transitions` gains a nullable `quantity integer`
-- [ ] `down` drops every column it added
-- [ ] `test/support/global-setup.ts`'s migration array carries the new class
-- [ ] An integration test asserts every column exists with the right nullability and default, and that the foreign keys are in place
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] `work_orders` gains `charged_total_cents`, `discount_cents`, `discount_note`, `discount_applied_by_user_id`, `discount_applied_at`, `completed_at`, `delivered_at`, `delivered_by_user_id`, `canceled_at`, `canceled_by_user_id`, `cancellation_reason` and `version`
+- [x] `discount_cents` is `NOT NULL DEFAULT 0` and `version` is `NOT NULL DEFAULT 0`; every other new column is nullable
+- [x] The three user columns carry a foreign key to `users (id)` with `ON DELETE RESTRICT`, matching `budget_decided_by_user_id`
+- [x] `stock_movement_transitions` gains a nullable `quantity integer`
+- [x] `down` drops every column it added
+- [x] `test/support/global-setup.ts`'s migration array carries the new class
+- [x] An integration test asserts every column exists with the right nullability and default, and that the foreign keys are in place
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: full
