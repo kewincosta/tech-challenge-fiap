@@ -336,18 +336,18 @@ T19
 
 **Done when**:
 
-- [ ] All four tables have `id bigserial pk` and `external_id uuid unique` (AD-001)
-- [ ] `work_orders.status` carries a `CHECK` listing all seven states
-- [ ] `work_orders.number` is unique
-- [ ] **`ux_work_orders_active_vehicle` refuses a second work order for a vehicle while the first is non-terminal, and accepts one once the first is `DELIVERED`** - written as `where status not in ('DELIVERED', 'CANCELED')`, the complement rather than an enumeration
-- [ ] `planned_quantity > 0` and `withdrawn_quantity >= 0` are refused at the database level
-- [ ] `unit_price_cents >= 0` is refused at the database level on both item tables
-- [ ] `work_order_events` is indexed on `(work_order_id, occurred_at)`
-- [ ] **`stock_movements.work_order_id` now has a foreign key to `work_orders(id)`**, the one `inventory-and-stock-movements` deliberately deferred
-- [ ] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
-- [ ] `down()` drops the four tables and the added constraint cleanly, verified by code review rather than executed against the shared test database
-- [ ] Gate check passes: `npm run test:integration`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] All four tables have `id bigserial pk` and `external_id uuid unique` (AD-001)
+- [x] `work_orders.status` carries a `CHECK` listing all seven states
+- [x] `work_orders.number` is unique
+- [x] **`ux_work_orders_active_vehicle` refuses a second work order for a vehicle while the first is non-terminal, and accepts one once the first is `DELIVERED`** - written as `where status not in ('DELIVERED', 'CANCELED')`, the complement rather than an enumeration
+- [x] `planned_quantity > 0` and `withdrawn_quantity >= 0` are refused at the database level
+- [x] `unit_price_cents >= 0` is refused at the database level on both item tables
+- [x] `work_order_events` is indexed on `(work_order_id, occurred_at)`
+- [x] **`stock_movements.work_order_id` now has a foreign key to `work_orders(id)`**, the one `inventory-and-stock-movements` deliberately deferred
+- [x] The migration class is imported and added to `test/support/global-setup.ts`'s `migrations` array
+- [x] `down()` drops the four tables and the added constraint cleanly, verified by code review rather than executed against the shared test database
+- [x] Gate check passes: `npm run test:integration`
+- [x] Test count: 8 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
