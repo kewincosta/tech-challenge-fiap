@@ -3,6 +3,7 @@ import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { DiscountExceedsChargedTotalError } from '../errors/discount-exceeds-charged-total.error';
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
@@ -16,6 +17,7 @@ import { BudgetRejected } from '../events/budget-rejected.event';
 import { BudgetSent } from '../events/budget-sent.event';
 import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
+import { DiscountApplied } from '../events/discount-applied.event';
 import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
@@ -1523,4 +1525,202 @@ describe('WorkOrder closing props', () => {
       executionStartedAt: NOW,
     });
   }
+});
+
+describe('WorkOrder.applyDiscount', () => {
+  const SERVICE_ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
+  const PART_ITEM_ID = WorkOrderItemId.create('77777777-7777-4777-8777-777777777777');
+  const INVENTORY_ITEM_ID = '88888888-8888-4888-8888-888888888888';
+  // One approved-round service at 20000 and one approved-round part withdrawn 2 at 2500 each:
+  // pre-discount total is 25000.
+  const PRE_DISCOUNT_TOTAL_CENTS = 25000;
+
+  function restoreWithChargedTotal(
+    status: WorkOrderStatus,
+    overrides: { chargedTotal?: Money | null; discount?: Money } = {},
+  ): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [
+        WorkOrderServiceItem.restore({
+          id: SERVICE_ITEM_ID,
+          serviceId: '99999999-9999-4999-8999-999999999999',
+          serviceName: 'Alinhamento',
+          unitPrice: Money.fromCents(20000),
+          budgetRound: 1,
+          budgetedUnitPrice: Money.fromCents(20000),
+        }),
+      ],
+      partItems: [
+        WorkOrderPartItem.restore({
+          id: PART_ITEM_ID,
+          inventoryItemId: INVENTORY_ITEM_ID,
+          sku: 'FLT-001',
+          itemName: 'Filtro de oleo',
+          unitPrice: Money.fromCents(2500),
+          plannedQuantity: PlannedQuantity.create(3),
+          withdrawnQuantity: 2,
+          budgetRound: 1,
+          budgetedUnitPrice: Money.fromCents(2500),
+        }),
+      ],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [
+        Budget.restore({
+          id: BudgetId.create('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+          round: 1,
+          total: Money.fromCents(25000),
+          status: BudgetStatus.Approved,
+          generatedAt: NOW,
+          decidedAt: NOW,
+          decidedByUserId: CUSTOMER_ID,
+        }),
+      ],
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+      chargedTotal: overrides.chargedTotal,
+      discount: overrides.discount,
+    });
+  }
+
+  it('records the amount, note, actor and moment, and records DiscountApplied, from IN_EXECUTION', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.InExecution);
+
+    workOrder.applyDiscount({
+      amount: Money.fromCents(5000),
+      note: 'Combinado com o cliente',
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.discount.equals(Money.fromCents(5000))).toBe(true);
+    expect(workOrder.discountNote).toBe('Combinado com o cliente');
+    expect(workOrder.discountAppliedByUserId).toBe(CREATOR_ID);
+    expect(workOrder.discountAppliedAt).toBe(NOW);
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(DiscountApplied);
+  });
+
+  it('records the amount from COMPLETED too', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.Completed, {
+      chargedTotal: Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS),
+      discount: Money.fromCents(0),
+    });
+
+    workOrder.applyDiscount({
+      amount: Money.fromCents(3000),
+      note: 'Ajuste pos-conclusao',
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.discount.equals(Money.fromCents(3000))).toBe(true);
+  });
+
+  it('refuses in any state other than IN_EXECUTION or COMPLETED', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.AwaitingApproval);
+
+    expect(() =>
+      workOrder.applyDiscount({
+        amount: Money.fromCents(1000),
+        note: 'x',
+        actorUserId: CREATOR_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderStateError);
+  });
+
+  it('refuses an amount above the pre-discount total', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.InExecution);
+
+    expect(() =>
+      workOrder.applyDiscount({
+        amount: Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS + 1),
+        note: 'x',
+        actorUserId: CREATOR_ID,
+        now: NOW,
+      }),
+    ).toThrow(DiscountExceedsChargedTotalError);
+  });
+
+  it('allows an amount exactly equal to the pre-discount total (L-009 boundary)', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.InExecution);
+
+    expect(() =>
+      workOrder.applyDiscount({
+        amount: Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS),
+        note: 'x',
+        actorUserId: CREATOR_ID,
+        now: NOW,
+      }),
+    ).not.toThrow();
+  });
+
+  it('refuses one cent above the pre-discount total (L-009 boundary, the other direction)', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.InExecution);
+
+    expect(() =>
+      workOrder.applyDiscount({
+        amount: Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS + 1),
+        note: 'x',
+        actorUserId: CREATOR_ID,
+        now: NOW,
+      }),
+    ).toThrow(DiscountExceedsChargedTotalError);
+  });
+
+  it('replaces the previous discount rather than accumulating it', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.InExecution);
+    workOrder.applyDiscount({
+      amount: Money.fromCents(10000),
+      note: 'Primeiro desconto',
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    const later = new Date('2026-08-31T13:00:00.000Z');
+    workOrder.applyDiscount({
+      amount: Money.fromCents(8000),
+      note: 'Segundo desconto',
+      actorUserId: MECHANIC_ID,
+      now: later,
+    });
+
+    expect(workOrder.discount.equals(Money.fromCents(8000))).toBe(true);
+    expect(workOrder.discountNote).toBe('Segundo desconto');
+    expect(workOrder.discountAppliedByUserId).toBe(MECHANIC_ID);
+    expect(workOrder.discountAppliedAt).toBe(later);
+  });
+
+  it('recomputes and stores the charged total when applied while already COMPLETED', () => {
+    const workOrder = restoreWithChargedTotal(WorkOrderStatus.Completed, {
+      chargedTotal: Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS),
+      discount: Money.fromCents(0),
+    });
+
+    workOrder.applyDiscount({
+      amount: Money.fromCents(3000),
+      note: 'Ajuste pos-conclusao',
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS - 3000))).toBe(true);
+  });
 });

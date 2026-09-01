@@ -273,14 +273,14 @@ Both the default-handling fix and the test-scope correction land inside T4's own
 
 **Done when**:
 
-- [ ] Applying in `IN_EXECUTION` or `COMPLETED` records the amount, note, actor and moment and records `DiscountApplied`
-- [ ] Applying in any other state throws `WorkOrderStateError`
-- [ ] An amount above the pre-discount total throws `DiscountExceedsChargedTotalError`
-- [ ] An amount exactly equal to the pre-discount total is allowed, and one cent above is refused (L-009's boundary, both directions)
-- [ ] A second application replaces the amount, note, actor and moment rather than accumulating
-- [ ] Applying while already `COMPLETED` recomputes and stores the charged total with the new discount
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] Applying in `IN_EXECUTION` or `COMPLETED` records the amount, note, actor and moment and records `DiscountApplied`
+- [x] Applying in any other state throws `WorkOrderStateError`
+- [x] An amount above the pre-discount total throws `DiscountExceedsChargedTotalError`
+- [x] An amount exactly equal to the pre-discount total is allowed, and one cent above is refused (L-009's boundary, both directions)
+- [x] A second application replaces the amount, note, actor and moment rather than accumulating
+- [x] Applying while already `COMPLETED` recomputes and stores the charged total with the new discount
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 8 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

@@ -3,6 +3,7 @@ import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { DiscountExceedsChargedTotalError } from '../errors/discount-exceeds-charged-total.error';
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
@@ -16,6 +17,7 @@ import { BudgetRejected } from '../events/budget-rejected.event';
 import { BudgetSent } from '../events/budget-sent.event';
 import { DiagnosisCompleted } from '../events/diagnosis-completed.event';
 import { DiagnosisStarted } from '../events/diagnosis-started.event';
+import { DiscountApplied } from '../events/discount-applied.event';
 import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
@@ -178,6 +180,13 @@ export interface ResolvedBatchLine {
 
 interface WithdrawPartsInput {
   lines: BatchLine[];
+  actorUserId: string;
+  now: Date;
+}
+
+interface ApplyDiscountInput {
+  amount: Money;
+  note: string;
   actorUserId: string;
   now: Date;
 }
@@ -560,6 +569,29 @@ export class WorkOrder extends AggregateRoot {
     this.props.assignedMechanicUserId = input.mechanicUserId;
     this.props.updatedAt = input.now;
     this.record(new MechanicAssigned(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * A second call replaces the first outright - the columns phase 12 defines are singular, one
+   * amount, one note, one author, one moment (spec.md's Assumptions). Recomputes and persists
+   * `chargedTotal` when already `COMPLETED`, since that figure was already frozen and this is the
+   * only other write that can change it (rule 33).
+   */
+  applyDiscount(input: ApplyDiscountInput): void {
+    this.assertStateAllows([WorkOrderStatus.InExecution, WorkOrderStatus.Completed]);
+    const preDiscountTotal = this.chargedTotalBeforeDiscount();
+    if (input.amount.isGreaterThan(preDiscountTotal)) {
+      throw new DiscountExceedsChargedTotalError();
+    }
+    this.props.discount = input.amount;
+    this.props.discountNote = input.note;
+    this.props.discountAppliedByUserId = input.actorUserId;
+    this.props.discountAppliedAt = input.now;
+    if (this.props.status === WorkOrderStatus.Completed) {
+      this.props.chargedTotal = preDiscountTotal.subtract(input.amount);
+    }
+    this.props.updatedAt = input.now;
+    this.record(new DiscountApplied(this.props.id.value, input.actorUserId, input.now));
   }
 
   private assertStateAllows(allowed: WorkOrderStatus[]): void {
