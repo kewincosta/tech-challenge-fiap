@@ -170,17 +170,17 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| WO-01 | P1: A visit becomes one record with a number | Design | Pending |
-| WO-02 | P1: The requested work sits on the work order | Design | Pending |
-| WO-03 | P1: Every step lands on the trail, with the record | Design | Pending |
-| WO-04 | P2: A work order carries the mechanic responsible for it | Design | Pending |
-| WO-05 | P2: The board and the trail read back | Design | Pending |
+| WO-01 | P1: A visit becomes one record with a number | Tasks | In Tasks |
+| WO-02 | P1: The requested work sits on the work order | Tasks | In Tasks |
+| WO-03 | P1: Every step lands on the trail, with the record | Tasks | In Tasks |
+| WO-04 | P2: A work order carries the mechanic responsible for it | Tasks | In Tasks |
+| WO-05 | P2: The board and the trail read back | Tasks | In Tasks |
 
 **ID format:** `WO-NN`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 5 total, 0 mapped to tasks, 5 unmapped
+**Coverage:** 5 total, 5 mapped to tasks, 0 unmapped
 
 ---
 

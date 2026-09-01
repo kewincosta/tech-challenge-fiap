@@ -1,7 +1,7 @@
 # Work Order Creation Design
 
 **Spec**: `.specs/features/work-order-creation/spec.md`
-**Status**: Draft
+**Status**: Approved
 
 ---
 
