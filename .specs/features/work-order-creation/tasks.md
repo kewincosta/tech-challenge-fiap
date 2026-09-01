@@ -649,13 +649,13 @@ T19
 
 **Done when**:
 
-- [ ] `ListWorkOrdersQuery` returns the board
-- [ ] `ListWorkOrdersQuery` returns only the matching status when one is supplied
-- [ ] `GetWorkOrderQuery` returns one work order by its number
-- [ ] `GetWorkOrderQuery` returns null for a well-formed number no work order carries, rather than throwing
-- [ ] `GetWorkOrderTrailQuery` returns the entries in chronological order
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] `ListWorkOrdersQuery` returns the board
+- [x] `ListWorkOrdersQuery` returns only the matching status when one is supplied
+- [x] `GetWorkOrderQuery` returns one work order by its number
+- [x] `GetWorkOrderQuery` returns null for a well-formed number no work order carries, rather than throwing
+- [x] `GetWorkOrderTrailQuery` returns the entries in chronological order
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
