@@ -3,7 +3,10 @@ import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
+import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
+import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -16,6 +19,7 @@ import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
+import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
@@ -27,6 +31,7 @@ import { WorkOrderNumber } from '../value-objects/work-order-number';
 import { WorkOrderStatus } from '../work-order-status';
 import { Budget } from './budget';
 import { WorkOrder } from './work-order';
+import { WorkOrderPartItem } from './work-order-part-item';
 import { WorkOrderServiceItem } from './work-order-service-item';
 
 const WORK_ORDER_ID = WorkOrderId.create('11111111-1111-4111-8111-111111111111');
@@ -907,5 +912,256 @@ describe('WorkOrder.removeItem budgeted-item guard', () => {
     });
 
     expect(workOrder.serviceItems).toHaveLength(0);
+  });
+});
+
+describe('WorkOrder.withdrawParts', () => {
+  const APPROVED_ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
+  const PENDING_ITEM_ID = WorkOrderItemId.create('77777777-7777-4777-8777-777777777777');
+  const APPROVED_INVENTORY_ITEM_ID = '88888888-8888-4888-8888-888888888888';
+  const PENDING_INVENTORY_ITEM_ID = '99999999-9999-4999-8999-999999999999';
+
+  function approvedRoundOnePart(withdrawnQuantity = 0): WorkOrderPartItem {
+    return WorkOrderPartItem.restore({
+      id: APPROVED_ITEM_ID,
+      inventoryItemId: APPROVED_INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+      withdrawnQuantity,
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(2500),
+    });
+  }
+
+  function pendingRoundTwoPart(): WorkOrderPartItem {
+    return WorkOrderPartItem.restore({
+      id: PENDING_ITEM_ID,
+      inventoryItemId: PENDING_INVENTORY_ITEM_ID,
+      sku: 'BLT-002',
+      itemName: 'Correia',
+      unitPrice: Money.fromCents(4000),
+      plannedQuantity: PlannedQuantity.create(1),
+      withdrawnQuantity: 0,
+      budgetRound: 2,
+      budgetedUnitPrice: Money.fromCents(4000),
+    });
+  }
+
+  function restoreInExecution(
+    partItems: WorkOrderPartItem[],
+    budgets: Budget[],
+    status: WorkOrderStatus = WorkOrderStatus.InExecution,
+  ): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems,
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets,
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+    });
+  }
+
+  function approvedRoundOneBudget(): Budget {
+    return Budget.restore({
+      id: BudgetId.create('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+      round: 1,
+      total: Money.fromCents(7500),
+      status: BudgetStatus.Approved,
+      generatedAt: NOW,
+      decidedAt: NOW,
+      decidedByUserId: CUSTOMER_ID,
+    });
+  }
+
+  function pendingRoundTwoBudget(): Budget {
+    return Budget.restore({
+      id: BudgetId.create('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+      round: 2,
+      total: Money.fromCents(4000),
+      status: BudgetStatus.Pending,
+      generatedAt: NOW,
+      decidedAt: null,
+      decidedByUserId: null,
+    });
+  }
+
+  it('withdraws an approved-round item, returning the resolved inventory item id and quantity', () => {
+    const workOrder = restoreInExecution([approvedRoundOnePart()], [approvedRoundOneBudget()]);
+
+    const resolved = workOrder.withdrawParts({
+      lines: [{ itemId: APPROVED_ITEM_ID, quantity: 2 }],
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    expect(resolved).toEqual([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 }]);
+    expect(workOrder.partItems[0].withdrawnQuantity).toBe(2);
+  });
+
+  it('refuses to withdraw outside IN_EXECUTION', () => {
+    const workOrder = restoreInExecution(
+      [approvedRoundOnePart()],
+      [approvedRoundOneBudget()],
+      WorkOrderStatus.AwaitingApproval,
+    );
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [{ itemId: APPROVED_ITEM_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderStateError);
+  });
+
+  it('refuses a batch naming the same item twice with DuplicateBatchLineError', () => {
+    const workOrder = restoreInExecution([approvedRoundOnePart()], [approvedRoundOneBudget()]);
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [
+          { itemId: APPROVED_ITEM_ID, quantity: 1 },
+          { itemId: APPROVED_ITEM_ID, quantity: 1 },
+        ],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(DuplicateBatchLineError);
+  });
+
+  it('refuses an item id that is not on this work order with WorkOrderItemNotFoundError', () => {
+    const workOrder = restoreInExecution([approvedRoundOnePart()], [approvedRoundOneBudget()]);
+    const unknownId = WorkOrderItemId.create('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [{ itemId: unknownId, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderItemNotFoundError);
+  });
+
+  it('refuses a draft item, attached to no round, with PartNotWithdrawableError', () => {
+    const draft = WorkOrderPartItem.add({
+      id: APPROVED_ITEM_ID,
+      inventoryItemId: APPROVED_INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+    });
+    const workOrder = restoreInExecution([draft], []);
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [{ itemId: APPROVED_ITEM_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(PartNotWithdrawableError);
+  });
+
+  it('allows the line on an approved round and refuses the line on a round still awaiting approval, on the same call', () => {
+    const workOrder = restoreInExecution(
+      [approvedRoundOnePart(), pendingRoundTwoPart()],
+      [approvedRoundOneBudget(), pendingRoundTwoBudget()],
+    );
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [{ itemId: PENDING_ITEM_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(PartNotWithdrawableError);
+
+    const resolved = workOrder.withdrawParts({
+      lines: [{ itemId: APPROVED_ITEM_ID, quantity: 1 }],
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+    expect(resolved).toEqual([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 1 }]);
+  });
+
+  it('refuses a withdrawal that would pass the planned quantity with WithdrawalExceedsPlannedError', () => {
+    const workOrder = restoreInExecution([approvedRoundOnePart(3)], [approvedRoundOneBudget()]);
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [{ itemId: APPROVED_ITEM_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WithdrawalExceedsPlannedError);
+  });
+
+  it('leaves every line untouched when a later line in the same batch fails validation', () => {
+    const workOrder = restoreInExecution(
+      [approvedRoundOnePart(), pendingRoundTwoPart()],
+      [approvedRoundOneBudget(), pendingRoundTwoBudget()],
+    );
+
+    expect(() =>
+      workOrder.withdrawParts({
+        lines: [
+          { itemId: APPROVED_ITEM_ID, quantity: 1 },
+          { itemId: PENDING_ITEM_ID, quantity: 1 },
+        ],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(PartNotWithdrawableError);
+    expect(workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity).toBe(0);
+  });
+
+  it('records exactly one PartWithdrawn for the whole batch, not one per line', () => {
+    // Both items attached to the same approved round, so both lines are withdrawable in one call.
+    const secondApprovedItem = WorkOrderPartItem.restore({
+      id: PENDING_ITEM_ID,
+      inventoryItemId: PENDING_INVENTORY_ITEM_ID,
+      sku: 'BLT-002',
+      itemName: 'Correia',
+      unitPrice: Money.fromCents(4000),
+      plannedQuantity: PlannedQuantity.create(1),
+      withdrawnQuantity: 0,
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(4000),
+    });
+    const workOrder = restoreInExecution(
+      [approvedRoundOnePart(), secondApprovedItem],
+      [approvedRoundOneBudget()],
+    );
+
+    workOrder.withdrawParts({
+      lines: [
+        { itemId: APPROVED_ITEM_ID, quantity: 1 },
+        { itemId: PENDING_ITEM_ID, quantity: 1 },
+      ],
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events.filter((event) => event instanceof PartWithdrawn)).toHaveLength(1);
   });
 });

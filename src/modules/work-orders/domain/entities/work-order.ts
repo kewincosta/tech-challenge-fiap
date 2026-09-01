@@ -3,7 +3,10 @@ import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
+import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
+import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
+import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -16,6 +19,7 @@ import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
+import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
@@ -118,6 +122,22 @@ interface DecideBudgetActionInput {
 
 interface SubmitSupplementaryBudgetInput {
   budgetId: BudgetId;
+  actorUserId: string;
+  now: Date;
+}
+
+export interface BatchLine {
+  itemId: WorkOrderItemId;
+  quantity: number;
+}
+
+export interface ResolvedBatchLine {
+  inventoryItemId: string;
+  quantity: number;
+}
+
+interface WithdrawPartsInput {
+  lines: BatchLine[];
   actorUserId: string;
   now: Date;
 }
@@ -378,6 +398,60 @@ export class WorkOrder extends AggregateRoot {
       throw new WorkOrderStateError(this.props.status);
     }
     return budget;
+  }
+
+  /**
+   * Validates the whole batch before touching anything - every line is checked, then every line
+   * is applied, so a guard firing on line three leaves lines one and two untouched too (design.md's
+   * Risks & Concerns). Returns the resolved lines because the handler needs each work order
+   * item's inventory item id to dispatch the cross-module consumption command; this aggregate is
+   * the only thing that holds that mapping.
+   */
+  withdrawParts(input: WithdrawPartsInput): ResolvedBatchLine[] {
+    this.assertStateAllows([WorkOrderStatus.InExecution]);
+    this.assertNoDuplicateLines(input.lines);
+    const resolved = input.lines.map((line) => {
+      const item = this.props.partItems.find((candidate) => candidate.id.equals(line.itemId));
+      if (!item) {
+        throw new WorkOrderItemNotFoundError();
+      }
+      this.assertWithdrawable(item, line.quantity);
+      return { item, quantity: line.quantity };
+    });
+    for (const { item, quantity } of resolved) {
+      item.withdraw(quantity);
+    }
+    this.props.updatedAt = input.now;
+    this.record(new PartWithdrawn(this.props.id.value, input.actorUserId, input.now));
+    return resolved.map(({ item, quantity }) => ({
+      inventoryItemId: item.inventoryItemId,
+      quantity,
+    }));
+  }
+
+  /** Only an item attached to an `APPROVED` round can be withdrawn - a draft or a pending round
+   * both leave it on the shelf (H38, spec.md's Assumptions). */
+  private assertWithdrawable(item: WorkOrderPartItem, quantity: number): void {
+    if (item.budgetRound === null) {
+      throw new PartNotWithdrawableError();
+    }
+    const budget = this.props.budgets.find((candidate) => candidate.round === item.budgetRound);
+    if (!budget || budget.status !== BudgetStatus.Approved) {
+      throw new PartNotWithdrawableError();
+    }
+    if (item.withdrawnQuantity + quantity > item.plannedQuantity.units) {
+      throw new WithdrawalExceedsPlannedError();
+    }
+  }
+
+  private assertNoDuplicateLines(lines: BatchLine[]): void {
+    const seen = new Set<string>();
+    for (const line of lines) {
+      if (seen.has(line.itemId.value)) {
+        throw new DuplicateBatchLineError();
+      }
+      seen.add(line.itemId.value);
+    }
   }
 
   assignMechanic(input: AssignMechanicInput): void {

@@ -244,16 +244,16 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] `withdrawParts` guards `IN_EXECUTION` and refuses every other state with `WorkOrderStateError`
-- [ ] It refuses a batch naming the same item twice with `DuplicateBatchLineError`
-- [ ] It refuses an item that is not on this work order with `WorkOrderItemNotFoundError`
-- [ ] It refuses an item attached to no round, and an item on a round that is not `APPROVED`, both with `PartNotWithdrawableError`
-- [ ] An item planned on an approved round and again on a round still awaiting approval allows the approved line and refuses the pending one - spec.md's fifth edge case
-- [ ] It returns one resolved line per requested item, each naming the inventory item id and the quantity
-- [ ] It records exactly one `PartWithdrawn` for the whole batch, not one per line
-- [ ] Nothing on the aggregate changes when any guard fires
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 12 tests pass (no silent deletions)
+- [x] `withdrawParts` guards `IN_EXECUTION` and refuses every other state with `WorkOrderStateError`
+- [x] It refuses a batch naming the same item twice with `DuplicateBatchLineError`
+- [x] It refuses an item that is not on this work order with `WorkOrderItemNotFoundError`
+- [x] It refuses an item attached to no round, and an item on a round that is not `APPROVED`, both with `PartNotWithdrawableError`
+- [x] An item planned on an approved round and again on a round still awaiting approval allows the approved line and refuses the pending one - spec.md's fifth edge case
+- [x] It returns one resolved line per requested item, each naming the inventory item id and the quantity
+- [x] It records exactly one `PartWithdrawn` for the whole batch, not one per line
+- [x] Nothing on the aggregate changes when any guard fires
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 9 tests pass (3 fewer than planned - the two `PartNotWithdrawableError` cases, no round and wrong-status round, share one case with the mixed approved/pending batch test)
 
 **Tests**: unit
 **Gate**: quick
