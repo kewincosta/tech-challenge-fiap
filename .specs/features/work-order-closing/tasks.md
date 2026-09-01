@@ -533,11 +533,11 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] The handler calls `writeOffWorkOrderConsumptions` with the work order, the actor and the clock's moment
-- [ ] A work order with no pending consumption writes off nothing and does not throw (spec.md edge case)
-- [ ] It has its own tests rather than leaning on T12's, since the two are near-twins (L-003)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] The handler calls `writeOffWorkOrderConsumptions` with the work order, the actor and the clock's moment
+- [x] A work order with no pending consumption writes off nothing and does not throw (spec.md edge case)
+- [x] It has its own tests rather than leaning on T12's, since the two are near-twins (L-003)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
