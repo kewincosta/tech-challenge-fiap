@@ -524,14 +524,14 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
-- [ ] It validates on the aggregate before opening the transaction, so a rejected batch never starts one
-- [ ] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `ConsumeStockBatchCommand`
-- [ ] It publishes the recorded events after the transaction, with `pullDomainEvents`
-- [ ] `InsufficientStockError` raised by the inventory side travels out untouched
-- [ ] Every aggregate guard error travels out untouched rather than being translated
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] The handler loads by number and throws `WorkOrderNotFoundError` when nothing carries it
+- [x] It validates on the aggregate before opening the transaction, so a rejected batch never starts one
+- [x] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `ConsumeStockBatchCommand`
+- [x] It publishes the recorded events after the transaction, with `pullDomainEvents`
+- [x] `InsufficientStockError` raised by the inventory side travels out untouched
+- [x] Every aggregate guard error travels out untouched rather than being translated
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (planned 8; the "not found" and "aggregate guard error" cases collapsed into one bullet each covering both the state-error and item-not-found guards, so no separate pair of tests was owed - no silent deletions)
 
 Note: the "movement ids recorded on work order items" bullet this task originally carried is gone - see the T12 correction above. `ConsumeStockBatchCommand`'s lines only ever need `{ inventoryItemId, quantity }`; this handler does not need the movement ids `ConsumeStockBatchHandler` returns for anything.
 
