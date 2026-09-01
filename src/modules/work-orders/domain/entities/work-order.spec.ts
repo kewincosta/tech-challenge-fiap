@@ -1383,3 +1383,144 @@ describe('WorkOrder.returnParts', () => {
     expect(events.filter((event) => event instanceof PartReturned)).toHaveLength(1);
   });
 });
+
+describe('WorkOrder closing props', () => {
+  const ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
+  const INVENTORY_ITEM_ID = '77777777-7777-4777-8777-777777777777';
+
+  function partWithWithdrawn(withdrawnQuantity: number): WorkOrderPartItem {
+    return WorkOrderPartItem.restore({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+      withdrawnQuantity,
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(2500),
+    });
+  }
+
+  it('defaults every closing prop on a newly opened work order: null timestamps and actors, a zero discount, no charged total', () => {
+    const workOrder = openWorkOrder();
+
+    expect(workOrder.chargedTotal).toBeNull();
+    expect(workOrder.discount.equals(Money.fromCents(0))).toBe(true);
+    expect(workOrder.discountNote).toBeNull();
+    expect(workOrder.discountAppliedByUserId).toBeNull();
+    expect(workOrder.discountAppliedAt).toBeNull();
+    expect(workOrder.completedAt).toBeNull();
+    expect(workOrder.deliveredAt).toBeNull();
+    expect(workOrder.deliveredByUserId).toBeNull();
+    expect(workOrder.canceledAt).toBeNull();
+    expect(workOrder.canceledByUserId).toBeNull();
+    expect(workOrder.cancellationReason).toBeNull();
+  });
+
+  it('defaults the closing props the same way when restore omits them, so every pre-existing row loads exactly as it did before this feature', () => {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.Received);
+
+    expect(workOrder.chargedTotal).toBeNull();
+    expect(workOrder.discount.equals(Money.fromCents(0))).toBe(true);
+    expect(workOrder.completedAt).toBeNull();
+  });
+
+  it('carries the closing props through restore unchanged when they are supplied', () => {
+    const workOrder = WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: null,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.Completed,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: null,
+      diagnosisCompletedAt: null,
+      budgets: [],
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: null,
+      chargedTotal: Money.fromCents(30000),
+      discount: Money.fromCents(5000),
+      discountNote: 'Preco combinado com o cliente',
+      discountAppliedByUserId: CREATOR_ID,
+      discountAppliedAt: NOW,
+      completedAt: NOW,
+      deliveredAt: null,
+      deliveredByUserId: null,
+      canceledAt: null,
+      canceledByUserId: null,
+      cancellationReason: null,
+    });
+
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(30000))).toBe(true);
+    expect(workOrder.discount.equals(Money.fromCents(5000))).toBe(true);
+    expect(workOrder.discountNote).toBe('Preco combinado com o cliente');
+    expect(workOrder.completedAt).toBe(NOW);
+  });
+
+  it('reports no outstanding withdrawal when every part item has withdrawn zero', () => {
+    const workOrder = restoreInExecutionWithParts([partWithWithdrawn(0)]);
+
+    expect(workOrder.hasOutstandingWithdrawals).toBe(false);
+  });
+
+  it('reports no outstanding withdrawal for a work order carrying no part item at all', () => {
+    const workOrder = restoreInExecutionWithParts([]);
+
+    expect(workOrder.hasOutstandingWithdrawals).toBe(false);
+  });
+
+  it('reports an outstanding withdrawal as soon as any part item has withdrawn more than zero', () => {
+    const workOrder = restoreInExecutionWithParts([partWithWithdrawn(2)]);
+
+    expect(workOrder.hasOutstandingWithdrawals).toBe(true);
+  });
+
+  function restoreInExecutionWithParts(partItems: WorkOrderPartItem[]): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status: WorkOrderStatus.InExecution,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems,
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [
+        Budget.restore({
+          id: BudgetId.create('88888888-8888-4888-8888-888888888888'),
+          round: 1,
+          total: Money.fromCents(7500),
+          status: BudgetStatus.Approved,
+          generatedAt: NOW,
+          decidedAt: NOW,
+          decidedByUserId: CUSTOMER_ID,
+        }),
+      ],
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+    });
+  }
+});

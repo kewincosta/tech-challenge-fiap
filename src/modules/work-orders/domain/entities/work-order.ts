@@ -35,7 +35,41 @@ import { Budget } from './budget';
 import { WorkOrderPartItem } from './work-order-part-item';
 import { WorkOrderServiceItem } from './work-order-service-item';
 
-interface WorkOrderProps {
+/**
+ * The closing figures, split out so `restore` can default them for a work order loaded before
+ * this feature ever ran, without every existing `restore` call site in the codebase having to
+ * name eleven fields no production row could have carried before this feature made `COMPLETED`,
+ * `DELIVERED` and `CANCELED` reachable (design.md's Risks & Concerns).
+ */
+interface ClosingProps {
+  chargedTotal: Money | null;
+  discount: Money;
+  discountNote: string | null;
+  discountAppliedByUserId: string | null;
+  discountAppliedAt: Date | null;
+  completedAt: Date | null;
+  deliveredAt: Date | null;
+  deliveredByUserId: string | null;
+  canceledAt: Date | null;
+  canceledByUserId: string | null;
+  cancellationReason: string | null;
+}
+
+const CLOSING_DEFAULTS: ClosingProps = {
+  chargedTotal: null,
+  discount: Money.fromCents(0),
+  discountNote: null,
+  discountAppliedByUserId: null,
+  discountAppliedAt: null,
+  completedAt: null,
+  deliveredAt: null,
+  deliveredByUserId: null,
+  canceledAt: null,
+  canceledByUserId: null,
+  cancellationReason: null,
+};
+
+interface WorkOrderProps extends ClosingProps {
   id: WorkOrderId;
   number: WorkOrderNumber;
   customerId: string;
@@ -59,6 +93,10 @@ interface WorkOrderProps {
   budgetDecidedByUserId: string | null;
   executionStartedAt: Date | null;
 }
+
+/** What `restore` accepts: every prop `WorkOrderProps` carries, except the closing figures may be
+ * omitted and default to `CLOSING_DEFAULTS` - the shape every pre-existing row has. */
+type RestoreWorkOrderProps = Omit<WorkOrderProps, keyof ClosingProps> & Partial<ClosingProps>;
 
 interface OpenWorkOrderInput {
   id: WorkOrderId;
@@ -190,13 +228,15 @@ export class WorkOrder extends AggregateRoot {
       budgetDecidedAt: null,
       budgetDecidedByUserId: null,
       executionStartedAt: null,
+      ...CLOSING_DEFAULTS,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
     return workOrder;
   }
 
-  static restore(props: WorkOrderProps): WorkOrder {
+  static restore(props: RestoreWorkOrderProps): WorkOrder {
     return new WorkOrder({
+      ...CLOSING_DEFAULTS,
       ...props,
       serviceItems: [...props.serviceItems],
       partItems: [...props.partItems],
@@ -324,6 +364,34 @@ export class WorkOrder extends AggregateRoot {
       if (item.isDraft || item.budgetRound === round) {
         total = total.add(item.unitPrice.multiply(item.plannedQuantity.units));
         item.attachToBudget(round);
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Services on approved rounds, plus each part item's withdrawn quantity at its budgeted unit
+   * price - rule 33's charged total, before the discount. An item on a rejected round or on no
+   * round at all contributes nothing, and a part never withdrawn contributes nothing even if its
+   * round was approved (phase 12's own test list: "not charge a planned part that was never
+   * withdrawn"). Shared by `complete`, which freezes it, and `applyDiscount`, which validates
+   * against it.
+   */
+  private chargedTotalBeforeDiscount(): Money {
+    const approvedRounds = new Set(
+      this.props.budgets
+        .filter((budget) => budget.status === BudgetStatus.Approved)
+        .map((budget) => budget.round),
+    );
+    let total = Money.fromCents(0);
+    for (const item of this.props.serviceItems) {
+      if (item.budgetedUnitPrice && item.budgetRound !== null && approvedRounds.has(item.budgetRound)) {
+        total = total.add(item.budgetedUnitPrice);
+      }
+    }
+    for (const item of this.props.partItems) {
+      if (item.budgetedUnitPrice && item.budgetRound !== null && approvedRounds.has(item.budgetRound)) {
+        total = total.add(item.budgetedUnitPrice.multiply(item.withdrawnQuantity));
       }
     }
     return total;
@@ -586,5 +654,54 @@ export class WorkOrder extends AggregateRoot {
 
   get executionStartedAt(): Date | null {
     return this.props.executionStartedAt;
+  }
+
+  get chargedTotal(): Money | null {
+    return this.props.chargedTotal;
+  }
+
+  get discount(): Money {
+    return this.props.discount;
+  }
+
+  get discountNote(): string | null {
+    return this.props.discountNote;
+  }
+
+  get discountAppliedByUserId(): string | null {
+    return this.props.discountAppliedByUserId;
+  }
+
+  get discountAppliedAt(): Date | null {
+    return this.props.discountAppliedAt;
+  }
+
+  get completedAt(): Date | null {
+    return this.props.completedAt;
+  }
+
+  get deliveredAt(): Date | null {
+    return this.props.deliveredAt;
+  }
+
+  get deliveredByUserId(): string | null {
+    return this.props.deliveredByUserId;
+  }
+
+  get canceledAt(): Date | null {
+    return this.props.canceledAt;
+  }
+
+  get canceledByUserId(): string | null {
+    return this.props.canceledByUserId;
+  }
+
+  get cancellationReason(): string | null {
+    return this.props.cancellationReason;
+  }
+
+  /** What `CancellationAuthorizer` reads: any part item withdrawn at all, in any state. */
+  get hasOutstandingWithdrawals(): boolean {
+    return this.props.partItems.some((item) => item.withdrawnQuantity > 0);
   }
 }

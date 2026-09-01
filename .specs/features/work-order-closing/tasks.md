@@ -229,19 +229,32 @@ T20  T21  T22  T23
 
 **Done when**:
 
-- [ ] `WorkOrderProps` carries `chargedTotal`, `discount`, `discountNote`, `discountAppliedByUserId`, `discountAppliedAt`, `completedAt`, `deliveredAt`, `deliveredByUserId`, `canceledAt`, `canceledByUserId` and `cancellationReason`, and `restore` accepts every one
-- [ ] `chargedTotalBeforeDiscount` sums the service items on approved rounds plus each part item's withdrawn quantity times its budgeted unit price
-- [ ] A part item with a withdrawn quantity of zero adds nothing
-- [ ] An item on a rejected round adds nothing, and an item on no round at all adds nothing
-- [ ] A fixture with two services and two part items proves the sum is over the whole collection, not over its first row (L-014)
-- [ ] `hasOutstandingWithdrawals` is true when any part item's withdrawn quantity is above zero, false when every one is zero
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 8 tests pass (no silent deletions)
+- [x] `WorkOrderProps` carries `chargedTotal`, `discount`, `discountNote`, `discountAppliedByUserId`, `discountAppliedAt`, `completedAt`, `deliveredAt`, `deliveredByUserId`, `canceledAt`, `canceledByUserId` and `cancellationReason`, and `restore` accepts every one
+- [x] `chargedTotalBeforeDiscount` exists as a private method with the summing logic design.md specifies
+- [~] `chargedTotalBeforeDiscount` sums the service items on approved rounds plus each part item's withdrawn quantity times its budgeted unit price - **moved to T6**, see the correction note below
+- [~] A part item with a withdrawn quantity of zero adds nothing - **moved to T6**
+- [~] An item on a rejected round adds nothing, and an item on no round at all adds nothing - **moved to T6**
+- [~] A fixture with two services and two part items proves the sum is over the whole collection, not over its first row (L-014) - **moved to T6**
+- [x] `hasOutstandingWithdrawals` is true when any part item's withdrawn quantity is above zero, false when every one is zero, and false for a work order carrying no part item at all
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (planned 8; see the correction note)
 
 **Tests**: unit
 **Gate**: quick
 
 **Commit**: `feat(work-orders): compute the charged total on the aggregate`
+
+---
+
+### T4 correction (surfaced while writing T4's own tests)
+
+**What went wrong**: `chargedTotalBeforeDiscount` is `private` by design (design.md names it so), and this task has no public method that calls it - `complete` (T6) and `applyDiscount` (T5) are both later tasks. Writing its planned tests immediately hit implement.md's documented case: "a task creates code that can't be tested until a later task completes." Testing it through a throwaway public accessor would have added surface area no consumer needs, which Check C forbids.
+
+**The fix, per implement.md's merge-forward rule**: the four arithmetic-specific criteria move to T6, whose `complete()` is the earliest point they become reachable - T6's own Done-when below is amended to carry them, including the L-014 fixture and the rejected/no-round cases verbatim. T4 keeps everything that was already testable without a later task: the props, the defaults, `restore`'s backward compatibility, and `hasOutstandingWithdrawals` (which only reads `partItems`, needing no transition method at all).
+
+**A second thing surfaced by the same block**: making the eleven closing fields required on `WorkOrderProps` would have broken every existing `WorkOrder.restore(...)` call site in the codebase (14 files, none of them in this task's `Where`) - none of them could supply fields no production row has ever carried, since this feature is what first makes `COMPLETED`, `DELIVERED` and `CANCELED` reachable. Fixed by splitting `ClosingProps` out of `WorkOrderProps` and typing `restore`'s parameter as `Omit<WorkOrderProps, keyof ClosingProps> & Partial<ClosingProps>`, defaulted through a shared `CLOSING_DEFAULTS` constant that `open` also uses. Every existing call site compiles unchanged; `npm run build` confirmed it touches nothing outside `work-order.ts`. This is a stronger fix than the `Where` scope of a later task could have provided without touching 14 files.
+
+Both the default-handling fix and the test-scope correction land inside T4's own commit (`a0bb8d2`) rather than a separate one - they are how T4 needed to be built correctly, not a defect found after the fact.
 
 ---
 
@@ -289,16 +302,18 @@ T20  T21  T22  T23
 - MCP: NONE
 - Skill: NONE
 
-**Done when**:
+**Done when** (four bullets below absorbed from T4's correction - `complete` is the earliest public method that can exercise `chargedTotalBeforeDiscount`):
 
 - [ ] Completing from `IN_EXECUTION` moves to `COMPLETED`, stamps `completedAt` and records `WorkOrderCompleted`
-- [ ] The stored charged total is the pre-discount total minus the recorded discount
+- [ ] The stored charged total is the pre-discount total minus the recorded discount, where the pre-discount total sums the service items on approved rounds plus each part item's withdrawn quantity times its budgeted unit price
 - [ ] A work order with no part withdrawn stores the approved services alone (spec.md edge case)
+- [ ] An item on a rejected round adds nothing to the total, and an item on no round at all adds nothing (from T4)
+- [ ] A fixture with two services and two part items proves the total sums over the whole collection, not just the first row (L-014, from T4)
 - [ ] A discount larger than the pre-discount total throws `DiscountExceedsChargedTotalError` and leaves the state `IN_EXECUTION` (spec.md edge case: a return dropped the total after the discount was accepted)
 - [ ] That refusal has a case only `complete` can fail: the discount was valid when `applyDiscount` accepted it, and a return lowered the total afterwards (L-008 - the inner guard cannot see this)
 - [ ] Completing from any other state throws `WorkOrderStateError`
 - [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [ ] Test count: 9 tests pass (planned 7, +2 for the two criteria absorbed from T4 - no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
