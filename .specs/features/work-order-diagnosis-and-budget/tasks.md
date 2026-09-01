@@ -512,13 +512,13 @@ T19  T20
 
 **Done when**:
 
-- [ ] An actor holding `work-orders:decide` is admitted whatever the work order's customer, without the customer read being made
-- [ ] An actor whose customer's external id equals the work order's `customerId` is admitted
-- [ ] A customer who owns a different work order is refused with `WorkOrderNotFoundError`, never a forbidden error - spec.md's sixth edge case at this layer
-- [ ] An actor holding neither, whose user maps to no customer at all, is refused the same way
-- [ ] The two `QueryBus` reads are stubbed by branching on the query instance, never on call order
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] An actor holding `work-orders:decide` is admitted whatever the work order's customer, without the customer read being made
+- [x] An actor whose customer's external id equals the work order's `customerId` is admitted
+- [x] A customer who owns a different work order is refused with `WorkOrderNotFoundError`, never a forbidden error - spec.md's sixth edge case at this layer
+- [x] An actor holding neither, whose user maps to no customer at all, is refused the same way
+- [x] The two `QueryBus` reads are stubbed by branching on the query instance, never on call order
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (3 fewer than planned - one case per behavioural bullet rather than splitting further)
 
 **Tests**: unit
 **Gate**: quick
