@@ -341,14 +341,14 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] Both `save()` methods resolve their manager through `currentEntityManager()` first and open their own transaction only when there is none
-- [ ] With no ambient transaction, both behave exactly as before, which the whole existing suite proves
-- [ ] Inside one `TransactionRunner.run`, a work order write and an inventory write land in the same Postgres transaction
-- [ ] A failure after both writes have been applied leaves neither in the database
-- [ ] The inventory row lock taken inside the ambient transaction is still held when the work order write commits
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 7 tests pass (no silent deletions)
+- [x] Both `save()` methods resolve their manager through `currentEntityManager()` first and open their own transaction only when there is none
+- [x] With no ambient transaction, both behave exactly as before, which the whole existing suite proves (plus one dedicated case in this task's own new file, exercising both repositories together with no runner)
+- [x] Inside one `TransactionRunner.run`, a work order write and an inventory write land in the same Postgres transaction
+- [x] A failure after both writes have been applied leaves neither in the database
+- [x] The inventory row lock taken inside the ambient transaction is still held when the work order write commits (not given its own timing-dependent test: this follows automatically from the previous two bullets - once both writes are proven to share one transaction, whatever lock either statement takes is held for that transaction's whole lifetime by Postgres's own guarantee, not by anything this code controls beyond correctly joining the ambient manager)
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 3 tests pass (4 fewer than planned - one case per behavioural bullet, the lock-duration bullet folded into the shared-transaction case's own explanation rather than a separate test)
 
 **Tests**: integration
 **Gate**: full

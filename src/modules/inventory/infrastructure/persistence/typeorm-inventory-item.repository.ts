@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { InventoryItem } from '../../domain/entities/inventory-item';
 import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
 import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
@@ -65,7 +66,7 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
       return sum + sign * movement.quantity;
     }, 0);
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.inTransaction(async (manager) => {
         const existing = await manager.findOne(InventoryItemOrmEntity, {
           where: { externalId: item.id.value },
           lock: { mode: 'pessimistic_write' },
@@ -104,6 +105,19 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
       }
       throw error;
     }
+  }
+
+  /**
+   * A cross-module write (this feature's `ConsumeStockBatchCommand`/`RestoreStockBatchCommand`,
+   * dispatched from inside `WithdrawPartsHandler`'s `transactionRunner.run`) must land in the
+   * same Postgres transaction as the work order write it accompanies, or a failure on one side
+   * leaves the other committed (AD-008). Falls back to opening its own transaction when there is
+   * no ambient one, which is every call this repository has ever received before this feature -
+   * that fallback is the regression net the whole existing suite already proves.
+   */
+  private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+    const ambient = currentEntityManager();
+    return ambient ? work(ambient) : this.dataSource.transaction(work);
   }
 
   /** `table` is always a literal this file controls, never external input. */

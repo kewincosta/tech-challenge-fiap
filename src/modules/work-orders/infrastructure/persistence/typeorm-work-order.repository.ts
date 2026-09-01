@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { DomainEvent } from '../../../../shared/domain/domain-event';
+import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../domain/errors/vehicle-already-has-active-work-order.error';
 import { WorkOrderNumberTakenError } from '../../domain/errors/work-order-number-taken.error';
@@ -108,7 +109,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     const events = workOrder.domainEvents;
 
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.inTransaction(async (manager) => {
         const existing = await manager.findOne(WorkOrderOrmEntity, {
           where: { externalId: workOrder.id.value },
           select: { id: true, createdAt: true },
@@ -302,6 +303,19 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     if (partRows.length > 0) {
       await manager.save(WorkOrderPartOrmEntity, partRows);
     }
+  }
+
+  /**
+   * `WithdrawPartsHandler` and `ReturnPartsHandler` save this aggregate and dispatch a cross-
+   * module inventory command inside one `transactionRunner.run` - both writes must land in the
+   * same Postgres transaction, or a failure on one side leaves the other committed (AD-008).
+   * Falls back to opening its own transaction when there is no ambient one, which is every call
+   * this repository received before this feature - the existing suite is that fallback's
+   * regression net.
+   */
+  private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
+    const ambient = currentEntityManager();
+    return ambient ? work(ambient) : this.dataSource.transaction(work);
   }
 
   /** `table` is always a literal this file controls, never external input. */
