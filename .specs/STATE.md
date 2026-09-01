@@ -85,10 +85,14 @@ is specified when it is reached, never in advance.
 | 9 | `tracking-and-metrics` | 13 | Medium | Not started |
 
 Rows 7 and 8 were one feature, `work-order-execution-and-closing`, until 2026-09-01. Phases 11 and
-12 together came to an estimated 28-36 tasks, against the 20 that feature 6 took, and phase 11
-carries the only piece of machinery this codebase has never built: a write that spans two modules
-and two aggregates inside one transaction. Splitting puts that mechanism in front of its own
-Verifier and its own discrimination sensor before phase 12 builds on top of it.
+12 together came to an estimated 28-36 tasks, against the 20 that feature 6 took. Phase 11 also
+carries the first write that spans two *aggregates* in two modules inside one transaction, and
+splitting puts that in front of its own Verifier and discrimination sensor before phase 12 builds
+on top of it. The transaction mechanism itself is not new: `TransactionRunner` and
+`currentEntityManager()` have carried a shared transaction across a `CommandBus` dispatch since
+`identity-foundation` (`RegisterUserHandler` plus `TypeOrmAssignmentRepository`). What phase 11
+adds is making two repositories that today always open their own `dataSource.transaction` join an
+ambient one instead.
 
 Requirements come from `docs/ddd/event-storming.md` sections 10, 11 and 14, and the per-phase
 detail in `docs/ddd/implementation-plan.md`. Those two documents stay the source of truth for the
