@@ -8,8 +8,10 @@ import { CreateWorkOrderHandler } from './application/commands/create-work-order
 import { PlanPartHandler } from './application/commands/plan-part/plan-part.handler';
 import { RejectBudgetHandler } from './application/commands/reject-budget/reject-budget.handler';
 import { RemoveWorkOrderItemHandler } from './application/commands/remove-work-order-item/remove-work-order-item.handler';
+import { ReturnPartsHandler } from './application/commands/return-parts/return-parts.handler';
 import { StartDiagnosisHandler } from './application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
+import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
 import { WORK_ORDER_NUMBER_GENERATOR } from './application/ports/work-order-number-generator.port';
 import { WORK_ORDER_QUERY_PORT } from './application/ports/work-order-query.port';
 import { GetWorkOrderTrailHandler } from './application/queries/get-work-order-trail/get-work-order-trail.handler';
@@ -49,6 +51,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     SubmitSupplementaryBudgetHandler,
     ApproveBudgetHandler,
     RejectBudgetHandler,
+    WithdrawPartsHandler,
+    ReturnPartsHandler,
     BudgetDecisionAuthorizer,
     GetWorkOrderHandler,
     ListWorkOrdersHandler,

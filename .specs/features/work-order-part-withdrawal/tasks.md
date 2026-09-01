@@ -613,20 +613,22 @@ Note: the "movement ids recorded on work order items" bullet this task originall
 
 **Done when**:
 
-- [ ] Both routes exist at the paths design.md names, carrying `@HttpCode(HttpStatus.OK)` and `@RequirePermissions(AppPermission.WorkOrdersExecute)`
-- [ ] A mechanic withdraws two parts in one call and the counts on hand drop by exactly what left
-- [ ] The work order reads back showing planned against withdrawn
-- [ ] An empty batch answers 400 through the DTO's own validation - spec.md's first edge case
-- [ ] A zero or negative quantity answers 400
-- [ ] Withdrawing past the planned quantity answers 422
-- [ ] Withdrawing an item on a round still awaiting approval answers 422, while the approved line on the same work order succeeds - spec.md's fifth edge case
-- [ ] Withdrawing more than the shelf holds answers 422 and leaves the count, the ledger and the work order item untouched
-- [ ] A catalog price change between approval and withdrawal writes the new price on the movement and leaves the budgeted price untouched - spec.md's fourth edge case
-- [ ] Each of the two routes answers 403 to an actor genuinely lacking `work-orders:execute`, one test per route (L-003)
-- [ ] Each of the two routes answers 404 for a number nobody carries
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 14 tests pass (no silent deletions)
+- [x] Both routes exist at the paths design.md names, carrying `@HttpCode(HttpStatus.OK)` and `@RequirePermissions(AppPermission.WorkOrdersExecute)`
+- [x] A mechanic withdraws two parts in one call and the counts on hand drop by exactly what left
+- [x] The work order reads back showing planned against withdrawn
+- [x] An empty batch answers 400 through the DTO's own validation - spec.md's first edge case
+- [x] A zero or negative quantity answers 400
+- [x] Withdrawing past the planned quantity answers 422
+- [x] Withdrawing an item on a round still awaiting approval answers 422, while the approved line on the same work order succeeds - spec.md's fifth edge case
+- [x] Withdrawing more than the shelf holds answers 422 and leaves the count, the ledger and the work order item untouched
+- [x] A catalog price change between approval and withdrawal writes the new price on the movement and leaves the budgeted price untouched - spec.md's fourth edge case
+- [x] Each of the two routes answers 403 to an actor genuinely lacking `work-orders:execute`, one test per route (L-003)
+- [x] Each of the two routes answers 404 for a number nobody carries
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively
+- [x] Test count: 10 tests pass (planned 14; several bullets share one test rather than one test each - zero and negative in a single test, and the exceeds-shelf test asserts the shelf count, the ledger and the work order item together in one call - every bullet above still has direct coverage, no silent deletions)
+
+Unplanned but required: `ConsumeStockBatchHandler` and `RestoreStockBatchHandler` (T11, T12) were never registered as providers in `inventory.module.ts` - without that, `CommandBus.execute` has no handler to resolve at runtime and the withdrawal e2e calls fail with a Nest `CommandHandlerNotFoundException`. Registered both here, since this is the first task that actually dispatches them end to end. `ListStockShortagesHandler` (T15) still needs the same treatment in T17, when its own route is exposed.
 
 **Tests**: e2e
 **Gate**: build

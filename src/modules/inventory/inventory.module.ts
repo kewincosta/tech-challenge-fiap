@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdjustStockHandler } from './application/commands/adjust-stock/adjust-stock.handler';
+import { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
 import { CreateInventoryItemHandler } from './application/commands/create-inventory-item/create-inventory-item.handler';
 import { ReplenishStockHandler } from './application/commands/replenish-stock/replenish-stock.handler';
+import { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
 import { UpdateInventoryItemHandler } from './application/commands/update-inventory-item/update-inventory-item.handler';
 import { INVENTORY_QUERY_PORT } from './application/ports/inventory-query.port';
 import { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
@@ -26,6 +28,8 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     GetInventoryItemHandler,
     ListInventoryItemsHandler,
     GetItemMovementHistoryHandler,
+    ConsumeStockBatchHandler,
+    RestoreStockBatchHandler,
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },
   ],

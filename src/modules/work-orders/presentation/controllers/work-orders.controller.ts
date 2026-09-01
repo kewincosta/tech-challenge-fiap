@@ -42,8 +42,10 @@ import {
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
+import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
+import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
 import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
@@ -56,6 +58,7 @@ import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.req
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
 import { PlanPartRequestDto } from '../dtos/plan-part.request.dto';
+import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
 import {
   CreatedWorkOrderResponseDto,
   WorkOrderResponseDto,
@@ -264,6 +267,48 @@ export class WorkOrdersController {
   ): Promise<WorkOrderResponseDto> {
     await this.commandBus.execute<SubmitSupplementaryBudgetCommand, void>(
       new SubmitSupplementaryBudgetCommand(number, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/withdrawals')
+  @RequirePermissions(AppPermission.WorkOrdersExecute)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Withdraw a batch of approved planned parts from stock' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async withdrawParts(
+    @Param('number') number: string,
+    @Body() body: WithdrawPartsRequestDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<WithdrawPartsCommand, void>(
+      new WithdrawPartsCommand(number, body.lines, principal.userId),
+    );
+    return this.getWorkOrderOrThrow(number);
+  }
+
+  @Post(':number/returns')
+  @RequirePermissions(AppPermission.WorkOrdersExecute)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Return a batch of previously withdrawn parts to stock' })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async returnParts(
+    @Param('number') number: string,
+    @Body() body: WithdrawPartsRequestDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.commandBus.execute<ReturnPartsCommand, void>(
+      new ReturnPartsCommand(number, body.lines, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
   }
