@@ -620,12 +620,12 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] An unknown work order number throws `WorkOrderNotFoundError`
-- [ ] The amount reaches the aggregate as `Money`, never as a bare number
-- [ ] `DiscountExceedsChargedTotalError` and `WorkOrderStateError` both travel out untouched
-- [ ] It publishes the recorded events after the save
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] An unknown work order number throws `WorkOrderNotFoundError`
+- [x] The amount reaches the aggregate as `Money`, never as a bare number
+- [x] `DiscountExceedsChargedTotalError` and `WorkOrderStateError` both travel out untouched
+- [x] It publishes the recorded events after the save
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
