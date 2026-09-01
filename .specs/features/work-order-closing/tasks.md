@@ -649,13 +649,13 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] An unknown work order number throws `WorkOrderNotFoundError`
-- [ ] The aggregate validates before any transaction opens, so a refused delivery never starts one
-- [ ] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `SettleStockMovementsCommand` carrying the work order id and the actor
-- [ ] An error from the inventory side travels out untouched and leaves neither write applied
-- [ ] It publishes the recorded events after the transaction
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] An unknown work order number throws `WorkOrderNotFoundError`
+- [x] The aggregate validates before any transaction opens, so a refused delivery never starts one
+- [x] It opens exactly one `transactionRunner.run`, saves the work order, then dispatches `SettleStockMovementsCommand` carrying the work order id and the actor
+- [x] An error from the inventory side travels out untouched and leaves neither write applied
+- [x] It publishes the recorded events after the transaction
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
