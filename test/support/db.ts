@@ -11,6 +11,10 @@ import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/pers
 import { ServiceOrmEntity } from '../../src/modules/services/infrastructure/persistence/service.orm-entity';
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { StockMovementOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/stock-movement.orm-entity';
+import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
+import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
+import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
+import { WorkOrderEventOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-event.orm-entity';
 
 export function createTestDataSource(): DataSource {
   return new DataSource({
@@ -33,6 +37,10 @@ export function createTestDataSource(): DataSource {
       ServiceOrmEntity,
       InventoryItemOrmEntity,
       StockMovementOrmEntity,
+      WorkOrderOrmEntity,
+      WorkOrderServiceOrmEntity,
+      WorkOrderPartOrmEntity,
+      WorkOrderEventOrmEntity,
     ],
   });
 }

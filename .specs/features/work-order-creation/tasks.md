@@ -371,15 +371,15 @@ T19
 
 **Done when**:
 
-- [ ] A save-then-find round trip returns an equal aggregate with both item lists intact
-- [ ] `findByNumber` attaches **no** trail entries, however many the work order has
-- [ ] `findByNumber` returns null for a number no work order carries
-- [ ] The customer, vehicle and creator external ids are resolved to internal keys at the repository boundary (AD-001)
-- [ ] Unit prices round-trip as **numbers** while the raw driver value is asserted to be a `string`, on both item tables
-- [ ] Removing an item from the aggregate deletes only that row on the next save, leaving the others
-- [ ] Every test generates its own customer, vehicle and number - the test database is never truncated
-- [ ] Gate check passes: `npm run test:integration`, run twice consecutively
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] A save-then-find round trip returns an equal aggregate with both item lists intact
+- [x] `findByNumber` attaches **no** trail entries, however many the work order has
+- [x] `findByNumber` returns null for a number no work order carries
+- [x] The customer, vehicle and creator external ids are resolved to internal keys at the repository boundary (AD-001)
+- [x] Unit prices round-trip as **numbers** while the raw driver value is asserted to be a `string`, on both item tables
+- [x] Removing an item from the aggregate deletes only that row on the next save, leaving the others
+- [x] Every test generates its own customer, vehicle and number - the test database is never truncated
+- [x] Gate check passes: `npm run test:integration`, run twice consecutively
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: integration
 **Gate**: quick
