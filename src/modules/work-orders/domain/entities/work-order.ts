@@ -1,0 +1,258 @@
+import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
+import { Money } from '../../../../shared/domain/value-objects/money';
+import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
+import { WorkOrderStateError } from '../errors/work-order-state.error';
+import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
+import { MechanicAssigned } from '../events/mechanic-assigned.event';
+import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
+import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
+import { WorkOrderCreated } from '../events/work-order-created.event';
+import { PlannedQuantity } from '../value-objects/planned-quantity';
+import { WorkOrderId } from '../value-objects/work-order-id';
+import { WorkOrderItemId } from '../value-objects/work-order-item-id';
+import { WorkOrderNumber } from '../value-objects/work-order-number';
+import { WorkOrderStatus } from '../work-order-status';
+import { WorkOrderPartItem } from './work-order-part-item';
+import { WorkOrderServiceItem } from './work-order-service-item';
+
+interface WorkOrderProps {
+  id: WorkOrderId;
+  number: WorkOrderNumber;
+  customerId: string;
+  vehicleId: string;
+  assignedMechanicUserId: string | null;
+  createdByUserId: string;
+  status: WorkOrderStatus;
+  customerName: string;
+  vehiclePlate: string;
+  vehicleBrand: string;
+  vehicleModel: string;
+  vehicleYear: number;
+  createdAt: Date;
+  updatedAt: Date;
+  serviceItems: WorkOrderServiceItem[];
+  partItems: WorkOrderPartItem[];
+}
+
+interface OpenWorkOrderInput {
+  id: WorkOrderId;
+  number: WorkOrderNumber;
+  customerId: string;
+  vehicleId: string;
+  createdByUserId: string;
+  customerName: string;
+  vehiclePlate: string;
+  vehicleBrand: string;
+  vehicleModel: string;
+  vehicleYear: number;
+  now: Date;
+}
+
+interface AddServiceInput {
+  itemId: WorkOrderItemId;
+  serviceId: string;
+  serviceName: string;
+  unitPrice: Money;
+  actorUserId: string;
+  now: Date;
+}
+
+interface PlanPartInput {
+  itemId: WorkOrderItemId;
+  inventoryItemId: string;
+  sku: string;
+  itemName: string;
+  unitPrice: Money;
+  plannedQuantity: PlannedQuantity;
+  actorUserId: string;
+  now: Date;
+}
+
+interface RemoveItemInput {
+  itemId: WorkOrderItemId;
+  actorUserId: string;
+  now: Date;
+}
+
+interface AssignMechanicInput {
+  mechanicUserId: string;
+  actorUserId: string;
+  now: Date;
+}
+
+/** `addService` and `removeItem` both allow this set - section 11's table. */
+const ITEM_EDITABLE_STATES = [
+  WorkOrderStatus.Received,
+  WorkOrderStatus.InDiagnosis,
+  WorkOrderStatus.InExecution,
+];
+
+/** `planPart` is narrower: parts are identified during the diagnosis, never at reception. */
+const PART_PLANNABLE_STATES = [WorkOrderStatus.InDiagnosis, WorkOrderStatus.InExecution];
+
+const MECHANIC_ASSIGNABLE_TERMINAL_STATES = [WorkOrderStatus.Delivered, WorkOrderStatus.Canceled];
+
+/**
+ * One visit, its snapshot, its items, and the events that describe what was done to it. The
+ * trail is never loaded here - `restore` rebuilds the items but not the history, which is a read
+ * model over `work_order_events` (T11).
+ */
+export class WorkOrder extends AggregateRoot {
+  private constructor(private readonly props: WorkOrderProps) {
+    super();
+  }
+
+  static open(input: OpenWorkOrderInput): WorkOrder {
+    const workOrder = new WorkOrder({
+      id: input.id,
+      number: input.number,
+      customerId: input.customerId,
+      vehicleId: input.vehicleId,
+      assignedMechanicUserId: null,
+      createdByUserId: input.createdByUserId,
+      status: WorkOrderStatus.Received,
+      customerName: input.customerName,
+      vehiclePlate: input.vehiclePlate,
+      vehicleBrand: input.vehicleBrand,
+      vehicleModel: input.vehicleModel,
+      vehicleYear: input.vehicleYear,
+      createdAt: input.now,
+      updatedAt: input.now,
+      serviceItems: [],
+      partItems: [],
+    });
+    workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
+    return workOrder;
+  }
+
+  static restore(props: WorkOrderProps): WorkOrder {
+    return new WorkOrder({
+      ...props,
+      serviceItems: [...props.serviceItems],
+      partItems: [...props.partItems],
+    });
+  }
+
+  addService(input: AddServiceInput): void {
+    this.assertStateAllows(ITEM_EDITABLE_STATES);
+    const item = WorkOrderServiceItem.add({
+      id: input.itemId,
+      serviceId: input.serviceId,
+      serviceName: input.serviceName,
+      unitPrice: input.unitPrice,
+    });
+    this.props.serviceItems.push(item);
+    this.props.updatedAt = input.now;
+    this.record(new ServiceAddedToWorkOrder(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  planPart(input: PlanPartInput): void {
+    this.assertStateAllows(PART_PLANNABLE_STATES);
+    const item = WorkOrderPartItem.add({
+      id: input.itemId,
+      inventoryItemId: input.inventoryItemId,
+      sku: input.sku,
+      itemName: input.itemName,
+      unitPrice: input.unitPrice,
+      plannedQuantity: input.plannedQuantity,
+    });
+    this.props.partItems.push(item);
+    this.props.updatedAt = input.now;
+    this.record(new PartPlannedForWorkOrder(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  removeItem(input: RemoveItemInput): void {
+    this.assertStateAllows(ITEM_EDITABLE_STATES);
+    const serviceIndex = this.props.serviceItems.findIndex((item) => item.id.equals(input.itemId));
+    if (serviceIndex >= 0) {
+      this.props.serviceItems.splice(serviceIndex, 1);
+    } else {
+      const partIndex = this.props.partItems.findIndex((item) => item.id.equals(input.itemId));
+      if (partIndex < 0) {
+        throw new WorkOrderItemNotFoundError();
+      }
+      this.props.partItems.splice(partIndex, 1);
+    }
+    this.props.updatedAt = input.now;
+    this.record(new ItemRemovedFromWorkOrder(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  assignMechanic(input: AssignMechanicInput): void {
+    if (MECHANIC_ASSIGNABLE_TERMINAL_STATES.includes(this.props.status)) {
+      throw new WorkOrderStateError(this.props.status);
+    }
+    this.props.assignedMechanicUserId = input.mechanicUserId;
+    this.props.updatedAt = input.now;
+    this.record(new MechanicAssigned(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  private assertStateAllows(allowed: WorkOrderStatus[]): void {
+    if (!allowed.includes(this.props.status)) {
+      throw new WorkOrderStateError(this.props.status);
+    }
+  }
+
+  get id(): WorkOrderId {
+    return this.props.id;
+  }
+
+  get number(): WorkOrderNumber {
+    return this.props.number;
+  }
+
+  get customerId(): string {
+    return this.props.customerId;
+  }
+
+  get vehicleId(): string {
+    return this.props.vehicleId;
+  }
+
+  get assignedMechanicUserId(): string | null {
+    return this.props.assignedMechanicUserId;
+  }
+
+  get createdByUserId(): string {
+    return this.props.createdByUserId;
+  }
+
+  get status(): WorkOrderStatus {
+    return this.props.status;
+  }
+
+  get customerName(): string {
+    return this.props.customerName;
+  }
+
+  get vehiclePlate(): string {
+    return this.props.vehiclePlate;
+  }
+
+  get vehicleBrand(): string {
+    return this.props.vehicleBrand;
+  }
+
+  get vehicleModel(): string {
+    return this.props.vehicleModel;
+  }
+
+  get vehicleYear(): number {
+    return this.props.vehicleYear;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  get serviceItems(): readonly WorkOrderServiceItem[] {
+    return [...this.props.serviceItems];
+  }
+
+  get partItems(): readonly WorkOrderPartItem[] {
+    return [...this.props.partItems];
+  }
+}

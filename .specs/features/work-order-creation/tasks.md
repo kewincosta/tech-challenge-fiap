@@ -298,21 +298,21 @@ T19
 
 **Done when**:
 
-- [ ] `open` starts the work order `RECEIVED`, stores the customer and vehicle snapshot, records the creator and records `WorkOrderCreated`
-- [ ] `restore` rebuilds from persisted props with its items and **no** trail (the trail is a read model)
-- [ ] `addService` appends an item and records `ServiceAddedToWorkOrder` in `RECEIVED`
-- [ ] Adding the same service twice records two separate items (owns that AC)
-- [ ] `addService` in a state the state machine forbids throws `WorkOrderStateError` naming the current status
-- [ ] `planPart` appends an item and records `PartPlannedForWorkOrder` in `IN_DIAGNOSIS`
-- [ ] **`planPart` in `RECEIVED` throws `WorkOrderStateError`** - the first of the three layers this rule is proven at (L-003, owns half of that edge case)
-- [ ] `removeItem` removes a service item and leaves every other item in place
-- [ ] `removeItem` removes a part item
-- [ ] `removeItem` for an identifier the work order does not hold throws `WorkOrderItemNotFoundError`
-- [ ] `assignMechanic` records the assignee and `MechanicAssigned`
-- [ ] `assignMechanic` replaces an existing assignee
-- [ ] `assignMechanic` on a `DELIVERED` or `CANCELED` work order throws `WorkOrderStateError`
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 13 tests pass (no silent deletions)
+- [x] `open` starts the work order `RECEIVED`, stores the customer and vehicle snapshot, records the creator and records `WorkOrderCreated`
+- [x] `restore` rebuilds from persisted props with its items and **no** trail (the trail is a read model)
+- [x] `addService` appends an item and records `ServiceAddedToWorkOrder` in `RECEIVED`
+- [x] Adding the same service twice records two separate items (owns that AC)
+- [x] `addService` in a state the state machine forbids throws `WorkOrderStateError` naming the current status
+- [x] `planPart` appends an item and records `PartPlannedForWorkOrder` in `IN_DIAGNOSIS`
+- [x] **`planPart` in `RECEIVED` throws `WorkOrderStateError`** - the first of the three layers this rule is proven at (L-003, owns half of that edge case)
+- [x] `removeItem` removes a service item and leaves every other item in place
+- [x] `removeItem` removes a part item
+- [x] `removeItem` for an identifier the work order does not hold throws `WorkOrderItemNotFoundError`
+- [x] `assignMechanic` records the assignee and `MechanicAssigned`
+- [x] `assignMechanic` replaces an existing assignee
+- [x] `assignMechanic` on a `DELIVERED` or `CANCELED` work order throws `WorkOrderStateError`
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 13 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
