@@ -89,7 +89,7 @@ is specified when it is reached, never in advance.
 | 4 | `inventory-and-stock-movements` | 7 | Large | Verified |
 | 5 | `work-order-creation` | 8 | Large | Verified |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Verified |
-| 7 | `work-order-part-withdrawal` | 11 | Large | Specified |
+| 7 | `work-order-part-withdrawal` | 11 | Large | Verified |
 | 8 | `work-order-closing` | 12 | Large | Not started |
 | 9 | `tracking-and-metrics` | 13 | Medium | Not started |
 
@@ -129,63 +129,76 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/work-order-diagnosis-and-budget` - **done**
-- **Phase / Task**: Verified, PASS on the first verification pass - no fix→re-verify loop needed.
-  20 tasks total (T1-T20) committed to `main` (`a79ab48..f97ea9d`, preceded by the spec/design/tasks
-  approval commits `3a0f1dd`, `5a7949d`, `f7b6235`). Verifier report at
-  `.specs/features/work-order-diagnosis-and-budget/validation.md`.
-- **Completed**: every task in `tasks.md`; all 5 stories (WOB-01 through WOB-05, 27 ACs plus 8
-  listed edge cases) independently re-derived and confirmed by the Verifier, evidence-or-zero.
-  Discrimination sensor: 3/3 injected mutations killed - dropping `generateRound`'s
-  `|| item.budgetRound === round` clause (breaks round-one regeneration), writing item rows before
-  budget rows in `TypeOrmWorkOrderRepository.save` (breaks the round-to-internal-id FK linkage,
-  caught against a real Postgres integration run), and flipping
-  `BudgetDecisionAuthorizer`'s `customer.id === workOrder.customerId` comparison (breaks both the
-  authorizer's own unit test and the approve/reject handlers' authorization tests). Final gate:
-  lint clean, build clean, unit 471/471, integration 172/172 (run twice consecutively), e2e 128/128
-  (run twice consecutively) - 771 total, up from the 637 baseline, zero regressions. Real counts
-  matched tasks.md's own closure-note estimate exactly.
+- **Feature**: `.specs/features/work-order-part-withdrawal` - **done**
+- **Phase / Task**: Verified, but only after the longest verification history any feature in this
+  project has needed. 18 tasks (T1-T18) committed first, then a fix→re-verify loop that ran the
+  full 3 automatic iterations the skill bounds it to, hit FAIL a fourth time at that bound, was
+  reported to the user per protocol rather than continued automatically, and was extended once with
+  the user's explicit go-ahead for a final round. 5 independent Verifier passes total; the 5th is
+  the first clean PASS. Commit range `867e445..78ca0b0` (28 commits) on `main`. Verifier report
+  (all 5 rounds' history preserved) at `.specs/features/work-order-part-withdrawal/validation.md`.
+- **Completed**: every task in `tasks.md`; all 5 requirements (WOP-01 through WOP-05, all 37 ACs,
+  all 6 listed edge cases) independently re-derived and confirmed by the round-5 Verifier,
+  evidence-or-zero. 26 distinct mutations injected across the 5 passes, every one eventually killed;
+  the production code has been unchanged since commit `ac810aa` (the last task commit) - every one
+  of the 4 fix rounds added or extended test cases only, never touched `src/`. Final gate: lint
+  clean, build clean, unit 534/534, integration 198/198 (run twice consecutively), e2e 152/152 (run
+  twice consecutively) - 884 total, up from the 771 baseline this feature started from, zero
+  regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 7,
-  `work-order-execution-and-closing`, when the user asks for it - not before, per this file's own
-  Feature Roadmap policy.
+- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 8,
+  `work-order-closing`, when the user asks for it - not before, per this file's own Feature Roadmap
+  policy.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 7 or a re-read of this one):
-1. Rule 29 ("no caller ever supplies a price or total") is held by construction, not validation:
-   every command and every aggregate method that generates or regenerates a round
-   (`CompleteDiagnosisCommand`, `SubmitSupplementaryBudgetCommand`,
-   `WorkOrder.completeDiagnosis`/`submitSupplementaryBudget`) carries no price/total field in its
-   signature at all, confirmed by reading the actual TypeScript interfaces rather than trusting a
-   comment.
-2. A rejected round one is regenerated in place (`Budget.regenerate`, called from
-   `WorkOrder.completeDiagnosis`) rather than opening a new round - `ux_work_order_budgets_round`
-   stays satisfiable and rounds above one stay reserved for work found during execution (H38). The
-   private `generateRound(round)` helper's `item.isDraft || item.budgetRound === round` condition is
-   what makes this regeneration path pick up the already-attached round-one items alongside any new
-   drafts; the discrimination sensor confirmed dropping the second clause is caught by a dedicated
-   unit test.
-3. `TypeOrmWorkOrderRepository.save` writes the work order row, then budget rows, then item rows,
-   in that order inside one transaction, because an item's `budget_id` is a foreign key to a budget
-   row whose internal id does not exist until it is inserted. `replaceBudgets` returns a
-   `Map<round, internalId>` that `replaceServiceItems`/`replacePartItems` read to fill `budget_id`.
-   The discrimination sensor confirmed this ordering is load-bearing against a real Postgres
-   integration run.
-4. `BudgetDecisionAuthorizer` is the one place that answers "the owning customer or a holder of
-   `work-orders:decide`" - both `approve-budget` and `reject-budget` handlers call it between the
-   load and the aggregate call, and it throws `WorkOrderNotFoundError` (never a forbidden error) for
-   anyone else, so the API never confirms a work order number exists to a stranger. The two decision
-   routes carry no `@RequirePermissions` decorator by design, since `PermissionsGuard.every()` cannot
-   express "either of two" - a comment on both routes names the authorizer as the reason.
-5. `work_order_events.occurred_at` ties happen for real in this feature: several transitions record
-   2-3 trail events sharing the exact same `now`, and `listTrail`'s `ORDER BY occurred_at ASC` has no
-   secondary tie-breaker. Verified directly against the real Postgres instance (forced seq scan and
-   forced index scan) that ties resolve to insertion order consistently - stable in practice, not a
-   documented SQL guarantee. Not treated as a gap; worth remembering if a future feature adds
-   concurrent writers to the same trail.
-6. The "coverage-only gap, fix touches zero production code" pattern flagged as worth watching after
-   `work-order-creation` (and `identity-foundation` before it) did **not** recur here - this feature
-   passed verification on the first attempt, no fix→re-verify loop at all. No lesson promotion
-   triggered by this feature.
+**Notes from this feature's own implementation** (useful context for feature 8 or a re-read of this one):
+1. AD-008 (the ambient-transaction rule, defined this feature) got its first real exercise beyond
+   `RegisterUserHandler`: `TypeOrmInventoryItemRepository` and `TypeOrmWorkOrderRepository` both gained the same
+   `inTransaction` helper (ambient `EntityManager` via `currentEntityManager()`, falling back to
+   `dataSource.transaction` when there is none), and `WithdrawPartsHandler`/`ReturnPartsHandler` are
+   the second and third handlers (after `RegisterUserHandler`) to open one `transactionRunner.run`
+   spanning a save on their own aggregate and a `CommandBus.execute` dispatch into the other module.
+2. **The T12 correction** (mid-Execute design fix, fully written up in `tasks.md`'s dedicated
+   section): the original design had work-orders remember the movement ids `ConsumeStockBatchHandler`
+   mints and pass them back on a later return call. That cannot survive a reload - `WorkOrder.restore`
+   rebuilds every part item from `work_order_parts` columns alone, with no column for a movement id,
+   and work-orders genuinely has no durable memory of one past the request that minted it. The
+   shipped shape has `RestoreStockBatchHandler` resolve the target itself, via a new
+   `findPendingConsumptions` repository method that reads `stock_movements`' own ledger newest first,
+   netting out prior returns per consumption. General lesson for a future feature: if a value is
+   needed across two separate HTTP requests and it is not a column on some row, it does not exist by
+   the second request - trace the actual data lifecycle before designing a handoff between two calls.
+3. **The fix→re-verify loop ran its full course, then one round further.** Every finding across all
+   4 fix rounds was a test-discrimination gap, not a functional defect: a guard duplicated between
+   an aggregate and its child entity with no test that could tell them apart (M3, its return-side
+   twin N1); a threshold or a formula with no fixture sitting on its exact boundary (M7, N3); a
+   formula written twice in one SQL query with only one copy under test (P1); a value asserted by
+   count but not by which record it pointed at (P2); an aggregate function (`SUM`, `array_agg`) never
+   exercised with more than one contributing row (round 5's own fix). Six new project lessons came
+   out of this (L-008 through L-014, `.specs/LESSONS.md`) - all variations on "the test suite proved
+   less than it looked like it proved," none about wrong behavior. Worth remembering for Design and
+   Tasks on a future feature with a shared threshold/formula/aggregation or a guard duplicated across
+   two layers: budget a boundary fixture and a multi-row fixture up front, rather than finding the
+   gap through 4 rounds of mutation testing.
+4. **A real bug in the skill's own tooling surfaced and got fixed along the way.**
+   `validate_state.py`'s `_verdict()` scanned the whole `validation.md` file for any line matching a
+   `**Result**:` label, so a multi-round report that preserves a prior round's FAIL as history (this
+   skill's own stated convention) could never read as PASS again, no matter what the current round
+   said. Fixed in `fix(spec-tooling): read a report's current verdict, not its history` - the script
+   now recognizes a verdict only as the immediate value of a `## Validation` heading or a
+   `**Verdict**`/`**Result**` label, scanning top to bottom for the first (i.e. current) declaration.
+   Verified against all 7 `validation.md` files under `.specs/features/` before and after, no
+   regression. This will matter again the next time a feature needs more than one verification pass.
+5. **Known, deferred, out of scope for this feature**: test-infrastructure flakiness is compounding
+   as this session's test database grows across a very long run. L-004 (`registerUser`'s
+   `faker.internet.email()` colliding against a never-truncated database) hit multiple sibling e2e
+   spec files' `beforeAll`/fixture setup during this feature's own gate reruns, never inside this
+   feature's own assertions. Separately, round 3's Verifier observed `work-orders.e2e.spec.ts`'s
+   unpaginated board-listing route (`GET /work-orders`) nearing its 30s timeout against a database
+   that had accumulated roughly 4,750 work order rows by that point in the session. Neither is this
+   feature's to fix - flagging both for whichever future feature or maintenance pass next touches
+   test infrastructure or the work order board route. A per-test-run database reset, or switching
+   `registerUser` to a collision-proof id, would address the first; pagination or an index-only count
+   would address the second.
