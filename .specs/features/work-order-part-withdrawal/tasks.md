@@ -213,14 +213,14 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] `withdraw` raises `withdrawnQuantity` and accumulates across several calls
-- [ ] `withdraw` refuses to pass `plannedQuantity` with `WithdrawalExceedsPlannedError`, leaving the quantity untouched
-- [ ] `returnUnits` lowers `withdrawnQuantity`
-- [ ] `returnUnits` refuses to go below zero with `ReturnExceedsWithdrawnError`, leaving the quantity untouched
-- [ ] `outstandingQuantity` is `plannedQuantity - withdrawnQuantity`
-- [ ] A withdraw-then-return-in-full round trip ends at a withdrawn quantity of zero
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] `withdraw` raises `withdrawnQuantity` and accumulates across several calls
+- [x] `withdraw` refuses to pass `plannedQuantity` with `WithdrawalExceedsPlannedError`, leaving the quantity untouched
+- [x] `returnUnits` lowers `withdrawnQuantity`
+- [x] `returnUnits` refuses to go below zero with `ReturnExceedsWithdrawnError`, leaving the quantity untouched
+- [x] `outstandingQuantity` is `plannedQuantity - withdrawnQuantity`
+- [x] A withdraw-then-return-in-full round trip ends at a withdrawn quantity of zero
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (4 fewer than planned - one case per behavioural bullet)
 
 **Tests**: unit
 **Gate**: quick

@@ -1,4 +1,6 @@
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
+import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderItemId } from '../value-objects/work-order-item-id';
 
@@ -61,6 +63,33 @@ export class WorkOrderPartItem {
 
   get isDraft(): boolean {
     return this.props.budgetRound === null;
+  }
+
+  /**
+   * Raises the withdrawn quantity, refusing to pass the planned one. Accumulates across several
+   * calls, which is what a withdrawal split over several visits to the shelf needs (spec.md
+   * WOP-01 AC4).
+   */
+  withdraw(quantity: number): void {
+    const next = this.props.withdrawnQuantity + quantity;
+    if (next > this.props.plannedQuantity.units) {
+      throw new WithdrawalExceedsPlannedError();
+    }
+    this.props.withdrawnQuantity = next;
+  }
+
+  /** Lowers the withdrawn quantity, refusing to go below zero. */
+  returnUnits(quantity: number): void {
+    const next = this.props.withdrawnQuantity - quantity;
+    if (next < 0) {
+      throw new ReturnExceedsWithdrawnError();
+    }
+    this.props.withdrawnQuantity = next;
+  }
+
+  /** What still has to leave the shelf for this item - the figure the shortage read model sums. */
+  get outstandingQuantity(): number {
+    return this.props.plannedQuantity.units - this.props.withdrawnQuantity;
   }
 
   get id(): WorkOrderItemId {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { InvalidPlannedQuantityError } from '../errors/invalid-planned-quantity.error';
+import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
+import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderItemId } from '../value-objects/work-order-item-id';
 import { WorkOrderPartItem, WorkOrderPartItemProps } from './work-order-part-item';
@@ -132,5 +134,85 @@ describe('WorkOrderPartItem', () => {
 
   it('should refuse a zero planned quantity through PlannedQuantity', () => {
     expect(() => PlannedQuantity.create(0)).toThrow(InvalidPlannedQuantityError);
+  });
+
+  it('should raise the withdrawn quantity on withdraw, accumulating across calls', () => {
+    const item = WorkOrderPartItem.add({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+    });
+
+    item.withdraw(1);
+    item.withdraw(1);
+
+    expect(item.withdrawnQuantity).toBe(2);
+    expect(item.outstandingQuantity).toBe(1);
+  });
+
+  it('should refuse a withdrawal that would pass the planned quantity, leaving it unchanged', () => {
+    const item = WorkOrderPartItem.add({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(2),
+    });
+    item.withdraw(2);
+
+    expect(() => item.withdraw(1)).toThrow(WithdrawalExceedsPlannedError);
+    expect(item.withdrawnQuantity).toBe(2);
+  });
+
+  it('should lower the withdrawn quantity on returnUnits', () => {
+    const item = WorkOrderPartItem.add({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+    });
+    item.withdraw(2);
+
+    item.returnUnits(1);
+
+    expect(item.withdrawnQuantity).toBe(1);
+  });
+
+  it('should refuse a return that would take the withdrawn quantity below zero, leaving it unchanged', () => {
+    const item = WorkOrderPartItem.add({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+    });
+    item.withdraw(1);
+
+    expect(() => item.returnUnits(2)).toThrow(ReturnExceedsWithdrawnError);
+    expect(item.withdrawnQuantity).toBe(1);
+  });
+
+  it('should end a withdraw-then-return-in-full round trip at a withdrawn quantity of zero', () => {
+    const item = WorkOrderPartItem.add({
+      id: ITEM_ID,
+      inventoryItemId: INVENTORY_ITEM_ID,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+    });
+    item.withdraw(2);
+
+    item.returnUnits(2);
+
+    expect(item.withdrawnQuantity).toBe(0);
+    expect(item.outstandingQuantity).toBe(3);
   });
 });
