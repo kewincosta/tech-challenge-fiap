@@ -529,13 +529,13 @@ T19
 
 **Done when**:
 
-- [ ] Adds an active service, snapshotting its name and unit price at that moment
-- [ ] Refuses a deactivated service with `ServiceInactiveError` (its own test at this layer, L-003)
-- [ ] Refuses a service the query answers null for, with `ReferencedServiceNotFoundError`
-- [ ] Refuses an unknown work order with `WorkOrderNotFoundError`
-- [ ] Every refusal test also asserts nothing was persisted
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] Adds an active service, snapshotting its name and unit price at that moment
+- [x] Refuses a deactivated service with `ServiceInactiveError` (its own test at this layer, L-003)
+- [x] Refuses a service the query answers null for, with `ReferencedServiceNotFoundError`
+- [x] Refuses an unknown work order with `WorkOrderNotFoundError`
+- [x] Every refusal test also asserts nothing was persisted
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 4 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
