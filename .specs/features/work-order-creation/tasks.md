@@ -679,24 +679,24 @@ T19
 
 **Done when**:
 
-- [ ] `POST /api/v1/work-orders` creates a work order as a service advisor and answers 201 with the number
-- [ ] A mechanic creating a work order answers 403, holding `work-orders:read` and not `work-orders:manage`
-- [ ] A second work order for the same vehicle answers 409
-- [ ] A deactivated customer answers 422 and a vehicle that does not exist answers 404
-- [ ] `POST .../services` adds a service and it appears on the detail
-- [ ] **`POST .../parts` on a `RECEIVED` work order answers 422** - the third of the three layers this rule is proven at (L-003)
-- [ ] `DELETE .../items/:itemExternalId` removes the item, and an item of another work order answers 404
-- [ ] `PUT .../mechanic` assigns a mechanic, and a user without the role answers 422
-- [ ] `GET /api/v1/work-orders` lists the board and filters by status
-- [ ] `GET /api/v1/work-orders/:number` returns one work order, and an unknown number answers 404
-- [ ] A malformed number answers 400 rather than 404
-- [ ] **`GET .../trail` answers 200 to an administrator and 403 to a service advisor**, the two permissions proven distinct
-- [ ] **Editing the customer or the vehicle afterwards leaves the work order snapshot unchanged** (owns that edge case)
-- [ ] Each of the five write routes has its own 403 case rather than one standing in for the group (L-003)
-- [ ] `WorkOrdersModule` registered in `AppModule`
-- [ ] The full pre-existing suite (522 tests) stays green
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: 13 e2e tests pass (no silent deletions)
+- [x] `POST /api/v1/work-orders` creates a work order as a service advisor and answers 201 with the number
+- [x] A mechanic creating a work order answers 403, holding `work-orders:read` and not `work-orders:manage`
+- [x] A second work order for the same vehicle answers 409
+- [x] A deactivated customer answers 422 and a vehicle that does not exist answers 404
+- [x] `POST .../services` adds a service and it appears on the detail
+- [x] **`POST .../parts` on a `RECEIVED` work order answers 422** - the third of the three layers this rule is proven at (L-003)
+- [x] `DELETE .../items/:itemExternalId` removes the item, and an item of another work order answers 404
+- [x] `PUT .../mechanic` assigns a mechanic, and a user without the role answers 422
+- [x] `GET /api/v1/work-orders` lists the board and filters by status
+- [x] `GET /api/v1/work-orders/:number` returns one work order, and an unknown number answers 404
+- [x] A malformed number answers 400 rather than 404
+- [x] **`GET .../trail` answers 200 to an administrator and 403 to a service advisor**, the two permissions proven distinct
+- [x] **Editing the customer or the vehicle afterwards leaves the work order snapshot unchanged** (owns that edge case)
+- [x] Each of the five write routes has its own 403 case rather than one standing in for the group (L-003)
+- [x] `WorkOrdersModule` registered in `AppModule`
+- [x] The full pre-existing suite (522 tests) stays green
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: 13 e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: build

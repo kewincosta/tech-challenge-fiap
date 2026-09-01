@@ -23,6 +23,7 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
 import { GlobalExceptionFilter } from './shared/presentation/filters/global-exception.filter';
@@ -81,6 +82,7 @@ import { SharedModule } from './shared/shared.module';
     VehiclesModule,
     ServicesModule,
     InventoryModule,
+    WorkOrdersModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createAppValidationPipe },
