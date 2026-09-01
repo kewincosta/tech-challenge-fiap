@@ -679,13 +679,13 @@ Unplanned but required: `settleWorkOrderConsumptions`' first version used `UPDAT
 
 **Done when**:
 
-- [ ] A work order with no outstanding withdrawn part passes on `work-orders:cancel` alone
-- [ ] A work order with an outstanding withdrawn part refuses an actor holding only `work-orders:cancel`, with `CancelInExecutionForbiddenError`
-- [ ] The same work order passes for an actor also holding `work-orders:cancel-in-execution`
-- [ ] The decision reads the outstanding parts, not the state, so a work order in `AWAITING_APPROVAL` after a supplementary round is refused exactly like one in `IN_EXECUTION` (spec.md edge case, H36 against H38)
-- [ ] It has its own tests rather than leaning on T14's, though the two authorizers share a shape (L-003)
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] A work order with no outstanding withdrawn part passes on `work-orders:cancel` alone
+- [x] A work order with an outstanding withdrawn part refuses an actor holding only `work-orders:cancel`, with `CancelInExecutionForbiddenError`
+- [x] The same work order passes for an actor also holding `work-orders:cancel-in-execution`
+- [x] The decision reads the outstanding parts, not the state, so a work order in `AWAITING_APPROVAL` after a supplementary round is refused exactly like one in `IN_EXECUTION` (spec.md edge case, H36 against H38)
+- [x] It has its own tests rather than leaning on T14's, though the two authorizers share a shape (L-003)
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
