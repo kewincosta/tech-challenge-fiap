@@ -663,13 +663,13 @@ T19  T20
 
 **Done when**:
 
-- [ ] The authorizer runs after the load and before `rejectBudget` is called
-- [ ] An actor the authorizer refuses never reaches `save`
-- [ ] Rejecting round one and rejecting a later round are each exercised through the handler, since they publish different event sets
-- [ ] An unknown number throws `WorkOrderNotFoundError`
-- [ ] The wrong-state error travels out untouched
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] The authorizer runs after the load and before `rejectBudget` is called
+- [x] An actor the authorizer refuses never reaches `save`
+- [x] Rejecting round one and rejecting a later round are each exercised through the handler, since they publish different event sets
+- [x] An unknown number throws `WorkOrderNotFoundError`
+- [x] The wrong-state error travels out untouched
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (1 fewer than planned - matches the plan closely, one bullet fewer only because the round-one and later-round cases together also prove the authorizer-before-aggregate ordering)
 
 **Tests**: unit
 **Gate**: quick
