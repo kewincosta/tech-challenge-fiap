@@ -170,15 +170,15 @@ Every ambiguity is resolved or recorded here. The domain rules come from `docs/d
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| WOC-01 | P1: The mechanic finishes the job and the bill is fixed | Specify | Pending |
-| WOC-02 | P1: Handing the car over settles the parts that went into it | Specify | Pending |
-| WOC-03 | P1: A repair the customer gave up on records the real loss | Specify | Pending |
-| WOC-04 | P2: The counter can take money off the bill, on the record | Specify | Pending |
-| WOC-05 | P2: The closing figures read back | Specify | Pending |
+| WOC-01 | P1: The mechanic finishes the job and the bill is fixed | Execute | ✅ Verified |
+| WOC-02 | P1: Handing the car over settles the parts that went into it | Execute | ✅ Verified |
+| WOC-03 | P1: A repair the customer gave up on records the real loss | Execute | ✅ Verified |
+| WOC-04 | P2: The counter can take money off the bill, on the record | Execute | ✅ Verified |
+| WOC-05 | P2: The closing figures read back | Execute | ✅ Verified |
 
 **ID format:** `WOC-NN`
 
-**Coverage:** 5 total, 0 mapped to tasks yet.
+**Coverage:** 5 total, 5 verified. See `.specs/features/work-order-closing/validation.md`.
 
 ---
 

@@ -99,7 +99,7 @@ is specified when it is reached, never in advance.
 | 5 | `work-order-creation` | 8 | Large | Verified |
 | 6 | `work-order-diagnosis-and-budget` | 9, 10 | Complex | Verified |
 | 7 | `work-order-part-withdrawal` | 11 | Large | Verified |
-| 8 | `work-order-closing` | 12 | Large | Not started |
+| 8 | `work-order-closing` | 12 | Large | Verified |
 | 9 | `tracking-and-metrics` | 13 | Medium | Not started |
 
 Rows 7 and 8 were one feature, `work-order-execution-and-closing`, until 2026-09-01. Phases 11 and
@@ -138,76 +138,74 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/work-order-part-withdrawal` - **done**
-- **Phase / Task**: Verified, but only after the longest verification history any feature in this
-  project has needed. 18 tasks (T1-T18) committed first, then a fix→re-verify loop that ran the
-  full 3 automatic iterations the skill bounds it to, hit FAIL a fourth time at that bound, was
-  reported to the user per protocol rather than continued automatically, and was extended once with
-  the user's explicit go-ahead for a final round. 5 independent Verifier passes total; the 5th is
-  the first clean PASS. Commit range `867e445..78ca0b0` (28 commits) on `main`. Verifier report
-  (all 5 rounds' history preserved) at `.specs/features/work-order-part-withdrawal/validation.md`.
-- **Completed**: every task in `tasks.md`; all 5 requirements (WOP-01 through WOP-05, all 37 ACs,
-  all 6 listed edge cases) independently re-derived and confirmed by the round-5 Verifier,
-  evidence-or-zero. 26 distinct mutations injected across the 5 passes, every one eventually killed;
-  the production code has been unchanged since commit `ac810aa` (the last task commit) - every one
-  of the 4 fix rounds added or extended test cases only, never touched `src/`. Final gate: lint
-  clean, build clean, unit 534/534, integration 198/198 (run twice consecutively), e2e 152/152 (run
-  twice consecutively) - 884 total, up from the 771 baseline this feature started from, zero
-  regressions.
+- **Feature**: `.specs/features/work-order-closing` - **done**
+- **Phase / Task**: Verified in a single clean pass - no fix→re-verify round needed. 23 tasks
+  (T1-T23) committed on `main`, including one hard interruption mid-Execute (a terminal crash after
+  T19's code was written but before it was gated or committed) that the resuming session reconciled
+  and continued from cleanly, with no half-done state surviving into the final tree. Commit range
+  `d6614c7..2214940` (24 commits: T1-T23 plus the docs commit marking `design.md` Approved).
+  Verifier report at `.specs/features/work-order-closing/validation.md`.
+- **Completed**: every task in `tasks.md`; all 5 requirements (WOC-01 through WOC-05, all 27
+  numbered ACs, all 8 listed edge cases) independently re-derived and confirmed by the Verifier,
+  evidence-or-zero. 3/3 discrimination-sensor mutations killed on the first attempt (the AD-009
+  version-guard comparison, `CancellationAuthorizer`'s outstanding-withdrawal key, and the T20
+  inventory-module-wiring fix) - no surviving mutant, no fix task generated. Final gate: lint clean,
+  build clean, unit 619/619, integration 216/216 (run twice consecutively, identical both times),
+  e2e 179/179 clean on 2 of 4 runs, with the other 2 runs each showing exactly one isolated
+  `registerUser` collision (the known L-004 flake, unrelated to this feature's own logic) confirmed
+  transient by a clean re-run - 1014 total, up from the 884 baseline this feature started from
+  (+130 new tests), zero regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 8,
-  `work-order-closing`, when the user asks for it - not before, per this file's own Feature Roadmap
-  policy.
+- **Next step**: none required. No blocking gaps. The next unit of work is specifying feature 9,
+  `tracking-and-metrics`, when the user asks for it - not before, per this file's own Feature Roadmap
+  policy. Feature 9 will read `completed_at` and `delivered_at`, both added by this feature, for the
+  average execution time metric spec.md explicitly deferred.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 8 or a re-read of this one):
-1. AD-008 (the ambient-transaction rule, defined this feature) got its first real exercise beyond
-   `RegisterUserHandler`: `TypeOrmInventoryItemRepository` and `TypeOrmWorkOrderRepository` both gained the same
-   `inTransaction` helper (ambient `EntityManager` via `currentEntityManager()`, falling back to
-   `dataSource.transaction` when there is none), and `WithdrawPartsHandler`/`ReturnPartsHandler` are
-   the second and third handlers (after `RegisterUserHandler`) to open one `transactionRunner.run`
-   spanning a save on their own aggregate and a `CommandBus.execute` dispatch into the other module.
-2. **The T12 correction** (mid-Execute design fix, fully written up in `tasks.md`'s dedicated
-   section): the original design had work-orders remember the movement ids `ConsumeStockBatchHandler`
-   mints and pass them back on a later return call. That cannot survive a reload - `WorkOrder.restore`
-   rebuilds every part item from `work_order_parts` columns alone, with no column for a movement id,
-   and work-orders genuinely has no durable memory of one past the request that minted it. The
-   shipped shape has `RestoreStockBatchHandler` resolve the target itself, via a new
-   `findPendingConsumptions` repository method that reads `stock_movements`' own ledger newest first,
-   netting out prior returns per consumption. General lesson for a future feature: if a value is
-   needed across two separate HTTP requests and it is not a column on some row, it does not exist by
-   the second request - trace the actual data lifecycle before designing a handoff between two calls.
-3. **The fix→re-verify loop ran its full course, then one round further.** Every finding across all
-   4 fix rounds was a test-discrimination gap, not a functional defect: a guard duplicated between
-   an aggregate and its child entity with no test that could tell them apart (M3, its return-side
-   twin N1); a threshold or a formula with no fixture sitting on its exact boundary (M7, N3); a
-   formula written twice in one SQL query with only one copy under test (P1); a value asserted by
-   count but not by which record it pointed at (P2); an aggregate function (`SUM`, `array_agg`) never
-   exercised with more than one contributing row (round 5's own fix). Six new project lessons came
-   out of this (L-008 through L-014, `.specs/LESSONS.md`) - all variations on "the test suite proved
-   less than it looked like it proved," none about wrong behavior. Worth remembering for Design and
-   Tasks on a future feature with a shared threshold/formula/aggregation or a guard duplicated across
-   two layers: budget a boundary fixture and a multi-row fixture up front, rather than finding the
-   gap through 4 rounds of mutation testing.
-4. **A real bug in the skill's own tooling surfaced and got fixed along the way.**
-   `validate_state.py`'s `_verdict()` scanned the whole `validation.md` file for any line matching a
-   `**Result**:` label, so a multi-round report that preserves a prior round's FAIL as history (this
-   skill's own stated convention) could never read as PASS again, no matter what the current round
-   said. Fixed in `fix(spec-tooling): read a report's current verdict, not its history` - the script
-   now recognizes a verdict only as the immediate value of a `## Validation` heading or a
-   `**Verdict**`/`**Result**` label, scanning top to bottom for the first (i.e. current) declaration.
-   Verified against all 7 `validation.md` files under `.specs/features/` before and after, no
-   regression. This will matter again the next time a feature needs more than one verification pass.
-5. **Known, deferred, out of scope for this feature**: test-infrastructure flakiness is compounding
-   as this session's test database grows across a very long run. L-004 (`registerUser`'s
-   `faker.internet.email()` colliding against a never-truncated database) hit multiple sibling e2e
-   spec files' `beforeAll`/fixture setup during this feature's own gate reruns, never inside this
-   feature's own assertions. Separately, round 3's Verifier observed `work-orders.e2e.spec.ts`'s
-   unpaginated board-listing route (`GET /work-orders`) nearing its 30s timeout against a database
-   that had accumulated roughly 4,750 work order rows by that point in the session. Neither is this
-   feature's to fix - flagging both for whichever future feature or maintenance pass next touches
-   test infrastructure or the work order board route. A per-test-run database reset, or switching
-   `registerUser` to a collision-proof id, would address the first; pagination or an index-only count
-   would address the second.
+**Notes from this feature's own implementation** (useful context for feature 9 or a re-read of this one):
+1. **No fix→re-verify round was needed.** This is the first feature since `identity-foundation` and
+   `work-order-creation` (both of which needed a fix→re-verify round whose fix touched zero
+   production code, per this file's own prior Handoff entries) to close clean on the first Verifier
+   pass. That coverage-only-gap pattern is not "resolved" as a project-wide trend from one clean
+   pass - `work-order-part-withdrawal` needed 5 rounds immediately before this - but it did not
+   recur here. Worth continuing to watch on the next feature rather than treating either outcome
+   (clean or multi-round) as the new default.
+2. **The module-wiring gap (T20) did not recur elsewhere in this feature and was not recorded as a
+   lessons.py entry.** `SettleStockMovementsHandler` and `WriteOffStockMovementsHandler`, both
+   committed under T12/T13, were never registered in `inventory.module.ts`'s providers array - a gap
+   `npm run build`, `npm run lint` and every unit test pass through cleanly, since a
+   `@CommandHandler`-decorated class compiles and unit-tests fine in complete isolation from Nest's
+   DI container. Only T20's first e2e request against `/delivery` surfaced it, as a 500 ("No handler
+   found for the command"), and it was fixed within the same task's own gate cycle - before the
+   Verifier ever ran. Checked and confirmed not a second time anywhere else in this feature: all four
+   new work-order handlers and both new authorizers are correctly registered in
+   `work-orders.module.ts`. The discrimination sensor independently reproduced the exact failure mode
+   by commenting the registration back out, confirming the fix is load-bearing, not accidentally
+   redundant. Not run through `lessons.py`: the script grounds a lesson in one of five signals read
+   from a Verifier's own `validation.md` (`ac_gap`, `gate_fail`, `spec_deviation`,
+   `spec_precision_gap`, `surviving_mutant`), and this gap was an author-side self-correction inside
+   T20's own per-task gate cycle - exactly like T4's `ClosingProps` split and T10's version-guard fix
+   - not something that survived to reach the Verifier. None of those three generated a lesson
+   either, for the same reason. Flagging in prose here, as `tasks.md`'s own T20 closure note already
+   did, for whoever next touches module wiring for a new command handler: unit coverage of a handler
+   proves nothing about whether Nest's DI container can find it, and only a real request through the
+   bootstrapped app catches the gap.
+3. **AD-009's version guard shipped clean and stayed load-bearing.** The repository-level fix
+   (`TypeOrmWorkOrderRepository.save`'s `WHERE id = :id AND version = :loadedVersion`) protects all
+   ~17 work-order write handlers, not just this feature's own four, and the whole pre-existing suite
+   (884 tests before T1) stayed green under it with zero adjustment - confirming design.md's own
+   stated regression net held. The one bug T10 hit during its own build (comparing a freshly re-read
+   database version against itself, a no-op guard) was caught by T10's own integration test before
+   ever reaching a commit, and the discrimination sensor's mutation 1 independently reproduced the
+   identical bug shape and confirmed the same test still catches it.
+4. **Known, deferred, out of scope for this feature**: L-004 (`registerUser`'s
+   `faker.internet.email()` colliding against a never-truncated database, first flagged during
+   `work-order-part-withdrawal`) recurred twice during this feature's own gate reruns - once in a
+   sibling file (`work-order-withdrawals.e2e.spec.ts`) and once inside this feature's own
+   `work-order-closing.e2e.spec.ts` fixture setup, never inside an assertion this feature owns. The
+   test database has now run across three features' worth of e2e suites without a reset. Still
+   nobody's fix in particular - flagging again for whichever future feature or maintenance pass next
+   touches test infrastructure. A per-test-run database reset, or switching `registerUser` to a
+   collision-proof id generator, would close it for good.
