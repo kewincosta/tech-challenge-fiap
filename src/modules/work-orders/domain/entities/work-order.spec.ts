@@ -6,6 +6,7 @@ import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.er
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
+import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
 import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
@@ -19,6 +20,7 @@ import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
+import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
@@ -1163,5 +1165,165 @@ describe('WorkOrder.withdrawParts', () => {
 
     const events = workOrder.pullDomainEvents();
     expect(events.filter((event) => event instanceof PartWithdrawn)).toHaveLength(1);
+  });
+});
+
+describe('WorkOrder.returnParts', () => {
+  const ITEM_A_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
+  const ITEM_B_ID = WorkOrderItemId.create('77777777-7777-4777-8777-777777777777');
+  const ITEM_A_INVENTORY_ID = '88888888-8888-4888-8888-888888888888';
+  const ITEM_B_INVENTORY_ID = '99999999-9999-4999-8999-999999999999';
+
+  function withdrawnPart(id: WorkOrderItemId, inventoryItemId: string, withdrawnQuantity: number): WorkOrderPartItem {
+    return WorkOrderPartItem.restore({
+      id,
+      inventoryItemId,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(3),
+      withdrawnQuantity,
+      budgetRound: 1,
+      budgetedUnitPrice: Money.fromCents(2500),
+    });
+  }
+
+  function restoreInExecution(
+    partItems: WorkOrderPartItem[],
+    status: WorkOrderStatus = WorkOrderStatus.InExecution,
+  ): WorkOrder {
+    const budget = Budget.restore({
+      id: BudgetId.create('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+      round: 1,
+      total: Money.fromCents(7500),
+      status: BudgetStatus.Approved,
+      generatedAt: NOW,
+      decidedAt: NOW,
+      decidedByUserId: CUSTOMER_ID,
+    });
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems,
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets: [budget],
+      budgetDecidedAt: NOW,
+      budgetDecidedByUserId: CUSTOMER_ID,
+      executionStartedAt: NOW,
+    });
+  }
+
+  it('lowers the withdrawn quantity and returns the resolved inventory item id and quantity', () => {
+    const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2)]);
+
+    const resolved = workOrder.returnParts({
+      lines: [{ itemId: ITEM_A_ID, quantity: 1 }],
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    expect(resolved).toEqual([{ inventoryItemId: ITEM_A_INVENTORY_ID, quantity: 1 }]);
+    expect(workOrder.partItems[0].withdrawnQuantity).toBe(1);
+  });
+
+  it('refuses to return outside IN_EXECUTION', () => {
+    const workOrder = restoreInExecution(
+      [withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2)],
+      WorkOrderStatus.AwaitingApproval,
+    );
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [{ itemId: ITEM_A_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderStateError);
+  });
+
+  it('refuses a batch naming the same item twice with DuplicateBatchLineError', () => {
+    const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2)]);
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [
+          { itemId: ITEM_A_ID, quantity: 1 },
+          { itemId: ITEM_A_ID, quantity: 1 },
+        ],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(DuplicateBatchLineError);
+  });
+
+  it('refuses an item id that is not on this work order with WorkOrderItemNotFoundError', () => {
+    const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2)]);
+    const unknownId = WorkOrderItemId.create('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [{ itemId: unknownId, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderItemNotFoundError);
+  });
+
+  it('refuses returning more than was withdrawn with ReturnExceedsWithdrawnError, leaving it unchanged', () => {
+    const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 1)]);
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [{ itemId: ITEM_A_ID, quantity: 2 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(ReturnExceedsWithdrawnError);
+    expect(workOrder.partItems[0].withdrawnQuantity).toBe(1);
+  });
+
+  it('refuses an item that was never withdrawn on this work order', () => {
+    const workOrder = restoreInExecution([withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 0)]);
+
+    expect(() =>
+      workOrder.returnParts({
+        lines: [{ itemId: ITEM_A_ID, quantity: 1 }],
+        actorUserId: MECHANIC_ID,
+        now: NOW,
+      }),
+    ).toThrow(ReturnExceedsWithdrawnError);
+  });
+
+  it('records exactly one PartReturned for the whole batch, not one per line', () => {
+    const workOrder = restoreInExecution([
+      withdrawnPart(ITEM_A_ID, ITEM_A_INVENTORY_ID, 2),
+      withdrawnPart(ITEM_B_ID, ITEM_B_INVENTORY_ID, 1),
+    ]);
+
+    workOrder.returnParts({
+      lines: [
+        { itemId: ITEM_A_ID, quantity: 1 },
+        { itemId: ITEM_B_ID, quantity: 1 },
+      ],
+      actorUserId: MECHANIC_ID,
+      now: NOW,
+    });
+
+    const events = workOrder.pullDomainEvents();
+    expect(events.filter((event) => event instanceof PartReturned)).toHaveLength(1);
   });
 });

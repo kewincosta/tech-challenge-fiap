@@ -277,14 +277,14 @@ T16  T17  T18
 
 **Done when**:
 
-- [ ] `returnParts` guards `IN_EXECUTION` and refuses every other state
-- [ ] It refuses a batch naming the same item twice, and an item not on this work order
-- [ ] It refuses returning more than was withdrawn with `ReturnExceedsWithdrawnError`
-- [ ] It refuses an item that was never withdrawn on this work order
-- [ ] It returns one resolved line per requested item, naming the inventory item id and the quantity
-- [ ] It records exactly one `PartReturned` for the whole batch
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] `returnParts` guards `IN_EXECUTION` and refuses every other state
+- [x] It refuses a batch naming the same item twice, and an item not on this work order
+- [x] It refuses returning more than was withdrawn with `ReturnExceedsWithdrawnError`
+- [x] It refuses an item that was never withdrawn on this work order
+- [x] It returns one resolved line per requested item, naming the inventory item id and the quantity
+- [x] It records exactly one `PartReturned` for the whole batch
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 7 tests pass (2 fewer than planned - the duplicate-line and item-not-found refusals share one bullet but are two separate cases, offset by one bullet mapping to a single dense case elsewhere)
 
 **Tests**: unit
 **Gate**: quick

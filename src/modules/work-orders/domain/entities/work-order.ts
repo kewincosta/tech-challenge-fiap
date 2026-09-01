@@ -6,6 +6,7 @@ import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.er
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
 import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
+import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
 import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
@@ -19,6 +20,7 @@ import { ExecutionStarted } from '../events/execution-started.event';
 import { ItemRemovedFromWorkOrder } from '../events/item-removed-from-work-order.event';
 import { MechanicAssigned } from '../events/mechanic-assigned.event';
 import { PartPlannedForWorkOrder } from '../events/part-planned-for-work-order.event';
+import { PartReturned } from '../events/part-returned.event';
 import { PartWithdrawn } from '../events/part-withdrawn.event';
 import { ServiceAddedToWorkOrder } from '../events/service-added-to-work-order.event';
 import { SupplementaryBudgetGenerated } from '../events/supplementary-budget-generated.event';
@@ -423,6 +425,35 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new PartWithdrawn(this.props.id.value, input.actorUserId, input.now));
+    return resolved.map(({ item, quantity }) => ({
+      inventoryItemId: item.inventoryItemId,
+      quantity,
+    }));
+  }
+
+  /**
+   * Same validate-everything-then-apply-everything shape as `withdrawParts`. Carries no round
+   * guard - a return only ever lowers what was already withdrawn, regardless of the round's
+   * status.
+   */
+  returnParts(input: WithdrawPartsInput): ResolvedBatchLine[] {
+    this.assertStateAllows([WorkOrderStatus.InExecution]);
+    this.assertNoDuplicateLines(input.lines);
+    const resolved = input.lines.map((line) => {
+      const item = this.props.partItems.find((candidate) => candidate.id.equals(line.itemId));
+      if (!item) {
+        throw new WorkOrderItemNotFoundError();
+      }
+      if (item.withdrawnQuantity - line.quantity < 0) {
+        throw new ReturnExceedsWithdrawnError();
+      }
+      return { item, quantity: line.quantity };
+    });
+    for (const { item, quantity } of resolved) {
+      item.returnUnits(quantity);
+    }
+    this.props.updatedAt = input.now;
+    this.record(new PartReturned(this.props.id.value, input.actorUserId, input.now));
     return resolved.map(({ item, quantity }) => ({
       inventoryItemId: item.inventoryItemId,
       quantity,
