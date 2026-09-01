@@ -493,19 +493,19 @@ T19
 
 **Done when**:
 
-- [ ] Creates a `RECEIVED` work order for an active customer and their vehicle, returning the number and the external id
-- [ ] Snapshots the customer name and the vehicle plate, brand, model and year onto the work order
-- [ ] Refuses a deactivated customer with `CustomerInactiveError`
-- [ ] Refuses a vehicle owned by a different customer with `VehicleNotOwnedByCustomerError`
-- [ ] Refuses a customer the query answers null for, with `ReferencedCustomerNotFoundError`
-- [ ] Refuses a vehicle the query answers null for, with `ReferencedVehicleNotFoundError`
-- [ ] **Draws a second number when the first collides and succeeds**, with a generator stubbed to collide once (owns that edge case)
-- [ ] Gives up after five collisions rather than storing a work order without a number
-- [ ] **Never retries `VehicleAlreadyHasActiveWorkOrderError`**, which propagates on the first attempt
-- [ ] **The `queryBus.execute` stub branches on the query instance, never on call order** (design.md's Risks & Concerns)
-- [ ] Every refusal test also asserts nothing was persisted
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] Creates a `RECEIVED` work order for an active customer and their vehicle, returning the number and the external id
+- [x] Snapshots the customer name and the vehicle plate, brand, model and year onto the work order
+- [x] Refuses a deactivated customer with `CustomerInactiveError`
+- [x] Refuses a vehicle owned by a different customer with `VehicleNotOwnedByCustomerError`
+- [x] Refuses a customer the query answers null for, with `ReferencedCustomerNotFoundError`
+- [x] Refuses a vehicle the query answers null for, with `ReferencedVehicleNotFoundError`
+- [x] **Draws a second number when the first collides and succeeds**, with a generator stubbed to collide once (owns that edge case)
+- [x] Gives up after five collisions rather than storing a work order without a number
+- [x] **Never retries `VehicleAlreadyHasActiveWorkOrderError`**, which propagates on the first attempt
+- [x] **The `queryBus.execute` stub branches on the query instance, never on call order** (design.md's Risks & Concerns)
+- [x] Every refusal test also asserts nothing was persisted
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 9 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
