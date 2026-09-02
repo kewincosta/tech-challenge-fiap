@@ -216,16 +216,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Four records exist, `0009` to `0012`
-- [ ] `0009` and `0010` both name AD-004 in their `**Source**` line, since one entry covers both decisions
-- [ ] `0011` names AD-005 and `0012` names AD-006
-- [ ] `0010` carries the `Trigger to revisit` its section 7 block states, rather than dropping it
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Four records exist, `0009` to `0012`
+- [x] `0009` and `0010` both name AD-004 in their `**Source**` line, since one entry covers both decisions
+- [x] `0011` names AD-005 and `0012` names AD-006
+- [x] `0010` carries the `Trigger to revisit` its section 7 block states, rather than dropping it
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the aggregate and access decisions`
+
+**Closure notes**:
+
+1. **`0011`'s source was found, so the declared-gap standard did not apply.** T2's closure note flagged that it has no section 7 block, against what design.md claimed. H33 in the event storming turned out to hold the full reasoning: which four tables were removed, why one grouping level is enough without a second axis such as a branch, a shift or a team, and why the database cost was low because the removal rode along with the identifier retrofit. All three are carried into the record.
+2. **`0011`'s Alternatives section is the one judgement call in this task.** No document names a rejected alternative for it, because H33 is framed as a question about keeping something rather than as a choice between two designs. Rather than declare a gap, the record states the alternative the reasoning implies, keeping the tables unused, and rejects it on the same ground H33 gives. This stays inside what the repository records; it does not import an outside argument.
+3. **Facts verified against the code before being written**, rather than carried from the plan: `assigned_mechanic_user_id` exists on `work_orders` (migration `1787702400006`), `AssignRoleToUserHandler.ensureAssignable` refuses `SUPER_ADMIN` outright and refuses `ADMIN` for an actor without it, including the missing-actor case, and `TypeOrmEffectiveAccessReader` resolves access in one query over `user_roles` and `role_permissions` with no second grouping hop.
 
 ---
 
