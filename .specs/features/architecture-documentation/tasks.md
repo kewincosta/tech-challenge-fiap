@@ -182,16 +182,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Three records exist, `0006` to `0008`, following the section shape T1 established
-- [ ] Each carries a `**Source**` line naming AD-001, AD-002 and AD-003 respectively
-- [ ] The corresponding `AD-NNN` entries in `.specs/STATE.md` are left unchanged
-- [ ] Each Context carries the substance of its section 7 block rather than a paraphrase that drops the reasoning
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Three records exist, `0006` to `0008`, following the section shape T1 established
+- [x] Each carries a `**Source**` line naming AD-001, AD-002 and AD-003 respectively
+- [x] The corresponding `AD-NNN` entries in `.specs/STATE.md` are left unchanged
+- [x] Each Context carries the substance of its section 7 block rather than a paraphrase that drops the reasoning
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the identifier, money and bus decisions`
+
+**Closure notes**:
+
+1. **All three had a real recorded alternative**, so the declared-gap standard did not apply to any of them: applying the identifier rule only to new tables, decimal columns with one `Money` per module, and exporting repositories from each module, each with the reason it was rejected. The cost line on the identifier block (phase 1 rewriting six tables for no visible feature) is carried into Consequences rather than dropped.
+2. **Mapping section 7's blocks against section 10's subjects turned up three errors in design.md's provenance table**, found while locating the blocks for this task and recorded here because they change what T3, T4, T5 and T6 have to do. Section 7 holds 15 blocks. Fourteen of them map to a numbered subject; `0011` (groups removed), `0014` (stock consumed at withdrawal) and `0018` (numbered budget rounds) have no block and must be sourced elsewhere, against a design table that claims "section 7 block" for all three. `0022` (logout ends every session) does have a block, against a design table that sends it to the event storming.
+3. **One decision in section 7 has no ADR number at all**: "Any deviation from an approved budget cancels the work order". It is a real recorded decision with a real alternative, and section 10's table never assigned it a number. T9 replaces section 7 with an index, so unless it gets a number it loses its only home. Raised to the user before T3 rather than decided here.
 
 ---
 
