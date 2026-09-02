@@ -40,13 +40,14 @@ Every ambiguity is resolved or recorded here - nothing is left silently unclear.
 
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --- | --- | --- | --- |
-| The plan lists 22 ADRs, but two decisions were taken after it was written | 24 ADRs: the plan's 0001-0022, plus 0023 for AD-008 (the ambient transaction rule) and 0024 for AD-009 (the optimistic version guard) | Section 10's own rule is "whenever a decision is taken, one ADR, numbered next". Both are recorded in `.specs/STATE.md` with context, reason, trade-off and scope already, and both changed how every repository in the project is written. Leaving them out would make the ADR set describe the design as planned rather than as built. | y |
+| The plan lists 22 ADRs, but two decisions were taken after it was written | 24 ADRs: the plan's 0001-0022, plus 0023 for AD-008 (the ambient transaction rule) and 0024 for AD-009 (the optimistic version guard). A 25th was added during Execute, see the row below | Section 10's own rule is "whenever a decision is taken, one ADR, numbered next". Both are recorded in `.specs/STATE.md` with context, reason, trade-off and scope already, and both changed how every repository in the project is written. Leaving them out would make the ADR set describe the design as planned rather than as built. | y |
 | Section 10 contradicts itself on C4 component diagrams: the file listing says `c4-components-<module>.mmd`, the prose says "one diagram per bounded context" | One diagram per bounded context, five in total, named `c4-components-<context>.mmd` | The prose explains the intent and the file listing is shorthand. A per-module diagram of `authentication` alone would hold two boxes, while hiding the cross-module calls that are the entire reason level 3 is worth drawing. The five contexts are named in event storming section 4. | y |
 | Whether `src/shared` gets a low level design page | Yes, nine pages in total: the eight modules plus `shared` | `Money`, `TransactionRunner`/`currentEntityManager()`, `AggregateRoot`, the error-kind to HTTP mapping and the global exception filter are load-bearing and belong to no module. The high level design owns the conventions; this page owns the concrete classes, which is the split section 10 already draws between the two levels. | y |
 | No executable gate exists for this feature, so its per-task Gate cannot be a test run | Each task's gate is `npm run lint && npm run build` (proving nothing in the repository broke) plus the structural checks its own acceptance criteria state, run by reading | The user chose prose with human review. The build gate still catches the realistic failure mode of a documentation task: an edit that accidentally touches a source file. | y |
 | The Verifier runs without a discrimination sensor | The Verifier performs the spec-anchored outcome check and the structural confirmations, and records "sensor: not applicable, documentation feature, no behaviour to mutate" in `validation.md` | The skill makes the sensor mandatory where behaviour exists. Recording the reason explicitly is the honest form, rather than injecting a fault into prose and calling the resulting nonsense a killed mutant. | y |
 | ADR 0021's subject as listed in section 10 is already correct, while section 7's prose block on the same decision is stale | The ADR file states what was built, AD-007's version, and section 7's prose is replaced by an index row rather than corrected in place | Section 10 says the decisions "move" rather than being copied, precisely so two versions cannot drift. Correcting the prose and then also writing the ADR would recreate the problem. | y |
-| Section 7 holds 15 decision blocks while section 10 lists 22 ADR subjects | The seven without a prose block are written from the event storming's section 14 answers and the plan's own narrative, cited in the ADR's Context | The decisions were taken and are recorded; only their prose home differs. An ADR whose context cannot be traced to an existing document is not written and is raised instead. | y |
+| Section 7 holds 15 decision blocks while section 10 lists 22 ADR subjects | The records without a prose block are written from the event storming's answers and the plan's own narrative, cited in the ADR's Context | The decisions were taken and are recorded; only their prose home differs. An ADR whose context cannot be traced to an existing document is not written and is raised instead. | y |
+| Found during T2: one section 7 block, "any deviation from an approved budget cancels the work order", was never given a number by section 10, and T9 deletes section 7 | It becomes ADR 0025 with status `Superseded by 0018` | The code contradicts it: `WorkOrder.submitSupplementaryBudget` runs from `IN_EXECUTION`, opens the next numbered round and returns the order to `AWAITING_APPROVAL`, which is the very alternative the block records as rejected. Section 10's own rule keeps a superseded record rather than deleting it, so the reasoning behind the reversal stays readable. Without a number the decision would vanish with section 7. | y |
 | Where the ADR set lands relative to `.specs/STATE.md`'s Decisions log | `.specs/STATE.md` keeps its `AD-NNN` entries unchanged; each ADR that corresponds to one names it in a `Source` line | The Decisions log is the skill's working memory across sessions and is read on every resume. Emptying it into `docs/adr/` would break that flow, and pointing each way keeps one canonical text per decision. | y |
 
 **Open questions:** none - all resolved or logged above.
@@ -81,7 +82,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 
 **Acceptance Criteria**:
 
-1. The repository SHALL carry `docs/adr/` holding 24 decision records numbered `0001` to `0024`, with no number skipped and no number used twice.
+1. The repository SHALL carry `docs/adr/` holding 25 decision records numbered `0001` to `0025`, with no number skipped and no number used twice.
 2. The repository SHALL name every decision record `NNNN-<kebab-case-title>.md`, matching the subject the plan's section 10 table gives for numbers `0001` to `0022`.
 3. WHEN a decision record is written THEN it SHALL carry a Context, a Decision, the Alternatives considered, and the Consequences, each as its own section.
 4. Each decision record SHALL carry exactly one status, drawn from `Accepted`, `Superseded by NNNN` or `Deprecated`.
@@ -89,9 +90,10 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 6. `docs/adr/0002-*.md` SHALL justify PostgreSQL on the four grounds the plan states: relational integrity across work orders, items and stock movements; the transactional guarantee the part withdrawal needs across two aggregates in two modules; partial unique indexes for the soft delete rules; and integer arithmetic in `bigint` for money in cents.
 7. `docs/adr/0023-*.md` SHALL record AD-008, the rule that a repository reachable from a cross-module write resolves its `EntityManager` through `currentEntityManager()` before opening its own transaction.
 8. `docs/adr/0024-*.md` SHALL record AD-009, the optimistic version guard on `TypeOrmWorkOrderRepository.save` and the 409 it produces.
-9. WHEN a decision record corresponds to an entry in `.specs/STATE.md`'s Decisions log THEN it SHALL name that `AD-NNN` identifier, and the log entry SHALL remain in place unchanged.
-10. `docs/adr/README.md` SHALL list every record by number, title and status, and SHALL contain no decision text of its own.
-11. WHEN this story is complete THEN section 7 of `docs/ddd/implementation-plan.md` SHALL hold only an index pointing at `docs/adr/`, and SHALL no longer hold the decision prose it holds today, including the stale block describing the work order trail as written by a subscriber.
+9. `docs/adr/0025-*.md` SHALL record the superseded decision that any deviation from an approved budget cancels the work order, with status `Superseded by 0018`, since the code authorises additional work in place through numbered rounds instead.
+10. WHEN a decision record corresponds to an entry in `.specs/STATE.md`'s Decisions log THEN it SHALL name that `AD-NNN` identifier, and the log entry SHALL remain in place unchanged.
+11. `docs/adr/README.md` SHALL list every record by number, title and status, and SHALL contain no decision text of its own.
+12. WHEN this story is complete THEN section 7 of `docs/ddd/implementation-plan.md` SHALL hold only an index pointing at `docs/adr/`, and SHALL no longer hold the decision prose it holds today, including the stale block describing the work order trail as written by a subscriber.
 
 **Independent Test**: List `docs/adr/`, count 24 records plus the index, open `0002` and find the four PostgreSQL grounds, then open the plan's section 7 and find rows pointing at files rather than decision blocks.
 
@@ -204,7 +206,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 
 ## Success Criteria
 
-- [ ] `docs/adr/` holds 24 records numbered without a gap, each with one status from the fixed set.
+- [ ] `docs/adr/` holds 25 records numbered without a gap, each with one status from the fixed set.
 - [ ] The PostgreSQL justification exists as `0002` and states the four grounds the plan names.
 - [ ] AD-008 and AD-009, taken during the build, have records of their own.
 - [ ] Nine low level design pages exist, one per module directory plus `shared`, and no page names a module that does not exist.

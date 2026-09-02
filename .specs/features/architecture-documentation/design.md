@@ -92,23 +92,25 @@ would carry. Location is relative to the repository root.
 | 0008 | Cross context communication through the buses | section 7 block | AD-003 |
 | 0009 | Customer as its own aggregate over a user identity | section 7 block | AD-004 |
 | 0010 | No aggregate for Mechanic, Service advisor, Administrator | section 7 block | AD-004 |
-| 0011 | Groups removed from the authorization model | section 7 block | AD-005 |
+| 0011 | Groups removed from the authorization model | no section 7 block; event storming section 14 | AD-005 |
 | 0012 | Super administrator created outside the API | section 7 block | AD-006 |
 | 0013 | One InventoryItem aggregate for parts and supplies | section 7 block | none |
-| 0014 | Stock consumed at withdrawal, no reservation phase | section 7 block | none |
+| 0014 | Stock consumed at withdrawal, no reservation phase | no section 7 block; event storming H5 | none |
 | 0015 | Stock movements append only, with transitions | section 7 block | none |
 | 0016 | Cancellation writes movements off | section 7 block | none |
 | 0017 | Budget as an entity inside the WorkOrder aggregate | section 7 block | none |
-| 0018 | Numbered budget rounds | section 7 block | none |
+| 0018 | Numbered budget rounds | no section 7 block; supersedes 0025 | none |
 | 0019 | A withdrawal charged at the price its round froze | section 7 block | none |
 | 0020 | Budget total and charged total kept separate | section 7 block | none |
 | 0021 | The trail written by the repository in the same transaction | section 7 block, corrected | AD-007 |
-| 0022 | A logout ends every active session | event storming section 10, rule 8 | none |
+| 0022 | A logout ends every active session | section 7 block | none |
 | 0023 | Repositories honour an ambient transaction | `.specs/STATE.md` | AD-008 |
 | 0024 | Optimistic version guard on the work order repository | `.specs/STATE.md` | AD-009 |
+| 0025 | Deviation from an approved budget cancels the work order, superseded by 0018 | section 7 block, orphaned by section 10 | none |
 
-Section 7 holds 15 blocks against 22 subjects, so seven records draw their Context from the plan's
-narrative or the event storming instead. Any record whose reasoning cannot be traced to an existing
+Section 7 holds 15 blocks. Fourteen map to a numbered subject and one, the budget deviation rule,
+was never given a number by section 10 and becomes 0025. Eight records draw their Context from the
+plan's narrative or the event storming instead. Any record whose reasoning cannot be traced to an existing
 document is not written; the gap is raised in the task's closure notes, per the spec's edge case.
 
 ### The overview and the high level design

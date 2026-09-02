@@ -258,10 +258,10 @@ T29 → T30 → T31 → T32
 
 ### T5: The budget records
 
-**What**: ADRs 0017 to 0020: budget as an entity inside the aggregate, numbered rounds, the frozen round price, budget total and charged total kept apart.
+**What**: ADRs 0017 to 0020 (budget as an entity inside the aggregate, numbered rounds, the frozen round price, the two totals kept apart) plus 0025, the superseded decision numbered rounds replaced.
 **Where**: `docs/adr/`
 **Depends on**: T4
-**Reuses**: Section 7's blocks; the event storming's section 10 rules on budget rounds
+**Reuses**: Section 7's blocks; the event storming's H2; `WorkOrder.submitSupplementaryBudget` for what the code actually does
 **Requirement**: ARCH-01
 
 **Tools**:
@@ -271,15 +271,18 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Four records exist, `0017` to `0020`
+- [ ] Five records exist, `0017` to `0020` and `0025`
 - [ ] `0019` states which price a withdrawal is charged at and why the round freezes it
 - [ ] `0020` states what each of the two totals answers, since keeping them apart is the decision
+- [ ] `0025` records the superseded decision that any deviation from an approved budget cancels the work order and opens a new one, carrying its original Why and its original rejected alternative
+- [ ] `0025` carries the status `Superseded by 0018` and is not edited to read as if it were still true
+- [ ] `0018` names `0025` as the decision it replaced, so the reversal is readable from either end
 - [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
-**Commit**: `docs(adr): record the budget decisions`
+**Commit**: `docs(adr): record the budget decisions and the one they replaced`
 
 ---
 
@@ -340,10 +343,10 @@ T29 → T30 → T31 → T32
 
 ### T8: The decision index
 
-**What**: `docs/adr/README.md`, listing all 24 records by number, title and status.
+**What**: `docs/adr/README.md`, listing all 25 records by number, title and status.
 **Where**: `docs/adr/README.md`
 **Depends on**: T7
-**Reuses**: The 24 files written by T1 to T7
+**Reuses**: The 25 files written by T1 to T7
 **Requirement**: ARCH-01
 
 **Tools**:
@@ -353,7 +356,7 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The index lists 24 rows, numbered `0001` to `0024`, with no number skipped and no number used twice
+- [ ] The index lists 25 rows, numbered `0001` to `0025`, with no number skipped and no number used twice
 - [ ] Every row links a file that exists in `docs/adr/`
 - [ ] The index carries no decision text of its own, only number, title and status
 - [ ] It states the status vocabulary: `Accepted`, `Superseded by NNNN`, `Deprecated`, and the rule that a superseded record is never edited or deleted
