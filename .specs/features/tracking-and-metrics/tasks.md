@@ -156,11 +156,11 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] The handler resolves the customer from `userId` over the `QueryBus`, never by importing the customers module's repository
-- [ ] A user backing no customer record gets an empty list, not an error - spec.md's first edge case at this layer
-- [ ] A user backing a customer gets exactly what `listByCustomerId` returns for that customer's id
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] The handler resolves the customer from `userId` over the `QueryBus`, never by importing the customers module's repository
+- [x] A user backing no customer record gets an empty list, not an error - spec.md's first edge case at this layer
+- [x] A user backing a customer gets exactly what `listByCustomerId` returns for that customer's id
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (matches the plan exactly)
 
 **Tests**: unit
 **Gate**: quick
