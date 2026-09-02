@@ -182,3 +182,19 @@ export class WorkOrderTrailEntryResponseDto {
   @ApiPropertyOptional({ nullable: true })
   note!: string | null;
 }
+
+export class AverageExecutionTimeResponseDto {
+  @ApiProperty({ example: 259200, description: 'Whole seconds between execution start and completion' })
+  averageSeconds!: number;
+
+  @ApiProperty({ example: 12, description: 'How many work orders the average was computed over' })
+  workOrderCount!: number;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'True only when a service filter was given. A work order carrying several services ' +
+      'contributes its whole elapsed time to each, so the figure is not a decomposition of the total.',
+  })
+  approximated!: boolean;
+}

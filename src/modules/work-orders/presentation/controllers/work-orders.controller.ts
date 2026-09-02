@@ -54,6 +54,8 @@ import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
+import { AverageExecutionTimeDto } from '../../application/ports/work-order-metrics-query.port';
+import { GetAverageExecutionTimeQuery } from '../../application/queries/get-average-execution-time/get-average-execution-time.query';
 import { GetMyWorkOrderQuery } from '../../application/queries/get-my-work-order/get-my-work-order.query';
 import { GetMyWorkOrdersQuery } from '../../application/queries/get-my-work-orders/get-my-work-orders.query';
 import { GetWorkOrderTrailQuery } from '../../application/queries/get-work-order-trail/get-work-order-trail.query';
@@ -63,11 +65,13 @@ import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
+import { AverageExecutionTimeQueryDto } from '../dtos/average-execution-time.request.dto';
 import { CancellationRequestDto } from '../dtos/cancellation.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
 import { PlanPartRequestDto } from '../dtos/plan-part.request.dto';
 import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
 import {
+  AverageExecutionTimeResponseDto,
   CreatedWorkOrderResponseDto,
   WorkOrderResponseDto,
   WorkOrderTrailEntryResponseDto,
@@ -151,6 +155,28 @@ export class WorkOrdersController {
       throw new WorkOrderNotFoundError();
     }
     return this.toResponseDto(workOrder);
+  }
+
+  @Get('metrics/average-execution-time')
+  @RequirePermissions(AppPermission.MetricsRead)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Average elapsed time between execution start and completion' })
+  @ApiOkResponse({ type: AverageExecutionTimeResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async averageExecutionTime(
+    @Query() query: AverageExecutionTimeQueryDto,
+  ): Promise<AverageExecutionTimeResponseDto> {
+    const result = await this.queryBus.execute<
+      GetAverageExecutionTimeQuery,
+      AverageExecutionTimeDto
+    >(
+      new GetAverageExecutionTimeQuery(
+        query.serviceId,
+        query.completedFrom ? new Date(query.completedFrom) : undefined,
+        query.completedTo ? new Date(query.completedTo) : undefined,
+      ),
+    );
+    return result;
   }
 
   @Get(':number')

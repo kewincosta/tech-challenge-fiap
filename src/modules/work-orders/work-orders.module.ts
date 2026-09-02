@@ -16,8 +16,10 @@ import { ReturnPartsHandler } from './application/commands/return-parts/return-p
 import { StartDiagnosisHandler } from './application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
 import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
+import { WORK_ORDER_METRICS_QUERY_PORT } from './application/ports/work-order-metrics-query.port';
 import { WORK_ORDER_NUMBER_GENERATOR } from './application/ports/work-order-number-generator.port';
 import { WORK_ORDER_QUERY_PORT } from './application/ports/work-order-query.port';
+import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
 import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
 import { GetMyWorkOrdersHandler } from './application/queries/get-my-work-orders/get-my-work-orders.handler';
 import { GetWorkOrderTrailHandler } from './application/queries/get-work-order-trail/get-work-order-trail.handler';
@@ -32,6 +34,7 @@ import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-orde
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderPartOrmEntity } from './infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './infrastructure/persistence/work-order-service.orm-entity';
+import { TypeOrmWorkOrderMetricsQueryAdapter } from './infrastructure/persistence/typeorm-work-order-metrics-query.adapter';
 import { TypeOrmWorkOrderQueryAdapter } from './infrastructure/persistence/typeorm-work-order-query.adapter';
 import { TypeOrmWorkOrderRepository } from './infrastructure/persistence/typeorm-work-order.repository';
 import { WorkOrderOrmEntity } from './infrastructure/persistence/work-order.orm-entity';
@@ -73,8 +76,10 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     GetWorkOrderTrailHandler,
     GetMyWorkOrdersHandler,
     GetMyWorkOrderHandler,
+    GetAverageExecutionTimeHandler,
     { provide: WORK_ORDER_REPOSITORY, useClass: TypeOrmWorkOrderRepository },
     { provide: WORK_ORDER_QUERY_PORT, useClass: TypeOrmWorkOrderQueryAdapter },
+    { provide: WORK_ORDER_METRICS_QUERY_PORT, useClass: TypeOrmWorkOrderMetricsQueryAdapter },
     { provide: WORK_ORDER_NUMBER_GENERATOR, useClass: RandomWorkOrderNumberGenerator },
   ],
 })

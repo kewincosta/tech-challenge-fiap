@@ -17,6 +17,7 @@ let app: INestApplication;
 let close: () => Promise<void>;
 let admin: AuthenticatedClient;
 let serviceAdvisor: AuthenticatedClient;
+let mechanic: AuthenticatedClient;
 
 beforeAll(async () => {
   const testApp = await createTestApp();
@@ -30,6 +31,10 @@ beforeAll(async () => {
   const advisorCredentials = await registerUser(app);
   await grantRole(app, advisorCredentials.userId, 'SERVICE_ADVISOR');
   serviceAdvisor = await login(app, advisorCredentials);
+
+  const mechanicCredentials = await registerUser(app);
+  await grantRole(app, mechanicCredentials.userId, 'MECHANIC');
+  mechanic = await login(app, mechanicCredentials);
 });
 
 afterAll(async () => {
@@ -109,6 +114,35 @@ async function createReceivedWorkOrder(customer: RegisteredCustomer): Promise<Cr
     .expect(201);
   const body = response.body as { id: string; number: string };
   return { number: body.number, id: body.id };
+}
+
+/** Walks a work order from RECEIVED to COMPLETED through the API - a service is enough, no part
+ * or withdrawal needed for the metric, which only reads execution_started_at and completed_at. */
+async function createCompletedWorkOrder(customer: RegisteredCustomer): Promise<CreatedWorkOrder> {
+  const workOrder = await createReceivedWorkOrder(customer);
+  const serviceId = await createCatalogService();
+  await api(app)
+    .post(`/api/v1/work-orders/${workOrder.number}/services`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ serviceId })
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${workOrder.number}/diagnosis`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${workOrder.number}/diagnosis/completion`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${workOrder.number}/budget/approval`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${workOrder.number}/completion`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  return workOrder;
 }
 
 describe('Work order tracking - the customer routes', () => {
@@ -236,5 +270,61 @@ describe('Work order tracking - the customer routes', () => {
       .get('/api/v1/work-orders/me/not-a-number')
       .set('Authorization', `Bearer ${client.accessToken}`)
       .expect(400);
+  });
+});
+
+describe('Work order tracking - the average execution time metric', () => {
+  it('reads an average, in whole seconds with a count, over work orders driven to completion through the API alone', async () => {
+    const customer = await registerCustomer();
+    await createCompletedWorkOrder(customer);
+
+    const response = await api(app)
+      .get('/api/v1/work-orders/metrics/average-execution-time')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const body = response.body as {
+      averageSeconds: number;
+      workOrderCount: number;
+      approximated: boolean;
+    };
+
+    expect(Number.isInteger(body.averageSeconds)).toBe(true);
+    expect(body.workOrderCount).toBeGreaterThanOrEqual(1);
+    expect(body.approximated).toBe(false);
+  });
+
+  it('marks the response approximated when a service filter is given', async () => {
+    const customer = await registerCustomer();
+    await createCompletedWorkOrder(customer);
+    const someService = await createCatalogService();
+
+    const response = await api(app)
+      .get('/api/v1/work-orders/metrics/average-execution-time')
+      .query({ serviceId: someService })
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+
+    expect((response.body as { approximated: boolean }).approximated).toBe(true);
+  });
+
+  it('does not mark the response approximated without a service filter', async () => {
+    const response = await api(app)
+      .get('/api/v1/work-orders/metrics/average-execution-time')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+
+    expect((response.body as { approximated: boolean }).approximated).toBe(false);
+  });
+
+  it('answers 403 for an actor lacking metrics:read', async () => {
+    const response = await api(app)
+      .get('/api/v1/work-orders/metrics/average-execution-time')
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(403);
+    expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('answers 401 without a token', async () => {
+    await api(app).get('/api/v1/work-orders/metrics/average-execution-time').expect(401);
   });
 });
