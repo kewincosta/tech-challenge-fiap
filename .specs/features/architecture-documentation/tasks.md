@@ -284,18 +284,25 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Five records exist, `0017` to `0020` and `0025`
-- [ ] `0019` states which price a withdrawal is charged at and why the round freezes it
-- [ ] `0020` states what each of the two totals answers, since keeping them apart is the decision
-- [ ] `0025` records the superseded decision that any deviation from an approved budget cancels the work order and opens a new one, carrying its original Why and its original rejected alternative
-- [ ] `0025` carries the status `Superseded by 0018` and is not edited to read as if it were still true
-- [ ] `0018` names `0025` as the decision it replaced, so the reversal is readable from either end
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Five records exist, `0017` to `0020` and `0025`
+- [x] `0019` states which price a withdrawal is charged at and why the round freezes it
+- [x] `0020` states what each of the two totals answers, since keeping them apart is the decision
+- [x] `0025` records the superseded decision that any deviation from an approved budget cancels the work order and opens a new one, carrying its original Why and its original rejected alternative
+- [x] `0025` carries the status `Superseded by 0018` and is not edited to read as if it were still true
+- [x] `0018` names `0025` as the decision it replaced, so the reversal is readable from either end
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the budget decisions and the one they replaced`
+
+**Closure notes**:
+
+1. **`0018` got a documented source after all, better than the code-only evidence T2 had.** The event storming's aggregate invariants in section 9 state the rule in full: items belong to a round, the items of an approved or rejected round are frozen, a round is generated from the items of its own round, rounds are numbered, and round one comes from the diagnosis while later rounds come from extra work found during execution. Section 5's main flow adds what happens to a refused round: the work order returns to execution with the original scope, and the parts of a refused round are never withdrawn and never charged. So the record is written from the documents, with the code confirming rather than substituting.
+2. **The supersession is a real pair, not a footnote.** `0025` carries its original Why ("one rule covers extra work, part swaps and abandonment") and its original rejected alternative, which was budget versioning with a re-approval transition, rejected as the complexity the MVP was told to avoid. That alternative is what `0018` adopted. `0018`'s Alternatives section names `0025` as the position it reversed and gives the reason: a cancellation per discovery fragments one repair across several work orders, loses the thread the customer follows, and takes the stock consumptions with it. Both files link each other, and both links were checked to resolve.
+3. **`0025` is deliberately not corrected to read as though it were current**, which is the whole point of a superseded record under section 10's rule. Its Consequences state that it is not in force and name the code that implements `0018` instead. It also records that H2 still reads as though this decision were in force while H18 records the reversal, and routes that reconciliation to T30 rather than fixing it here.
+4. **Two forward references were placed deliberately**: `0017` points at `0024`'s version guard as what protects an aggregate this size, and `0018` points at `ux_work_orders_active_vehicle` being consistent precisely because a discovery no longer opens a second work order. Both are facts already verified in earlier features of this session rather than claims made here for the first time.
 
 ---
 
