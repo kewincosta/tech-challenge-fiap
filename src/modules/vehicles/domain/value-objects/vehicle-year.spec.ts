@@ -22,4 +22,19 @@ describe('VehicleYear', () => {
   it('should accept exactly one year ahead of the current year', () => {
     expect(VehicleYear.create(CURRENT_YEAR + 1, CURRENT_YEAR).value).toBe(CURRENT_YEAR + 1);
   });
+
+  it('should treat two equal years as equal', () => {
+    const first = VehicleYear.create(2020, CURRENT_YEAR);
+    const second = VehicleYear.create(2020, CURRENT_YEAR);
+
+    expect(first.equals(second)).toBe(true);
+  });
+
+  it('should never equal a different year or something that is not a VehicleYear', () => {
+    const year = VehicleYear.create(2020, CURRENT_YEAR);
+    const other = VehicleYear.create(2021, CURRENT_YEAR);
+
+    expect(year.equals(other)).toBe(false);
+    expect(year.equals(undefined)).toBe(false);
+  });
 });

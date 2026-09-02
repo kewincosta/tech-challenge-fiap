@@ -19,4 +19,19 @@ describe('LicensePlate', () => {
     expect(() => LicensePlate.create('ABCD123')).toThrow(InvalidLicensePlateError);
     expect(() => LicensePlate.create('AB123')).toThrow(InvalidLicensePlateError);
   });
+
+  it('should treat two plates with the same value as equal', () => {
+    const first = LicensePlate.create('ABC1234');
+    const second = LicensePlate.create('abc-1234');
+
+    expect(first.equals(second)).toBe(true);
+  });
+
+  it('should never equal a different plate or something that is not a LicensePlate', () => {
+    const plate = LicensePlate.create('ABC1234');
+    const other = LicensePlate.create('ABC1D23');
+
+    expect(plate.equals(other)).toBe(false);
+    expect(plate.equals(undefined)).toBe(false);
+  });
 });

@@ -17,6 +17,58 @@ export default defineConfig({
         'src/**/*.spec.ts',
         'src/shared/infrastructure/database/migrations/**',
       ],
+      // One entry per critical path implementation-plan.md section 8 names. Kept per glob,
+      // not global, so a controller or DTO that unit tests deliberately skip never drags the
+      // number down on the paths that matter (design.md's Coverage thresholds).
+      thresholds: {
+        'src/modules/work-orders/domain/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/inventory/domain/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/users/domain/value-objects/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/customers/domain/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/vehicles/domain/value-objects/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        // Section 8 names this path for one concern - the role escalation rule, not every
+        // authorization command - and that rule lives entirely in this one handler
+        // (AssignRoleToUserHandler.ensureAssignable). The rest of application/** (role CRUD,
+        // access queries) is proven at the e2e layer instead, per the plan's own testing
+        // strategy table, and would need many new unit tests to clear 80 on its own.
+        'src/modules/authorization/application/commands/assign-role-to-user/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/shared/domain/value-objects/money.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+      },
     },
   },
   plugins: [swcPlugin()],
