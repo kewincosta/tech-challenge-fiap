@@ -87,7 +87,7 @@
 
 ## Feature Roadmap
 
-The fourteen phases of `docs/ddd/implementation-plan.md` group into nine shippable features. Each
+The fourteen phases of `docs/ddd/implementation-plan.md` group into ten shippable features. Each
 is specified when it is reached, never in advance.
 
 | # | Feature | Plan phases | Scope | Status |
@@ -101,6 +101,7 @@ is specified when it is reached, never in advance.
 | 7 | `work-order-part-withdrawal` | 11 | Large | Verified |
 | 8 | `work-order-closing` | 12 | Large | Verified |
 | 9 | `tracking-and-metrics` | 13 | Medium | Verified |
+| 10 | `architecture-documentation` | §10, 13's docs tail | Large | Not started |
 
 Rows 7 and 8 were one feature, `work-order-execution-and-closing`, until 2026-09-01. Phases 11 and
 12 together came to an estimated 28-36 tasks, against the 20 that feature 6 took. Phase 11 also
@@ -111,6 +112,16 @@ on top of it. The transaction mechanism itself is not new: `TransactionRunner` a
 `identity-foundation` (`RegisterUserHandler` plus `TypeOrmAssignmentRepository`). What phase 11
 adds is making two repositories that today always open their own `dataSource.transaction` join an
 ambient one instead.
+
+Row 10 was carved out of feature 9 on 2026-09-01, at the user's decision during that feature's
+Specify. Plan phase 13 bundles three read models, a coverage floor and a README together with the
+whole `docs/architecture` and `docs/adr` set. The code half carries executable acceptance criteria
+and a discrimination sensor that can bite; the documentation half is roughly 40 files no test can
+assert. Splitting keeps feature 9's Verifier meaningful and gives the documentation its own feature
+rather than letting it ride along unverifiable. Plan section 10 also intended this set to be
+written along the phases, one low-level-design page and one C4 component diagram per module phase,
+so row 10 carries the accumulated debt of all nine features before it, not only phase 13's own
+documentation tail.
 
 Requirements come from `docs/ddd/event-storming.md` sections 10, 11 and 14, and the per-phase
 detail in `docs/ddd/implementation-plan.md`. Those two documents stay the source of truth for the
@@ -154,11 +165,12 @@ entry. They apply to every feature.
   cleared - 1062 total, up from the 1014 baseline this feature started from (+48 new tests), zero
   regressions.
 - **In-progress** (file:line): none
-- **Next step**: none required. No blocking gaps. Feature 10, the architecture/ADR documentation
-  debt this feature's own Specify phase deliberately split out (22 ADRs, 2 architecture docs, 10 C4
-  diagrams, 8 module LLD pages, per plan phase 13's original scope), is the only work this file's
-  own Feature Roadmap still names - not to be started before the user reaches it, per this file's
-  incremental policy.
+- **Next step**: none required on the code. Every plan phase (0 through 13) is shipped and Verified.
+  The only work left in the roadmap is row 10, `architecture-documentation` - the set this feature's
+  own Specify phase split out: 22 ADRs, 2 architecture documents, 10 C4 diagrams, 8 module
+  low-level-design pages, plan phase 13's consistency pass over all of them, the PostgreSQL
+  justification the challenge asks for (ADR 0002), the Swagger review, and the README's Architecture
+  section, which links only `docs/ddd/` today because the rest did not exist when T10 wrote it.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
