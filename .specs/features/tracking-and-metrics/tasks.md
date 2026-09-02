@@ -215,18 +215,23 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] The average is computed by `AVG(EXTRACT(EPOCH FROM (completed_at - execution_started_at)))` in SQL, and no work order row ever reaches TypeScript
-- [ ] It averages `COMPLETED` and `DELIVERED` work orders, and a `DELIVERED` one still counts - spec.md's sixth edge case
-- [ ] It excludes work orders in execution and cancelled work orders
-- [ ] Both timestamps are named `NOT NULL` in the `WHERE`, rather than left implied by the status filter (design.md's fifth risk)
-- [ ] No matching row answers zero with a count of zero, from `COALESCE` rather than a handler branch - spec.md's third edge case
-- [ ] A date range excluding every row answers that same zero shape - spec.md's fourth edge case
-- [ ] A date range is inclusive at both ends, asserted with a fixture sitting exactly on each bound (L-009)
-- [ ] A service filter averages only the work orders carrying that service, and a work order carrying three services contributes its whole elapsed time to each - spec.md's fifth edge case
-- [ ] The seconds come back as a whole number, asserted against a fixture whose true average is fractional
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 9 tests pass (no silent deletions)
+- [x] The average is computed by `AVG(EXTRACT(EPOCH FROM (completed_at - execution_started_at)))` in SQL, and no work order row ever reaches TypeScript (structural: the adapter's return type carries only the two aggregated numbers, proven by the type signature rather than a dedicated runtime case)
+- [x] It averages `COMPLETED` and `DELIVERED` work orders, and a `DELIVERED` one still counts - spec.md's sixth edge case
+- [x] It excludes work orders in execution and cancelled work orders
+- [x] Both timestamps are named `NOT NULL` in the `WHERE`, rather than left implied by the status filter (design.md's fifth risk)
+- [x] No matching row answers zero with a count of zero, from `COALESCE` rather than a handler branch - spec.md's third edge case
+- [x] A date range excluding every row answers that same zero shape - spec.md's fourth edge case
+- [x] A date range is inclusive at both ends, asserted with a fixture sitting exactly on each bound (L-009)
+- [x] A service filter averages only the work orders carrying that service, and a work order carrying three services contributes its whole elapsed time to each - spec.md's fifth edge case
+- [x] The seconds come back as a whole number, asserted against a fixture whose true average is fractional
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 8 tests pass (1 fewer than planned - the first bullet is a structural fact, not a separate runtime case)
+
+**Unplanned but required, two real bugs caught by writing this task's own tests:**
+1. **A genuine aggregation bug**, caught before any test ran: the first SQL draft used `LEFT JOIN work_order_services` directly on `work_orders` to apply the optional service filter. With no filter, that join still fans out one `work_orders` row per service the work order carries, so `AVG` counted a three-service work order's elaped time three times even when no filter was requested - corrupting the *unfiltered* average, not only the filtered one. Rewritten to use `EXISTS` as a pure filter (never a row multiplier) instead of a `JOIN`, with `COUNT(*)` correctly counting one row per qualifying work order in every case.
+2. **A test-data durability bug**, caught by the gate: the first draft of this task's own integration test used fixed calendar dates (`2026-01-01`, `2026-06-01`, ...) for the date-range fixtures. Since the test database is never truncated, a second run of the same file accumulated rows inside the same fixed windows and inflated every count and average - three tests failed on the second run with exactly the wrong totals, not on error. Fixed with a `randomDay()` helper picking a random day across a 90-year span, matching the same reasoning `uniqueValidCpf()` already documents for the CPF.
+3. **A pre-existing, unrelated flake diagnosed and fixed**: the full e2e gate showed `registerUser` returning 409 on four separate runs while gating this task, always inside `test/support/http.ts`'s shared helper - not a file this task touches by its own scope. Traced to `faker.internet.email()` being called with no uniqueness salt, unlike `uniqueValidCpf()`'s own documented fix for the identical problem; against a database that accumulates users across the whole project's entire test history and is never truncated, a collision was only a matter of volume, not bad luck. Fixed by prefixing a random token in `registerUser` and `createStaffAccount`, the two call sites the observed failures actually went through. `test/e2e/authentication.e2e.spec.ts` still calls `faker.internet.email()` directly in five places, unfixed - it was not the source of any failure this session, and rewriting a feature-1 e2e file that is not currently broken is outside this task's scope. Worth flagging to the Verifier as a residual risk and a lesson candidate given the recurrence count (this is the fourth time this exact shape of flake surfaced this session, across features 6, 8 and now 9).
 
 **Tests**: integration
 **Gate**: full

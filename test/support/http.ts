@@ -22,7 +22,10 @@ export function api(app: INestApplication): request.Agent {
 }
 
 export async function registerUser(app: INestApplication): Promise<RegisteredCredentials> {
-  const email = faker.internet.email().toLowerCase();
+  // A random prefix, not faker's email alone: faker.internet.email() draws from a bounded pool
+  // of names, and the test database is never truncated, so it collides across many e2e runs
+  // (STATE.md Conventions) - the same reasoning uniqueValidCpf already documents for the CPF.
+  const email = `${Math.random().toString(36).slice(2)}.${faker.internet.email().toLowerCase()}`;
   const password = 'Str0ngPassword';
   const document = uniqueValidCpf();
   const response = await api(app)
@@ -64,7 +67,7 @@ export async function createStaffAccount(
   app: INestApplication,
   actorToken: string,
 ): Promise<StaffCreatedAccount> {
-  const email = faker.internet.email().toLowerCase();
+  const email = `${Math.random().toString(36).slice(2)}.${faker.internet.email().toLowerCase()}`;
   const document = uniqueValidCpf();
   const response = await api(app)
     .post('/api/v1/users/staff')
