@@ -83,6 +83,15 @@
 - **Date**: 2026-09-01
 - **Status**: active
 
+### AD-010
+
+- **Decision**: A decision taken from here on is recorded twice and cross-referenced once: an `AD-NNN` entry in this file, and a numbered record in `docs/adr/`, each naming the other. Neither stands alone, and the ADR carries the reasoning while this file carries the working-memory summary.
+- **Reason**: `docs/ddd/implementation-plan.md` section 10 has always said "whenever a decision is taken, one ADR, numbered next", but the rule was never operative because `docs/adr/` did not exist. Nine features' worth of decisions accumulated in three different shapes across this file, the plan's section 7 and the event storming's section 14, and one of them drifted into describing an approach the code never took. Two homes with an explicit link between them is what stops the third shape from appearing.
+- **Trade-off**: Recording a decision costs two files instead of one, and a decision recorded in only one of them is now a visible gap rather than a complete record. The Decisions log stays the file read on resume, so an ADR alone does not reach a future session's context.
+- **Scope**: Every feature after `architecture-documentation`. The nine existing entries are reconciled by that feature rather than rewritten here.
+- **Date**: 2026-09-02
+- **Status**: active
+
 ---
 
 ## Feature Roadmap
