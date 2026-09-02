@@ -184,14 +184,14 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] A customer reading their own work order gets it in full
-- [ ] A customer reading another customer's work order gets `null` - spec.md's second edge case at this layer
-- [ ] A user backing no customer record gets `null`
-- [ ] A number nobody carries gets `null`
-- [ ] The three refusals are asserted to be the identical value, so nothing downstream can tell them apart
-- [ ] The `QueryBus` stub branches on the query instance, never on call order
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 5 tests pass (no silent deletions)
+- [x] A customer reading their own work order gets it in full
+- [x] A customer reading another customer's work order gets `null` - spec.md's second edge case at this layer
+- [x] A user backing no customer record gets `null`
+- [x] A number nobody carries gets `null`
+- [x] The three refusals are asserted to be the identical value, so nothing downstream can tell them apart
+- [x] The `QueryBus` stub branches on the query instance, never on call order
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 5 tests pass (matches the plan exactly)
 
 **Tests**: unit
 **Gate**: quick
