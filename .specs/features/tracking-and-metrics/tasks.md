@@ -255,11 +255,11 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] The handler passes the service filter and both date bounds through untouched
-- [ ] It marks the response as approximated when, and only when, a service filter was given
-- [ ] It never computes an average itself
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 3 tests pass (no silent deletions)
+- [x] The handler passes the service filter and both date bounds through untouched
+- [x] It marks the response as approximated when, and only when, a service filter was given
+- [x] It never computes an average itself
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 3 tests pass (matches the plan exactly)
 
 **Tests**: unit
 **Gate**: quick
