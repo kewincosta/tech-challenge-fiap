@@ -145,17 +145,23 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Five records exist, numbered `0001` to `0005`, each named `NNNN-<kebab-case-title>.md` and matching its subject in design.md's provenance table
-- [ ] Each carries `## Context`, `## Decision`, `## Alternatives`, `## Consequences` and one `**Status**` line reading `Accepted`
-- [ ] `0002` justifies PostgreSQL on the four grounds the plan names: relational integrity across work orders, items and stock movements; the transactional guarantee the withdrawal needs across two aggregates in two modules; partial unique indexes for the soft delete rules; integer `bigint` arithmetic for money in cents
-- [ ] None of the five carries a `**Source**` line, since none corresponds to an `AD-NNN` - spec.md's fifth edge case
-- [ ] Every Context cites the document its reasoning comes from. IF a record cannot be traced to an existing document THEN it is not written and the gap is named in this task's closure note - spec.md's first edge case
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Five records exist, numbered `0001` to `0005`, each named `NNNN-<kebab-case-title>.md` and matching its subject in design.md's provenance table
+- [x] Each carries `## Context`, `## Decision`, `## Alternatives`, `## Consequences` and one `**Status**` line reading `Accepted`
+- [x] `0002` justifies PostgreSQL on the four grounds the plan names: relational integrity across work orders, items and stock movements; the transactional guarantee the withdrawal needs across two aggregates in two modules; partial unique indexes for the soft delete rules; integer `bigint` arithmetic for money in cents
+- [x] None of the five carries a `**Source**` line, since none corresponds to an `AD-NNN` - spec.md's fifth edge case
+- [x] Every Context cites the document its reasoning comes from. IF a record cannot be traced to an existing document THEN it is not written and the gap is named in this task's closure note - spec.md's first edge case
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the pre-build stack decisions`
+
+**Closure notes**:
+
+1. **Four of the five have a documented decision but no documented alternative, which is spec.md's first edge case landing on its owning task.** The plan's section 1 states the monolith with CQRS, Redis, the JWT scheme and Argon2 as *the state the repository already had* when the build began, not as choices deliberated at the time. Section 7 holds no block for any of them, the event storming's section 14 does not discuss them, and the feature specs reference them only as existing. So `0001`, `0003`, `0004` and `0005` carry a Context and a Decision traced to section 1 and to the code that implements them, Consequences derived from observable behaviour, and an Alternatives section that states plainly that no alternative was recorded rather than inventing a rejected one. `0002` is the exception: phase 13 of the plan states its four grounds outright, so it is written from real reasoning.
+2. **What "observable behaviour" means here, per record**: `0003` cites `RedisAccessCache`'s `authz:access:${userId}` key and 60 second TTL, `RedisRevokedSessionStore`, and `ThrottlerStorageRedisService` in `app.module.ts`. `0004` cites `Session.refresh` raising `RefreshTokenReuseError` and revoking with reason `TokenReuse`. `0005` cites `Argon2PasswordHasher` calling `argon2.hash(plain, { type: argon2.argon2id })`. Every such claim was read from the file before being written.
+3. **One correction made during the task**: the first draft of `0002` attributed the soft-delete partial unique index to the customer's document. The index is `ux_users_document`, on the user record, because the document lives there. Corrected before the gate, along with naming `ux_users_email`, `ux_vehicles_plate` and `ux_work_orders_active_vehicle` with its actual `status NOT IN ('DELIVERED', 'CANCELED')` predicate.
 
 ---
 
