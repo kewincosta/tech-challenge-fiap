@@ -71,6 +71,8 @@ export interface WorkOrderTrailEntryDto {
 export interface WorkOrderQueryPort {
   getByNumber(number: string): Promise<WorkOrderSummaryDto | null>;
   listByStatus(status?: string): Promise<WorkOrderSummaryDto[]>;
+  /** Every work order of that customer, whatever its status. Empty when it has none. */
+  listByCustomerId(customerExternalId: string): Promise<WorkOrderSummaryDto[]>;
   /** Chronological order. Existence of the work order is the caller's concern, not this port's. */
   listTrail(number: string): Promise<WorkOrderTrailEntryDto[]>;
 }

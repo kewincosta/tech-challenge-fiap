@@ -285,4 +285,65 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     expect(typeof listedRow?.serviceItems[0].unitPriceCents).toBe('number');
     expect(listedRow?.serviceItems[0].unitPriceCents).toBe(15099);
   });
+
+  it('should return every work order of a customer whatever its status, including cancelled and delivered ones', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const received = openWorkOrder(fixture, WorkOrderStatus.Received);
+    const canceled = openWorkOrder(fixture, WorkOrderStatus.Canceled);
+    const delivered = openWorkOrder(fixture, WorkOrderStatus.Delivered);
+    await repository.save(received);
+    await repository.save(canceled);
+    await repository.save(delivered);
+
+    const listed = await queryAdapter.listByCustomerId(fixture.customer.externalId);
+
+    const numbers = listed.map((row) => row.number);
+    expect(numbers).toEqual(
+      expect.arrayContaining([received.number.value, canceled.number.value, delivered.number.value]),
+    );
+  });
+
+  it('should return the same shape listByStatus returns, items and budgets and closing fields included', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const service = await insertService();
+    const workOrder = openWorkOrder(fixture, WorkOrderStatus.InDiagnosis);
+    workOrder.addService({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: fixture.creator.externalId,
+      now: new Date(),
+    });
+    await repository.save(workOrder);
+
+    const listed = await queryAdapter.listByCustomerId(fixture.customer.externalId);
+    const row = listed.find((candidate) => candidate.id === workOrder.id.value);
+
+    expect(row?.serviceItems).toHaveLength(1);
+    expect(row?.budgets).toEqual([]);
+    expect(row?.chargedTotalCents).toBeNull();
+    expect(row?.discountCents).toBe(0);
+  });
+
+  it('should return an empty list for a customer with no work order', async () => {
+    const fixture = await seedWorkOrderRefs();
+
+    const listed = await queryAdapter.listByCustomerId(fixture.customer.externalId);
+
+    expect(listed).toEqual([]);
+  });
+
+  it("should never return a second customer's work orders in the first customer's list", async () => {
+    const first = await seedWorkOrderRefs();
+    const second = await seedWorkOrderRefs();
+    const firstWorkOrder = openWorkOrder(first, WorkOrderStatus.Received);
+    const secondWorkOrder = openWorkOrder(second, WorkOrderStatus.Received);
+    await repository.save(firstWorkOrder);
+    await repository.save(secondWorkOrder);
+
+    const listed = await queryAdapter.listByCustomerId(first.customer.externalId);
+
+    expect(listed.map((row) => row.id)).toEqual([firstWorkOrder.id.value]);
+  });
 });

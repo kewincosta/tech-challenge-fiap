@@ -124,13 +124,15 @@ T8  T9  T10
 
 **Done when**:
 
-- [ ] `listByCustomerId(customerExternalId)` returns every work order of that customer, whatever its status, including cancelled and delivered ones
-- [ ] It returns them in the same shape `listByStatus` already returns, items and budgets and closing fields included
-- [ ] It returns an empty list for a customer with no work order, never an error
-- [ ] A second customer's work orders never appear in the first customer's list, asserted with two seeded customers rather than one
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The integration suite passes twice consecutively
-- [ ] Test count: 4 tests pass (no silent deletions)
+- [x] `listByCustomerId(customerExternalId)` returns every work order of that customer, whatever its status, including cancelled and delivered ones
+- [x] It returns them in the same shape `listByStatus` already returns, items and budgets and closing fields included
+- [x] It returns an empty list for a customer with no work order, never an error
+- [x] A second customer's work orders never appear in the first customer's list, asserted with two seeded customers rather than one
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The integration suite passes twice consecutively
+- [x] Test count: 4 tests pass (no silent deletions)
+
+Unplanned but required: the full e2e suite (unrelated to this task's own files) showed one transient failure from `registerUser`/`uniqueValidCpf` in `test/e2e/work-order-withdrawals.e2e.spec.ts` - the same shape of flake logged twice before in this project (features 6 and 8's own tasks.md closures), now a third occurrence, always in a file this session never touches. Two immediate clean re-runs at 179/179 confirm it. Worth raising to the Verifier as a lesson candidate given the recurrence count.
 
 **Tests**: integration
 **Gate**: full

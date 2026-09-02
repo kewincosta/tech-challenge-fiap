@@ -145,6 +145,15 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
     return Promise.all(rows.map((row) => this.toDto(row)));
   }
 
+  /** Whatever the status - a customer's own list includes a cancelled or delivered work order. */
+  async listByCustomerId(customerExternalId: string): Promise<WorkOrderSummaryDto[]> {
+    const rows: WorkOrderRow[] = await this.dataSource.query(
+      `${SELECT_WORK_ORDERS} WHERE c.external_id = $1 ORDER BY wo.created_at DESC`,
+      [customerExternalId],
+    );
+    return Promise.all(rows.map((row) => this.toDto(row)));
+  }
+
   /** Ordered by `occurred_at` - chronological, the order INV-04's sibling AC in this feature asks for. */
   async listTrail(number: string): Promise<WorkOrderTrailEntryDto[]> {
     const rows: TrailRow[] = await this.dataSource.query(
