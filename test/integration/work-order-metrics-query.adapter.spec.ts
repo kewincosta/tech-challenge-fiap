@@ -118,9 +118,13 @@ async function seedRefs(): Promise<Fixture> {
  * truncated, so a hardcoded date window would accumulate rows across runs and inflate every
  * count and average a re-run computes (STATE.md Conventions).
  */
+// Capped well before the present: the adapter's query is system-wide, not customer-scoped, and
+// e2e specs complete real work orders on the real clock. A window that reached into the present
+// or future could pick up those unrelated rows and inflate a count this test seeded itself -
+// exactly this, observed for real (workOrderCount 4 instead of 2 on the boundary test).
 function randomDay(): Date {
   const base = Date.UTC(2000, 0, 1);
-  const span = Date.UTC(2090, 0, 1) - base;
+  const span = Date.UTC(2020, 0, 1) - base;
   const day = base + Math.floor((Math.random() * span) / 86400000) * 86400000;
   return new Date(day);
 }
