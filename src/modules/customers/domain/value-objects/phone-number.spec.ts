@@ -29,4 +29,19 @@ describe('PhoneNumber', () => {
   it('should accept an absent phone number', () => {
     expect(PhoneNumber.create(undefined)).toBeUndefined();
   });
+
+  it('should treat two phone numbers with the same digits as equal', () => {
+    const first = PhoneNumber.create('11987654321');
+    const second = PhoneNumber.create('(11) 98765-4321');
+
+    expect(first?.equals(second)).toBe(true);
+  });
+
+  it('should never equal a different number or something that is not a PhoneNumber', () => {
+    const phone = PhoneNumber.create('11987654321');
+    const other = PhoneNumber.create('1133334444');
+
+    expect(phone?.equals(other)).toBe(false);
+    expect(phone?.equals(undefined)).toBe(false);
+  });
 });

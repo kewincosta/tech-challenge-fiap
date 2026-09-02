@@ -48,4 +48,30 @@ describe('Address', () => {
 
     expect(address?.zipCode).toBe('01001000');
   });
+
+  it('should keep a trimmed complement when one is given', () => {
+    const address = Address.create({ ...COMPLETE_ADDRESS, complement: '  Apto 42  ' });
+
+    expect(address?.complement).toBe('Apto 42');
+  });
+
+  it('should treat two addresses with the same fields as equal', () => {
+    const first = Address.create(COMPLETE_ADDRESS);
+    const second = Address.create({ ...COMPLETE_ADDRESS });
+
+    expect(first?.equals(second)).toBe(true);
+  });
+
+  it('should treat two addresses as different when a single field differs', () => {
+    const first = Address.create(COMPLETE_ADDRESS);
+    const second = Address.create({ ...COMPLETE_ADDRESS, number: '456' });
+
+    expect(first?.equals(second)).toBe(false);
+  });
+
+  it('should never equal something that is not an Address', () => {
+    const address = Address.create(COMPLETE_ADDRESS);
+
+    expect(address?.equals(undefined)).toBe(false);
+  });
 });

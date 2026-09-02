@@ -361,17 +361,21 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] `address.ts`'s uncovered branches at lines 48 and 62-72 are exercised
-- [ ] `phone-number.ts`'s uncovered branches at lines 22-23 are exercised
-- [ ] `customers/domain/value-objects` reports at least 80 on statements, branches, functions and lines, read from an actual `npm run test:coverage` run rather than assumed
-- [ ] No existing test is weakened or deleted to reach the number
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: 6 tests pass (no silent deletions)
+- [x] `address.ts`'s uncovered branches at lines 48 and 62-72 are exercised
+- [x] `phone-number.ts`'s uncovered branches at lines 22-23 are exercised
+- [x] `customers/domain/value-objects` reports at least 80 on statements, branches, functions and lines, read from an actual `npm run test:coverage` run rather than assumed
+- [x] No existing test is weakened or deleted to reach the number
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: 6 tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
 
 **Commit**: `test(customers): cover the address and phone number branches`
+
+**Closure notes**:
+
+1. `npm run test:coverage` reads `customers/domain/value-objects` at 100 statements / 86 branches / 100 functions / 100 lines - all four above the 80 floor. The two remaining gaps it lists (`address.ts` 40-45, `phone-number.ts` 14) are the `typeof x === 'string'` guards against a non-string input on fields `create()` already exercises through its string path; neither was named by this task and the folder aggregate clears 80 without them.
 
 ---
 
