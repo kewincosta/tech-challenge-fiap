@@ -21,9 +21,7 @@ outside the API (ADR 0012) carries a hash indistinguishable from one the API wou
 ## Alternatives
 
 No alternative is recorded in this repository. The plan's section 1 states Argon2 as part of the
-state the build inherited, not as a choice deliberated at the time. Argon2id is the default
-recommended by OWASP for new applications, which is context rather than a project decision, and
-bcrypt and scrypt were not written down as considered.
+state the build inherited, not as a choice deliberated at the time.
 
 ## Consequences
 
