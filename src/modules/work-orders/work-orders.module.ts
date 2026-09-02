@@ -18,6 +18,8 @@ import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-
 import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
 import { WORK_ORDER_NUMBER_GENERATOR } from './application/ports/work-order-number-generator.port';
 import { WORK_ORDER_QUERY_PORT } from './application/ports/work-order-query.port';
+import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
+import { GetMyWorkOrdersHandler } from './application/queries/get-my-work-orders/get-my-work-orders.handler';
 import { GetWorkOrderTrailHandler } from './application/queries/get-work-order-trail/get-work-order-trail.handler';
 import { GetWorkOrderHandler } from './application/queries/get-work-order/get-work-order.handler';
 import { ListWorkOrdersHandler } from './application/queries/list-work-orders/list-work-orders.handler';
@@ -69,6 +71,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     GetWorkOrderHandler,
     ListWorkOrdersHandler,
     GetWorkOrderTrailHandler,
+    GetMyWorkOrdersHandler,
+    GetMyWorkOrderHandler,
     { provide: WORK_ORDER_REPOSITORY, useClass: TypeOrmWorkOrderRepository },
     { provide: WORK_ORDER_QUERY_PORT, useClass: TypeOrmWorkOrderQueryAdapter },
     { provide: WORK_ORDER_NUMBER_GENERATOR, useClass: RandomWorkOrderNumberGenerator },

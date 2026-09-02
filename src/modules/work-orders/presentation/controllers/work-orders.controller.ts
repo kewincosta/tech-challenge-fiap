@@ -54,6 +54,8 @@ import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
+import { GetMyWorkOrderQuery } from '../../application/queries/get-my-work-order/get-my-work-order.query';
+import { GetMyWorkOrdersQuery } from '../../application/queries/get-my-work-orders/get-my-work-orders.query';
 import { GetWorkOrderTrailQuery } from '../../application/queries/get-work-order-trail/get-work-order-trail.query';
 import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-work-order.query';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
@@ -110,6 +112,45 @@ export class WorkOrdersController {
       new ListWorkOrdersQuery(status),
     );
     return workOrders.map((workOrder) => this.toResponseDto(workOrder));
+  }
+
+  // Declared before every :number route - "me" would otherwise be read as a work order number
+  // and answer 400 from WorkOrderNumber.create, never 200 (design.md's first risk).
+  @Get('me')
+  @RequirePermissions(AppPermission.WorkOrdersReadOwn)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List the authenticated customer's own work orders" })
+  @ApiOkResponse({ type: [WorkOrderResponseDto] })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async myWorkOrders(@CurrentUser() principal: Principal): Promise<WorkOrderResponseDto[]> {
+    const workOrders = await this.queryBus.execute<GetMyWorkOrdersQuery, WorkOrderSummaryDto[]>(
+      new GetMyWorkOrdersQuery(principal.userId),
+    );
+    return workOrders.map((workOrder) => this.toResponseDto(workOrder));
+  }
+
+  // Same ordering requirement as myWorkOrders above - both me routes before :number.
+  @Get('me/:number')
+  @RequirePermissions(AppPermission.WorkOrdersReadOwn)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get one of the authenticated customer's own work orders by number" })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async myWorkOrder(
+    @Param('number') number: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    const workOrder = await this.queryBus.execute<GetMyWorkOrderQuery, WorkOrderSummaryDto | null>(
+      new GetMyWorkOrderQuery(principal.userId, number),
+    );
+    // One null for "no customer record", "no work order" and "not yours" - the same 404 either
+    // way, so a stranger's number reads identically to one nobody carries (design.md).
+    if (!workOrder) {
+      throw new WorkOrderNotFoundError();
+    }
+    return this.toResponseDto(workOrder);
   }
 
   @Get(':number')

@@ -283,22 +283,29 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] Both routes are declared before every `:number` route, and an e2e test hits `/work-orders/me` on a customer who owns a work order and gets 200 with a list, which fails loudly if the ordering ever regresses (design.md's first risk)
-- [ ] A customer sees their own work orders and none of a second customer's, proven with two seeded customers
-- [ ] A user with no customer record gets 200 and an empty list - spec.md's first edge case
-- [ ] A customer reads one of their own work orders in full, items and budgets included
-- [ ] A customer reading a second customer's number gets 404 with the identical body a number nobody carries returns - spec.md's second edge case
-- [ ] Both routes answer 403 to an actor lacking `work-orders:read-own`, one test per route (L-003)
-- [ ] Both routes answer 401 without a token, one test per route
-- [ ] A malformed number on `/me/:number` answers 400
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] The e2e suite passes twice consecutively
-- [ ] Test count: 10 tests pass (no silent deletions)
+- [x] Both routes are declared before every `:number` route, and an e2e test hits `/work-orders/me` on a customer who owns a work order and gets 200 with a list, which fails loudly if the ordering ever regresses (design.md's first risk)
+- [x] A customer sees their own work orders and none of a second customer's, proven with two seeded customers
+- [x] A user with no customer record gets 200 and an empty list - spec.md's first edge case
+- [x] A customer reads one of their own work orders in full, items and budgets included
+- [x] A customer reading a second customer's number gets 404 with the identical body a number nobody carries returns - spec.md's second edge case
+- [x] Both routes answer 403 to an actor lacking `work-orders:read-own`, one test per route (L-003)
+- [x] Both routes answer 401 without a token, one test per route
+- [x] A malformed number on `/me/:number` answers 400
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The e2e suite passes twice consecutively
+- [x] Test count: 10 tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: build
 
 **Commit**: `feat(work-orders): expose the customer tracking routes`
+
+**Closure notes**:
+
+1. **The `work-orders:read-own` 403 fixture was wrong, not the code**: the first draft of the two 403 tests authenticated as `serviceAdvisor` (a `SERVICE_ADVISOR`-only role grant, by every other test in this file's convention). Both came back 200/404 instead of 403. Traced through `PermissionsGuard`, `EffectiveAccessService` and `TypeOrmEffectiveAccessReader` end to end (all three correct, confirmed by direct instrumentation and a raw-SQL check of the actor's actual `user_roles`) before finding the real cause: `RegisterUserHandler` assigns `SystemRole.Customer` to every account in the same transaction as registration (its own comment cites this as a deliberate design.md decision), and `CUSTOMER` itself carries `work-orders:read-own`. So no account reachable through the public API ever lacks that permission - `serviceAdvisor` genuinely held it, via `CUSTOMER`, alongside `SERVICE_ADVISOR`. Fixed by adding a `revokeRole` test helper (symmetric to the existing `grantRole`) and a `loginWithNoRoles` fixture that strips the default `CUSTOMER` grant right after registration, giving a genuinely permission-less actor for both tests.
+2. **A `toEqual` bug in the same-body assertion**: comparing the two 404 bodies whole failed because `reference` is a fresh UUID per request. Fixed to compare the bodies minus `reference`, and assert the `reference`s themselves differ.
+3. **A latent determinism bug in T4's own `randomDay()` helper, caught while running this task's full-suite gate**: `work-order-metrics-query.adapter.spec.ts`'s boundary test failed for the first time this session (`workOrderCount` 4 instead of 2) because `randomDay()`'s 2000-2090 span can land a 30-day window on the real present date, and the adapter's aggregate is system-wide, not customer-scoped - so a window that happens to include today picks up whatever unrelated work orders any e2e spec (this task's own `work-order-tracking.e2e.spec.ts` included) completed on the real clock during the same run. Capped the span to 2000-2020, which stays random enough to avoid the original fixed-date accumulation problem while never reaching the present for the foreseeable life of this suite.
+4. The temporary `test/e2e/zzz-debug.e2e.spec.ts` file used to isolate the above (raw status/body logging, no assertions) was deleted before this commit; it was never a deliverable.
 
 ---
 

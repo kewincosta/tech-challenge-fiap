@@ -101,6 +101,18 @@ export async function grantRole(
   );
 }
 
+/** Registration always assigns CUSTOMER (RegisterUserHandler), so a fresh account always carries
+ * work-orders:read-own - a test proving a 403 without that permission has to revoke it first. */
+export async function revokeRole(app: INestApplication, userId: string, role: string): Promise<void> {
+  const dataSource = app.get(DataSource);
+  await dataSource.query(
+    `DELETE FROM user_roles
+      WHERE user_id = (SELECT id FROM users WHERE external_id = $1)
+        AND role_id = (SELECT id FROM roles WHERE name = $2)`,
+    [userId, role],
+  );
+}
+
 // Sets the flag directly, bypassing HTTP. POST /users/staff (T18) now creates a pending-password
 // account through the real endpoint - prefer createStaffAccount() for a test that exercises the
 // flow itself. This helper stays for tests that only need the flag set on an otherwise-plain
