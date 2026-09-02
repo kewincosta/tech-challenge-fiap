@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import type { AverageExecutionTimeFilter } from '../../src/modules/work-orders/application/ports/work-order-metrics-query.port';
 import { TypeOrmWorkOrderMetricsQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-metrics-query.adapter';
 import { createTestDataSource } from '../support/db';
 
@@ -113,15 +114,6 @@ async function seedRefs(): Promise<Fixture> {
   return { customerId, vehicleId, creatorId };
 }
 
-/**
- * A random day within a wide range, never a fixed calendar date - the test database is never
- * truncated, so a hardcoded date window would accumulate rows across runs and inflate every
- * count and average a re-run computes (STATE.md Conventions).
- */
-// Capped well before the present: the adapter's query is system-wide, not customer-scoped, and
-// e2e specs complete real work orders on the real clock. A window that reached into the present
-// or future could pick up those unrelated rows and inflate a count this test seeded itself -
-// exactly this, observed for real (workOrderCount 4 instead of 2 on the boundary test).
 function randomDay(): Date {
   const base = Date.UTC(2000, 0, 1);
   const span = Date.UTC(2020, 0, 1) - base;
@@ -133,10 +125,38 @@ function addSeconds(date: Date, seconds: number): Date {
   return new Date(date.getTime() + seconds * 1000);
 }
 
+/**
+ * Draws a random day and, using the exact filter the caller is about to assert on, checks
+ * through a real query that nothing already occupies that window - redrawing otherwise. The
+ * test database is never truncated (STATE.md Conventions), and the adapter's average is
+ * system-wide rather than customer-scoped, so no date range is inherently private to one test.
+ *
+ * A hardcoded date accumulates rows across runs (the original bug). A random but shared range
+ * still lets two tests' windows collide by chance the more times the suite runs (two different
+ * assertions failed, in two different runs, at even a 20-year span with 8 tests each opening a
+ * window up to 60 days wide - the birthday paradox does not go away just because the range is
+ * wide). Verifying the window is clear before trusting it removes the risk outright: correctness
+ * no longer depends on how many times this file has already run.
+ */
+async function pickClearDay(
+  buildFilter: (day: Date) => AverageExecutionTimeFilter,
+): Promise<Date> {
+  for (;;) {
+    const day = randomDay();
+    const probe = await adapter.averageExecutionTime(buildFilter(day));
+    if (probe.workOrderCount === 0) {
+      return day;
+    }
+  }
+}
+
 describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
   it('averages COMPLETED and DELIVERED work orders, a DELIVERED one still counting since it completed before delivery', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
     const start = addSeconds(day, 0);
     const completedEnd = addSeconds(day, 3600);
     const deliveredEnd = addSeconds(day, 9600);
@@ -163,7 +183,10 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('excludes work orders still in execution and cancelled work orders', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
     await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
       status: 'IN_EXECUTION',
       executionStartedAt: addSeconds(day, 0),
@@ -186,7 +209,10 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('answers zero with a count of zero when both timestamps are not both set, even on a COMPLETED row', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
     // A COMPLETED row missing execution_started_at should never happen through the API, but the
     // adapter names both columns NOT NULL explicitly rather than trusting the status filter alone
     // to imply them (design.md's fifth risk).
@@ -206,7 +232,10 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
   });
 
   it('answers zero with a count of zero when nothing has ever completed', async () => {
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
 
     const result = await adapter.averageExecutionTime({
       completedFrom: addSeconds(day, -1),
@@ -219,7 +248,12 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('answers the same zero shape when the date range excludes every completed work order', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    // The window checked below is [day, day+3600s], not the [day+30d, day+60d] asserted on -
+    // it is that second, later window whose emptiness the assertion actually depends on.
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, 30 * 86400),
+      completedTo: addSeconds(d, 60 * 86400),
+    }));
     await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
       status: 'COMPLETED',
       executionStartedAt: addSeconds(day, 0),
@@ -237,7 +271,10 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('includes a work order completed exactly on either bound of the date range (L-009 boundary)', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, 0),
+      completedTo: addSeconds(d, 30 * 86400),
+    }));
     const lowerBound = addSeconds(day, 0);
     const upperBound = addSeconds(day, 30 * 86400);
     // Two vehicles: COMPLETED is non-terminal for ux_work_orders_active_vehicle, so a second
@@ -264,9 +301,15 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('averages only the work orders carrying the filtered service, counting a work order once per service it carries', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
     const filtered = await insertService();
     const other = await insertService();
+    // filtered.externalId is a fresh id no earlier run could have referenced, so the probe below
+    // is really only guarding the date range - the service filter is already collision-free.
+    const day = await pickClearDay((d) => ({
+      serviceId: filtered.externalId,
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 30 * 86400),
+    }));
     const secondVehicleId = await insertVehicle(fixture.customerId);
     const withFilteredService = await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
       status: 'COMPLETED',
@@ -300,7 +343,10 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
   it('returns a whole number of seconds for a fixture whose true average is fractional', async () => {
     const fixture = await seedRefs();
-    const day = randomDay();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 30 * 86400),
+    }));
     // 3600s and 3601s average to 3600.5, which must round rather than truncate or float through.
     const secondVehicleId = await insertVehicle(fixture.customerId);
     await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
