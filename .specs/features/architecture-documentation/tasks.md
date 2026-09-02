@@ -250,15 +250,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Four records exist, `0013` to `0016`
-- [ ] `0016` states what the write-off does to the ledger rather than only that units are not returned
-- [ ] None carries a `**Source**` line, since none corresponds to an `AD-NNN`
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Four records exist, `0013` to `0016`
+- [x] `0016` states what the write-off does to the ledger rather than only that units are not returned
+- [x] None carries a `**Source**` line, since none corresponds to an `AD-NNN`
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the inventory decisions`
+
+**Closure notes**:
+
+1. **`0014` is the first record written under the declared-gap standard since T1, and only partly.** H5 in the event storming frames the question as a choice between reservation and direct consumption and answers it without arguing against reservation. The Alternatives section names the alternative the question itself names and states that no rejection reasoning is recorded, rather than supplying one. T2's closure note had flagged that `0014` has no section 7 block, against what design.md claimed; H5 is the source it does have.
+2. **H18 independently confirms the reversal T2 found in the code.** It reads: "Since revision 8 there is no successor work order, because extra work is authorised on the same one, so the transfer case disappeared." T2 established that from `WorkOrder.submitSupplementaryBudget` alone. The event storming records the same change, which means the document set already knew, and only H2 was left stale. This gives `0018` a documented source in T5 and hands T30 a precise internal contradiction to reconcile: H2 and H18 disagree inside one document.
+3. **`0015`'s rejected alternative names a capability that no longer exists**, and the record says so rather than quietly dropping it. The section 7 block justifies the ledger partly by its ability to express "a transfer between work orders", which revision 8 removed along with the successor work order. Verified in the code: `StockMovementStatus` holds three values, `PENDING`, `SETTLED` and `WRITTEN_OFF`, and `src/modules/inventory/application/commands/` has no transfer command. The block's original reasoning is preserved and the Consequences record that the transfer case is gone.
+4. **Two claims checked in the code before being written**: that returning an unnecessary part is a separate path from a cancellation write-off and does restore quantity (`ReturnPartsHandler` dispatches `RestoreStockBatchCommand`, which draws down consumptions and appends a `RETURN` per consumption), and that `kind` is a two-value label enforced by `chk_inventory_items_kind` rather than a behavioural branch.
 
 ---
 
