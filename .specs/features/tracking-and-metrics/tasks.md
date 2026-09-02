@@ -430,18 +430,23 @@ Unplanned but required: the full e2e suite (unrelated to this task's own files) 
 
 **Done when**:
 
-- [ ] It states the prerequisites, the environment setup, `docker compose up`, the migration command and the super administrator seed
-- [ ] It names every test suite and the command that runs it, including the coverage gate T9 added
-- [ ] It gives the URL the API documentation is served at
-- [ ] Every command it states is copied from `package.json` or `docker-compose.yml` rather than written from memory, and each one is executed once against this checkout before the task closes
-- [ ] It links to `docs/ddd/` only, since the architecture set does not exist until feature 10
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:coverage`
-- [ ] Test count: no new tests; the README is proven by running what it documents
+- [x] It states the prerequisites, the environment setup, `docker compose up`, the migration command and the super administrator seed
+- [x] It names every test suite and the command that runs it, including the coverage gate T9 added
+- [x] It gives the URL the API documentation is served at
+- [x] Every command it states is copied from `package.json` or `docker-compose.yml` rather than written from memory, and each one is executed once against this checkout before the task closes
+- [x] It links to `docs/ddd/` only, since the architecture set does not exist until feature 10
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:coverage`
+- [x] Test count: no new tests; the README is proven by running what it documents
 
 **Tests**: none (documentation, proven by execution)
 **Gate**: build
 
 **Commit**: `docs: add the project README`
+
+**Closure notes**:
+
+1. **A genuine, repeat flake in `work-order-metrics-query.adapter.spec.ts`, caught executing this task's own full gate**: the L-009 boundary test (already touched twice this feature, in T4 and again gating T6) failed a third time, and this time a second assertion failed alongside it in the same run. Root cause: the adapter's average is system-wide, not customer-scoped, so no random date range is inherently private to one test - and a shared range, however wide or however partitioned into per-test slots, still lets two tests' windows collide by chance the more times a never-truncated suite runs. Fixed with a different mechanism, not a wider range: each test now probes its own window through a real query before trusting it is empty, redrawing the day otherwise (`pickClearDay`). Committed separately (`99041b5`) since it touches a T4-owned file, not README content; verified with 8 consecutive clean runs of the file alone plus a full `test:integration` pass.
+2. **Every command in the README was executed once for real**: `docker compose up -d` (already running throughout this session), `npm run migration:run` (applied one migration the dev `workshop` database - not `workshop_test` - had not yet run), `npm run seed:admin`, `curl -s -o /dev/null -w '%{http_code}' http://localhost:13000/api/docs` (200), and the full six-command gate line itself. `seed:admin` failed once on `USER_INVALID_DOCUMENT` because the local `.env` had no `ADMIN_DOCUMENT` - `.env.example` documents one (`11144477735`); added it locally (gitignored, not committed) so the command could run, and it succeeded on retry.
 
 ---
 
