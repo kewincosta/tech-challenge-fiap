@@ -390,16 +390,23 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The index lists 25 rows, numbered `0001` to `0025`, with no number skipped and no number used twice
-- [ ] Every row links a file that exists in `docs/adr/`
-- [ ] The index carries no decision text of its own, only number, title and status
-- [ ] It states the status vocabulary: `Accepted`, `Superseded by NNNN`, `Deprecated`, and the rule that a superseded record is never edited or deleted
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] The index lists 25 rows, numbered `0001` to `0025`, with no number skipped and no number used twice
+- [x] Every row links a file that exists in `docs/adr/`
+- [x] The index carries no decision text of its own, only number, title and status
+- [x] It states the status vocabulary: `Accepted`, `Superseded by NNNN`, `Deprecated`, and the rule that a superseded record is never edited or deleted
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): add the decision index`
+
+**Closure notes**:
+
+1. **The index was generated from the files rather than typed from the plan**, so its titles and statuses are the ones the records actually carry. Three checks were run against it and all pass: 25 rows, every link resolving to a file that exists, and every row's title matching the `H1` of the file it links.
+2. **That check caught one divergence, in `0001`.** The index wrote the package name as code, `` `@nestjs/cqrs` ``, matching section 10's own formatting; the record's `H1` had it as plain text. The record's heading was brought in line, so index and record are now string-identical. It is a one-character-class difference that no reader would trip over, but it is exactly the kind of drift a generated index exists to expose, and leaving it would have made the same check noisy the next time somebody ran it.
+3. **`npx prettier --write` was run on this one file only**, never repository-wide. It aligned the table pipes and changed no content, which is the formatting `docs/ddd/` already uses. The repository-wide `npm run format` stays off limits for this feature: it would rewrite 149 unrelated files, as design.md's Risks table records.
+4. **The index also names where a decision lives besides `docs/adr/`**, pointing at `.specs/STATE.md`'s Decisions log and at AD-010, the rule that a decision taken from here on gets an entry in both. Without that pointer a reader finding only one of the two homes would reasonably assume it is the only one.
 
 ---
 
