@@ -110,7 +110,7 @@ is specified when it is reached, never in advance.
 | 7 | `work-order-part-withdrawal` | 11 | Large | Verified |
 | 8 | `work-order-closing` | 12 | Large | Verified |
 | 9 | `tracking-and-metrics` | 13 | Medium | Verified |
-| 10 | `architecture-documentation` | §10, 13's docs tail | Large | Not started |
+| 10 | `architecture-documentation` | §10, 13's docs tail | Large | Verified |
 
 Rows 7 and 8 were one feature, `work-order-execution-and-closing`, until 2026-09-01. Phases 11 and
 12 together came to an estimated 28-36 tasks, against the 20 that feature 6 took. Phase 11 also
@@ -158,62 +158,20 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/tracking-and-metrics` - **done**
-- **Phase / Task**: Verified in a single clean pass - no fix→re-verify round needed. 10 tasks
-  (T1-T10) committed on `main`, commit range `a88d005..fc5be0b` (15 commits: spec, design,
-  tasks-approved docs commits, T1-T10, plus two mid-feature fix commits for a test-durability bug
-  caught while gating T6 and T10). Verifier report at
-  `.specs/features/tracking-and-metrics/validation.md`.
-- **Completed**: every task in `tasks.md`; all 4 requirements (TAM-01 through TAM-04, all 19
-  numbered ACs, all 6 listed edge cases) independently re-derived and confirmed by the Verifier,
-  evidence-or-zero. 3/3 discrimination-sensor mutations killed on the first attempt (the customer
-  work-order ownership comparison, the metrics adapter's `DELIVERED`-inclusion filter, and the
-  average-execution-time route's permission gate) - no surviving mutant, no fix task generated.
-  Final gate: lint clean, build clean, unit 640/640, integration 228/228, e2e 194/194 (run twice
-  consecutively, identical both times), `test:coverage` exit 0 with all 7 critical-path thresholds
-  cleared - 1062 total, up from the 1014 baseline this feature started from (+48 new tests), zero
-  regressions.
+- **Feature**: `.specs/features/architecture-documentation` - **done**
+- **Phase / Task**: Verified on the second Verifier pass. 32 tasks (T1-T32) plus three fix tasks (F1-F3) committed on `main`, commit range `4834607..HEAD`. Verifier report at `.specs/features/architecture-documentation/validation.md`, carrying both rounds.
+- **Completed**: all 5 requirements (ARCH-01 through ARCH-05, 38 numbered ACs, all 6 listed edge cases). The set is 44 new files: 25 decision records and their index, an architecture overview, a high level design, 7 mermaid C4 diagrams, 9 low-level-design pages and their index. Three documents were edited: the plan's section 7 became an index, the event storming's section 15 became a pointer, and its H2 answer was annotated as reversed. `README.md` gained the four entry points and is now Prettier-clean. 15 permission-gated routes gained the `@ApiForbiddenResponse` they were missing, and the two budget decision routes gained a description of the owner-or-permission rule their handler applies.
 - **In-progress** (file:line): none
-- **Next step**: none required on the code. Every plan phase (0 through 13) is shipped and Verified.
-  The only work left in the roadmap is row 10, `architecture-documentation` - the set this feature's
-  own Specify phase split out: 22 ADRs, 2 architecture documents, 10 C4 diagrams, 8 module
-  low-level-design pages, plan phase 13's consistency pass over all of them, the PostgreSQL
-  justification the challenge asks for (ADR 0002), the Swagger review, and the README's Architecture
-  section, which links only `docs/ddd/` today because the rest did not exist when T10 wrote it.
+- **Next step**: none. Every plan phase (0 through 13) and its documentation tail are shipped and Verified. The roadmap has no further row.
 - **Blockers**: none
 - **Uncommitted files**: none - working tree clean on `main`
 - **Branch**: main
 
-**Notes from this feature's own implementation** (useful context for feature 10 or a re-read of this one):
-1. **No fix→re-verify round was needed**, continuing the pattern `work-order-closing` closed on. Two
-   features in a row now clean on the first Verifier pass.
-2. **A system-wide, date-range-scoped query has no isolation a per-test random date can reliably
-   provide, no matter how the random range is chosen.** `work-order-metrics-query.adapter.spec.ts`'s
-   boundary test flaked three separate times this feature, under three different fixes in sequence:
-   first a fixed calendar date (accumulates rows across runs), then a random date capped away from
-   the present (still collides with another test's window by chance the more times a never-truncated
-   suite runs - the birthday paradox does not go away just because the range is wide, and a
-   per-test-slot partition scheme tried in between still wasn't enough), and finally a `pickClearDay`
-   helper that probes the exact query window through a real request before trusting it is empty,
-   redrawing otherwise (commit `c6fe0e0`). This last shape is the one that held: 8 consecutive
-   isolated runs plus the Verifier's own independent 8-run check, all clean. Any future test built on
-   a query that is not scoped to fixture-owned data (customer id, a fresh random UUID, etc.) should
-   use this probe-then-trust pattern from the start rather than rediscovering the same three failure
-   modes.
-3. **Every registered account - staff included - carries `work-orders:read-own` through the
-   `CUSTOMER` role `RegisterUserHandler` assigns to every new user, by design.** A test written to
-   prove a 403 for "an actor lacking `work-orders:read-own`" cannot use any ordinarily-provisioned
-   staff account (`serviceAdvisor`, `mechanic`, `admin`) as the negative case, since all of them still
-   carry `CUSTOMER` underneath their staff role and therefore still hold that permission. Proving the
-   403 needs an actor with `CUSTOMER` explicitly revoked after registration (`revokeRole`, symmetric
-   to the existing `grantRole` test helper). Cost about an hour of dead-end investigation into
-   `PermissionsGuard`, `EffectiveAccessService` and `TypeOrmEffectiveAccessReader` (all three
-   correct) before the actual cause - the test's own fixture, not the code - was found.
-4. **`.specs/STATE.md`'s own "no commit trailers" convention was violated for seven commits mid-way
-   through this feature's Execute** (a `Co-Authored-By` trailer, from a global default that this
-   file's Conventions section explicitly says to override) and caught only at Verify time. Fixed by
-   rewriting those seven commits' messages in place (cherry-pick each onto the pre-mistake base,
-   amend the message, fast-forward `main`) after explicit user approval, confirmed byte-identical
-   trees before and after via `git diff` against a backup branch, which was then deleted. Repo has no
-   remote configured, so this was local-only. Worth a standing reminder for any session: re-read this
-   file's Conventions before the first commit of a resumed session, not just at Design/Resume time.
+**Notes from this feature's own implementation:**
+
+1. **The first Verifier pass failed, and it failed on the one thing this feature could not check mechanically.** Round 1 returned three gaps, all in the ORM column tables: five columns migration `…007` adds to `work_orders` were missing, a `budget_round integer` column was documented on two tables where the real column is `budget_id bigint` referencing `work_order_budgets`, and `quantity` was missing from `stock_movement_transitions`. The cause was uniform: columns were gathered from the migration that created a table plus at best one that altered it, rather than from every migration touching it. The user had chosen full column fidelity over a pointer at design time, knowing nothing would detect drift; that choice was sound, and the first attempt at executing it was not careful enough.
+2. **The fix produced the check that should have existed from the start.** A parser derives the full column set for all 18 tables from all 9 migrations and greps each page for every name. Round 2 corroborated it with an independent implementation and widened it: all 18 documented table headings correspond to real tables, and all 53 index and constraint identifiers cited across `docs/architecture/` exist in the migrations.
+3. **Both Verifier rounds wrote a broken checker before writing a working one, and both caught it.** Round 1's link checker reported 100+ false failures from its own parsing; round 2's column parser reported 0/18 clean with 100+ bogus type mismatches from a greedy pattern reading `bigint NOT NULL` as a type. Neither conclusion was acted on. Worth remembering: on a documentation feature the checker is the instrument, and an instrument that reports failure is safer than one that reports success.
+4. **Two lessons recorded, both candidates**: `L-015`, derive a column list from every migration touching the table rather than only the one that created it; `L-016`, take a column's name and type from the migration or the ORM entity, never from a query adapter's SQL alias. Round 2 recorded nothing new.
+5. **One disclosed scope exception, judged justified by the Verifier.** T30 annotated H2 in the event storming, which sits outside the "sections 7 and 15 only" limit the spec's Out of Scope sets. The spec shipped two acceptance criteria in direct tension: ARCH-04 #4 unconditionally requires correcting a document the code contradicts, and ARCH-04 #5 confines DDD edits. H2 was both. The Verifier called the edit justified and the defect a spec-precision gap, in the spec rather than in the work.
+6. **`npm run format:check` still fails on ~148 pre-existing files** across `src`, `test` and `.claude`. This feature brought `README.md` and all of `docs/` to Prettier-clean and deliberately left the rest alone. A future maintenance pass could close it; running `npm run format` casually would produce a 148-file diff.

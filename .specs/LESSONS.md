@@ -96,6 +96,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: Q4/Q5: typeorm-inventory-query.adapter.ts:57,58,65 (SUM reduced to MAX, array_agg truncated to its first element) survived all 883 tests, because every shortage fixture puts exactly one work_order_parts row in each GROUP BY group (WOP-04 AC2, AC3) (query-adapters)
 - last seen: 2026-09-01T15:16:20Z
 
+### L-015 - Derive a documented column list from every migration that touches the table, not only the one that created it - a table extended by a later ALTER TABLE is where the list silently goes stale.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `documentation` · harmful: 0
+- features: architecture-documentation
+- evidence: docs/architecture/low-level-design/work-orders.md:111 - ARCH-03 AC3 (documentation)
+- last seen: 2026-09-03T01:57:17Z
+
+### L-016 - Take a documented column's name and type from the migration or the ORM entity, never from a query adapter's SQL - an alias such as 'wob.round AS budget_round' names no column on the table being documented.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `documentation` · harmful: 0
+- features: architecture-documentation
+- evidence: docs/architecture/low-level-design/work-orders.md:160,179 - ARCH-03 AC3 (documentation)
+- last seen: 2026-09-03T01:57:23Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

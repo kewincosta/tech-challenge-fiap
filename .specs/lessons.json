@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 15,
+  "next_id": 17,
   "lessons": [
     {
       "id": "L-001",
@@ -266,6 +266,42 @@
       ],
       "created": "2026-09-01T15:16:20Z",
       "last_seen": "2026-09-01T15:16:20Z"
+    },
+    {
+      "id": "L-015",
+      "key": "ac_gap::derive a documented column list from every migration that touches the table not only the one that created it a table extended by a later alter table is where the list silently goes stale",
+      "text": "Derive a documented column list from every migration that touches the table, not only the one that created it - a table extended by a later ALTER TABLE is where the list silently goes stale.",
+      "signal": "ac_gap",
+      "scope": "documentation",
+      "status": "candidate",
+      "features": [
+        "architecture-documentation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/architecture/low-level-design/work-orders.md:111 - ARCH-03 AC3 (documentation)"
+      ],
+      "created": "2026-09-03T01:57:17Z",
+      "last_seen": "2026-09-03T01:57:17Z"
+    },
+    {
+      "id": "L-016",
+      "key": "ac_gap::take a documented column s name and type from the migration or the orm entity never from a query adapter s sql an alias such as wob round as budget round names no column on the table being documented",
+      "text": "Take a documented column's name and type from the migration or the ORM entity, never from a query adapter's SQL - an alias such as 'wob.round AS budget_round' names no column on the table being documented.",
+      "signal": "ac_gap",
+      "scope": "documentation",
+      "status": "candidate",
+      "features": [
+        "architecture-documentation"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/architecture/low-level-design/work-orders.md:160,179 - ARCH-03 AC3 (documentation)"
+      ],
+      "created": "2026-09-03T01:57:23Z",
+      "last_seen": "2026-09-03T01:57:23Z"
     }
   ]
 }
