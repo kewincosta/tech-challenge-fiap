@@ -966,59 +966,32 @@ administration wants it.
 
 ## 15. Architectural implications
 
-**Modules.** Five new modules under `src/modules`, following the existing four-layer folder
-layout: `customers`, `vehicles`, `services`, `inventory`, `work-orders`. Three existing modules
-are extended: `users` gains the document and the administration endpoints, `authorization` gains
-the super administrator role and the escalation rule and loses the whole group feature, and
-`authentication` gains the pending password flag in the token and a global logout.
+The architectural implications of this model moved to
+[`docs/architecture/`](../architecture/architecture-overview.md), which is where they are
+maintained. This section is the pointer, so the same statement does not live in two places and
+drift apart.
 
-**Aggregates.** Five new aggregate roots following the existing shape: private constructor, a
-static creation method recording a domain event, a static `restore` for the mapper, a props
-interface, read-only getters, `record()` and `pullDomainEvents()`. `WorkOrder` and
-`InventoryItem` have child entities, one of which is append only in each.
+| What you were looking for                                                                                                                                            | Where it is now                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| What the system is, its actors, its contexts, its runtime pieces                                                                                                     | [architecture-overview.md](../architecture/architecture-overview.md) |
+| The modules and what each owns, the layers, the CQRS wiring, the guard chain, the cross-module transactions, the identifier and money conventions, the error mapping | [high-level-design.md](../architecture/high-level-design.md)         |
+| Aggregates, value objects, entities, columns, endpoints and errors of one module                                                                                     | [low-level-design/](../architecture/low-level-design/README.md)      |
+| Why any of it was decided that way                                                                                                                                   | [adr/](../adr/README.md)                                             |
 
-**Profiles.** Only Customer becomes an aggregate. The others stay as roles, and the machinery for
-roles is already built. Nothing in the plan creates a table whose only content is a foreign key
-and a status.
+Two statements this section used to carry were already out of date when it moved, and are
+recorded here rather than silently dropped, because a reader of an older revision may be looking
+for them.
 
-**Identifiers.** The internal key plus external identifier rule applies to every addressable
-table, including the ones that already exist. Join tables keep a composite key of internal ids.
-The domain carries external identifiers and the foreign keys carry internal ones, so repositories
-resolve one into the other at their boundary. The JWT keeps carrying the user's external
-identifier, so tokens survive the change.
+**The work order trail is not written by a subscriber.** This section described it as one, noting
+that recording it therefore adds no new write path to the handlers. That mechanism was replaced
+before any trail code shipped: a subscriber runs after the commit, so a failure inside it loses an
+entry while the fact it describes is already saved. The repository writes the trail through the
+same `EntityManager` as the aggregate, inside the same transaction. See
+[ADR 0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md).
 
-**Money.** Integer cents in the domain, `bigint` columns in PostgreSQL, cents in the API
-payloads. TypeORM returns `bigint` as a string, so every mapper converts explicitly.
-
-**Append only history.** `stock_movements`, `stock_movement_transitions` and `work_order_events` are
-never updated in place beyond a movement status, and never deleted. That is what makes the
-traceability requirement real rather than a claim.
-
-**Domain events.** Extend `DomainEvent`, recorded by the aggregate, published by the handler with
-`eventBus.publishAll(aggregate.pullDomainEvents())`. Subscribers stay in
-`application/subscribers`. The work order trail is one of those subscribers, so recording it adds
-no new write path to the handlers.
-
-**Policies.** Two shapes appear. The budget notification and the trail are event subscribers,
-matching `RefreshTokenReuseSubscriber`. The stock consumption, settlement, transfer and write off
-are synchronous cross-context commands, matching `RegisterUserHandler` calling
-`AssignRoleToUserCommand`, because they must be able to fail the caller.
-
-**Guards.** One new global guard enforces the pending password flag, registered after
-`JwtAuthGuard`, with a decorator marking the two routes it lets through. It is the only new
-guard, and it exists because the rule applies to every route rather than to a permission.
-
-**Authorization.** The new capabilities extend the existing permission catalog (`AppPermission`
-plus a seed migration) and the existing `@RequirePermissions` decorator. The escalation rule for
-`ADMIN` and `SUPER_ADMIN` lives in the existing assignment handler. The customer's own work order
-access needs a permission plus an ownership check inside the handler, since a permission alone
-cannot express ownership.
-
-**Persistence.** New tables come from hand written SQL migrations, with `CHECK` constraints for
-status columns and partial unique indexes filtered by `deleted_at IS NULL`, which is what the
-identity schema already does.
-
-**Errors.** Each new rule gets a `DomainError` subclass with a `code` prefixed by its module and a
-`kind` from `ErrorKind`. Transition violations and insufficient stock map to `RuleViolation`
-(422), duplicated document, email or plate to `Conflict` (409), a request from an account with a
-pending password and an attempt to grant a role above one's level to `Forbidden` (403).
+**There is no stock transfer.** This section listed consumption, settlement, transfer and write off
+as the synchronous cross-context commands. The transfer case disappeared at revision 8, when extra
+work became authorised on the same work order instead of opening a successor, which H18 in section
+14 already records. What exists is consumption, settlement and write off. See
+[ADR 0018](../adr/0018-numbered-budget-rounds.md) and
+[ADR 0015](../adr/0015-stock-movements-append-only.md).

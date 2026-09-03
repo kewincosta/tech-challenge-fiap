@@ -599,15 +599,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Section 15 points at `docs/architecture/architecture-overview.md` instead of restating the implications
-- [ ] Anything section 15 held that the overview does not carry is moved into the overview rather than lost
-- [ ] Nothing outside section 15 is edited, and the document stays the source of truth for the domain
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Section 15 points at `docs/architecture/architecture-overview.md` instead of restating the implications
+- [x] Anything section 15 held that the overview does not carry is moved into the overview rather than lost
+- [x] Nothing outside section 15 is edited, and the document stays the source of truth for the domain
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(ddd): point section 15 at the architecture overview`
+
+**Closure notes**:
+
+1. **The second criterion was read against section 10's ownership table, as T10's closure note flagged.** Most of what section 15 held is module-level design, which that table assigns to the high level design rather than to the overview. It went to `high-level-design.md` in T11: the modules and what each owns, the layers, the aggregate shape, the domain event and subscriber pattern, the guard chain, the persistence conventions and the error mapping. Nothing was lost; the destination is one level below where the criterion's wording pointed, and it is the level that owns it.
+2. **The two stale claims are corrected in place rather than deleted.** The new section states plainly that the trail is not written by a subscriber and that there is no stock transfer, each with the reason and a link to the record that owns it. Deleting them would have been tidier and worse: a reader holding an older revision of this document goes looking for exactly those two statements, and finding nothing tells them nothing.
+3. **Checked mechanically**: the phrase "trail is one of those subscribers" now appears zero times in the file, six of the section's seven links resolve today, and lines 1 to 966 are byte-identical to a pre-edit copy. The seventh link is `low-level-design/README.md`, which T29 writes.
+4. Section 15 was the last section of the file, so the replacement has no following content to disturb.
 
 ---
 
