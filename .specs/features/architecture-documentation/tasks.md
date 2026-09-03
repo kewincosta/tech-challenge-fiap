@@ -801,15 +801,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `Vehicle` aggregate, `LicensePlate` and `VehicleYear` with their rules, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints including `GET /vehicles/me`, and the errors with their HTTP mapping
-- [ ] It records that `GET /vehicles/me` carries no permission decorator, unlike the work order equivalent, since that asymmetry is real and surprising
-- [ ] The entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `Vehicle` aggregate, `LicensePlate` and `VehicleYear` with their rules, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints including `GET /vehicles/me`, and the errors with their HTTP mapping
+- [x] It records that `GET /vehicles/me` carries no permission decorator, unlike the work order equivalent, since that asymmetry is real and surprising
+- [x] The entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the vehicles low level design`
+
+**Closure notes**:
+
+1. **The `/me` asymmetry is recorded with its cause, not just noted.** `GET /vehicles/me` has no `@RequirePermissions`; any authenticated caller may ask for their own vehicles, and the scoping happens by resolving the customer from the token. `GET /work-orders/me` does carry one, `work-orders:read-own`. The page states both and that the permission postdates this route, so a reader does not read the difference as an oversight in one of the two.
+2. **`VehicleYear` takes the current year as an argument rather than reading the clock**, which is a testability decision visible in the value object's own signature. Recorded here because it explains a parameter that otherwise looks redundant.
+3. **The plate index is the mirror image of the customers one documented in T19**: `ux_vehicles_plate` *is* filtered by `deleted_at IS NULL`, so removing a vehicle frees its plate for a future registration. Two adjacent tables in one context take opposite positions on the same pattern, each for a stated reason.
 
 ---
 
