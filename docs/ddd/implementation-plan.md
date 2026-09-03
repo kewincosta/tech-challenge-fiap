@@ -1118,165 +1118,46 @@ Must reuse:                The read side never goes through the aggregate.
 
 ## 7. Justified architectural decisions
 
-These move to `docs/adr/` as one file each, in the shape they already have. Section 10 lists the
-numbering and explains why they move rather than being copied.
+These decisions moved to `docs/adr/`, one file each, in the shape they already had here. They are
+not repeated in this document: a decision has one home, and this section is the pointer to it.
+Section 10 explains the numbering and why they moved rather than being copied.
 
-```text
-Decision:                   Customer is an aggregate of its own, over a user identity.
-Why:                        The workshop records data about the relationship, and putting it on
-                            the user record would grow the identity module with other domains.
-                            The invariant is its own: exactly one identity per customer, and at
-                            most one customer per identity.
-Business Need:              Stated directly in the answer to H25.
-Alternative:                A customer as a user holding the CUSTOMER role, with no table.
-Why alternative rejected:   It has no home for the address, and every later piece of customer
-                            data would land on the users table.
-```
+The full set, including the decisions that were never written down here, is indexed at
+[`docs/adr/README.md`](../adr/README.md). What follows is only what this section used to hold.
 
-```text
-Decision:                   Mechanic, Service advisor and Administrator get no aggregate.
-Why:                        In this system they have no state, no behaviour and no invariant
-                            beyond their access. Linking a work order to a mechanic needs a
-                            user reference and a role check.
-Business Need:              Stated directly in the answer to H28.
-Alternative:                One aggregate per profile.
-Why alternative rejected:   Three tables holding a foreign key and a copy of the user status.
-Trigger to revisit:         A specialty, an hourly cost or a shift for the mechanic. A sale as
-                            a concept for the service advisor, which needs a cash register the MVP does
-                            not have. Staff records with data of their own.
-```
+| Decision as it read here                                                                               | Record                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Internal sequential key plus external UUID on every addressable table                                  | [0006](../adr/0006-internal-key-plus-external-uuid.md)                                                                               |
+| Money lives in the shared kernel and the backend works in integer BRL cents                            | [0007](../adr/0007-money-in-integer-brl-cents.md)                                                                                    |
+| Cross context calls go through the CommandBus and QueryBus                                             | [0008](../adr/0008-cross-context-calls-through-the-buses.md)                                                                         |
+| Customer is an aggregate of its own, over a user identity                                              | [0009](../adr/0009-customer-as-its-own-aggregate.md)                                                                                 |
+| Mechanic, Service advisor and Administrator get no aggregate                                           | [0010](../adr/0010-no-aggregate-for-the-staff-profiles.md)                                                                           |
+| A super administrator exists, is created outside the API, and is the only profile that can grant ADMIN | [0012](../adr/0012-super-administrator-created-outside-the-api.md)                                                                   |
+| One InventoryItem aggregate covering parts and supplies                                                | [0013](../adr/0013-one-inventory-item-aggregate.md)                                                                                  |
+| Stock movements are append only, carry a work order, an actor and a status                             | [0015](../adr/0015-stock-movements-append-only.md)                                                                                   |
+| A cancelled work order writes its movements off instead of returning the units to stock                | [0016](../adr/0016-cancellation-writes-movements-off.md)                                                                             |
+| Budget is an entity inside the WorkOrder aggregate                                                     | [0017](../adr/0017-budget-as-an-entity-inside-the-work-order.md)                                                                     |
+| A withdrawal is always charged at the budgeted price                                                   | [0019](../adr/0019-withdrawal-charged-at-the-budgeted-price.md)                                                                      |
+| The work order carries two totals, the approved budget and the charged amount                          | [0020](../adr/0020-budget-total-and-charged-total-kept-apart.md)                                                                     |
+| Actions are traced with append only trails, not with an aggregate per actor                            | [0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md)                                                            |
+| A logout ends every active session of the user                                                         | [0022](../adr/0022-a-logout-ends-every-active-session.md)                                                                            |
+| Any deviation from an approved budget cancels the work order and opens a new one                       | [0025](../adr/0025-deviation-from-the-budget-cancels-the-work-order.md), superseded by [0018](../adr/0018-numbered-budget-rounds.md) |
 
-```text
-Decision:                   Actions are traced with append only trails, not with an aggregate
-                            per actor.
-Why:                        The fact belongs to the work order and to the stock movement, not
-                            to the person who did it.
-Business Need:              Stated directly in the answer to H29.
-Alternative:                An Administrator aggregate holding what it did.
-Why alternative rejected:   It puts the history of a work order somewhere other than the work
-                            order, and it would not cover actions by service advisors and mechanics.
-Cost:                       One extra table and one subscriber, plus the caveat that a
-                            subscriber failure loses an entry without failing the operation.
-```
+Two of these rows are worth reading before the record, because what this section said and what the
+system does are not the same thing.
 
-```text
-Decision:                   A super administrator exists, is created outside the API, and is
-                            the only profile that can grant ADMIN.
-Why:                        The permission model itself needs an owner that an operational
-                            administrator cannot become on their own.
-Business Need:              Stated directly in the answer to H30.
-Alternative:                One ADMIN role holding everything, as today.
-Why alternative rejected:   Any administrator could grant themselves anything, and there would
-                            be no floor under the access model.
-Cost:                       One role, one rule in the assignment handler, and a seed script
-                            that has to run before anybody can log in.
-```
+The trail decision, now [0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md),
+was written here with a post-commit subscriber under its Cost line. That mechanism was replaced
+before any trail code shipped, because a subscriber runs after the commit and a failure inside it
+loses an entry while the fact it describes is already saved. The record states what was built: the
+repository writes the trail through the same `EntityManager` as the aggregate.
 
-```text
-Decision:                   Budget is an entity inside the WorkOrder aggregate.
-Why:                        Approving it changes the work order status in the same act.
-Business Need:              A budget without its work order has no meaning here.
-Alternative:                Budget as its own aggregate.
-Why alternative rejected:   It splits one transaction into two for a decision taken in one step.
-```
-
-```text
-Decision:                   The work order carries two totals, the approved budget and the
-                            charged amount.
-Why:                        A planned part never withdrawn should not be charged, and the
-                            approved value still has to be visible as history.
-Business Need:              Follows from the answers to H12 and H21.
-Alternative:                One total, adjusted in place.
-Why alternative rejected:   It would erase what the customer approved.
-```
-
-```text
-Decision:                   A withdrawal is always charged at the budgeted price.
-Why:                        The customer pays what was approved. A price drop is answered by a
-                            person applying a discount, with a reason recorded.
-Business Need:              Stated directly in the answers to H12 and H22.
-Alternative:                Charge the lower of the budgeted and current price.
-Why alternative rejected:   It moves a commercial decision into an automatic rule and leaves no
-                            reason behind for why the bill changed.
-```
-
-```text
-Decision:                   One InventoryItem aggregate covering parts and supplies.
-Why:                        They share every invariant and differ only by a label.
-Business Need:              Stated directly in the answer to H11.
-Alternative:                Separate Part and Supply aggregates.
-Why alternative rejected:   Two identical rule sets for one adjective.
-```
-
-```text
-Decision:                   Stock movements are append only, carry a work order, an actor and a
-                            status, and every status change appends a history entry.
-Why:                        A part taken for a work order is not money entering the till, and
-                            the workshop needs to trace where each unit went.
-Business Need:              Stated directly in the answers to H5 and H18.
-Alternative:                Only a quantity column on the item.
-Why alternative rejected:   It cannot express a consumption waiting on a delivery, a transfer
-                            between work orders, or a loss.
-```
-
-```text
-Decision:                   A cancelled work order writes its movements off instead of
-                            returning the units to stock.
-Why:                        The parts are installed in a car the workshop will not charge for.
-Business Need:              Stated directly in the answer to H18.
-Alternative:                Reverse the movement and return the units.
-Why alternative rejected:   It would invent stock that does not physically exist and hide a
-                            real loss.
-```
-
-```text
-Decision:                   Any deviation from an approved budget cancels the work order and
-                            opens a new one.
-Why:                        One rule covers extra work, part swaps and abandonment.
-Business Need:              Stated directly in the answers to H2, H4 and H9.
-Alternative:                Budget versioning with a re-approval transition.
-Why alternative rejected:   It is the complexity the MVP is told to avoid.
-```
-
-```text
-Decision:                   A logout ends every active session of the user.
-Why:                        Signing out means signing out, and a password change has to be able
-                            to close every device.
-Business Need:              Stated directly by the product owner.
-Alternative:                Keep the per-device logout next to a logout-all.
-Why alternative rejected:   Two endpoints where the workshop wants one behaviour.
-Cost:                       An existing endpoint changes meaning and its e2e test is rewritten.
-```
-
-```text
-Decision:                   Internal sequential key plus external UUID on every addressable
-                            table, including the ones that already exist.
-Why:                        One identifier rule across the system, and no enumerable key in a
-                            route.
-Business Need:              Stated directly in the answers to H17, H20 and H23.
-Alternative:                Applying it only to new tables.
-Why alternative rejected:   Two rules in one schema is worse than one migration.
-Cost:                       Phase 1 rewrites six tables, their foreign keys, their mappers and
-                            the seed, and delivers no visible feature.
-```
-
-```text
-Decision:                   Money lives in the shared kernel and the backend works in integer
-                            BRL cents.
-Why:                        Several contexts need identical arithmetic and totals have to add
-                            up across them.
-Business Need:              Stated directly in the answer to H14.
-Alternative:                Decimal columns and one Money per module.
-Why alternative rejected:   Three rounding implementations is how totals stop matching.
-```
-
-```text
-Decision:                   Cross context calls go through the CommandBus and QueryBus.
-Why:                        It is the pattern already used between users and authorization.
-Business Need:              None directly. It is what keeps the monolith modular.
-Alternative:                Exporting repositories from each module.
-Why alternative rejected:   It turns the module boundary into a suggestion.
-```
+The budget deviation decision, now
+[0025](../adr/0025-deviation-from-the-budget-cancels-the-work-order.md), was reversed at revision 8
+of the event storming and is no longer in force. Extra work is authorised on the same work order
+through numbered rounds, which is
+[0018](../adr/0018-numbered-budget-rounds.md). The superseded record is kept rather than deleted,
+so the reasoning behind the reversal stays readable.
 
 ## 8. Testing strategy
 

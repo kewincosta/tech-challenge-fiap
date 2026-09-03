@@ -425,16 +425,24 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Section 7 holds only an index pointing at `docs/adr/`, and no decision prose
-- [ ] The stale block describing the work order trail as written by a subscriber is gone from the file, replaced by the row pointing at `0021`
-- [ ] Every row resolves to a file that exists
-- [ ] Nothing outside section 7 is edited
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Section 7 holds only an index pointing at `docs/adr/`, and no decision prose
+- [x] The stale block describing the work order trail as written by a subscriber is gone from the file, replaced by the row pointing at `0021`
+- [x] Every row resolves to a file that exists
+- [x] Nothing outside section 7 is edited
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(ddd): point section 7 at the decision records`
+
+**Closure notes**:
+
+1. **All four criteria were checked mechanically, not by reading.** Zero lines matching `Decision:`, `Why:`, `Alternative:`, `Why alternative rejected:`, `Cost:` or `Business Need:` remain in the section. The phrase "subscriber failure loses an entry" now appears zero times in the whole file. Every `../adr/` link in the section resolves to a file that exists. And the content before and after section 7 was diffed against a pre-edit copy of the file: byte-identical on both sides, re-checked after Prettier ran.
+2. **The section keeps two notes rather than being a bare table**, because two of its rows would otherwise mislead. The trail row points at a record whose mechanism differs from what the section said, and the budget deviation row points at a record that is no longer in force. A reader arriving from the plan needs to know that before opening either file, so the section says it in three sentences and links both sides of each change.
+3. **`npx prettier --write` was run on this one file**, after the edit failed `--check` on the new table's pipe alignment. The diff was confined to that table, verified by re-running the before/after comparison on both sides of the section once formatting had been applied.
+4. **A process slip worth recording**: the first attempt at this closure used a slightly wrong quotation of one Done-when line, so the edit silently did nothing while the commit went ahead. T9's content was committed without its checkboxes, which is exactly the state the skill's "status then commit, same commit" rule exists to prevent, and the amend that followed put them in the same commit. The lesson is that a scripted edit needs its failure to stop the commit, not just print a traceback.
+5. **Phase 1 is complete.** 25 records, an index generated from them, and the plan's section 7 reduced to a pointer. The decisions now have one home each, which was this phase's whole point, and the two documented reversals are readable from both ends rather than only from the side that won.
 
 ---
 
