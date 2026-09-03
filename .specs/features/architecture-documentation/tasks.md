@@ -1178,15 +1178,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The `Architecture` section links the overview, the high level design, the low level design index and the ADR index, and every link resolves
-- [ ] It keeps the existing pointer to `docs/ddd/`, which owns the domain
-- [ ] `npx prettier --check README.md` passes, closing the formatting gap feature 9's T10 left
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/ README.md`
+- [x] The `Architecture` section links the overview, the high level design, the low level design index and the ADR index, and every link resolves
+- [x] It keeps the existing pointer to `docs/ddd/`, which owns the domain
+- [x] `npx prettier --check README.md` passes, closing the formatting gap feature 9's T10 left
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/ README.md`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs: link the architecture set from the README`
+
+**Closure notes**:
+
+1. **The four links are presented with what each one answers**, not as a bare list, so a reader arriving at the repository can pick the right altitude in one glance instead of opening all four. All four resolve, checked by file test.
+2. **The `docs/ddd/` pointer stays and gains a sentence about the division of labour**: those two documents remain the source of truth for the domain, and the four above describe what was built from it. Without it, a reader would have two plausible starting points and no way to choose.
+3. **`README.md` is now Prettier-clean**, closing a gap this feature inherited from feature 9's T10. That file is no longer among the 149 that fail `npm run format:check`; the other 148, in `src`, `test` and `.claude`, are untouched and remain a separate maintenance concern.
 
 ---
 
