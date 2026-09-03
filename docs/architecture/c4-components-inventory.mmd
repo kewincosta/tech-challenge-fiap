@@ -1,0 +1,54 @@
+%% C4 level 3, components - Inventory
+%% One module, inventory. Drawn because the four commands arriving from work-orders are the
+%% boundary crossing this context is defined by, and they run inside the caller's transaction.
+%% Detail: docs/architecture/low-level-design/inventory.md
+
+C4Component
+  title Components - Inventory
+
+  Person(admin, "Administrator", "Creates items, replenishes, adjusts, reads the ledger")
+
+  Container_Boundary(app, "NestJS application") {
+
+    Component_Boundary(inventory, "inventory") {
+      Component(invCtl, "InventoryItemsController", "Controller", "Items, replenishments, adjustments, shortages, movement history")
+      Component(createItem, "CreateInventoryItemHandler", "Command handler", "Adds an item")
+      Component(replenish, "ReplenishStockHandler", "Command handler", "Appends an INBOUND movement")
+      Component(adjust, "AdjustStockHandler", "Command handler", "Appends an ADJUSTMENT, note required")
+      Component(consume, "ConsumeStockBatchHandler", "Command handler", "Appends PENDING consumptions")
+      Component(restore, "RestoreStockBatchHandler", "Command handler", "Draws down consumptions, appends RETURNs")
+      Component(settle, "SettleStockMovementsHandler", "Command handler", "PENDING to SETTLED")
+      Component(writeOff, "WriteOffStockMovementsHandler", "Command handler", "PENDING to WRITTEN_OFF")
+      Component(itemAgg, "InventoryItem", "Aggregate", "Sku, StockQuantity, quantity never below zero")
+      Component(movementAgg, "StockMovement", "Aggregate", "Append only, status only on a consumption")
+      Component(invRepo, "TypeOrmInventoryItemRepository", "Repository", "Ambient transaction, row lock on the item")
+      Component(invQuery, "TypeOrmInventoryQueryAdapter", "Query port", "Items, movement history, shortages")
+    }
+  }
+
+  Component_Ext(workOrders, "work-orders", "Module", "Withdraws, returns, delivers and cancels")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "inventory_items, stock_movements, stock_movement_transitions")
+
+  Rel(admin, invCtl, "Administers stock and reads the ledger", "HTTPS")
+  Rel(invCtl, createItem, "CommandBus")
+  Rel(invCtl, replenish, "CommandBus")
+  Rel(invCtl, adjust, "CommandBus")
+  Rel(invCtl, invQuery, "QueryBus: items, shortages, history")
+
+  Rel(workOrders, consume, "CommandBus: withdrawal, in the caller's transaction", "cross-module")
+  Rel(workOrders, restore, "CommandBus: return, in the caller's transaction", "cross-module")
+  Rel(workOrders, settle, "CommandBus: delivery, in the caller's transaction", "cross-module")
+  Rel(workOrders, writeOff, "CommandBus: cancellation, in the caller's transaction", "cross-module")
+
+  Rel(consume, itemAgg, "Decrements under a row lock")
+  Rel(consume, movementAgg, "Appends")
+  Rel(restore, movementAgg, "Appends RETURNs")
+  Rel(settle, movementAgg, "Appends a transition")
+  Rel(writeOff, movementAgg, "Appends a transition")
+  Rel(replenish, itemAgg, "Increments")
+  Rel(invRepo, itemAgg, "Loads and saves")
+
+  Rel(invRepo, pg, "Reads and writes", "TCP")
+  Rel(invQuery, pg, "Reads", "TCP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

@@ -970,16 +970,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Component` declaration
-- [ ] The diagram is drawn even though the context maps to one module - spec.md's fourth edge case
-- [ ] It shows the calls arriving from `work-orders` on the `CommandBus`, since that is the boundary crossing this context is defined by
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Component` declaration
+- [x] The diagram is drawn even though the context maps to one module - spec.md's fourth edge case
+- [x] It shows the calls arriving from `work-orders` on the `CommandBus`, since that is the boundary crossing this context is defined by
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the inventory component diagram`
+
+**Closure notes**:
+
+1. **Four inbound crossings, each labelled as running in the caller's transaction.** That is the fact the diagram exists to carry: these are not fire-and-forget dispatches, they commit with the work order write or not at all, which is 0023's rule made visible. Drawing them as plain arrows would have lost exactly the property that makes them different from the administrator's own commands.
+2. The row lock is written on the repository component rather than in prose, so the concurrency story is readable from the shape. Balanced structure checked by hand.
 
 ---
 
