@@ -901,16 +901,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Component` declaration
-- [ ] The diagram is drawn even though the context maps to exactly one module, so the five contexts are covered uniformly - spec.md's fourth edge case
-- [ ] It shows every call that crosses into `work-orders`
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Component` declaration
+- [x] The diagram is drawn even though the context maps to exactly one module, so the five contexts are covered uniformly - spec.md's fourth edge case
+- [x] It shows every call that crosses into `work-orders`
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the workshop catalog component diagram`
+
+**Closure notes**:
+
+1. **The first of the three single-module contexts, and the header comment says why it is drawn anyway**: uniform coverage of the five, and because the one crossing into `work-orders` is the reason this context matters to anyone but an administrator. A reader who finds a context missing from the set cannot tell whether it was skipped deliberately or forgotten.
+2. There is exactly one crossing, `work-orders` reading a service and its price when an item is added, which is the moment 0019's freeze happens. Balanced structure checked by hand.
 
 ---
 

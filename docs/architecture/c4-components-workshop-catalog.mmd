@@ -1,0 +1,43 @@
+%% C4 level 3, components - Workshop Catalog
+%% One module, services. Drawn anyway so all five contexts are covered uniformly, and because
+%% the crossing into work-orders is the reason this context exists for anyone but an administrator.
+%% Detail: docs/architecture/low-level-design/services.md
+
+C4Component
+  title Components - Workshop Catalog
+
+  Person(admin, "Administrator", "Maintains the catalog")
+
+  Container_Boundary(app, "NestJS application") {
+
+    Component_Boundary(services, "services") {
+      Component(svcCtl, "ServicesController", "Controller", "Catalog administration")
+      Component(createSvc, "CreateServiceHandler", "Command handler", "Adds an entry")
+      Component(updateSvc, "UpdateServiceHandler", "Command handler", "Name, description, price, duration")
+      Component(deactivateSvc, "DeactivateServiceHandler", "Command handler", "Status change, never a delete")
+      Component(getSvc, "GetServiceHandler / ListServicesHandler", "Query handlers", "Reads the catalog")
+      Component(svcAgg, "Service", "Aggregate", "ServiceName, ServiceDuration, Money price, unique while active")
+      Component(svcRepo, "TypeOrmServiceRepository", "Repository", "")
+      Component(svcQuery, "TypeOrmServiceQueryAdapter", "Query port", "ServiceQueryPort")
+    }
+  }
+
+  Component_Ext(workOrders, "work-orders", "Module", "Adds services to a work order and freezes their price into a budget round")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "services")
+
+  Rel(admin, svcCtl, "Creates, updates, deactivates, reads", "HTTPS")
+  Rel(svcCtl, createSvc, "CommandBus")
+  Rel(svcCtl, updateSvc, "CommandBus")
+  Rel(svcCtl, deactivateSvc, "CommandBus")
+  Rel(svcCtl, getSvc, "QueryBus")
+  Rel(createSvc, svcAgg, "Creates")
+  Rel(createSvc, svcRepo, "Saves")
+  Rel(updateSvc, svcRepo, "Loads and saves")
+  Rel(getSvc, svcQuery, "Reads")
+
+  Rel(workOrders, svcQuery, "QueryBus: reads the service and its price when an item is added", "cross-module")
+
+  Rel(svcRepo, pg, "Reads and writes", "TCP")
+  Rel(svcQuery, pg, "Reads", "TCP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
