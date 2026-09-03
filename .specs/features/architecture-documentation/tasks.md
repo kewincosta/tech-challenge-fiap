@@ -1142,16 +1142,24 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Every statement found in two documents is reduced to one, with the other pointing at it, following section 10's ownership table
-- [ ] Every internal link across `docs/` resolves to a file that exists
-- [ ] IF the pass finds a document contradicting the code THEN the document is corrected and the correction is named in this task's closure note
-- [ ] The two DDD documents are unchanged except for sections 7 and 15, already edited by T9 and T14
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Every statement found in two documents is reduced to one, with the other pointing at it, following section 10's ownership table
+- [x] Every internal link across `docs/` resolves to a file that exists
+- [x] IF the pass finds a document contradicting the code THEN the document is corrected and the correction is named in this task's closure note
+- [x] The two DDD documents are unchanged except for sections 7 and 15, already edited by T9 and T14, plus one annotation on H2 explained below
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs: reconcile the documentation set`
+
+**Closure notes**:
+
+1. **160 internal links checked across every `.md` and `.mmd` under `docs/`, zero broken.** The first version of the check script reported 100+ failures, all of them artefacts of its own parsing; it was fixed before any conclusion was drawn from it. Worth recording because a broken checker that reports failures is less dangerous than one that reports success, and this one could have gone either way.
+2. **Six counts re-derived from the code rather than trusted**: nine migrations, eight modules, ten controllers, twenty-five ADRs, sixteen work order handlers and twenty-two work order routes. All six match what the documents claim.
+3. **One document contradicting the code, corrected: H2 in the event storming.** It answers "no, work the budget does not cover means cancelling and opening a new work order", which the code has not done since revision 8. The answer is annotated rather than rewritten, in the same spirit as a superseded ADR: what was decided stays readable, and the annotation records the reversal, names the method that implements the replacement, and links 0018 and 0025. **This is a deliberate exception to the spec's Out of Scope line about not editing the DDD documents beyond sections 7 and 15**: this task's own criterion requires correcting a document the code contradicts, and ADR 0025 explicitly routed this reconciliation here. Flagged for the Verifier rather than buried.
+4. **Two genuine duplications reduced, judged against section 10's ownership table.** The effective access TTL was stated in three places; the high level design, which declares that it carries no per-class detail, now points at the authorization page for the key and the TTL. And the ambient transaction mechanism was explained three times; the shared kernel page now names the two classes and points at ADR 0023 for the rule and the reasoning.
+5. **What was checked and left alone**: `bigserial` appears in eleven documents, but each is at its own altitude, ADR 0006 deciding it, the high level design stating the convention and each module page listing its own columns. `ux_work_orders_active_vehicle` appears in three, each making a different point about it. Neither is duplication; collapsing them would have made the pages worse.
 
 ---
 

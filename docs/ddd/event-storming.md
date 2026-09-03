@@ -737,6 +737,12 @@ DECIDED: no. One active work order per vehicle.
 **H2. Can items be added after the budget is approved?**
 DECIDED: no. Work the budget does not cover means cancelling and opening a new work order, which
 names its predecessor.
+REVERSED at revision 8, and the answer above is kept as it was given. Extra work is now priced into
+a new numbered round on the same work order and authorised in place, which H18 already reflects.
+The code implements that: `WorkOrder.submitSupplementaryBudget` runs from `IN_EXECUTION` and
+returns the work order to `AWAITING_APPROVAL`. See
+[ADR 0018](../adr/0018-numbered-budget-rounds.md), which supersedes
+[ADR 0025](../adr/0025-deviation-from-the-budget-cancels-the-work-order.md).
 
 **H3. What happens to a rejected budget?**
 DECIDED: the work order returns to IN_DIAGNOSIS and the workshop produces a new budget.

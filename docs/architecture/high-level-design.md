@@ -87,8 +87,9 @@ providers. Nest runs them in declaration order, which is the order below:
 it finds. It cannot express "either of two", which is why a rule of that shape lives in the handler
 instead, as the budget decision and cancellation authorizers do.
 
-Effective access is resolved per user and cached in Redis for 60 seconds, invalidated by a
-subscriber on assignment changes ([0003](../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
+Effective access is resolved per user and cached in Redis, invalidated by a subscriber on
+assignment changes ([0003](../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)). The cache
+key and its TTL are on [the authorization page](low-level-design/authorization.md).
 
 One consequence catches people: registration assigns `CUSTOMER` to every account, so every staff
 account also carries the permissions of `CUSTOMER`. A permission that `CUSTOMER` holds is held by

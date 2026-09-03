@@ -79,10 +79,10 @@ what makes these ports load-bearing rather than decorative.
 
 ### `typeorm-transaction-runner.ts`
 
-Holds `TypeOrmTransactionRunner` and `currentEntityManager()`. The runner opens a transaction and
-places its `EntityManager` in an `AsyncLocalStorage`; `currentEntityManager()` is how a repository
-on the far side of a bus dispatch finds it. A command payload cannot carry a live manager, which is
-the constraint that makes the storage necessary.
+Holds `TypeOrmTransactionRunner` and `currentEntityManager()`. The runner places its
+`EntityManager` in an `AsyncLocalStorage`; `currentEntityManager()` reads it back. The rule that
+obliges a repository to use it, and why, is
+[ADR 0023](../../adr/0023-repositories-honour-an-ambient-transaction.md).
 
 ### `database/migrations/`
 
