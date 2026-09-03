@@ -1,0 +1,80 @@
+%% C4 level 3, components - Identity & Access
+%% Three modules in one bounded context: users, authentication, authorization.
+%% Every arrow leaving a module boundary is a bus dispatch (ADR 0008), never a direct call.
+%% Detail per module: docs/architecture/low-level-design/{users,authentication,authorization}.md
+
+C4Component
+  title Components - Identity & Access
+
+  Person(person, "Any account holder", "Staff or customer")
+
+  Container_Boundary(app, "NestJS application") {
+
+    Component_Boundary(users, "users") {
+      Component(usersCtl, "UsersController", "Controller", "Registration, staff accounts, profile, administration")
+      Component(registerUser, "RegisterUserHandler", "Command handler", "Registers the account and assigns CUSTOMER in one transaction")
+      Component(changePassword, "ChangePasswordHandler", "Command handler", "Rehashes, clears the pending flag, revokes every session")
+      Component(userAgg, "User", "Aggregate", "Email, PersonDocument, Password, PasswordHash, status")
+      Component(userRepo, "TypeOrmUserRepository", "Repository", "Honours an ambient transaction")
+      Component(hasher, "Argon2PasswordHasher", "Port adapter", "PasswordHasher")
+    }
+
+    Component_Boundary(authn, "authentication") {
+      Component(authCtl, "AuthController", "Controller", "Login, refresh, logout, session listing")
+      Component(authenticate, "AuthenticateUserHandler", "Command handler", "Verifies credentials, opens a session")
+      Component(refresh, "RefreshSessionHandler", "Command handler", "Rotates, or detects reuse and revokes")
+      Component(sessionAgg, "Session + RefreshToken", "Aggregate", "One active refresh token per session")
+      Component(sessionRepo, "TypeOrmSessionRepository", "Repository", "")
+      Component(revoked, "RedisRevokedSessionStore", "Port adapter", "RevokedSessionStore")
+      Component(jwtGuard, "JwtAuthGuard", "Global guard", "Validates the token, checks revocation")
+    }
+
+    Component_Boundary(authz, "authorization") {
+      Component(rolesCtl, "Roles / Permissions / UserAccess controllers", "Controllers", "Role lifecycle and assignment")
+      Component(assignRole, "AssignRoleToUserHandler", "Command handler", "Holds the escalation rule (ADR 0012)")
+      Component(effective, "EffectiveAccessService", "Service", "Cache first, reader on miss")
+      Component(roleAgg, "Role + Permission", "Aggregates", "System roles are immutable")
+      Component(accessReader, "TypeOrmEffectiveAccessReader", "Port adapter", "One UNION query over user_roles and role_permissions")
+      Component(accessCache, "RedisAccessCache", "Port adapter", "authz:access:{userId}, 60s TTL")
+      Component(invalidator, "AccessCacheInvalidationSubscriber", "Subscriber", "Drops the entry on assignment change")
+      Component(permGuard, "PermissionsGuard", "Global guard", "Requires every permission the route names")
+    }
+  }
+
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "users, sessions, refresh_tokens, roles, permissions, user_roles, role_permissions")
+  ContainerDb(redis, "Redis", "Redis 7", "Revoked sessions, effective access, rate limits")
+
+  Rel(person, usersCtl, "Registers, manages the account", "HTTPS")
+  Rel(person, authCtl, "Logs in, refreshes, logs out", "HTTPS")
+  Rel(person, rolesCtl, "Administers roles and assignments", "HTTPS")
+
+  Rel(usersCtl, registerUser, "CommandBus")
+  Rel(usersCtl, changePassword, "CommandBus")
+  Rel(registerUser, userAgg, "Creates")
+  Rel(registerUser, userRepo, "Saves")
+  Rel(registerUser, hasher, "Hashes")
+  Rel(authCtl, authenticate, "CommandBus")
+  Rel(authCtl, refresh, "CommandBus")
+  Rel(authenticate, sessionAgg, "Opens")
+  Rel(refresh, sessionAgg, "Rotates or revokes")
+  Rel(authenticate, sessionRepo, "Saves")
+  Rel(rolesCtl, assignRole, "CommandBus")
+  Rel(assignRole, roleAgg, "Reads")
+  Rel(effective, accessCache, "Reads and writes")
+  Rel(effective, accessReader, "Reads on miss")
+  Rel(permGuard, effective, "Resolves access")
+  Rel(jwtGuard, revoked, "Checks revocation")
+
+  Rel(registerUser, assignRole, "CommandBus: assigns CUSTOMER, same transaction", "cross-module")
+  Rel(changePassword, sessionRepo, "CommandBus: LogoutAllSessions", "cross-module")
+  Rel(authenticate, userAgg, "QueryBus: VerifyCredentials", "cross-module")
+  Rel(assignRole, effective, "QueryBus: actor effective access", "cross-module")
+  Rel(invalidator, accessCache, "Invalidates")
+
+  Rel(userRepo, pg, "Reads and writes", "TCP")
+  Rel(sessionRepo, pg, "Reads and writes", "TCP")
+  Rel(accessReader, pg, "Reads", "TCP")
+  Rel(accessCache, redis, "Reads and writes", "TCP")
+  Rel(revoked, redis, "Reads and writes", "TCP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

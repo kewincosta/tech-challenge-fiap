@@ -734,16 +734,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Component` declaration
-- [ ] It shows three module boundaries inside the context, one per module - spec.md's eighth criterion on ARCH-03
-- [ ] It shows the controllers, handlers, aggregates, repositories and ports of each, and every call that crosses into another module
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Component` declaration
+- [x] It shows three module boundaries inside the context, one per module - spec.md's eighth criterion on ARCH-03
+- [x] It shows the controllers, handlers, aggregates, repositories and ports of each, and every call that crosses into another module
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the identity and access component diagram`
+
+**Closure notes**:
+
+1. **Three `Component_Boundary` blocks, one per module, verified by count.** This is the diagram that justifies the per-context choice recorded in spec.md's Assumptions: drawn per module, `authentication` alone would have been a box or two, and the four crossings between these three modules, which are the interesting part, would have had nowhere to appear.
+2. **The four cross-module calls are labelled as such** rather than drawn as ordinary arrows: registration assigning `CUSTOMER` in the same transaction, the password change dispatching `LogoutAllSessions`, login verifying credentials over the `QueryBus`, and the escalation rule reading the actor's own effective access. Each is a bus dispatch, which the header comment states as the rule.
+3. Structural check by hand, since Prettier skips `.mmd`: balanced parentheses (60/60) and braces (6/6), and `C4Component` as the first directive.
 
 ---
 
