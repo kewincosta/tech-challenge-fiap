@@ -934,16 +934,24 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `InventoryItem` and `StockMovement` aggregates and their invariants, `Sku` and `StockQuantity`, the commands and handlers including the settle and write-off handlers, the queries and ports, the repositories and mappers, both ORM entities with every column, the endpoints, and the errors with their HTTP mapping
-- [ ] It states the append-only movement ledger and its transitions, pointing at ADRs 0014, 0015 and 0016
-- [ ] It records that both handlers are dispatched from `work-orders` over the `CommandBus` and must stay registered in `inventory.module.ts`, since a missing registration compiles and unit-tests clean
-- [ ] Each entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `InventoryItem` and `StockMovement` aggregates and their invariants, `Sku` and `StockQuantity`, the commands and handlers including the settle and write-off handlers, the queries and ports, the repositories and mappers, both ORM entities with every column, the endpoints, and the errors with their HTTP mapping
+- [x] It states the append-only movement ledger and its transitions, pointing at ADRs 0014, 0015 and 0016
+- [x] It records that both handlers are dispatched from `work-orders` over the `CommandBus` and must stay registered in `inventory.module.ts`, since a missing registration compiles and unit-tests clean
+- [x] Each entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the inventory low level design`
+
+**Closure notes**:
+
+1. **A wrong claim corrected by grep before the gate.** The draft said `stock_movements.work_order_id` is deliberately unconstrained and not a foreign key, which is what the plan's phase 7 describes. That was true only at creation: migration `1787702400006` comes back with `ALTER TABLE stock_movements ADD CONSTRAINT fk_stock_movements_work_order` once `work_orders` exists. The page now says the constraint exists and why it arrives in a later migration.
+2. **Three tables documented, not two, which the criterion's wording did not anticipate.** `stock_movement_transitions` is what makes the status history real, so it gets its own column block alongside `inventory_items` and `stock_movements`.
+3. **Two dead columns recorded as dead rather than described as features.** `from_work_order_id` and `to_work_order_id` on the transitions table exist for a transfer between work orders that the model no longer has, since 0018 removed the successor work order. They are unused and kept, and the page says so, which is more useful than either omitting them or explaining a transfer that cannot happen.
+4. **The `quantity_on_hand` CHECK is described as the last line of defence, not the mechanism**, quoting the migration's own comment: a constraint cannot see two concurrent writers both reading 10 and both writing 15, and the row lock is what prevents that.
+5. The four handlers dispatched from `work-orders` are listed with their caller, and the registration hazard from feature 8 is recorded on them, since this is the module where forgetting it bites.
 
 ---
 
