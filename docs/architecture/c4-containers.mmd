@@ -1,0 +1,20 @@
+%% C4 level 2, containers - Workshop Management API
+%% Three runtime pieces, all started by docker-compose.yml. The application waits on the
+%% healthchecks of the other two. Host ports are the compose defaults.
+
+C4Container
+  title Containers - Workshop Management API
+
+  Person(staff, "Workshop staff and customers", "Service advisor, mechanic, administrator, customer")
+
+  Container_Boundary(system, "Workshop Management API") {
+    Container(app, "NestJS application", "Node.js, NestJS, TypeORM", "Every module in one deployable process. Serves /api/v1 and Swagger at /api/docs")
+    ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "System of record: users, customers, vehicles, services, inventory, stock movements, work orders and their trails")
+    ContainerDb(redis, "Redis", "Redis 7", "Effective access cache, revoked session list, rate limit counters. Nothing that cannot be rebuilt")
+  }
+
+  Rel(staff, app, "Calls", "HTTPS/JSON, port 13000")
+  Rel(app, postgres, "Reads and writes, hand-written migrations", "TCP 5432")
+  Rel(app, redis, "Caches access, checks revocation, counts requests", "TCP 6379")
+
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")

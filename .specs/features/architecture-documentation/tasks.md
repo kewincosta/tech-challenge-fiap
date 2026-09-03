@@ -567,15 +567,20 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Container` declaration
-- [ ] It carries the NestJS application, PostgreSQL and Redis, and the relations between them
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Container` declaration
+- [x] It carries the NestJS application, PostgreSQL and Redis, and the relations between them
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the container diagram`
+
+**Closure notes**:
+
+1. The three containers are inside one `Container_Boundary`, with `ContainerDb` for PostgreSQL and Redis so the shape says "this holds state" without prose. Relations carry their protocol and port, taken from `docker-compose.yml` rather than assumed: 13000 on the host for the application, 5432 and 6379 inside the network.
+2. Balanced parentheses (9/9) and braces (1/1) checked by hand, since Prettier skips `.mmd` and no mermaid runner exists in this repository.
 
 ---
 
