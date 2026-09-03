@@ -535,15 +535,20 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Context` declaration
-- [ ] It carries the four business actors and this one system, and no external system
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Context` declaration
+- [x] It carries the four business actors and this one system, and no external system
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the system context diagram`
+
+**Closure notes**:
+
+1. `C4Context` is the first directive after the header comments, matching how `docs/ddd/event-storming.mmd` opens with comments before `flowchart LR`. Four `Person()` elements, one `System()`, no `System_Ext()`: the absence of an external system is the honest picture, and the header comment says why rather than leaving a reader to wonder what is missing.
+2. Prettier has no mermaid parser and skips `.mmd`, so the gate proves only that nothing else broke. The structural checks that stand in for it were run by hand: the declaration line, and balanced parentheses, 10 open and 10 closed.
 
 ---
 

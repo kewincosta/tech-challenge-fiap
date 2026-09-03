@@ -1,0 +1,20 @@
+%% C4 level 1, system context - Workshop Management API
+%% Four business actors and one system. No external system: this MVP integrates with no
+%% payment provider, no notification channel and no supplier. See architecture-overview.md.
+
+C4Context
+  title System context - Workshop Management API
+
+  Person(customer, "Customer", "Owns vehicles, approves or rejects the budget, follows their own work orders")
+  Person(advisor, "Service advisor", "Registers customers and vehicles, opens work orders, assigns mechanics, delivers, cancels")
+  Person(mechanic, "Mechanic", "Diagnoses, plans parts, executes the work, withdraws and returns parts, completes")
+  Person(admin, "Administrator", "Manages the catalog, the inventory, the staff accounts, applies discounts, reads metrics and trails")
+
+  System(api, "Workshop Management API", "Centralises attendance, diagnosis, budgeting, execution, stock and delivery around the work order")
+
+  Rel(customer, api, "Follows work orders, decides on budgets", "HTTPS/JSON")
+  Rel(advisor, api, "Registers, opens, assigns, delivers, cancels", "HTTPS/JSON")
+  Rel(mechanic, api, "Diagnoses, withdraws parts, completes", "HTTPS/JSON")
+  Rel(admin, api, "Administers the catalog, stock, staff and reads metrics", "HTTPS/JSON")
+
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
