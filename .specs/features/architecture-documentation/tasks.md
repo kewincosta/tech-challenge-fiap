@@ -699,16 +699,23 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `Role` and `Permission` aggregates, the four ORM entities with every column, the three controllers and their endpoints, the effective access reader, the Redis access cache and its key and TTL, and the errors with their HTTP mapping
-- [ ] It states the role escalation rule and points at ADR 0012 rather than restating why
-- [ ] It records that registration assigns `CUSTOMER` to every account, since that is the fact behind every staff account also holding `work-orders:read-own`
-- [ ] Each entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `Role` and `Permission` aggregates, the four ORM entities with every column, the three controllers and their endpoints, the effective access reader, the Redis access cache and its key and TTL, and the errors with their HTTP mapping
+- [x] It states the role escalation rule and points at ADR 0012 rather than restating why
+- [x] It records that registration assigns `CUSTOMER` to every account, since that is the fact behind every staff account also holding `work-orders:read-own`
+- [x] Each entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the authorization low level design`
+
+**Closure notes**:
+
+1. **The route table was wrong in the first draft and was corrected by reading the three controllers.** Assignment is `PUT /users/:userId/roles/:roleId`, addressed by both ids, not `POST` to a collection. Its permission is `user-access:manage`, and reading a user's access is `user-access:read`, neither of which is `roles:*`. The page now states the distinction: managing what a role is and managing who holds it are separate permissions.
+2. **Two join tables are documented as join tables**, without an `external_id`, because no route addresses them, which is the second half of 0006's rule and easy to read as an omission otherwise. Their composite primary keys and reverse-lookup indexes are named.
+3. **One status choice explained rather than tabulated**: `PermissionNotFoundError` answers 400, not 404, because it is raised for a permission code supplied in a request body. That is bad input rather than a missing resource, and the table would otherwise look like an inconsistency.
+4. **The `CUSTOMER`-for-everyone consequence is stated here in its general form**, that any rule meant to exclude staff cannot be expressed as a permission `CUSTOMER` holds. `users` records where the assignment happens; this page records what it means for authorization.
 
 ---
 
