@@ -1003,17 +1003,24 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `WorkOrder` aggregate with `Budget`, `WorkOrderServiceItem` and `WorkOrderPartItem`, the status machine and its transitions, the value objects, all 16 write handlers, the query handlers and ports, the three authorizers, the repository and mapper, all five ORM entities with every column, every endpoint on the controller, and the errors with their HTTP mapping
-- [ ] It states the version guard on `save` and the 409 it produces, pointing at ADR 0024
-- [ ] It states that the trail is written by the repository in the same transaction, pointing at ADR 0021
-- [ ] It records the route ordering rule that `me` and `metrics/*` are declared before `:number`
-- [ ] Each entity block names the migration file its columns come from, including the columns migration `1787702400008` added
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `WorkOrder` aggregate with `Budget`, `WorkOrderServiceItem` and `WorkOrderPartItem`, the status machine and its transitions, the value objects, all 16 write handlers, the query handlers and ports, the three authorizers, the repository and mapper, all five ORM entities with every column, every endpoint on the controller, and the errors with their HTTP mapping
+- [x] It states the version guard on `save` and the 409 it produces, pointing at ADR 0024
+- [x] It states that the trail is written by the repository in the same transaction, pointing at ADR 0021
+- [x] It records the route ordering rule that `me` and `metrics/*` are declared before `:number`
+- [x] Each entity block names the migration file its columns come from, including the columns migration `1787702400008` added
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the work orders low level design`
+
+**Closure notes**:
+
+1. **Sixteen handlers confirmed by counting the directory**, not by trusting the number the high level design already carried. Five tables, twenty-two routes and twenty-seven error codes were gathered the same way, from the migrations, the controller and the error files.
+2. **The three authorizers get their own section, with the reason they exist**: `PermissionsGuard` requires *all* the permissions a route names and cannot express "either of two", so the owner-or-permission rules live in the handler. That also explains the two routes in the table with no permission at all, which would otherwise read as an oversight.
+3. **The `…008` migration's columns are marked as later additions rather than folded in silently**, so a reader can tell which parts of this table came with the work order and which came with closing. Twelve of the twenty-seven columns on `work_orders` arrived that way, `version` among them.
+4. **Two facts recorded because they cost time in earlier features**: `COMPLETED` is *not* terminal for `ux_work_orders_active_vehicle`, which catches people writing fixtures, and the metrics adapter filters with `EXISTS` rather than a join because a join multiplies rows for a work order carrying several services and corrupts the average.
 
 ---
 
