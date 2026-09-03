@@ -321,16 +321,23 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Two records exist, `0021` and `0022`
-- [ ] `0021` names AD-007 in its `**Source**` line and states the decision as built: `TypeOrmWorkOrderRepository` writes `work_order_events` through the same `EntityManager` as the aggregate
-- [ ] `0021` lists the post-commit subscriber under `## Alternatives`, with the reason it was rejected, and is a single record rather than a `Superseded by` pair, since the subscriber was never built
-- [ ] `0022` states that a logout ends every active session of the user on every device
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Two records exist, `0021` and `0022`
+- [x] `0021` names AD-007 in its `**Source**` line and states the decision as built: `TypeOrmWorkOrderRepository` writes `work_order_events` through the same `EntityManager` as the aggregate
+- [x] `0021` lists the post-commit subscriber under `## Alternatives`, with the reason it was rejected, and is a single record rather than a `Superseded by` pair, since the subscriber was never built
+- [x] `0022` states that a logout ends every active session of the user on every device
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the trail and logout decisions`
+
+**Closure notes**:
+
+1. **`0021` merges two decisions that section 10's title only hints at.** The section 7 block decides *where* history lives: append-only trails attached to the thing that changed, not an aggregate per actor, rejecting an `Administrator` aggregate because it would put a work order's history somewhere other than the work order and would miss what service advisors and mechanics do. AD-007 decides *how it is written*: by the repository, inside the aggregate's transaction. Section 10 names only the second. The record carries both, with the aggregate-per-actor and the post-commit subscriber as two separate rejected alternatives.
+2. **The subscriber is an alternative, not a supersession, and the record says why in a checkable way.** The section 7 block still lists "one extra table and one subscriber, plus the caveat that a subscriber failure loses an entry without failing the operation" under its Cost line. That is the version AD-007 replaced before any trail code shipped, which is what makes this different from the `0025`/`0018` pair, where the superseded decision had been the operative one.
+3. **One supporting fact verified rather than assumed**: `AggregateRoot` really does expose a non-draining read beside `pullDomainEvents`, and its own comment states the reason, that a repository writing a trail needs the events while the publisher still drains them after `save` returns. The record's claim about the aggregate's widened contract rests on that, not on inference.
+4. **`0022` carries its stated cost rather than dropping it**: an existing endpoint changed meaning and its e2e test was rewritten. The record also connects the decision to its enabling mechanism, the Redis revoked session list from `0003`, without which a revoked access token would keep working until expiry.
 
 ---
 
