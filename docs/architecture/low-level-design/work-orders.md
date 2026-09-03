@@ -110,7 +110,8 @@ would multiply rows for a work order carrying several services and corrupt the a
 
 ### `work_orders`
 
-From migration `1787702400006-create-work-orders-schema.ts`, extended by
+From migration `1787702400006-create-work-orders-schema.ts`, extended twice: by
+`1787702400007-create-work-order-budgets.ts` and by
 `1787702400008-add-work-order-closing-columns.ts`.
 
 | Column                        | Type           | Notes                                                                                                                                                   |
@@ -130,6 +131,11 @@ From migration `1787702400006-create-work-orders-schema.ts`, extended by
 | `vehicle_year`                | `smallint`     | Denormalised.                                                                                                                                           |
 | `created_at`                  | `timestamptz`  |                                                                                                                                                         |
 | `updated_at`                  | `timestamptz`  |                                                                                                                                                         |
+| `diagnosis_started_at`        | `timestamptz`  | Added by `…007`.                                                                                                                                        |
+| `diagnosis_completed_at`      | `timestamptz`  | Added by `…007`.                                                                                                                                        |
+| `budget_decided_at`           | `timestamptz`  | Added by `…007`.                                                                                                                                        |
+| `budget_decided_by_user_id`   | `bigint`       | Added by `…007`. References `users (id)`, `ON DELETE RESTRICT`.                                                                                         |
+| `execution_started_at`        | `timestamptz`  | Added by `…007`. The metric subtracts this from `completed_at`.                                                                                         |
 | `charged_total_cents`         | `bigint`       | Added by `…008`. Null before completion ([0020](../../adr/0020-budget-total-and-charged-total-kept-apart.md)).                                          |
 | `discount_cents`              | `bigint`       | Added by `…008`.                                                                                                                                        |
 | `discount_note`               | `varchar(255)` | Added by `…008`.                                                                                                                                        |
@@ -149,38 +155,42 @@ From migration `1787702400006-create-work-orders-schema.ts`, extended by
 
 ### `work_order_services`
 
-| Column                      | Type           | Notes                                                                                                                      |
-| --------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `id`                        | `bigserial`    | Primary key, internal only.                                                                                                |
-| `external_id`               | `uuid`         | Unique.                                                                                                                    |
-| `work_order_id`             | `bigint`       | References `work_orders (id)`, `ON DELETE RESTRICT`.                                                                       |
-| `service_id`                | `bigint`       | References `services (id)`, `ON DELETE RESTRICT`.                                                                          |
-| `service_name`              | `varchar(120)` | Frozen at the moment the item was added.                                                                                   |
-| `unit_price_cents`          | `bigint`       | `>= 0`. The live catalog price when added.                                                                                 |
-| `budget_round`              | `integer`      | Added by `…007`. Null while a draft.                                                                                       |
-| `budgeted_unit_price_cents` | `bigint`       | Added by `…007`. Frozen when the round was generated ([0019](../../adr/0019-withdrawal-charged-at-the-budgeted-price.md)). |
-| `created_at`                | `timestamptz`  |                                                                                                                            |
+| Column                      | Type           | Notes                                                                                                                                                             |
+| --------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                        | `bigserial`    | Primary key, internal only.                                                                                                                                       |
+| `external_id`               | `uuid`         | Unique.                                                                                                                                                           |
+| `work_order_id`             | `bigint`       | References `work_orders (id)`, `ON DELETE RESTRICT`.                                                                                                              |
+| `service_id`                | `bigint`       | References `services (id)`, `ON DELETE RESTRICT`.                                                                                                                 |
+| `service_name`              | `varchar(120)` | Frozen at the moment the item was added.                                                                                                                          |
+| `unit_price_cents`          | `bigint`       | `>= 0`. The live catalog price when added.                                                                                                                        |
+| `budget_id`                 | `bigint`       | Added by `…007`. References `work_order_budgets (id)`, `ON DELETE RESTRICT`. Null while a draft. This is what makes "items belong to a round" true in the schema. |
+| `budgeted_unit_price_cents` | `bigint`       | Added by `…007`. Frozen when the round was generated ([0019](../../adr/0019-withdrawal-charged-at-the-budgeted-price.md)).                                        |
+| `created_at`                | `timestamptz`  |                                                                                                                                                                   |
 
 Indexed by `ix_work_order_services_work_order_id`.
 
 ### `work_order_parts`
 
-| Column                      | Type           | Notes                                                                            |
-| --------------------------- | -------------- | -------------------------------------------------------------------------------- |
-| `id`                        | `bigserial`    | Primary key, internal only.                                                      |
-| `external_id`               | `uuid`         | Unique.                                                                          |
-| `work_order_id`             | `bigint`       | References `work_orders (id)`, `ON DELETE RESTRICT`.                             |
-| `inventory_item_id`         | `bigint`       | References `inventory_items (id)`, `ON DELETE RESTRICT`.                         |
-| `sku`                       | `varchar(40)`  | Denormalised.                                                                    |
-| `item_name`                 | `varchar(120)` | Denormalised.                                                                    |
-| `planned_quantity`          | `integer`      | `> 0`.                                                                           |
-| `withdrawn_quantity`        | `integer`      | `>= 0`, default 0. What actually moved stock, and what the charged total counts. |
-| `unit_price_cents`          | `bigint`       | `>= 0`.                                                                          |
-| `budget_round`              | `integer`      | Added by `…007`.                                                                 |
-| `budgeted_unit_price_cents` | `bigint`       | Added by `…007`.                                                                 |
-| `created_at`                | `timestamptz`  |                                                                                  |
+| Column                      | Type           | Notes                                                                                            |
+| --------------------------- | -------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                        | `bigserial`    | Primary key, internal only.                                                                      |
+| `external_id`               | `uuid`         | Unique.                                                                                          |
+| `work_order_id`             | `bigint`       | References `work_orders (id)`, `ON DELETE RESTRICT`.                                             |
+| `inventory_item_id`         | `bigint`       | References `inventory_items (id)`, `ON DELETE RESTRICT`.                                         |
+| `sku`                       | `varchar(40)`  | Denormalised.                                                                                    |
+| `item_name`                 | `varchar(120)` | Denormalised.                                                                                    |
+| `planned_quantity`          | `integer`      | `> 0`.                                                                                           |
+| `withdrawn_quantity`        | `integer`      | `>= 0`, default 0. What actually moved stock, and what the charged total counts.                 |
+| `unit_price_cents`          | `bigint`       | `>= 0`.                                                                                          |
+| `budget_id`                 | `bigint`       | Added by `…007`. References `work_order_budgets (id)`, `ON DELETE RESTRICT`. Null while a draft. |
+| `budgeted_unit_price_cents` | `bigint`       | Added by `…007`.                                                                                 |
+| `created_at`                | `timestamptz`  |                                                                                                  |
 
 Indexed by `ix_work_order_parts_work_order_id`.
+
+The API answers with a `budgetRound` field on both item shapes, and no column of that name exists.
+It is a read-path alias: `typeorm-work-order-query.adapter.ts` selects `wob.round AS budget_round`
+by joining `work_order_budgets` through `budget_id`.
 
 ### `work_order_budgets`
 

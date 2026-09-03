@@ -1256,6 +1256,44 @@ number order within the phase.
 
 ---
 
+## Fix tasks from verification round 1
+
+The Verifier returned FAIL with three ranked gaps, all in column tables, all confirmed
+independently against the migrations before being fixed.
+
+### F1: The five columns migration `…007` adds to `work_orders`
+
+**Where**: `docs/architecture/low-level-design/work-orders.md`
+
+- [x] `diagnosis_started_at`, `diagnosis_completed_at`, `budget_decided_at`, `budget_decided_by_user_id` and `execution_started_at` are listed, each marked as added by `…007`
+- [x] The block cites all three migrations that touch the table, not two
+- [x] `execution_started_at` is noted as what the average execution time metric subtracts from `completed_at`, since the same page describes that metric
+
+### F2: `budget_round` is not a column on either item table
+
+**Where**: `docs/architecture/low-level-design/work-orders.md`
+
+- [x] `work_order_services` and `work_order_parts` document `budget_id bigint REFERENCES work_order_budgets (id) ON DELETE RESTRICT`, which is what migration `…007` actually adds
+- [x] The page records that `budgetRound` in an API response is a read-path alias, `wob.round AS budget_round` in the query adapter, so a reader meeting the name knows where it comes from
+- [x] The foreign key is named as what makes "items belong to a round" true in the schema rather than only in the aggregate
+
+### F3: `quantity` on `stock_movement_transitions`
+
+**Where**: `docs/architecture/low-level-design/inventory.md`
+
+- [x] The column added by migration `…008` is listed
+
+### Root cause and the check that now covers it
+
+All three share one cause: columns were gathered from the migration that created a table plus, at
+best, one that altered it, rather than from every migration touching it. A script now derives the
+full column set for all 18 tables from all 9 migrations and greps each page for every name. It
+reports 18 tables clean. Running that check first would have caught all three before the Verifier
+did, and it is what the two lessons the Verifier recorded (`L-015`, `L-016`) describe.
+
+**Gate**: `npm run lint && npm run build && npx prettier --check docs/`, all clean. No source file
+touched, so the suites are untouched at 1062.
+
 ## Task Granularity Check
 
 | Task | Scope | Status |

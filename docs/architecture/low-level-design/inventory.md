@@ -115,18 +115,19 @@ settlement or write-off.
 
 ### `stock_movement_transitions`
 
-| Column               | Type           | Notes                                                    |
-| -------------------- | -------------- | -------------------------------------------------------- |
-| `id`                 | `bigserial`    | Primary key, internal only.                              |
-| `external_id`        | `uuid`         | `ux_stock_movement_transitions_external_id` unique.      |
-| `stock_movement_id`  | `bigint`       | References `stock_movements (id)`, `ON DELETE RESTRICT`. |
-| `from_status`        | `varchar(20)`  | Nullable, absent on the first entry.                     |
-| `to_status`          | `varchar(20)`  |                                                          |
-| `from_work_order_id` | `bigint`       | Nullable.                                                |
-| `to_work_order_id`   | `bigint`       | Nullable.                                                |
-| `actor_user_id`      | `bigint`       | Nullable. References `users (id)`.                       |
-| `occurred_at`        | `timestamptz`  |                                                          |
-| `note`               | `varchar(255)` | Nullable.                                                |
+| Column               | Type           | Notes                                                                           |
+| -------------------- | -------------- | ------------------------------------------------------------------------------- |
+| `id`                 | `bigserial`    | Primary key, internal only.                                                     |
+| `external_id`        | `uuid`         | `ux_stock_movement_transitions_external_id` unique.                             |
+| `stock_movement_id`  | `bigint`       | References `stock_movements (id)`, `ON DELETE RESTRICT`.                        |
+| `from_status`        | `varchar(20)`  | Nullable, absent on the first entry.                                            |
+| `to_status`          | `varchar(20)`  |                                                                                 |
+| `from_work_order_id` | `bigint`       | Nullable.                                                                       |
+| `to_work_order_id`   | `bigint`       | Nullable.                                                                       |
+| `actor_user_id`      | `bigint`       | Nullable. References `users (id)`.                                              |
+| `occurred_at`        | `timestamptz`  |                                                                                 |
+| `note`               | `varchar(255)` | Nullable.                                                                       |
+| `quantity`           | `integer`      | Added by migration `1787702400008-add-work-order-closing-columns.ts`. Nullable. |
 
 Indexed by `ix_stock_movement_transitions_movement`.
 
