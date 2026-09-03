@@ -834,16 +834,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Component` declaration
-- [ ] It shows two module boundaries inside the context
-- [ ] It shows every call crossing into `users` and into `work-orders`
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Component` declaration
+- [x] It shows two module boundaries inside the context
+- [x] It shows every call crossing into `users` and into `work-orders`
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the customer management component diagram`
+
+**Closure notes**:
+
+1. **Six crossings drawn, in both directions.** Outbound: registration dispatching into `users` to create a person, and querying `users` to find one by CPF or CNPJ; vehicle registration resolving its owning customer; the own-vehicles read turning a token into a customer. Inbound: `work-orders` querying both this context's query ports for the customer and the vehicle of a work order. Drawing only the outbound half would have made this context look like a leaf when it is read from constantly.
+2. `Component_Ext` marks `users` and `work-orders` as outside the boundary, so the diagram shows what it talks to without pretending to describe it.
+3. Structural check by hand: `C4Component` first, parentheses and braces balanced, two `Component_Boundary` blocks.
 
 ---
 

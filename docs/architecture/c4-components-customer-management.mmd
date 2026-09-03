@@ -1,0 +1,67 @@
+%% C4 level 3, components - Customer Management
+%% Two modules in one bounded context: customers, vehicles.
+%% Arrows leaving a module boundary are bus dispatches (ADR 0008), never direct calls.
+%% Detail per module: docs/architecture/low-level-design/{customers,vehicles}.md
+
+C4Component
+  title Components - Customer Management
+
+  Person(advisor, "Service advisor / Administrator", "Registers and maintains customers and vehicles")
+  Person(customer, "Customer", "Reads their own record and vehicles")
+
+  Container_Boundary(app, "NestJS application") {
+
+    Component_Boundary(customers, "customers") {
+      Component(custCtl, "CustomersController", "Controller", "Registration, own record, administration")
+      Component(registerCust, "RegisterCustomerHandler", "Command handler", "Creates over an existing identity, or person and customer together, in one transaction")
+      Component(updateCust, "UpdateCustomerHandler", "Command handler", "Address and phone")
+      Component(custByUser, "GetCustomerByUserIdHandler", "Query handler", "Resolves the customer behind a token")
+      Component(custAgg, "Customer", "Aggregate", "Address, PhoneNumber, one identity per customer")
+      Component(custRepo, "TypeOrmCustomerRepository", "Repository", "Honours an ambient transaction")
+      Component(custQuery, "TypeOrmCustomerQueryAdapter", "Query port", "CustomerQueryPort")
+    }
+
+    Component_Boundary(vehicles, "vehicles") {
+      Component(vehCtl, "VehiclesController", "Controller", "Registration, own vehicles, administration")
+      Component(registerVeh, "RegisterVehicleHandler", "Command handler", "Refuses an inactive owner")
+      Component(myVehicles, "GetMyVehiclesHandler", "Query handler", "Resolves the customer from the token, empty list when there is none")
+      Component(vehAgg, "Vehicle", "Aggregate", "LicensePlate, VehicleYear, plate unique while not removed")
+      Component(vehRepo, "TypeOrmVehicleRepository", "Repository", "")
+      Component(vehQuery, "TypeOrmVehicleQueryAdapter", "Query port", "VehicleQueryPort")
+    }
+  }
+
+  Component_Ext(users, "users", "Module", "Owns the identity, the name, the email and the document")
+  Component_Ext(workOrders, "work-orders", "Module", "Opens work orders against a customer and a vehicle")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "customers, vehicles")
+
+  Rel(advisor, custCtl, "Registers and maintains", "HTTPS")
+  Rel(advisor, vehCtl, "Registers and maintains", "HTTPS")
+  Rel(customer, custCtl, "Reads and updates their own record", "HTTPS")
+  Rel(customer, vehCtl, "Lists their own vehicles", "HTTPS")
+
+  Rel(custCtl, registerCust, "CommandBus")
+  Rel(custCtl, updateCust, "CommandBus")
+  Rel(custCtl, custByUser, "QueryBus")
+  Rel(registerCust, custAgg, "Creates")
+  Rel(registerCust, custRepo, "Saves")
+  Rel(custByUser, custQuery, "Reads")
+  Rel(vehCtl, registerVeh, "CommandBus")
+  Rel(vehCtl, myVehicles, "QueryBus")
+  Rel(registerVeh, vehAgg, "Creates")
+  Rel(registerVeh, vehRepo, "Saves")
+  Rel(myVehicles, vehQuery, "Reads")
+
+  Rel(registerCust, users, "CommandBus: registers the person when one is not supplied", "cross-module")
+  Rel(registerCust, users, "QueryBus: finds a person by CPF or CNPJ", "cross-module")
+  Rel(registerVeh, custQuery, "QueryBus: resolves the owning customer", "cross-module")
+  Rel(myVehicles, custByUser, "QueryBus: token to customer", "cross-module")
+  Rel(workOrders, custQuery, "QueryBus: customer of a work order", "cross-module")
+  Rel(workOrders, vehQuery, "QueryBus: vehicle of a work order", "cross-module")
+
+  Rel(custRepo, pg, "Reads and writes", "TCP")
+  Rel(vehRepo, pg, "Reads and writes", "TCP")
+  Rel(custQuery, pg, "Reads", "TCP")
+  Rel(vehQuery, pg, "Reads", "TCP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
