@@ -1073,16 +1073,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It states explicitly that this unit holds no aggregate, and describes what it does hold instead - spec.md's second edge case
-- [ ] It covers `Money`, `AggregateRoot`, `EntityId`, the domain errors and the error-kind vocabulary
-- [ ] It covers the `Clock`, `IdGenerator` and `TransactionRunner` ports and their TypeORM and system implementations
-- [ ] It covers the global exception filter and the error-kind to HTTP status mapping, which every module's errors travel through
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It states explicitly that this unit holds no aggregate, and describes what it does hold instead - spec.md's second edge case
+- [x] It covers `Money`, `AggregateRoot`, `EntityId`, the domain errors and the error-kind vocabulary
+- [x] It covers the `Clock`, `IdGenerator` and `TransactionRunner` ports and their TypeORM and system implementations
+- [x] It covers the global exception filter and the error-kind to HTTP status mapping, which every module's errors travel through
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the shared kernel low level design`
+
+**Closure notes**:
+
+1. **The no-aggregate statement is the page's opening claim, not a footnote**, which is what spec.md's second edge case asks for. It is followed by what the unit does hold, so a reader does not conclude the page is incomplete.
+2. **Three placements explained rather than listed.** `ConcurrentModificationError` sits in `application/errors` rather than `domain/errors` because a version collision is a persistence concern; `Money` is here so one arithmetic serves three contexts; and the three ports are here because `eslint.config.mjs` forbids the application layer from importing `typeorm` at all, which is what makes them load-bearing rather than decorative.
+3. **One claim checked and then made more precise.** The draft said the `reference` on an error response is a fresh UUID per request. It is the pino request id, and `app.module.ts` configures `genReqId: () => randomUUID()`, so the statement was true but unsourced. The page now names where the value comes from.
 
 ---
 
