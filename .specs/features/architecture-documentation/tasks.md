@@ -768,15 +768,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `Customer` aggregate and the one-identity-per-customer invariant, `Address` and `PhoneNumber`, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
-- [ ] It states the cross-module lookup by document goes through the `QueryBus`, pointing at ADR 0008
-- [ ] The entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `Customer` aggregate and the one-identity-per-customer invariant, `Address` and `PhoneNumber`, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
+- [x] It states the cross-module lookup by document goes through the `QueryBus`, pointing at ADR 0008
+- [x] The entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the customers low level design`
+
+**Closure notes**:
+
+1. **The most valuable thing on this page came from a comment in the migration.** `ux_customers_user_id` is the one unique index in the schema deliberately *not* filtered by `deleted_at IS NULL`, unlike its counterparts on `users`. The reason, which the migration states: a user identity backs at most one customer for its whole life, so deactivating a customer must not open a slot for a second one over the same user. Reading only the ORM entity would have produced a page that presented it as an inconsistency, or worse, as a bug.
+2. **The address is documented as flattened**, one column per field rather than a nested type, with `address_complement` called out as the one field that stays optional when an address is given. That asymmetry is what `Address`'s all-or-nothing rule means at the column level.
+3. **`CUSTOMER_AMBIGUOUS_REGISTRATION` is explained rather than listed.** Registration takes either an existing `userId` or a full person to create, never both, and supplying both is 400 because the handler cannot tell which the caller meant. A reader seeing only the code would assume it is about duplicate data.
 
 ---
 
