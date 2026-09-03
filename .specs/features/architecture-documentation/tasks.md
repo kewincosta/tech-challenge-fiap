@@ -497,18 +497,26 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It states the guard chain in the order Nest runs it, which is declaration order in `app.module.ts:89-92`: `ThrottlerGuard`, `JwtAuthGuard`, `PendingPasswordGuard`, `PermissionsGuard`
-- [ ] It states how modules communicate, naming `CommandBus` and `QueryBus` and the rule that no module injects another's repository
-- [ ] It states the cross-module transaction boundary and how `TransactionRunner` and `currentEntityManager()` carry it, pointing at ADR 0023
-- [ ] It states the identifier and money conventions, pointing at ADRs 0006 and 0007
-- [ ] It carries no per-class or per-column detail and no domain narrative, pointing at the low level design pages and the event storming instead
-- [ ] Every statement cites a file or directory a reader can open to confirm it
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It states the guard chain in the order Nest runs it, which is declaration order in `app.module.ts:89-92`: `ThrottlerGuard`, `JwtAuthGuard`, `PendingPasswordGuard`, `PermissionsGuard`
+- [x] It states how modules communicate, naming `CommandBus` and `QueryBus` and the rule that no module injects another's repository
+- [x] It states the cross-module transaction boundary and how `TransactionRunner` and `currentEntityManager()` carry it, pointing at ADR 0023
+- [x] It states the identifier and money conventions, pointing at ADRs 0006 and 0007
+- [x] It carries no per-class or per-column detail and no domain narrative, pointing at the low level design pages and the event storming instead
+- [x] Every statement cites a file or directory a reader can open to confirm it
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the high level design`
+
+**Closure notes**:
+
+1. **A wrong claim caught before the gate, by checking instead of trusting the source.** The draft said two writes cross a module boundary, which is what the plan's narrative implies. Grepping `TRANSACTION_RUNNER` across the command handlers returned six: `register-user`, `register-customer`, `withdraw-parts`, `return-parts`, `deliver-vehicle` and `cancel-work-order`. The page now names all six and says what each spans. Section 15 of the event storming, which this page absorbs, would have led to the wrong number.
+2. **The layering claim is quoted from `eslint.config.mjs`, not summarised.** The page lists the exact import groups each layer is barred from, because "domain must not depend on infrastructure" is a slogan while the enumerated list is checkable. Two rule blocks exist, one for `src/**/domain/**` and one for `src/**/application/**`, and the page reflects that asymmetry rather than flattening it.
+3. **Section 15's two stale claims did not travel into this page.** The trail is described as written inside the aggregate's transaction, with a note that a subscriber runs after the commit, which is why anything that must not be lost is not one. Transfer is absent from the list of cross-context commands: the page names consumption, settlement and write-off, which is what exists.
+4. **Two facts included because they cost real time to learn in earlier features**, and belong at this level rather than in a module page: an unregistered `@CommandHandler` passes build, lint and unit tests and fails only on a real request, and every staff account carries `CUSTOMER`'s permissions because registration assigns that role to everyone. Both were discovered the hard way during features 8 and 9.
+5. **Verified before writing**: subscribers really do live in `application/subscribers`, in `authentication` and `authorization`; the `ErrorKind` to status table is copied from `GlobalExceptionFilter`'s own map rather than reconstructed; and the page contains zero occurrences of `varchar`, `CREATE TABLE` or `ON DELETE`, which is the per-column detail it is not allowed to hold.
 
 ---
 
