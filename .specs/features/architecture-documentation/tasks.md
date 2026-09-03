@@ -356,15 +356,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Two records exist, `0023` and `0024`, naming AD-008 and AD-009 in their `**Source**` lines
-- [ ] `0023` states the rule that a repository reachable from a cross-module write resolves its `EntityManager` through `currentEntityManager()` before opening its own transaction, and names why a second transaction on a second connection is invisible to the calling module's tests
-- [ ] `0024` states the `WHERE id = :id AND version = :loadedVersion` guard, the 409 it produces, and that handlers carry no concurrency handling of their own
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] Two records exist, `0023` and `0024`, naming AD-008 and AD-009 in their `**Source**` lines
+- [x] `0023` states the rule that a repository reachable from a cross-module write resolves its `EntityManager` through `currentEntityManager()` before opening its own transaction, and names why a second transaction on a second connection is invisible to the calling module's tests
+- [x] `0024` states the `WHERE id = :id AND version = :loadedVersion` guard, the 409 it produces, and that handlers carry no concurrency handling of their own
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(adr): record the transaction and concurrency decisions`
+
+**Closure notes**:
+
+1. **Both records were written from AD-008 and AD-009, which already carried decision, reason, trade-off and scope**, so neither needed the declared-gap standard. What the records add is the code that implements them, each line checked before being written: `currentEntityManager()` and the `AsyncLocalStorage` it reads (`typeorm-transaction-runner.ts:12,19`), the guard at `typeorm-work-order.repository.ts:178-179` setting `version: () => 'version + 1'` with `where('id = :id AND version = :version')`, and the mapping `[ErrorKind.Conflict]: HttpStatus.CONFLICT` in the global exception filter.
+2. **`0024` keeps AD-009's evidence rather than paraphrasing it as a risk.** The record states what was actually observed against the running application: two concurrent withdrawals of three units both answering 200, six units leaving the shelf, and the work order recording three, which the charged total then bills. A record that said only "concurrent writes could conflict" would be weaker than what the project already knew.
+3. **One placement fact worth recording, found while checking**: `ConcurrentModificationError` lives in `src/shared/application/errors/`, not in the work-orders module. That is what makes AD-009's stated scope real, that another module finding the same exposure adopts this guard rather than inventing one, so `0024` names it in Consequences.
+4. **Phase 1 is now complete on content**: 25 records exist, numbered `0001` to `0025` with no gap and no duplicate, verified by listing. T8 writes the index over them and T9 turns section 7 into a pointer.
 
 ---
 
