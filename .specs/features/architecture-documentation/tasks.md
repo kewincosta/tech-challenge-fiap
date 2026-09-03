@@ -1039,16 +1039,22 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The file opens with a `C4Component` declaration
-- [ ] The diagram is drawn even though the context maps to one module - spec.md's fourth edge case
-- [ ] It shows every call crossing into `inventory`, `customers`, `vehicles`, `services` and `users`
-- [ ] It renders in a mermaid preview
-- [ ] Gate check passes: `npx prettier --check docs/`
+- [x] The file opens with a `C4Component` declaration
+- [x] The diagram is drawn even though the context maps to one module - spec.md's fourth edge case
+- [x] It shows every call crossing into `inventory`, `customers`, `vehicles`, `services` and `users`
+- [x] It renders in a mermaid preview
+- [x] Gate check passes: `npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: quick
 
 **Commit**: `docs(architecture): add the workshop operations component diagram`
+
+**Closure notes**:
+
+1. **All five external modules appear, with six crossings between them**, four reads over the `QueryBus` and two writes over the `CommandBus`. The two writes are labelled as running in the same transaction, which is what separates them from the reads.
+2. **The sixteen handlers are grouped into two components rather than drawn individually.** A box per handler would have produced a diagram nobody reads; the split that matters is between the lifecycle commands and the two that move stock, because only the second group crosses a boundary while writing.
+3. Structural check by hand: `C4Component` first, parentheses and braces balanced, five `Component_Ext`. This completes phase 3c.
 
 ---
 

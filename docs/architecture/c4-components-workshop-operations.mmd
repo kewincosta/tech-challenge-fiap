@@ -1,0 +1,59 @@
+%% C4 level 3, components - Workshop Operations
+%% One module, work-orders, and the most crossings in the system: it reads customers, vehicles,
+%% services and users, and writes stock in inventory inside its own transaction.
+%% Detail: docs/architecture/low-level-design/work-orders.md
+
+C4Component
+  title Components - Workshop Operations
+
+  Person(advisor, "Service advisor", "Opens, assigns, delivers, cancels")
+  Person(mechanic, "Mechanic", "Diagnoses, withdraws, returns, completes")
+  Person(customer, "Customer", "Decides on the budget, follows their own work orders")
+
+  Container_Boundary(app, "NestJS application") {
+
+    Component_Boundary(workOrders, "work-orders") {
+      Component(woCtl, "WorkOrdersController", "Controller", "22 routes, addressed by work order number")
+      Component(lifecycle, "Lifecycle handlers", "Command handlers", "Create, diagnose, budget, approve, complete, deliver, cancel, discount")
+      Component(stockCmds, "WithdrawParts / ReturnParts", "Command handlers", "Move stock inside this module's transaction")
+      Component(authorizers, "Budget / Completion / Cancellation authorizers", "Services", "Owner-or-permission rules the guard cannot express")
+      Component(woAgg, "WorkOrder", "Aggregate", "Budget, WorkOrderServiceItem, WorkOrderPartItem, seven statuses")
+      Component(woRepo, "TypeOrmWorkOrderRepository", "Repository", "Ambient transaction, version guard, writes the trail in the same transaction")
+      Component(woQuery, "TypeOrmWorkOrderQueryAdapter", "Query port", "Board, one work order, trail, customer-scoped reads")
+      Component(metrics, "TypeOrmWorkOrderMetricsQueryAdapter", "Query port", "Average execution time, aggregated in SQL with EXISTS")
+    }
+  }
+
+  Component_Ext(customers, "customers", "Module", "Customer of a work order, and the token-to-customer lookup")
+  Component_Ext(vehicles, "vehicles", "Module", "Vehicle of a work order")
+  Component_Ext(services, "services", "Module", "Catalog price frozen into a budget round")
+  Component_Ext(inventory, "inventory", "Module", "Stock consumed, returned, settled, written off")
+  Component_Ext(users, "users", "Module", "The mechanic being assigned")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "work_orders, work_order_services, work_order_parts, work_order_budgets, work_order_events")
+
+  Rel(advisor, woCtl, "Opens, assigns, delivers, cancels", "HTTPS")
+  Rel(mechanic, woCtl, "Diagnoses, withdraws, returns, completes", "HTTPS")
+  Rel(customer, woCtl, "Approves or rejects, reads their own", "HTTPS")
+
+  Rel(woCtl, lifecycle, "CommandBus")
+  Rel(woCtl, stockCmds, "CommandBus")
+  Rel(woCtl, woQuery, "QueryBus")
+  Rel(woCtl, metrics, "QueryBus")
+  Rel(lifecycle, authorizers, "Asks before acting")
+  Rel(lifecycle, woAgg, "Loads, calls, saves")
+  Rel(stockCmds, woAgg, "Loads, calls, saves")
+  Rel(lifecycle, woRepo, "Saves")
+  Rel(stockCmds, woRepo, "Saves")
+
+  Rel(lifecycle, customers, "QueryBus: customer of the work order, token to customer", "cross-module")
+  Rel(lifecycle, vehicles, "QueryBus: vehicle and its owner", "cross-module")
+  Rel(lifecycle, services, "QueryBus: service and its price when an item is added", "cross-module")
+  Rel(lifecycle, users, "QueryBus: the assigned mechanic and their role", "cross-module")
+  Rel(stockCmds, inventory, "CommandBus: consume and restore, same transaction", "cross-module")
+  Rel(lifecycle, inventory, "CommandBus: settle on delivery, write off on cancellation", "cross-module")
+
+  Rel(woRepo, pg, "Reads and writes, trail included", "TCP")
+  Rel(woQuery, pg, "Reads", "TCP")
+  Rel(metrics, pg, "Aggregates", "TCP")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")
