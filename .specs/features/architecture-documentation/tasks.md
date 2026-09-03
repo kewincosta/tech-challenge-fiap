@@ -666,15 +666,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `Session` aggregate and `RefreshToken`, their invariants, the value objects, the commands and handlers, the ports, the repository and mapper, both ORM entities with every column, the endpoints, and the errors with their HTTP mapping
-- [ ] It states where `JwtAuthGuard` and `PendingPasswordGuard` sit in the chain, pointing at the high level design for the order
-- [ ] Each entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `Session` aggregate and `RefreshToken`, their invariants, the value objects, the commands and handlers, the ports, the repository and mapper, both ORM entities with every column, the endpoints, and the errors with their HTTP mapping
+- [x] It states where `JwtAuthGuard` and `PendingPasswordGuard` sit in the chain, pointing at the high level design for the order
+- [x] Each entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the authentication low level design`
+
+**Closure notes**:
+
+1. **Two schema details worth a page of their own were caught by reading the migration rather than the entity.** `replaced_by_id` is a deferrable self-reference (`ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED`), which is what lets a rotation insert the replacement and point the redeemed token at it inside one transaction. And `ux_refresh_tokens_active_per_session` is a partial unique index on `(session_id) WHERE status = 'ACTIVE'`, so "at most one active refresh token per session" is enforced by the database rather than by the aggregate alone. Both are the kind of thing an ORM entity does not show.
+2. **The error table records a deliberate collision.** Three distinct errors, `InvalidRefreshTokenError`, `RefreshTokenReuseError` and `SessionNotActiveError`, all answer `AUTH_INVALID_REFRESH_TOKEN` with 401. The page says why: a caller holding a bad token learns it is bad and not which of the three reasons applies. Reporting that as three codes would leak whether a session existed and whether a token had already been redeemed.
+3. **The guard placement is stated without repeating the chain**: this page says `JwtAuthGuard` consults the Redis revoked session list and that `@Public()` is what lets login and refresh past it, and points at the high level design for the order of all four.
 
 ---
 
