@@ -1107,16 +1107,23 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It lists nine pages, and every page it lists exists
-- [ ] Every directory under `src/modules/`, plus `src/shared`, has exactly one page listed, and no page names a unit that does not exist
-- [ ] It states what this level owns and what it does not, including the rule that a page cites the high level design rather than repeating it - spec.md's third edge case
-- [ ] It records the commit the ORM columns were read at, so a stale page is datable
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It lists nine pages, and every page it lists exists
+- [x] Every directory under `src/modules/`, plus `src/shared`, has exactly one page listed, and no page names a unit that does not exist
+- [x] It states what this level owns and what it does not, including the rule that a page cites the high level design rather than repeating it - spec.md's third edge case
+- [x] It records the commit the ORM columns were read at, so a stale page is datable
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the low level design index`
+
+**Closure notes**:
+
+1. **The correspondence was checked in both directions, mechanically.** Nine pages listed and nine files present; every directory under `src/modules` plus `shared` has exactly one page; and no page names a unit that does not exist. A one-directional check would have missed either an orphan page or a module nobody documented.
+2. **The staleness risk the user accepted at design time is now dated rather than merely acknowledged.** The index records that the columns were read at commit `875f073`. Nothing mechanical detects a migration landing without its page being updated, so the honest mitigation is to make a stale page datable and to say which artifact wins: the migration named in each block.
+3. **The three "does not hold" rules are stated as rules, with the reason for each**: another unit's content, any decision, and anything the high level design already carries. The second one carries the argument that a page arguing a decision becomes a second copy free to drift, which is the failure the whole set exists to prevent.
+4. Phase 3 is complete: nine low level design pages, five component diagrams and this index.
 
 ---
 
