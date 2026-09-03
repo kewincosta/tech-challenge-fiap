@@ -128,6 +128,7 @@ export class CustomersController {
   @ApiOperation({ summary: 'Get a customer by id' })
   @ApiOkResponse({ type: CustomerResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<CustomerResponseDto> {

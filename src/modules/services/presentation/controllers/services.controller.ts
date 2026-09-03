@@ -87,6 +87,7 @@ export class ServicesController {
   @ApiOperation({ summary: 'Get a catalog service by id, active or deactivated' })
   @ApiOkResponse({ type: ServiceResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<ServiceResponseDto> {

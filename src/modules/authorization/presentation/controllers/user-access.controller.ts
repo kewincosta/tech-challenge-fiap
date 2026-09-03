@@ -44,6 +44,7 @@ export class UserAccessController {
   @ApiOperation({ summary: 'Get the roles assigned to a user' })
   @ApiOkResponse({ type: UserAccessResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getUserAccess(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<UserAccessResponseDto> {
@@ -58,6 +59,7 @@ export class UserAccessController {
   @ApiOperation({ summary: 'Assign a role to a user (idempotent)' })
   @ApiNoContentResponse()
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async assignRole(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Param('roleId', ParseUUIDPipe) roleId: string,
@@ -73,6 +75,7 @@ export class UserAccessController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Revoke a role from a user (idempotent)' })
   @ApiNoContentResponse()
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async revokeRole(
     @Param('userId', ParseUUIDPipe) userId: string,
     @Param('roleId', ParseUUIDPipe) roleId: string,

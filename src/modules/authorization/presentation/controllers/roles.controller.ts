@@ -58,6 +58,7 @@ export class RolesController {
   @RequirePermissions(AppPermission.RolesRead)
   @ApiOperation({ summary: 'List roles' })
   @ApiOkResponse({ type: [RoleResponseDto] })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(): Promise<RoleResponseDto[]> {
     return this.queryBus.execute<ListRolesQuery, RoleDto[]>(new ListRolesQuery());
   }
@@ -68,6 +69,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Create a role' })
   @ApiCreatedResponse({ type: RoleResponseDto })
   @ApiConflictResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async create(@Body() body: CreateRoleRequestDto): Promise<RoleResponseDto> {
     const created = await this.commandBus.execute<CreateRoleCommand, CreatedRoleDto>(
       new CreateRoleCommand(body.name, body.description ?? null, body.permissions ?? []),
@@ -80,6 +82,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Get a role by id' })
   @ApiOkResponse({ type: RoleResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(@Param('id', ParseUUIDPipe) id: string): Promise<RoleResponseDto> {
     return this.getRoleOrFail(id);
   }
@@ -89,6 +92,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Update role name or description' })
   @ApiOkResponse({ type: RoleResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateRoleRequestDto,
@@ -105,6 +109,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Delete a role' })
   @ApiNoContentResponse()
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.commandBus.execute<DeleteRoleCommand, void>(new DeleteRoleCommand(id));
   }
@@ -114,6 +119,7 @@ export class RolesController {
   @ApiOperation({ summary: 'Replace the permissions of a role' })
   @ApiOkResponse({ type: RoleResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async setPermissions(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: SetRolePermissionsRequestDto,

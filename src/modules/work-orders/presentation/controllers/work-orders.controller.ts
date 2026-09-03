@@ -393,7 +393,13 @@ export class WorkOrdersController {
   @Post(':number/budget/approval')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Approve the pending budget round' })
+  @ApiOperation({
+    summary: 'Approve the pending budget round',
+    description:
+      'Allowed to the owning customer or to a holder of work-orders:decide. The route carries no ' +
+      'permission decorator because that rule is an either-of-two, which the permissions guard ' +
+      'cannot express; the handler enforces it and answers 404, not 403, to anyone else.',
+  })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
@@ -411,7 +417,13 @@ export class WorkOrdersController {
   @Post(':number/budget/rejection')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reject the pending budget round' })
+  @ApiOperation({
+    summary: 'Reject the pending budget round',
+    description:
+      'Allowed to the owning customer or to a holder of work-orders:decide. The route carries no ' +
+      'permission decorator because that rule is an either-of-two, which the permissions guard ' +
+      'cannot express; the handler enforces it and answers 404, not 403, to anyone else.',
+  })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })

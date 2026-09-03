@@ -126,6 +126,7 @@ export class InventoryItemsController {
   @ApiOperation({ summary: 'Get a catalog item by id' })
   @ApiOkResponse({ type: InventoryItemResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<InventoryItemResponseDto> {

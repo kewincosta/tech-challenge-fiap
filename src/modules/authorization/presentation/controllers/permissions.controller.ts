@@ -25,6 +25,7 @@ export class PermissionsController {
   @RequirePermissions(AppPermission.PermissionsRead)
   @ApiOperation({ summary: 'List the permission catalog' })
   @ApiOkResponse({ type: [PermissionResponseDto] })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(): Promise<PermissionResponseDto[]> {
     return this.queryBus.execute<ListPermissionsQuery, PermissionDto[]>(
       new ListPermissionsQuery(),

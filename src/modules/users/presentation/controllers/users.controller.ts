@@ -174,6 +174,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get a user by id' })
   @ApiOkResponse({ type: UserResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<UserResponseDto> {
     return this.getUserOrThrow(externalId);
   }

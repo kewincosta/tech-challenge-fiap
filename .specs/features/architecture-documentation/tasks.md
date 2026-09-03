@@ -1211,19 +1211,26 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] Every route across the ten controllers carries an operation summary
-- [ ] Every route documents each HTTP status it can answer with, its error statuses included
-- [ ] Every permission-gated route documents the 403 its gate produces
-- [ ] IF an annotation states something the route does not do THEN it is corrected to match the implemented behaviour, never the reverse
-- [ ] The budget decision routes, which carry no permission decorator by design, document the owner-or-permission rule their handler applies rather than a 403 they never answer - spec.md's sixth edge case
-- [ ] No route behaviour, DTO shape or test is changed
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e && npx prettier --check docs/`
-- [ ] Test count: 1062 tests pass, unchanged - 640 unit, 228 integration, 194 e2e
+- [x] Every route across the ten controllers carries an operation summary
+- [x] Every route documents each HTTP status it can answer with, its error statuses included
+- [x] Every permission-gated route documents the 403 its gate produces
+- [x] IF an annotation states something the route does not do THEN it is corrected to match the implemented behaviour, never the reverse
+- [x] The budget decision routes, which carry no permission decorator by design, document the owner-or-permission rule their handler applies rather than a 403 they never answer - spec.md's sixth edge case
+- [x] No route behaviour, DTO shape or test is changed
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e && npx prettier --check docs/`
+- [x] Test count: 1062 tests pass, unchanged - 640 unit, 228 integration, 194 e2e
 
 **Tests**: none
 **Gate**: build
 
 **Commit**: `docs(api): align the Swagger annotations with the routes`
+
+**Closure notes**:
+
+1. **The review was run as a parser, not as a reading.** A script split each controller into decorator blocks and compared, per route, whether it carries `@RequirePermissions` against whether it documents `@ApiForbiddenResponse`. Summaries were already complete: 72 routes, 72 `@ApiOperation`. The 403 coverage was not: **15 gated routes documented no 403**, across `permissions`, `roles`, `user-access`, and the `GET /:externalId` route of `customers`, `inventory-items`, `services`, `users` and `vehicles`. All 15 were annotated, and the check now reports clean.
+2. **The pattern in those 15 is worth naming**: the whole of the `authorization` module's own controllers, plus exactly one route shape repeated across five other modules, the single-resource read. Both look like the same omission repeated by copying, which is how a published contract drifts from the implemented one without anyone deciding it should.
+3. **The budget decision routes needed a description, not a 403.** The code comment already recorded that `BudgetDecisionAuthorizer` answers 404 rather than 403 to a stranger, so as to hide existence, and the annotations matched that. What was missing was any way for a Swagger reader to learn the rule: both routes now carry a description saying the decision is open to the owning customer or a holder of `work-orders:decide`, why the route carries no decorator, and that the refusal is a 404.
+4. **Nothing but annotations changed.** The diff is 9 controller files, 29 added lines, 2 changed. The full suite ran unchanged at 640 unit, 228 integration and 194 e2e, which is the evidence that the review touched no behaviour.
 
 ---
 

@@ -99,6 +99,7 @@ export class VehiclesController {
   @ApiOperation({ summary: 'Get a vehicle by id' })
   @ApiOkResponse({ type: VehicleResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<VehicleResponseDto> {
