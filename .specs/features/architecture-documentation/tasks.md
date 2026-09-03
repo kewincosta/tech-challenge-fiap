@@ -868,15 +868,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `Service` aggregate, `ServiceName`, `ServiceDuration` and the use of `Money`, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
-- [ ] It states that the catalog price is frozen into a budget round rather than read live, pointing at ADR 0019
-- [ ] The entity block names the migration file its columns come from
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `Service` aggregate, `ServiceName`, `ServiceDuration` and the use of `Money`, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
+- [x] It states that the catalog price is frozen into a budget round rather than read live, pointing at ADR 0019
+- [x] The entity block names the migration file its columns come from
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the services low level design`
+
+**Closure notes**:
+
+1. **This is the third distinct take on uniqueness in three contexts, and the page says so.** `services` has no `deleted_at` at all: a catalog entry that priced past work orders must stay readable, so deactivation is a status change. Its unique index is therefore filtered by `status = 'ACTIVE'` rather than by a soft-delete column, and it is keyed on `lower(name)`, so two spellings differing only in case cannot both be active. `users` filters on `deleted_at IS NULL`, `customers` deliberately filters on nothing, and this one filters on status.
+2. **Both `CHECK` constraints are named with their predicates**, `price_cents >= 0` and `estimated_duration_minutes > 0`, because they are where the value objects' rules are also enforced by the database rather than only by the domain.
+3. The page states that a price change applies to rounds generated after it and to nothing already frozen, and links `0019` for why, without restating the reasoning that record owns.
 
 ---
 
