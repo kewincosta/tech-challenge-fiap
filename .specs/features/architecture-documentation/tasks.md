@@ -633,15 +633,21 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] It covers the `User` aggregate and its invariants, the value objects, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
-- [ ] The entity block names the migration file its columns come from
-- [ ] It describes nothing another module owns and states no decision, pointing at the ADR instead
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] It covers the `User` aggregate and its invariants, the value objects, the commands and handlers, the queries and ports, the repository and mapper, the ORM entity with every column, the endpoints, and the errors with their HTTP mapping
+- [x] The entity block names the migration file its columns come from
+- [x] It describes nothing another module owns and states no decision, pointing at the ADR instead
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the users low level design`
+
+**Closure notes**:
+
+1. **All eleven columns are listed with their constraints, read from migration `1787702400000` rather than from the ORM entity**, since the migration is what the database actually ran. The three partial unique indexes on this table (`ux_users_email`, `ux_users_document`, both filtered by `deleted_at IS NULL`) are named on the columns they cover.
+2. **The error table is generated from the source**, not recalled: eight `DomainError` subclasses, each with the `code` string and `ErrorKind` its file declares, mapped to status through the table in the high level design.
+3. **One fact recorded here because this module is where it originates**: `RegisterUserHandler` assigns `CUSTOMER` inside registration's own transaction, which is why every account in the system carries that role. The page says so and notes the consequence reaches well beyond this module, without restating the guard-chain effect that the high level design owns.
 
 ---
 
