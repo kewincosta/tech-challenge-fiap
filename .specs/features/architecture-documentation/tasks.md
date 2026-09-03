@@ -461,17 +461,24 @@ T29 → T30 → T31 → T32
 
 **Done when**:
 
-- [ ] The page names the four business actors from the event storming's section 3, excluding `System`, which is not a role and never logs in
-- [ ] It names the five bounded contexts from section 4 and what each is responsible for
-- [ ] It names the three runtime pieces: the NestJS application, PostgreSQL and Redis
-- [ ] It contains no module internals, no schema detail and no endpoint list, pointing at the high level design and the low level design pages instead
-- [ ] Every decision it mentions links its ADR rather than restating the reasoning
-- [ ] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
+- [x] The page names the four business actors from the event storming's section 3, excluding `System`, which is not a role and never logs in
+- [x] It names the five bounded contexts from section 4 and what each is responsible for
+- [x] It names the three runtime pieces: the NestJS application, PostgreSQL and Redis
+- [x] It contains no module internals, no schema detail and no endpoint list, pointing at the high level design and the low level design pages instead
+- [x] Every decision it mentions links its ADR rather than restating the reasoning
+- [x] Gate check passes: `npm run lint && npm run build && npx prettier --check docs/`
 
 **Tests**: none
 **Gate**: full
 
 **Commit**: `docs(architecture): add the system overview`
+
+**Closure notes**:
+
+1. **"No module internals" was checked by pattern, not by judgement**: the page contains zero occurrences of `GET /`, `POST /`, `bigserial`, `CREATE TABLE` or `src/modules/`. Every decision it touches is a link to its record rather than a restatement, so the page carries no reasoning that could drift from the ADR that owns it.
+2. **Thirteen of its fifteen links resolve today.** The two that do not are `high-level-design.md` and `low-level-design/README.md`, written by T11 and T29. They are deliberate forward references from the entry point of a set being built in dependency order, and T30's pass is where every link across `docs/` is checked at once.
+3. **Reading section 15 for this task turned up two stale claims in it, which T14 will have to handle rather than merely point away from.** It states that "the work order trail is one of those subscribers, so recording it adds no new write path to the handlers", which is the same subscriber mechanism ADR 0021 records as replaced and which T9 removed from the plan. It also lists "the stock consumption, settlement, transfer and write off" as cross-context commands, and the transfer case disappeared at revision 8 per H18. Both are recorded here so T14 does not simply replace the section with a pointer and carry the errors into the overview.
+4. **Most of section 15 belongs to the high level design, not here.** Its content on modules, aggregates, domain events, policies, guards, authorization, persistence and errors is module-level design, which section 10's ownership table assigns to the level below this one. T14's criterion about moving what the overview does not carry has to be read against that table: the destination for most of it is T11's page, and this task deliberately left it there.
 
 ---
 
