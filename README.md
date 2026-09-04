@@ -29,7 +29,8 @@ API REST para a operação de uma oficina mecânica, da chegada do veículo até
 - [Qualidade de código](#qualidade-de-código)
 - [Estrutura de pastas](#estrutura-de-pastas)
 - [Convenções](#convenções)
-- [Decisões de arquitetura](#decisões-de-arquitetura)
+- [Decisões técnicas](#decisões-técnicas)
+- [Requisitos do desafio](#requisitos-do-desafio)
 - [Segurança](#segurança)
 - [Deploy](#deploy)
 - [Contribuindo](#contribuindo)
@@ -566,35 +567,156 @@ a comunicação é por `CommandBus` e `QueryBus`, trocando identificadores e DTO
 **Erros** são classes de domínio com código próprio e um tipo, e o tipo define o status HTTP. Um
 handler nunca escolhe um código de status.
 
-## Decisões de arquitetura
+## Decisões técnicas
 
 Vinte e cinco registros numerados em [`docs/adr/`](docs/adr/README.md), um por decisão, cada um com
-contexto, decisão e consequências.
+contexto, decisão e consequências. As sete abaixo são as que mais moldam o sistema.
 
 ### Por que PostgreSQL
 
-Registrado por inteiro na
-[ADR 0002](docs/adr/0002-postgresql-as-the-relational-database.md). Em resumo, os dados aqui são
-relacionais no sentido estrito: uma ordem de serviço aponta para um cliente, um veículo, um
-conjunto de itens de serviço, um conjunto de itens de peça e uma série de rodadas de orçamento; um
-movimento de estoque aponta para o item e para a OS que o consumiu.
+O desafio deixa a escolha do banco livre e pede a justificativa. Ela está por inteiro na
+[ADR 0002](docs/adr/0002-postgresql-as-the-relational-database.md).
+
+Os dados aqui são relacionais no sentido estrito. Uma ordem de serviço aponta para um cliente, um
+veículo, um conjunto de itens de serviço, um conjunto de itens de peça e uma série de rodadas de
+orçamento. Um movimento de estoque aponta para o item e para a OS que o consumiu. A leitura mais
+frequente do sistema atravessa cinco dessas tabelas de uma vez.
 
 Quatro propriedades sustentam a escolha:
 
 1. **Integridade referencial declarada no schema.** As chaves estrangeiras são verificadas pelo
-   banco, então um item não pode apontar para uma OS inexistente. A garantia é do schema, não do
-   código que por acaso escreve.
+   banco, então um item de OS não pode apontar para uma ordem inexistente e um movimento não pode
+   referenciar um item que não existe. A garantia é do schema, não do código que por acaso
+   escreve.
 2. **Transação atravessando dois agregados em dois módulos.** A retirada de peça baixa o estoque,
-   grava um movimento e atualiza a OS. Se qualquer metade falhar, as duas precisam falhar. O
-   Postgres entrega isso como um `COMMIT`.
-3. **Bloqueio de linha para a concorrência real do caso.** Duas retiradas simultâneas sobre o
-   mesmo item são resolvidas com `SELECT ... FOR UPDATE` ordenado por id, o que também evita
-   deadlock entre lotes que citam os mesmos itens em ordens diferentes.
-4. **Índices únicos parciais.** A regra de exclusão lógica depende de `UNIQUE ... WHERE deleted_at
-IS NULL`, que o Postgres suporta nativamente.
+   grava um movimento no livro-razão e atualiza a ordem de serviço. Se qualquer parte falhar, as
+   três precisam falhar juntas, senão a oficina fica com peça baixada e OS que não sabe disso. O
+   PostgreSQL entrega isso como um único `COMMIT`
+   ([ADR 0023](docs/adr/0023-repositories-honour-an-ambient-transaction.md)).
+3. **Bloqueio de linha para a concorrência que este caso tem de verdade.** Duas retiradas
+   simultâneas sobre o mesmo item são resolvidas com `SELECT ... FOR UPDATE` ordenado por id, o
+   que também evita deadlock entre lotes que citam os mesmos itens em ordem diferente.
+4. **Índices únicos parciais.** A exclusão lógica depende de `UNIQUE ... WHERE deleted_at IS NULL`
+   para que um e-mail, uma placa ou um SKU voltem a ficar livres depois da desativação. O
+   PostgreSQL suporta isso nativamente; sem esse recurso, a regra teria que virar código de
+   aplicação e deixaria de ser garantida.
 
-Um banco de documentos resolveria a leitura da OS com menos junções, e pagaria por isso com a
-consistência entre estoque e ordem, que é exatamente o ponto onde este domínio não pode ceder.
+**O que foi considerado e descartado.** Um banco de documentos resolveria a leitura da OS com menos
+junções, gravando a ordem inteira num documento só, e pagaria por isso na consistência entre
+estoque e ordem, que é justamente onde este domínio não pode ceder: os dois vivem em agregados
+diferentes e precisam mudar juntos. MySQL atenderia os pontos 1 a 3, mas não tem índice único
+parcial, que é a base da regra de exclusão lógica do projeto inteiro. SQLite serviria ao
+desenvolvimento e não à concorrência do ponto 3.
+
+### Por que monolito modular com CQRS
+
+O desafio pede um back-end monolítico, e para um MVP de oficina única isso é também o que faz
+sentido: um processo, um banco, um deploy, sem a latência e a complexidade operacional de rede
+entre serviços. O que separa este monolito de um bloco único é a fronteira entre módulos ser real:
+nenhum módulo importa o repositório ou a entidade de outro, e a comunicação passa por `CommandBus`
+e `QueryBus` trocando identificadores e DTOs
+([ADR 0001](docs/adr/0001-modular-monolith-with-cqrs.md),
+[ADR 0008](docs/adr/0008-cross-context-calls-through-the-buses.md)).
+
+O custo é uma volta pelo barramento onde caberia uma junção. O ganho é que a fronteira que um dia
+viraria um serviço já está desenhada, e um acoplamento acidental quebra o lint em vez de passar
+pela revisão.
+
+A separação entre comando e consulta segue o mesmo raciocínio: a escrita passa pelo agregado, que
+protege o invariante, enquanto a leitura vai direto ao banco por um adaptador que devolve o DTO
+pronto. Montar a tela do quadro de OS pelo agregado exigiria carregar cada ordem inteira, com
+itens e orçamentos, para exibir seis campos.
+
+### Por que Redis ao lado do PostgreSQL
+
+Três usos, todos com a mesma propriedade: nada que o Redis guarda é insubstituível
+([ADR 0003](docs/adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
+
+- **Acesso efetivo em cache.** Resolver papéis e permissões de um usuário a cada requisição é uma
+  junção de quatro tabelas no caminho crítico de toda rota autenticada. O cache é invalidado por
+  evento quando uma atribuição muda, não por expiração.
+- **Lista de sessões revogadas.** Um JWT é válido até expirar, então logout e troca de senha
+  precisam de um lugar onde a revogação seja consultada em toda requisição.
+- **Contadores de limite de requisições**, que precisam ser compartilhados entre instâncias.
+
+Se o Redis for perdido, tudo se reconstrói: o cache é recalculado do PostgreSQL e as sessões
+revogadas seguem registradas na tabela de sessões.
+
+### Por que JWT com refresh token rotativo
+
+O desafio pede autenticação JWT nas APIs administrativas. O token de acesso é curto (15 minutos
+por padrão) e não é consultado no banco, o que é o ponto do JWT. O refresh é longo, de uso único e
+rotativo: cada renovação invalida o anterior, e a apresentação de um token já usado é tratada como
+indício de roubo e derruba a sessão inteira
+([ADR 0004](docs/adr/0004-jwt-with-refresh-token-rotation.md)).
+
+Sem a rotação, um refresh token vazado valeria por sete dias sem deixar rastro. Com ela, o uso
+paralelo pelo atacante e pelo dono legítimo se denuncia na primeira renovação.
+
+### Por que Argon2id para as senhas
+
+Argon2id venceu a Password Hashing Competition e é a recomendação atual do OWASP. Ao contrário de
+bcrypt, ele é custoso em memória além de custoso em tempo, o que encarece o ataque com GPU e ASIC,
+que é exatamente o vetor contra um vazamento de base
+([ADR 0005](docs/adr/0005-argon2id-for-password-hashing.md)).
+
+### Por que dinheiro em centavos inteiros
+
+Ponto flutuante não representa `0,1` exatamente, e um orçamento é uma soma de muitos itens cujo
+total precisa fechar com o que foi cobrado. Todo valor é `bigint` em centavos de real, do agregado
+à coluna e ao payload da API. A formatação e a conversão de moeda são responsabilidade do cliente
+([ADR 0007](docs/adr/0007-money-in-integer-brl-cents.md)).
+
+O TypeORM devolve `bigint` como string, então os mappers convertem explicitamente. É um custo
+aceito para não ter o erro de arredondamento em lugar nenhum.
+
+### Por que id interno e UUID externo
+
+Toda tabela endereçável carrega `id bigserial` para uso interno e chaves estrangeiras, mais
+`external_id uuid` para tudo que sai do processo
+([ADR 0006](docs/adr/0006-internal-key-plus-external-uuid.md)).
+
+Chave sequencial em URL é enumerável: quem recebe a OS 41 sabe que existem a 40 e a 42. Só UUID,
+por outro lado, engorda todo índice e toda chave estrangeira do schema. Os dois juntos dão índice
+compacto por dentro e identificador opaco por fora, ao custo de os repositórios traduzirem um no
+outro na fronteira.
+
+## Requisitos do desafio
+
+Onde cada capacidade obrigatória do Tech Challenge está atendida.
+
+| Requisito                                       | Onde está                                                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Identificação do cliente por CPF/CNPJ           | `GET /customers?document=`, com validação por dígito verificador em `PersonDocument`                     |
+| Cadastro de veículo (placa, marca, modelo, ano) | `POST /vehicles`, com `LicensePlate` nos formatos antigo e Mercosul                                      |
+| Inclusão dos serviços solicitados               | `POST /work-orders/:number/services`                                                                     |
+| Inclusão de peças e insumos                     | `POST /work-orders/:number/parts`                                                                        |
+| Orçamento gerado automaticamente                | `POST /work-orders/:number/diagnosis/completion`, somado dentro do agregado                              |
+| Envio do orçamento ao cliente para aprovação    | Status vai a `AWAITING_APPROVAL` e o cliente lê em `GET /work-orders/me/:number` (ver a ressalva abaixo) |
+| Os seis status da OS                            | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts)                            |
+| Alteração automática dos status                 | Cada transição é consequência de um método do agregado; não há rota que escreva status                   |
+| Consulta pelo cliente via API                   | `GET /work-orders/me` e `GET /work-orders/me/:number`                                                    |
+| CRUD de clientes                                | `/customers`                                                                                             |
+| CRUD de veículos                                | `/vehicles`                                                                                              |
+| CRUD de serviços                                | `/services`                                                                                              |
+| CRUD de peças e insumos com controle de estoque | `/inventory-items`, mais reposição, ajuste, movimentos e faltas                                          |
+| Listagem e detalhamento de ordens de serviço    | `GET /work-orders` e `GET /work-orders/:number`                                                          |
+| Monitoramento do tempo médio de execução        | `GET /work-orders/metrics/average-execution-time`                                                        |
+| Autenticação JWT nas APIs administrativas       | `JwtAuthGuard` global; só três rotas são públicas                                                        |
+| Validação de dados sensíveis (CPF/CNPJ, placa)  | `PersonDocument` e `LicensePlate`, com teste unitário próprio                                            |
+| Testes unitários e de integração                | Três suítes, ver [Testes](#testes)                                                                       |
+| Back-end monolítico em camadas                  | Ver [Arquitetura](#arquitetura)                                                                          |
+| Justificativa do banco                          | [Por que PostgreSQL](#por-que-postgresql)                                                                |
+| API RESTful documentada                         | Swagger em `/api/docs`                                                                                   |
+| Dockerfile                                      | [`Dockerfile`](Dockerfile), multi-estágio                                                                |
+| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), três serviços com healthcheck                                |
+| Cobertura mínima de 80% nos domínios críticos   | Limites por caminho em [`vitest.config.ts`](vitest.config.ts), ver [Cobertura](#cobertura)               |
+| Execução local simples                          | [Começando](#começando)                                                                                  |
+
+**Uma ressalva honesta sobre o envio do orçamento.** O sistema registra o evento `BudgetSent` na
+trilha e move a OS para `AWAITING_APPROVAL`, e o cliente consulta e decide por API. Não há canal
+de saída ativo: nenhum e-mail, push ou webhook parte daqui. O modelo é de puxada, não de empurrada.
+Adicionar um canal significa consumir o evento que já é gravado, sem mexer no agregado.
 
 ## Segurança
 
