@@ -1,7 +1,7 @@
 # 0020. Budget total and charged total kept as two separate values
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from the block in `docs/ddd/implementation-plan.md` section 7
+**Recorded**: 2026-09-02, from the decisions taken during the build
 
 ## Context
 

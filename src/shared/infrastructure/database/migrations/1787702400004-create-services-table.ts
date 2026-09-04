@@ -5,7 +5,7 @@ export class CreateServicesTable1787702400004 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // No deleted_at column: deactivation here is a status flip, not a soft delete, and the
-    // uniqueness filter is WHERE status = 'ACTIVE' (implementation-plan.md phase 6). Deliberately
+    // uniqueness filter is WHERE status = 'ACTIVE'. Deliberately
     // different from users, customers and vehicles.
     await queryRunner.query(`
       CREATE TABLE services (

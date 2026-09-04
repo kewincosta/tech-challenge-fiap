@@ -80,8 +80,3 @@ Four entry points, each owning one altitude and pointing at the next:
 | [High level design](docs/architecture/high-level-design.md)         | The modules and what each owns, the layers, the bus rule, the guard chain, the transaction boundaries, the conventions |
 | [Low level design](docs/architecture/low-level-design/README.md)    | One page per module: aggregates, value objects, handlers, columns, endpoints, errors                                   |
 | [Decision records](docs/adr/README.md)                              | Why any of it was decided that way, one numbered record per decision                                                   |
-
-`docs/ddd/` carries the domain model this API implements: `event-storming.md` (the events,
-aggregates and invariants) and `implementation-plan.md` (the phased build plan these features
-follow). Those two stay the source of truth for the domain; the four documents above describe what
-was built from it.

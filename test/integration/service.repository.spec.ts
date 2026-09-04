@@ -58,7 +58,7 @@ describe('TypeOrmServiceRepository', () => {
     );
     const found = await repository.findById(service.id);
 
-    // The hazard implementation-plan.md phase 6 names: without the mapper's explicit conversion
+    // The hazard the service catalog phase named: without the mapper's explicit conversion
     // this column reads back as the string "15099", not the number 15099.
     expect(typeof raw[0].price_cents).toBe('string');
     expect(found?.price.cents).toBe(15099);

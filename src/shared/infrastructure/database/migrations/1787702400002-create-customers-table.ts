@@ -24,7 +24,7 @@ export class CreateCustomersTable1787702400002 implements MigrationInterface {
         CONSTRAINT chk_customers_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
         CONSTRAINT ux_customers_external_id UNIQUE (external_id),
         -- Not filtered by deleted_at IS NULL: a user identity backs at most one customer for its
-        -- whole life (event-storming.md rule 12), unlike users.email/users.document, which a
+        -- whole life (rule 12 of the domain model), unlike users.email/users.document, which a
         -- deactivated record frees up for reuse. Deactivating a customer never opens a slot for
         -- a second one over the same user.
         CONSTRAINT ux_customers_user_id UNIQUE (user_id)

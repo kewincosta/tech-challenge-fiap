@@ -1,7 +1,7 @@
 # 0003. Redis for the effective access cache, the revoked session list and rate limiting
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from the state `docs/ddd/implementation-plan.md` section 1 describes
+**Recorded**: 2026-09-02, from the state the domain model described at the outset
 
 ## Context
 

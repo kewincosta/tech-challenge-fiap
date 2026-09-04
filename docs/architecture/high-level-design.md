@@ -3,8 +3,7 @@
 How the pieces fit together. What the system is and who uses it is
 [the overview](architecture-overview.md); what any one module holds is
 [its low level design page](low-level-design/README.md); why anything was decided is
-[a decision record](../adr/README.md); what the domain does is
-[the event storming](../ddd/event-storming.md).
+[a decision record](../adr/README.md).
 
 This page carries no per-class or per-column detail. Where it names a class, it names it as a
 landmark, and the page that owns it is one level down.

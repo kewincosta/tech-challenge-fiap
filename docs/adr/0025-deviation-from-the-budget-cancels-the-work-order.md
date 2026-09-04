@@ -1,7 +1,7 @@
 # 0025. Any deviation from an approved budget cancels the work order and opens a new one
 
 **Status**: Superseded by [0018](0018-numbered-budget-rounds.md)
-**Recorded**: 2026-09-02, from the block in `docs/ddd/implementation-plan.md` section 7 that section 10 never numbered
+**Recorded**: 2026-09-02, from a decision taken during the build that no earlier record ever numbered
 
 ## Context
 

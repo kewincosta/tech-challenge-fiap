@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Supersedes**: [0025](0025-deviation-from-the-budget-cancels-the-work-order.md)
-**Recorded**: 2026-09-02, from the aggregate invariants in `docs/ddd/event-storming.md` section 9 and its main flow in section 5
+**Recorded**: 2026-09-02, from the aggregate invariants and the main flow of the event storming
 
 ## Context
 

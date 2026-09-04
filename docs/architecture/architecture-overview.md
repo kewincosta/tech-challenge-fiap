@@ -14,8 +14,8 @@ which parts were used, and where each vehicle stands.
 This is the backend that centralises that operation around one concept: the **work order**. A
 service advisor receives a customer and a vehicle, a mechanic diagnoses it, the system prices the
 work, the customer approves it, the mechanic executes it and withdraws parts as they are used, and
-the vehicle is delivered. The domain narrative behind that flow is
-[the event storming](../ddd/event-storming.md).
+the vehicle is delivered. What each part of that flow does, module by module, is
+[the low level design](low-level-design/README.md).
 
 It is an HTTP API. There is no user interface in this repository.
 
@@ -98,5 +98,4 @@ external UUID, and only the UUID appears in a route or a payload
 | How do the modules fit together, and what is the guard chain? | [High level design](high-level-design.md)      |
 | What is inside one module?                                    | [Low level design](low-level-design/README.md) |
 | Why was something decided this way?                           | [Decision records](../adr/README.md)           |
-| What does the domain actually do?                             | [Event storming](../ddd/event-storming.md)     |
 | How do I run it?                                              | [README](../../README.md)                      |

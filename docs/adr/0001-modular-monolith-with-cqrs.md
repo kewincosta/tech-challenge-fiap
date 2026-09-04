@@ -1,15 +1,15 @@
 # 0001. Modular monolith in layers, with CQRS through `@nestjs/cqrs`
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from the state `docs/ddd/implementation-plan.md` section 1 describes
+**Recorded**: 2026-09-02, from the state the domain model described at the outset
 
 ## Context
 
 The workshop management system serves one workshop, with four business actors and five bounded
-contexts that share a single database and a single deployment. `docs/ddd/implementation-plan.md`
-section 1 records the shape the repository already had when the build began: a NestJS modular
-monolith with a four-layer structure per module (`domain`, `application`, `infrastructure`,
-`presentation`), CQRS through `@nestjs/cqrs`, TypeORM over PostgreSQL, and Vitest for tests.
+contexts that share a single database and a single deployment. The build began from a shape the
+repository already had: a NestJS modular monolith with a four-layer structure per module
+(`domain`, `application`, `infrastructure`, `presentation`), CQRS through `@nestjs/cqrs`, TypeORM
+over PostgreSQL, and Vitest for tests.
 
 The four layers are enforced rather than advisory. `eslint.config.mjs` forbids framework imports
 inside `domain` and infrastructure imports inside `application`, so a layering violation fails

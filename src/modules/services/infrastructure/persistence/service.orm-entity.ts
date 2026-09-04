@@ -15,7 +15,7 @@ export class ServiceOrmEntity {
   description!: string | null;
 
   // bigint, so the driver hands this back as a string - ServiceMapper converts explicitly
-  // (AD-002, and the risk implementation-plan.md phase 6 names).
+  // (AD-002, and the risk the service catalog phase named).
   @Column({ name: 'price_cents', type: 'bigint' })
   priceCents!: string;
 

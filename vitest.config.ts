@@ -17,7 +17,7 @@ export default defineConfig({
         'src/**/*.spec.ts',
         'src/shared/infrastructure/database/migrations/**',
       ],
-      // One entry per critical path implementation-plan.md section 8 names. Kept per glob,
+      // One entry per critical path the build plan named. Kept per glob,
       // not global, so a controller or DTO that unit tests deliberately skip never drags the
       // number down on the paths that matter (design.md's Coverage thresholds).
       thresholds: {

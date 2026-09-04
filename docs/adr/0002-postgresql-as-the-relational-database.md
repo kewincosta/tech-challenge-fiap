@@ -1,7 +1,7 @@
 # 0002. PostgreSQL as the relational database
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from the justification `docs/ddd/implementation-plan.md` phase 13 states
+**Recorded**: 2026-09-02, from the justification the build plan stated for phase 13
 
 ## Context
 

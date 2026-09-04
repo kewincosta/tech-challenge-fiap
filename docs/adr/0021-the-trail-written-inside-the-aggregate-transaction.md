@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Source**: AD-007 in `.specs/STATE.md`
-**Recorded**: 2026-09-02, from AD-007 and the block in `docs/ddd/implementation-plan.md` section 7
+**Recorded**: 2026-09-02, from AD-007 and the decisions taken during the build
 
 ## Context
 

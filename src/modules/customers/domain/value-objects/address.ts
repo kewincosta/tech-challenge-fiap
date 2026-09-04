@@ -1,7 +1,7 @@
 import { InvalidAddressError } from '../errors/invalid-address.error';
 
 // The 26 states plus the Federal District - the fixed, stable set of real Brazilian UF codes.
-// "should reject an invalid state code" (implementation-plan.md phase 4) implies a real
+// "should reject an invalid state code" implies a real
 // membership check, not a two-letter shape check.
 const VALID_UF_CODES = new Set([
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',

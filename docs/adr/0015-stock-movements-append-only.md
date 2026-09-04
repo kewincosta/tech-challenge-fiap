@@ -1,7 +1,7 @@
 # 0015. Stock movements append only, with transitions for the consumption status
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from the block in `docs/ddd/implementation-plan.md` section 7
+**Recorded**: 2026-09-02, from the decisions taken during the build
 
 ## Context
 

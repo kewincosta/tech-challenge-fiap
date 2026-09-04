@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Source**: AD-005 in `.specs/STATE.md`
-**Recorded**: 2026-09-02, from H33 in `docs/ddd/event-storming.md`
+**Recorded**: 2026-09-02, from H33 of the event storming
 
 ## Context
 

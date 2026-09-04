@@ -1,7 +1,7 @@
 # 0014. Stock consumed at withdrawal, with no reservation phase
 
 **Status**: Accepted
-**Recorded**: 2026-09-02, from H5 in `docs/ddd/event-storming.md`
+**Recorded**: 2026-09-02, from H5 of the event storming
 
 ## Context
 
