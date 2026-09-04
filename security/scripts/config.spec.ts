@@ -63,6 +63,33 @@ describe('parseConfig', () => {
     expect(() => parseConfig(raw)).toThrow(ConfigError);
   });
 
+  it('defaults the authentication block, enabled and pointed at an admin role', () => {
+    const auth = parseConfig(minimal).authentication;
+
+    expect(auth.enabled).toBe(true);
+    expect(auth.role).toBe('ADMIN');
+    expect(auth.email).toContain('@');
+  });
+
+  it.each(['not-an-email', 'missing@domain', '@nohost.local'])(
+    'refuses %s as the scan account address',
+    (email) => {
+      expect(() => parseConfig({ ...minimal, authentication: { email } })).toThrow(ConfigError);
+    },
+  );
+
+  it('refuses a scan password shorter than the domain minimum', () => {
+    expect(() => parseConfig({ ...minimal, authentication: { password: 'short' } })).toThrow(
+      ConfigError,
+    );
+  });
+
+  it('lets authentication be turned off, which makes the scan anonymous', () => {
+    expect(
+      parseConfig({ ...minimal, authentication: { enabled: false } }).authentication.enabled,
+    ).toBe(false);
+  });
+
   it('names the offending field in the message', () => {
     expect(() => parseConfig({ ...minimal, zap: { timeoutMs: -1 } })).toThrow(/zap.timeoutMs/);
   });

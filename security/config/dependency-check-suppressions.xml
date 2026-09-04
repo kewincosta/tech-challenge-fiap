@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <!--
+    Every suppression here records a finding that was read and judged, not one that was
+    inconvenient. Dependency-Check matches a component against CPE entries by name, and an npm
+    package whose name collides with an unrelated product is matched to that product's CVEs.
+
+    A suppression without the reasoning below it is not acceptable in this file.
+  -->
+
+  <suppress>
+    <notes><![CDATA[
+      CVE-2025-15104 is a server side request forgery in Nu Html Checker (validator.nu), a Java
+      service that fetches URLs on behalf of callers. The npm package `validator` is a string
+      validation library by Chris O'Hara: it performs no network access at all, and the two share
+      nothing but the word "validator".
+
+      Dependency-Check reached this finding by matching the package name against
+      cpe:2.3:a:validator:validator, which is the CPE of the Java product. The advisory text in
+      the report says so in its first sentence.
+
+      Reviewed on 2026-09-04. Confirmed false positive.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:npm/validator@.*$</packageUrl>
+    <cve>CVE-2025-15104</cve>
+  </suppress>
+</suppressions>

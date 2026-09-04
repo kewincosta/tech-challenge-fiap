@@ -1,0 +1,25 @@
+# Lint, build and the tests. Integration and e2e are added only when the test database answers,
+# so a push from a machine with Docker stopped still gets every check that can run instead of
+# failing on infrastructure it does not have.
+set -e
+
+npm run lint
+npm run build
+npm run test:unit
+
+# Node rather than nc or /dev/tcp: node is already a hard requirement of this project, while nc
+# is absent from many images and /dev/tcp is a bash extension this hook cannot assume.
+if node -e "
+const net = require('node:net');
+const socket = net.connect({ host: '127.0.0.1', port: Number(process.env.POSTGRES_HOST_PORT || 15432) });
+socket.setTimeout(1500);
+socket.on('connect', () => { socket.destroy(); process.exit(0); });
+socket.on('error', () => process.exit(1));
+socket.on('timeout', () => { socket.destroy(); process.exit(1); });
+" 2>/dev/null; then
+  npm run test:integration
+  npm run test:e2e
+else
+  echo "pre-push: Postgres did not answer on port ${POSTGRES_HOST_PORT:-15432}."
+  echo "pre-push: integration and e2e were skipped. Run 'docker compose up -d' to include them."
+fi

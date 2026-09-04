@@ -56,11 +56,14 @@ Sem Docker e sem Semgrep, o `npm audit` ainda roda e o relatório declara os tr�
 na seção de limitações. **Um scanner que não rodou nunca é apresentado como ausência de
 vulnerabilidade.**
 
-Para o ZAP, a aplicação precisa estar no ar:
+Para o ZAP, a aplicação precisa estar no ar. A ferramenta sobe tudo sozinha com `--prepare`:
 
 ```bash
-docker compose up -d
+npm run security:scan -- --prepare
 ```
+
+Isso executa `docker compose up -d`, aplica as migrations, roda o seed e garante a conta de scan
+descrita abaixo. Com a stack já no ar, `npm run security:scan` basta.
 
 ## Instalação
 
@@ -142,10 +145,11 @@ que é o caminho normal numa máquina sem ele instalado.
 
 ### Opções
 
-| Opção                     | Efeito                                                    |
-| ------------------------- | --------------------------------------------------------- |
-| `--install`               | Autoriza instalar o Semgrep com pipx quando não há Docker |
-| `--only=npmaudit,semgrep` | Roda apenas os scanners listados                          |
+| Opção                     | Efeito                                                     |
+| ------------------------- | ---------------------------------------------------------- |
+| `--prepare`               | Sobe a stack, migra, roda o seed e prepara a conta de scan |
+| `--install`               | Autoriza instalar o Semgrep com pipx quando não há Docker  |
+| `--only=npmaudit,semgrep` | Roda apenas os scanners listados                           |
 
 ```bash
 npm run security:scan -- --only=npmaudit,semgrep
@@ -160,6 +164,111 @@ O comando sai com 0 mesmo quando encontra vulnerabilidades. O código de saída 
 **análise rodou**, não se ela achou algo: um comando que quebra o build a cada advisory nova acaba
 sendo desligado, e aí não protege mais nada. Se algum scanner falhar, isso é dito no terminal e
 registrado na seção de limitações do relatório.
+
+## Varredura autenticada
+
+Sem token, toda rota atrás do guard JWT responde 401. A análise dinâmica então consegue afirmar
+uma coisa só: que a API recusa chamadas anônimas. Nada sobre o comportamento das rotas.
+
+A ferramenta resolve isso preparando uma conta dedicada antes de escanear:
+
+1. Faz login na conta de scan. Se ela existe e já tem o papel configurado, reaproveita.
+2. Caso contrário, entra com a conta de bootstrap (o `SUPER_ADMIN` que o seed cria).
+3. Registra a conta de scan pela rota pública e concede o papel a ela.
+4. Faz login e passa o token ao ZAP.
+
+O token entra no ZAP pelo add-on `replacer`, que reescreve o cabeçalho `Authorization` de cada
+requisição. É o mecanismo que a própria documentação do ZAP indica para bearer token em API scan.
+
+A conta é criada só pela API, com as mesmas rotas que um operador usaria. Nada escreve direto no
+banco. O CPF é calculado pelo mesmo algoritmo que o `PersonDocument` do domínio verifica, derivado
+do e-mail, então re-executar reaproveita a conta em vez de criar outra.
+
+> **Aviso.** A varredura autenticada envia requisições de escrita com um token administrativo.
+> Rode contra um ambiente descartável. No `docker compose` local os dados voltam com
+> `npm run seed`.
+
+Nenhuma senha fica no arquivo de configuração versionado. Elas vêm do ambiente:
+
+| Variável                 | Para quê                                               |
+| ------------------------ | ------------------------------------------------------ |
+| `SECURITY_SCAN_PASSWORD` | Senha da conta de scan. Default local `Str0ngPassword` |
+| `ADMIN_PASSWORD`         | Senha do `SUPER_ADMIN`, usada para conceder o papel    |
+
+Só o `SUPER_ADMIN` pode conceder `ADMIN` (ADR 0012), então `authentication.bootstrapEmail` precisa
+apontar para essa conta. Um `ADMIN` comum recebe 403 e a ferramenta diz isso na mensagem.
+
+Para desligar e escanear anonimamente, coloque `authentication.enabled: false`. O relatório
+registra a escolha na seção de limitações.
+
+### O limitador de requisições e a cobertura
+
+O `ThrottlerGuard` é o primeiro da cadeia e responde antes do JWT. Com o limite padrão de 100
+requisições por minuto, uma varredura que envia milhares em menos de um minuto recebe 429 na maior
+parte delas: uma execução medida respondeu **429 a 72% do tráfego do scan**.
+
+O controle está funcionando, e ao mesmo tempo limita o que a análise dinâmica consegue alcançar.
+Para obter cobertura real, eleve o limite no ambiente de scan antes de rodar:
+
+```bash
+RATE_LIMIT_MAX_REQUESTS=100000 RATE_LIMIT_AUTH_MAX_REQUESTS=10000 docker compose up -d
+npm run security:scan
+```
+
+Devolva os valores originais depois. O relatório declara a alteração na seção de limitações quando
+ela é feita, porque um scan com o limitador afrouxado não mede o mesmo sistema que roda em
+produção.
+
+## Relatório simplificado
+
+O relatório completo responde "o que as ferramentas disseram". O simplificado responde "qual é o
+estado e o que mudou", que é a pergunta de quem não vai rodar os scanners.
+
+```bash
+npm run security:snapshot before   # congela o resultado atual como linha de base
+# aplique as correções
+npm run security:scan              # mede de novo
+npm run security:snapshot after
+npm run security:summary           # escreve a comparação
+```
+
+Sai em `security/reports/security-summary.html` e `.md`, com contagens antes e depois por
+severidade, o que foi resolvido, o que continua aberto e o que apareceu novo.
+
+Os snapshots vêm do dump que o scan grava em `security/reports/raw/consolidation.json`, então o
+resumo não tem como divergir do relatório técnico.
+
+O que foi feito sobre cada achado fica em `security/config/resolutions.json`, escrito à mão. Um
+achado sem entrada aparece como "em aberto" em vez de receber uma frase gerada: uma correção sem
+explicação é pior do que uma pergunta em aberto.
+
+## Documento de entrega
+
+```bash
+npm run security:deliverable
+```
+
+Gera `security/reports/tech-challenge-entrega.html` a partir dos dois snapshots, das resoluções e
+de `security/config/deliverable.json`, que carrega grupo, participantes e links. Para o PDF, abra
+no navegador e imprima, ou use o Chrome em modo headless:
+
+```bash
+google-chrome --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf=security/reports/tech-challenge-entrega.pdf \
+  security/reports/tech-challenge-entrega.html
+```
+
+## Supressões
+
+`security/config/dependency-check-suppressions.xml` registra os achados analisados e considerados
+falso positivo, cada um com a justificativa que o sustenta.
+
+O caso que está lá hoje: o Dependency-Check casa componentes com entradas CPE por nome, e o pacote
+npm `validator` (biblioteca de validação de strings) foi casado com o CPE do Nu Html Checker
+(`validator.nu`), um serviço Java. O CVE-2025-15104 é um SSRF nesse serviço, que faz requisições
+HTTP em nome de quem chama. O pacote npm não faz acesso de rede nenhum.
+
+Uma supressão sem a justificativa escrita ao lado não entra neste arquivo.
 
 ## Configuração
 

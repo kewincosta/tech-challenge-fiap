@@ -28,6 +28,9 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "security:scan": "ts-node security/scripts/security-scan.ts",
+    "security:snapshot": "ts-node security/scripts/snapshot.ts",
+    "security:summary": "ts-node security/scripts/snapshot.ts summary",
+    "security:deliverable": "ts-node security/scripts/deliverable.ts",
     "seed": "ts-node scripts/seed.ts",
     "seed:admin": "ts-node scripts/seed-admin.ts",
     "prepare": "husky"
@@ -68,7 +71,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
-    "@faker-js/faker": "^9.0.0",
+    "@faker-js/faker": "^10.6.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
@@ -89,5 +92,8 @@
     "typescript-eslint": "^8.0.0",
     "unplugin-swc": "^1.5.0",
     "vitest": "^3.0.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

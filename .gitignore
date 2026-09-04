@@ -10,3 +10,6 @@ coverage/
 security/reports/*
 !security/reports/.gitkeep
 security/.cache/
+
+# Rendered deliverables: generated from the reports, never versioned
+*.pdf

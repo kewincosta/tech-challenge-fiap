@@ -1,0 +1,2 @@
+# Lint only. Fast enough to run on every commit; the heavier checks live in pre-push.
+npx lint-staged

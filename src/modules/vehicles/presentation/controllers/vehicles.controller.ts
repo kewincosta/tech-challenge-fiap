@@ -89,7 +89,9 @@ export class VehiclesController {
   @ApiOkResponse({ type: [VehicleResponseDto] })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
-  async list(@Query('customerId') customerId: string): Promise<VehicleResponseDto[]> {
+  async list(
+    @Query('customerId', ParseUUIDPipe) customerId: string,
+  ): Promise<VehicleResponseDto[]> {
     const vehicles = await this.queryBus.execute<ListVehiclesByCustomerQuery, VehicleSummaryDto[]>(
       new ListVehiclesByCustomerQuery(customerId),
     );

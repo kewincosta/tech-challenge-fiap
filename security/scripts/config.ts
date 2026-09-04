@@ -15,6 +15,14 @@ export interface SecurityConfig {
   semgrep: { config: string; dockerImage: string; timeoutMs: number };
   dependencyCheck: { dockerImage: string; timeoutMs: number };
   zap: { dockerImage: string; mode: 'auto' | 'baseline' | 'api'; timeoutMs: number };
+  authentication: {
+    enabled: boolean;
+    email: string;
+    password: string;
+    role: string;
+    bootstrapEmail: string;
+    bootstrapPassword: string;
+  };
   report: { title: string; markdown: boolean };
 }
 
@@ -79,6 +87,27 @@ function asHttpUrl(value: unknown, path: string): string {
   return raw.replace(/\/+$/, '');
 }
 
+/** Rejects anything that is not an address, so a typo cannot become a request to a strange host. */
+function asEmail(value: unknown, path: string, fallback: string): string {
+  const raw = asString(value, path, fallback);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    throw new ConfigError(`${path} must be an email address.`);
+  }
+  return raw;
+}
+
+/**
+ * The password is read from the config or the environment, never from a literal in the source.
+ * The minimum length is the one the domain's own Password value object enforces.
+ */
+function asPassword(value: unknown, path: string, fallback: string): string {
+  const raw = asString(value, path, fallback);
+  if (raw.length < 8) {
+    throw new ConfigError(`${path} must be at least 8 characters.`);
+  }
+  return raw;
+}
+
 function asZapMode(value: unknown): 'auto' | 'baseline' | 'api' {
   const raw = asString(value, 'zap.mode', 'auto');
   if (raw !== 'auto' && raw !== 'baseline' && raw !== 'api') {
@@ -96,6 +125,7 @@ export function parseConfig(raw: unknown): SecurityConfig {
   const dependencyCheck = asRecord(root.dependencyCheck ?? {}, 'dependencyCheck');
   const zap = asRecord(root.zap ?? {}, 'zap');
   const report = asRecord(root.report ?? {}, 'report');
+  const authentication = asRecord(root.authentication ?? {}, 'authentication');
 
   const openapiUrl =
     openapi.url === undefined ? null : asNullableString(openapi.url, 'openapi.url');
@@ -136,6 +166,33 @@ export function parseConfig(raw: unknown): SecurityConfig {
     report: {
       title: asString(report.title, 'report.title', 'Security Vulnerability Assessment'),
       markdown: asBoolean(report.markdown, 'report.markdown', true),
+    },
+    authentication: {
+      enabled: asBoolean(authentication.enabled, 'authentication.enabled', true),
+      email: asEmail(
+        authentication.email,
+        'authentication.email',
+        'security-scanner@oficina.local',
+      ),
+      password: asPassword(
+        authentication.password,
+        'authentication.password',
+        process.env.SECURITY_SCAN_PASSWORD ?? 'Str0ngPassword',
+      ),
+      role: asString(authentication.role, 'authentication.role', 'ADMIN'),
+      bootstrapEmail: asEmail(
+        authentication.bootstrapEmail,
+        'authentication.bootstrapEmail',
+        process.env.ADMIN_EMAIL ?? 'admin@oficina.local',
+      ),
+      // The bootstrap account is the super administrator the seed creates from ADMIN_PASSWORD,
+      // which is the only role allowed to grant ADMIN. Read from the environment so no password
+      // lives in a versioned file.
+      bootstrapPassword: asPassword(
+        authentication.bootstrapPassword,
+        'authentication.bootstrapPassword',
+        process.env.ADMIN_PASSWORD ?? process.env.SEED_PASSWORD ?? 'Str0ngPassword',
+      ),
     },
   };
 }

@@ -8,8 +8,8 @@ API REST para a operação de uma oficina mecânica, da chegada do veículo até
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org)
 
 > **Status:** MVP em desenvolvimento ativo. As funcionalidades descritas abaixo estão
-> implementadas e cobertas por testes, mas o projeto nunca rodou em produção e não há pipeline de
-> CI neste repositório.
+> implementadas, cobertas por testes e verificadas por hooks de git a cada commit e push. O
+> projeto nunca rodou em produção.
 
 ## Sumário
 
@@ -492,9 +492,16 @@ O ESLint faz mais do que estilo aqui: as regras `no-restricted-imports` dos bloc
 [`eslint.config.mjs`](eslint.config.mjs) proíbem framework dentro de `domain` e infraestrutura
 dentro de `application`. É o que torna as camadas obrigatórias em vez de sugeridas.
 
-`lint-staged` está configurado no `package.json` e o `husky` está instalado, mas **não há hook de
-pre-commit ativo** no repositório: o diretório `.husky/` só contém os arquivos internos do husky.
-Rode `npm run lint` manualmente antes de commitar.
+Dois hooks do `husky` rodam sozinhos, instalados por `npm install`:
+
+| Hook         | O que roda                                                                       |
+| ------------ | -------------------------------------------------------------------------------- |
+| `pre-commit` | `lint-staged`: ESLint com `--fix` e Prettier sobre os arquivos em stage          |
+| `pre-push`   | `lint`, `build`, testes unitários, e integração e e2e quando o Postgres responde |
+
+O `pre-push` checa a porta do Postgres antes de decidir. Numa máquina sem o Docker no ar ele roda
+lint, build e unitários, e diz quais suítes ficaram de fora em vez de falhar por falta de
+infraestrutura.
 
 O `tsconfig.json` roda em modo estrito. `npm run build` compila com `tsconfig.build.json`, que
 exclui os arquivos de teste.
@@ -766,22 +773,43 @@ O que está implementado:
 - O container roda como usuário `node`, não como root
 
 O que este projeto **não** afirma: não passou por auditoria de segurança, não roda em produção e
-não deve ser tratado como pronto para isso. Não há `SECURITY.md` neste repositório; para relatar
-uma vulnerabilidade, abra uma issue sem detalhar o vetor e peça um canal privado.
+não deve ser tratado como pronto para isso. Para relatar uma vulnerabilidade, abra uma issue sem
+detalhar o vetor e peça um canal privado.
 
 ## Análise de segurança
 
 O projeto inclui uma ferramenta interna de análise de vulnerabilidades, montada sobre ferramentas
-reconhecidas pela OWASP: `npm audit` e OWASP Dependency-Check para as dependências, Semgrep para o
-código, e OWASP ZAP contra a aplicação em execução.
+reconhecidas pela OWASP. Ela cobre as três perguntas que se complementam:
+
+| Pergunta                                                 | Análise | Ferramenta                        |
+| -------------------------------------------------------- | ------- | --------------------------------- |
+| As bibliotecas que eu uso têm vulnerabilidade conhecida? | SCA     | npm audit, OWASP Dependency-Check |
+| O código que eu escrevi tem padrão inseguro?             | SAST    | Semgrep                           |
+| A aplicação em execução responde de forma insegura?      | DAST    | OWASP ZAP                         |
 
 ```bash
-docker compose up -d   # o scan dinâmico precisa da aplicação no ar
-npm run security:scan
+npm run security:scan -- --prepare
 ```
 
-O resultado é um relatório consolidado em `security/reports/security-report.html`, que abre
-offline e está pronto para virar PDF.
+O `--prepare` sobe a stack, aplica as migrations, roda o seed e cria uma conta de scan com papel
+administrativo. Com ela o OWASP ZAP autentica e exercita as rotas de verdade; sem ela toda rota
+protegida responde 401 e a análise dinâmica só consegue dizer que a API recusa anônimos.
+
+> A varredura autenticada envia requisições de escrita com um token administrativo. Rode contra um
+> ambiente descartável, como o `docker compose` local, nunca contra dados que importam.
+
+Com a stack já no ar, `npm run security:scan` basta. O resultado é um relatório consolidado em
+`security/reports/security-report.html`, que abre offline e está pronto para virar PDF.
+
+Para comparar duas execuções, por exemplo antes e depois de corrigir os achados:
+
+```bash
+npm run security:snapshot before   # congela o resultado atual
+# aplique as correções
+npm run security:scan
+npm run security:snapshot after
+npm run security:summary           # gera security/reports/security-summary.html
+```
 
 A metodologia, os pré-requisitos, a configuração, a interpretação dos resultados e as limitações
 estão em [Documentação da análise de segurança](security/README.md).
@@ -802,22 +830,14 @@ aplicação começar a servir.
 
 ## Contribuindo
 
-Não há `CONTRIBUTING.md`. As convenções que o repositório segue hoje:
+As convenções que o repositório segue:
 
 1. Trabalhe em um branch a partir de `main`
 2. Um commit por unidade de trabalho, em Conventional Commits, com escopo de módulo
 3. Teste junto com o código: agregado e handler em teste unitário, persistência em integração,
    fluxo em e2e
-4. Antes de abrir o PR, rode:
-
-```bash
-npm run lint
-npm run build
-npm run test:unit
-npm run test:integration
-npm run test:e2e
-```
-
+4. O `pre-push` roda lint, build e testes por você. Com o Docker no ar ele inclui integração e
+   e2e; sem ele, rode as duas suítes à mão antes de abrir o PR
 5. Decisão que muda a forma do sistema vira um ADR novo em `docs/adr/`, numerado em sequência
 
 ## Licença

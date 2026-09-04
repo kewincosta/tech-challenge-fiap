@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ConfigError, SecurityConfig, loadConfig } from './config';
@@ -12,6 +13,12 @@ import {
 } from './environment';
 import { parseJsonOutput, run } from './exec';
 import { ScannerResult } from './finding';
+import {
+  PreparationResult,
+  ScanCredentials,
+  prepareEnvironment,
+  writeScanOpenApi,
+} from './prepare';
 import { buildHtmlReport, buildMarkdownReport } from './report';
 import {
   DependencyCheckReport,
@@ -47,14 +54,19 @@ const TOTAL_STEPS = 4;
 interface Cli {
   install: boolean;
   only: string[];
+  /** Brings the stack up, migrates and seeds before scanning. */
+  prepare: boolean;
 }
 
 function parseCli(argv: readonly string[]): Cli {
   const only: string[] = [];
   let install = false;
+  let prepare = false;
   for (const arg of argv) {
     if (arg === '--install') {
       install = true;
+    } else if (arg === '--prepare') {
+      prepare = true;
     } else if (arg.startsWith('--only=')) {
       only.push(
         ...arg
@@ -65,7 +77,7 @@ function parseCli(argv: readonly string[]): Cli {
       );
     }
   }
-  return { install, only };
+  return { install, only, prepare };
 }
 
 const out = (text: string): void => {
@@ -97,6 +109,11 @@ function skipped(tool: string, reason: string): ScannerResult {
 
 function failed(tool: string, reason: string, durationMs: number): ScannerResult {
   return { tool, status: 'failed', reason, findings: [], durationMs, rawOutputPath: null };
+}
+
+/** Escapes a literal so it can sit inside the regular expression ZAP's exclusion list expects. */
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** True when the target lives on this machine, which is what decides the container's network. */
@@ -224,6 +241,7 @@ async function runDependencyCheck(
   mkdirSync(RAW_DIR, { recursive: true });
 
   const apiKey = process.env.NVD_API_KEY?.trim();
+  const suppressions = join(SECURITY_DIR, 'config', 'dependency-check-suppressions.xml');
   const args = ['run', '--rm'];
   // The image runs as its own uid, which cannot write to a bind mount owned by the host user.
   // Matching the ids is what the OWASP docker instructions do, and without it the NVD cache and
@@ -239,6 +257,8 @@ async function runDependencyCheck(
     `${join(CACHE_DIR, 'dependency-check')}:/usr/share/dependency-check/data`,
     '--volume',
     `${RAW_DIR}:/report`,
+    '--volume',
+    `${suppressions}:/suppressions.xml:ro`,
     config.dependencyCheck.dockerImage,
     // The lock file, not the whole tree: it is the authoritative dependency list for an npm
     // project, and Dependency-Check's Node Audit Analyzer reads it directly. Scanning /src would
@@ -254,6 +274,9 @@ async function runDependencyCheck(
     '--out',
     '/report',
     '--disableAssembly',
+    // Each entry carries the reasoning that justifies it; see the file.
+    '--suppression',
+    '/suppressions.xml',
   );
   if (apiKey) {
     args.push('--nvdApiKey', apiKey);
@@ -321,7 +344,11 @@ async function targetIsUp(url: string): Promise<boolean> {
   }
 }
 
-async function runZap(config: SecurityConfig, environment: Environment): Promise<ScannerResult> {
+async function runZap(
+  config: SecurityConfig,
+  environment: Environment,
+  credentials: ScanCredentials | null,
+): Promise<ScannerResult> {
   if (!environment.docker.available) {
     return skipped(
       ZAP_TOOL,
@@ -344,12 +371,23 @@ async function runZap(config: SecurityConfig, environment: Environment): Promise
   const startedAt = Date.now();
   const reportName = 'zap-report.json';
   const script = useApiScan ? 'zap-api-scan.py' : 'zap-baseline.py';
-  const scanTarget = useApiScan ? (openapiUrl ?? target) : target;
 
   // Unlike Dependency-Check, ZAP cannot be forced onto the host uid: it needs to write its own
   // home inside the image and refuses to start. The report directory is made writable instead.
   // It is a directory this tool creates, under an ignored path, so nothing else is loosened.
   mkdirSync(ZAP_OUT_DIR, { recursive: true });
+
+  // The scan is driven by a filtered copy of the definition when there are credentials to
+  // protect: the endpoints that revoke the scanner's own session are taken out of it.
+  let scanTarget = useApiScan ? (openapiUrl ?? target) : target;
+  let excludedNote = '';
+  if (useApiScan && credentials) {
+    const filtered = await writeScanOpenApi(config, join(ZAP_OUT_DIR, 'openapi-scan.json'));
+    if (filtered.ok) {
+      scanTarget = '/zap/wrk/openapi-scan.json';
+      excludedNote = ` ${filtered.detail}`;
+    }
+  }
   try {
     chmodSync(ZAP_OUT_DIR, 0o777);
   } catch {
@@ -373,6 +411,41 @@ async function runZap(config: SecurityConfig, environment: Environment): Promise
   );
   if (useApiScan) {
     dockerArgs.push('-f', 'openapi');
+    if (scanTarget.startsWith('/zap/wrk/')) {
+      // Read from a file, the definition carries no host, so ZAP has nothing to send requests to:
+      // a run against the filtered copy made four requests in total before this was added.
+      dockerArgs.push('-O', target);
+    }
+  }
+  if (credentials) {
+    // ZAP's replacer add-on rewrites every outgoing request, and setting Authorization there is
+    // what turns a scan that only ever sees 401 into one that exercises the routes.
+    //
+    // The settings go through a properties file rather than `-z "-config k=v"`. The packaged scan
+    // scripts split that option on spaces, and `Bearer <token>` contains one, so the value
+    // arrived truncated and every request was still anonymous: a run measured 10928 of them
+    // answered 401 before this was found. A properties file has no such limit.
+    //
+    // The exclusions matter as much as the token. Logout revokes every session of the user, so
+    // the first DELETE on /auth/sessions would destroy the scanner's own credentials, and the
+    // password change route revokes them too.
+    const prefix = escapeForRegex(target) + escapeForRegex(config.application.apiPrefix);
+    const options = [
+      'replacer.full_list(0).description=auth',
+      'replacer.full_list(0).enabled=true',
+      'replacer.full_list(0).matchtype=REQ_HEADER',
+      'replacer.full_list(0).matchstr=Authorization',
+      'replacer.full_list(0).regex=false',
+      `replacer.full_list(0).replacement=Bearer ${credentials.accessToken}`,
+      'globalexcludeurl.url_list.url(0).description=logout',
+      'globalexcludeurl.url_list.url(0).enabled=true',
+      `globalexcludeurl.url_list.url(0).regex=${prefix}/auth/sessions.*`,
+      'globalexcludeurl.url_list.url(1).description=password-change',
+      'globalexcludeurl.url_list.url(1).enabled=true',
+      `globalexcludeurl.url_list.url(1).regex=${prefix}/users/me/password.*`,
+    ];
+    writeFileSync(join(ZAP_OUT_DIR, 'zap-options.prop'), `${options.join('\n')}\n`, 'utf8');
+    dockerArgs.push('-z', '-configfile /zap/wrk/zap-options.prop');
   }
 
   try {
@@ -401,7 +474,10 @@ async function runZap(config: SecurityConfig, environment: Environment): Promise
     return {
       tool: ZAP_TOOL,
       status: 'ok',
-      reason: useApiScan ? 'API scan, driven by the OpenAPI definition.' : 'Baseline scan.',
+      reason:
+        `${useApiScan ? 'API scan, driven by the OpenAPI definition' : 'Baseline scan'}, ${
+          credentials ? `authenticated as ${credentials.email}` : 'unauthenticated'
+        }.` + excludedNote,
       findings: parseZap(report),
       durationMs: duration,
       rawOutputPath: join(ZAP_OUT_DIR, reportName),
@@ -420,6 +496,7 @@ function buildLimitations(
   results: readonly ScannerResult[],
   usedApiScan: boolean,
   zapRan: boolean,
+  preparation: PreparationResult,
 ): string[] {
   const limitations: string[] = [];
   for (const result of results) {
@@ -430,9 +507,15 @@ function buildLimitations(
     }
   }
   if (zapRan) {
-    limitations.push(
-      'The dynamic scan ran without credentials. Every route behind the JWT guard answered 401 and was therefore not exercised, so authenticated behaviour is untested.',
-    );
+    if (preparation.credentials) {
+      limitations.push(
+        `The dynamic scan authenticated as ${preparation.credentials.email}, which holds an administrative role. It exercised the routes that role reaches; anything gated behind a permission that role lacks was answered 403 and not exercised.`,
+      );
+    } else {
+      limitations.push(
+        `The dynamic scan ran without credentials (${preparation.authFailure ?? 'no token was obtained'}). Every route behind the JWT guard answered 401 and was therefore not exercised, so authenticated behaviour is untested.`,
+      );
+    }
     if (usedApiScan) {
       limitations.push(
         'The dynamic scan was driven by the OpenAPI definition, so it reached the documented routes only. Anything not described there was not requested.',
@@ -506,6 +589,16 @@ async function main(): Promise<void> {
   }
   out('');
 
+  // Environment first: a dynamic scan without a token can only report that the API refuses
+  // anonymous callers, which says nothing about the routes themselves.
+  out('[Security] Preparing the environment...');
+  out('');
+  const preparation = await prepareEnvironment(config, PROJECT_ROOT, { startStack: cli.prepare });
+  for (const prepStep of preparation.steps) {
+    out(`  ${prepStep.ok ? '✓' : '✗'} ${prepStep.name}: ${prepStep.detail}`);
+  }
+  out('');
+
   const enabled = (name: string, flag: boolean): boolean =>
     flag && (cli.only.length === 0 || cli.only.includes(name));
 
@@ -558,7 +651,7 @@ async function main(): Promise<void> {
 
   const finishZap = step(4, 'OWASP ZAP');
   const zapResult = enabled('zap', config.scanners.zap)
-    ? await runZap(config, environment)
+    ? await runZap(config, environment, preparation.credentials)
     : skipped(ZAP_TOOL, disabledReason('zap', config.scanners.zap));
   results.push(zapResult);
   finishZap(zapResult.status === 'ok' ? '✓' : '✗', zapResult.reason ?? undefined);
@@ -577,6 +670,7 @@ async function main(): Promise<void> {
       results,
       zapResult.reason?.startsWith('API scan') ?? false,
       zapResult.status === 'ok',
+      preparation,
     ),
     toolVersions: [
       { name: NPM_TOOL, version: environment.npm.version },
@@ -592,6 +686,41 @@ async function main(): Promise<void> {
   };
 
   mkdirSync(REPORTS_DIR, { recursive: true });
+  // A machine readable dump of the same run, so `security:snapshot` can freeze it without
+  // re-parsing the rendered report.
+  writeRaw(
+    'consolidation.json',
+    `${JSON.stringify(
+      {
+        generatedAt: context.generatedAt.toISOString(),
+        target: context.target,
+        counts: consolidation.counts,
+        total: consolidation.total,
+        scanners: results.map((result) => ({
+          tool: result.tool,
+          status: result.status,
+          findings: result.findings.length,
+          reason: result.reason,
+        })),
+        findings: consolidation.findings.map((finding) => ({
+          id: finding.id,
+          title: finding.title,
+          severity: finding.severity,
+          tools: finding.tools,
+          owasp: finding.owasp,
+          cwe: finding.cwe,
+          cve: finding.cve,
+          category: finding.category,
+          confidence: finding.confidence,
+          location: finding.location,
+          packageName: finding.packageName,
+          fixedIn: finding.fixedIn,
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+  );
   const htmlPath = join(REPORTS_DIR, 'security-report.html');
   writeFileSync(htmlPath, buildHtmlReport(context), 'utf8');
   let markdownPath: string | null = null;

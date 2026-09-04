@@ -28,6 +28,7 @@ import { DatabaseModule } from './shared/infrastructure/database/database.module
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
 import { GlobalExceptionFilter } from './shared/presentation/filters/global-exception.filter';
 import { createAppValidationPipe } from './shared/presentation/pipes/app-validation.pipe';
+import { RejectNullBytesPipe } from './shared/presentation/pipes/reject-null-bytes.pipe';
 import { SharedModule } from './shared/shared.module';
 
 @Module({
@@ -85,6 +86,9 @@ import { SharedModule } from './shared/shared.module';
     WorkOrdersModule,
   ],
   providers: [
+    // Runs before the validation pipe: a NUL byte reaches the database through any filter
+    // the DTO happens to allow, and Postgres answers with an error rather than a result.
+    { provide: APP_PIPE, useClass: RejectNullBytesPipe },
     { provide: APP_PIPE, useFactory: createAppValidationPipe },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useExisting: JwtAuthGuard },

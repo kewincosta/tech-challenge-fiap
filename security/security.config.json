@@ -30,5 +30,11 @@
   "report": {
     "title": "Security Vulnerability Assessment",
     "markdown": true
+  },
+  "authentication": {
+    "enabled": true,
+    "email": "security-scanner@oficina.local",
+    "role": "ADMIN",
+    "bootstrapEmail": "admin@workshop.local"
   }
 }
