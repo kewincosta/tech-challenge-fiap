@@ -68,6 +68,45 @@ export default defineConfig({
           functions: 80,
           lines: 80,
         },
+        // The use case layer of every module that owns a critical path. Added once the query
+        // handlers each got a test of their own: before that, the untested ones held customers,
+        // vehicles and users below 80 while every command handler was already covered.
+        'src/modules/work-orders/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/inventory/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/customers/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/vehicles/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/users/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        'src/modules/services/application/**/*.ts': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
       },
     },
   },
