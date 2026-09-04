@@ -6,6 +6,8 @@ export class EmptyDraftBudgetError extends DomainError {
   readonly kind = ErrorKind.RuleViolation;
 
   constructor() {
-    super('Add at least one service or part to the draft before submitting a supplementary budget.');
+    super(
+      'Add at least one service or part to the draft before submitting a supplementary budget.',
+    );
   }
 }

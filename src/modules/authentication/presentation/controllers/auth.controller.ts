@@ -26,9 +26,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { authThrottle } from '../../../../config/rate-limit.config';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import {
-  AuthenticateUserCommand,
-} from '../../application/commands/authenticate-user/authenticate-user.command';
+import { AuthenticateUserCommand } from '../../application/commands/authenticate-user/authenticate-user.command';
 import {
   LogoutAllSessionsCommand,
   LogoutAllSessionsResultDto,

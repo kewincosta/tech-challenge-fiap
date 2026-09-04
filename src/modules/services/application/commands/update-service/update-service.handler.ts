@@ -4,7 +4,10 @@ import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
 import { ServiceNotFoundError } from '../../../domain/errors/service-not-found.error';
-import { SERVICE_REPOSITORY, ServiceRepository } from '../../../domain/repositories/service.repository';
+import {
+  SERVICE_REPOSITORY,
+  ServiceRepository,
+} from '../../../domain/repositories/service.repository';
 import { ServiceDuration } from '../../../domain/value-objects/service-duration';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
@@ -32,7 +35,8 @@ export class UpdateServiceHandler implements ICommandHandler<UpdateServiceComman
       throw new ServiceNameAlreadyInUseError();
     }
 
-    const price = command.priceCents !== undefined ? Money.fromCents(command.priceCents) : undefined;
+    const price =
+      command.priceCents !== undefined ? Money.fromCents(command.priceCents) : undefined;
     const duration =
       command.estimatedDurationMinutes !== undefined
         ? ServiceDuration.fromMinutes(command.estimatedDurationMinutes)

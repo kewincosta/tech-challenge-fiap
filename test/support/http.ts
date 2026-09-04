@@ -103,7 +103,11 @@ export async function grantRole(
 
 /** Registration always assigns CUSTOMER (RegisterUserHandler), so a fresh account always carries
  * work-orders:read-own - a test proving a 403 without that permission has to revoke it first. */
-export async function revokeRole(app: INestApplication, userId: string, role: string): Promise<void> {
+export async function revokeRole(
+  app: INestApplication,
+  userId: string,
+  role: string,
+): Promise<void> {
   const dataSource = app.get(DataSource);
   await dataSource.query(
     `DELETE FROM user_roles

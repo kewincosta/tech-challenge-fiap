@@ -35,12 +35,24 @@ describe('PartReturned', () => {
 describe('the two constants', () => {
   it('are distinct from each other and from the thirteen the module already exports', () => {
     const existing = [
-      'DIAGNOSIS_COMPLETED', 'BUDGET_REJECTED', 'BUDGET_GENERATED', 'BUDGET_APPROVED',
-      'DIAGNOSIS_STARTED', 'SUPPLEMENTARY_BUDGET_GENERATED', 'SERVICE_ADDED_TO_WORK_ORDER',
-      'ITEM_REMOVED_FROM_WORK_ORDER', 'EXECUTION_STARTED', 'BUDGET_SENT',
-      'WORK_ORDER_CREATED', 'MECHANIC_ASSIGNED', 'PART_PLANNED_FOR_WORK_ORDER',
+      'DIAGNOSIS_COMPLETED',
+      'BUDGET_REJECTED',
+      'BUDGET_GENERATED',
+      'BUDGET_APPROVED',
+      'DIAGNOSIS_STARTED',
+      'SUPPLEMENTARY_BUDGET_GENERATED',
+      'SERVICE_ADDED_TO_WORK_ORDER',
+      'ITEM_REMOVED_FROM_WORK_ORDER',
+      'EXECUTION_STARTED',
+      'BUDGET_SENT',
+      'WORK_ORDER_CREATED',
+      'MECHANIC_ASSIGNED',
+      'PART_PLANNED_FOR_WORK_ORDER',
     ];
-    const mine = [new PartWithdrawn(WORK_ORDER_ID, ACTOR_ID, NOW).eventType, new PartReturned(WORK_ORDER_ID, ACTOR_ID, NOW).eventType];
+    const mine = [
+      new PartWithdrawn(WORK_ORDER_ID, ACTOR_ID, NOW).eventType,
+      new PartReturned(WORK_ORDER_ID, ACTOR_ID, NOW).eventType,
+    ];
 
     expect(new Set([...existing, ...mine]).size).toBe(existing.length + mine.length);
   });

@@ -105,7 +105,13 @@ describe('ReturnPartsHandler', () => {
     const { handler, workOrders } = makeHandler();
 
     await expect(
-      handler.execute(new ReturnPartsCommand('ZZZZZZ-2026', [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new ReturnPartsCommand(
+          'ZZZZZZ-2026',
+          [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
   });
@@ -115,7 +121,13 @@ describe('ReturnPartsHandler', () => {
     await workOrders.save(restoreInExecution(WorkOrderStatus.AwaitingApproval));
 
     await expect(
-      handler.execute(new ReturnPartsCommand(NUMBER, [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new ReturnPartsCommand(
+          NUMBER,
+          [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(WorkOrderStateError);
     expect(transactionRunner.runCalls).toBe(0);
   });
@@ -125,7 +137,13 @@ describe('ReturnPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await expect(
-      handler.execute(new ReturnPartsCommand(NUMBER, [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 3 }], MECHANIC_ID)),
+      handler.execute(
+        new ReturnPartsCommand(
+          NUMBER,
+          [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 3 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(ReturnExceedsWithdrawnError);
     expect(transactionRunner.runCalls).toBe(0);
   });
@@ -135,7 +153,11 @@ describe('ReturnPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
-      new ReturnPartsCommand(NUMBER, [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 2 }], MECHANIC_ID),
+      new ReturnPartsCommand(
+        NUMBER,
+        [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 2 }],
+        MECHANIC_ID,
+      ),
     );
 
     expect(transactionRunner.runCalls).toBe(1);
@@ -144,7 +166,9 @@ describe('ReturnPartsHandler', () => {
     expect(commandBus.execute).toHaveBeenCalledTimes(1);
     const dispatched = commandBus.execute.mock.calls[0][0] as RestoreStockBatchCommand;
     expect(dispatched).toBeInstanceOf(RestoreStockBatchCommand);
-    expect(dispatched.lines).toEqual([{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }]);
+    expect(dispatched.lines).toEqual([
+      { inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 },
+    ]);
     expect(dispatched.workOrderId).toBe(updated.id.value);
     expect(dispatched.actorUserId).toBe(MECHANIC_ID);
   });
@@ -154,7 +178,11 @@ describe('ReturnPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
-      new ReturnPartsCommand(NUMBER, [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }], MECHANIC_ID),
+      new ReturnPartsCommand(
+        NUMBER,
+        [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }],
+        MECHANIC_ID,
+      ),
     );
 
     expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
@@ -167,7 +195,13 @@ describe('ReturnPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await expect(
-      handler.execute(new ReturnPartsCommand(NUMBER, [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new ReturnPartsCommand(
+          NUMBER,
+          [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow('no pending consumption covers this return');
   });
 });

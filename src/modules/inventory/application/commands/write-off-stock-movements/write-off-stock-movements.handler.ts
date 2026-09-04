@@ -15,9 +15,10 @@ import { WriteOffStockMovementsCommand } from './write-off-stock-movements.comma
  * returned, is ordinary, not an error (spec.md's edge cases).
  */
 @CommandHandler(WriteOffStockMovementsCommand)
-export class WriteOffStockMovementsHandler
-  implements ICommandHandler<WriteOffStockMovementsCommand, void>
-{
+export class WriteOffStockMovementsHandler implements ICommandHandler<
+  WriteOffStockMovementsCommand,
+  void
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(CLOCK) private readonly clock: Clock,

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
-import { InventoryItemRepository, MovementClosureInput } from '../../../domain/repositories/inventory-item.repository';
+import {
+  InventoryItemRepository,
+  MovementClosureInput,
+} from '../../../domain/repositories/inventory-item.repository';
 import { WriteOffStockMovementsCommand } from './write-off-stock-movements.command';
 import { WriteOffStockMovementsHandler } from './write-off-stock-movements.handler';
 
@@ -24,7 +27,7 @@ function fakeItems(writeOffResult: number | Error = 0): InventoryItemRepository 
 }
 
 describe('WriteOffStockMovementsHandler', () => {
-  it('calls writeOffWorkOrderConsumptions with the work order, the actor and the clock\'s moment', async () => {
+  it("calls writeOffWorkOrderConsumptions with the work order, the actor and the clock's moment", async () => {
     const now = new Date('2026-08-31T12:00:00.000Z');
     const items = fakeItems(1);
     const handler = new WriteOffStockMovementsHandler(items, new FakeClock(now));

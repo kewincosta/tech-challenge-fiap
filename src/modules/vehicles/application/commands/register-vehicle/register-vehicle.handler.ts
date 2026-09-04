@@ -1,13 +1,19 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import { ID_GENERATOR, IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
+import {
+  ID_GENERATOR,
+  IdGenerator,
+} from '../../../../../shared/application/ports/id-generator.port';
 import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
 import { GetCustomerQuery } from '../../../../customers/application/queries/get-customer/get-customer.query';
 import { Vehicle } from '../../../domain/entities/vehicle';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
-import { VEHICLE_REPOSITORY, VehicleRepository } from '../../../domain/repositories/vehicle.repository';
+import {
+  VEHICLE_REPOSITORY,
+  VehicleRepository,
+} from '../../../domain/repositories/vehicle.repository';
 import { LicensePlate } from '../../../domain/value-objects/license-plate';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
@@ -16,9 +22,10 @@ import { RegisteredVehicleDto, RegisterVehicleCommand } from './register-vehicle
 const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(RegisterVehicleCommand)
-export class RegisterVehicleHandler
-  implements ICommandHandler<RegisterVehicleCommand, RegisteredVehicleDto>
-{
+export class RegisterVehicleHandler implements ICommandHandler<
+  RegisterVehicleCommand,
+  RegisteredVehicleDto
+> {
   constructor(
     @Inject(VEHICLE_REPOSITORY) private readonly vehicles: VehicleRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

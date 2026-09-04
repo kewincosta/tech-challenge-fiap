@@ -33,28 +33,44 @@ describe('PendingPasswordGuard', () => {
 
   it('should allow a route when the flag is clear', () => {
     const guard = makeGuard(false);
-    const principal: Principal = { userId: USER_ID, sessionId: SESSION_ID, mustChangePassword: false };
+    const principal: Principal = {
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: false,
+    };
 
     expect(guard.canActivate(makeContext(principal))).toBe(true);
   });
 
   it('should allow the exempted route while the flag is set', () => {
     const guard = makeGuard(true);
-    const principal: Principal = { userId: USER_ID, sessionId: SESSION_ID, mustChangePassword: true };
+    const principal: Principal = {
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: true,
+    };
 
     expect(guard.canActivate(makeContext(principal))).toBe(true);
   });
 
   it('should refuse every other route while the flag is set', () => {
     const guard = makeGuard(false);
-    const principal: Principal = { userId: USER_ID, sessionId: SESSION_ID, mustChangePassword: true };
+    const principal: Principal = {
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: true,
+    };
 
     expect(() => guard.canActivate(makeContext(principal))).toThrow(PasswordChangeRequiredError);
   });
 
   it('should refuse with the exact AUTH_PASSWORD_CHANGE_REQUIRED code', () => {
     const guard = makeGuard(false);
-    const principal: Principal = { userId: USER_ID, sessionId: SESSION_ID, mustChangePassword: true };
+    const principal: Principal = {
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: true,
+    };
 
     try {
       guard.canActivate(makeContext(principal));
@@ -67,13 +83,18 @@ describe('PendingPasswordGuard', () => {
 
   it('should check the exemption at both the handler and the class level', () => {
     const guard = makeGuard(true);
-    const principal: Principal = { userId: USER_ID, sessionId: SESSION_ID, mustChangePassword: true };
+    const principal: Principal = {
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      mustChangePassword: true,
+    };
     const context = makeContext(principal);
 
     guard.canActivate(context);
 
-    const reflector = (guard as unknown as { reflector: { getAllAndOverride: ReturnType<typeof vi.fn> } })
-      .reflector;
+    const reflector = (
+      guard as unknown as { reflector: { getAllAndOverride: ReturnType<typeof vi.fn> } }
+    ).reflector;
     expect(reflector.getAllAndOverride).toHaveBeenCalledWith(expect.any(String), [
       context.getHandler(),
       context.getClass(),

@@ -152,9 +152,7 @@ export class SeedRbacCatalog1787702400001 implements MigrationInterface {
         WHERE role_id IN (SELECT id FROM roles WHERE name = ANY($1::text[]))`,
       [SYSTEM_ROLE_NAMES],
     );
-    await queryRunner.query(`DELETE FROM roles WHERE name = ANY($1::text[])`, [
-      SYSTEM_ROLE_NAMES,
-    ]);
+    await queryRunner.query(`DELETE FROM roles WHERE name = ANY($1::text[])`, [SYSTEM_ROLE_NAMES]);
     await queryRunner.query(`DELETE FROM permissions WHERE code IN (
       'users:read', 'users:manage', 'roles:read', 'roles:manage',
       'permissions:read', 'user-access:read', 'user-access:manage', 'sessions:revoke-any',

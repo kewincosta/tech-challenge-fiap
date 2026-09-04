@@ -84,7 +84,11 @@ async function createInventoryItem(priceCents: number): Promise<string> {
   return (response.body as { id: string }).id;
 }
 
-async function replenish(inventoryItemId: string, quantity: number, priceCents: number): Promise<void> {
+async function replenish(
+  inventoryItemId: string,
+  quantity: number,
+  priceCents: number,
+): Promise<void> {
   await api(app)
     .post(`/api/v1/inventory-items/${inventoryItemId}/replenishments`)
     .set('Authorization', `Bearer ${admin.accessToken}`)
@@ -130,7 +134,9 @@ interface PartItem {
   budgetedUnitPriceCents: number | null;
 }
 
-async function getWorkOrder(number: string): Promise<{ id: string; status: string; partItems: PartItem[] }> {
+async function getWorkOrder(
+  number: string,
+): Promise<{ id: string; status: string; partItems: PartItem[] }> {
   const response = await api(app)
     .get(`/api/v1/work-orders/${number}`)
     .set('Authorization', `Bearer ${admin.accessToken}`)
@@ -334,7 +340,9 @@ describe('Work order part withdrawal - main path', () => {
       .send({ inventoryItemId: draftInventoryItemId, quantity: 1 })
       .expect(200);
     const withDraft = await getWorkOrder(workOrder.number);
-    const draftItem = withDraft.partItems.find((item) => item.inventoryItemId === draftInventoryItemId);
+    const draftItem = withDraft.partItems.find(
+      (item) => item.inventoryItemId === draftInventoryItemId,
+    );
     expect(draftItem?.budgetRound).toBeNull();
 
     await api(app)
@@ -478,7 +486,11 @@ describe('Work order part withdrawal - returns and cross-module atomicity', () =
 
     const movements = await getMovements(workOrder.inventoryItemId);
     const consumption = movements.find((movement) => movement.kind === 'CONSUMPTION');
-    expect(consumption).toMatchObject({ status: 'PENDING', workOrderId: workOrder.id, quantity: 2 });
+    expect(consumption).toMatchObject({
+      status: 'PENDING',
+      workOrderId: workOrder.id,
+      quantity: 2,
+    });
     const returned = movements.find((movement) => movement.kind === 'RETURN');
     expect(returned).toMatchObject({ status: null, workOrderId: workOrder.id, quantity: 1 });
     expect(returned?.undoesMovementId).toBe(consumption?.id);

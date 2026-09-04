@@ -17,9 +17,10 @@ import { GetMyWorkOrderQuery } from './get-my-work-order.query';
  * `BudgetDecisionAuthorizer`'s reasoning for answering not-found rather than forbidden).
  */
 @QueryHandler(GetMyWorkOrderQuery)
-export class GetMyWorkOrderHandler
-  implements IQueryHandler<GetMyWorkOrderQuery, WorkOrderSummaryDto | null>
-{
+export class GetMyWorkOrderHandler implements IQueryHandler<
+  GetMyWorkOrderQuery,
+  WorkOrderSummaryDto | null
+> {
   constructor(
     @Inject(WORK_ORDER_QUERY_PORT) private readonly workOrderQuery: WorkOrderQueryPort,
     private readonly queryBus: QueryBus,
@@ -30,9 +31,10 @@ export class GetMyWorkOrderHandler
     // before any read happens (GetWorkOrderHandler's own reasoning).
     WorkOrderNumber.create(query.number);
 
-    const customer = await this.queryBus.execute<GetCustomerByUserIdQuery, CustomerSummaryDto | null>(
-      new GetCustomerByUserIdQuery(query.userId),
-    );
+    const customer = await this.queryBus.execute<
+      GetCustomerByUserIdQuery,
+      CustomerSummaryDto | null
+    >(new GetCustomerByUserIdQuery(query.userId));
     if (!customer) {
       return null;
     }

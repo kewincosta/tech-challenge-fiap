@@ -29,9 +29,7 @@ export class FakePermissionRepository implements PermissionRepository {
 
   async findByCodes(codes: PermissionCode[]): Promise<Permission[]> {
     return Promise.resolve(
-      this.permissions.filter((permission) =>
-        codes.some((code) => permission.code.equals(code)),
-      ),
+      this.permissions.filter((permission) => codes.some((code) => permission.code.equals(code))),
     );
   }
 }

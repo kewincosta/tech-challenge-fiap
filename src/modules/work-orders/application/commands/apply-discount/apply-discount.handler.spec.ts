@@ -90,7 +90,9 @@ describe('ApplyDiscountHandler', () => {
     const { handler, workOrders } = makeHandler();
     await workOrders.save(restoreInExecution());
 
-    await handler.execute(new ApplyDiscountCommand(NUMBER, 5000, 'Combinado com o cliente', CREATOR_ID));
+    await handler.execute(
+      new ApplyDiscountCommand(NUMBER, 5000, 'Combinado com o cliente', CREATOR_ID),
+    );
 
     const updated = workOrders.workOrders[0];
     expect(updated.discount.equals(Money.fromCents(5000))).toBe(true);

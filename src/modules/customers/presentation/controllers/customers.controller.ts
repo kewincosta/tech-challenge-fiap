@@ -61,9 +61,7 @@ export class CustomersController {
   @ApiCreatedResponse({ type: RegisteredCustomerResponseDto })
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
-  async register(
-    @Body() body: RegisterCustomerRequestDto,
-  ): Promise<RegisteredCustomerResponseDto> {
+  async register(@Body() body: RegisterCustomerRequestDto): Promise<RegisteredCustomerResponseDto> {
     return this.commandBus.execute<RegisterCustomerCommand, RegisteredCustomerDto>(
       new RegisterCustomerCommand(
         body.userId,
@@ -172,9 +170,10 @@ export class CustomersController {
   }
 
   private async getOwnCustomerSummaryOrThrow(userId: string): Promise<CustomerSummaryDto> {
-    const customer = await this.queryBus.execute<GetCustomerByUserIdQuery, CustomerSummaryDto | null>(
-      new GetCustomerByUserIdQuery(userId),
-    );
+    const customer = await this.queryBus.execute<
+      GetCustomerByUserIdQuery,
+      CustomerSummaryDto | null
+    >(new GetCustomerByUserIdQuery(userId));
     if (!customer) {
       throw new CustomerNotFoundError();
     }

@@ -2,7 +2,10 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
 import { ServiceNotFoundError } from '../../../domain/errors/service-not-found.error';
-import { SERVICE_REPOSITORY, ServiceRepository } from '../../../domain/repositories/service.repository';
+import {
+  SERVICE_REPOSITORY,
+  ServiceRepository,
+} from '../../../domain/repositories/service.repository';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { DeactivateServiceCommand } from './deactivate-service.command';
 

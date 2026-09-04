@@ -30,7 +30,9 @@ export class AddWorkOrderClosingColumns1787702400008 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE stock_movement_transitions DROP COLUMN IF EXISTS quantity`);
+    await queryRunner.query(
+      `ALTER TABLE stock_movement_transitions DROP COLUMN IF EXISTS quantity`,
+    );
     await queryRunner.query(`
       ALTER TABLE work_orders
         DROP COLUMN IF EXISTS version,

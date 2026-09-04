@@ -39,7 +39,9 @@ describe('DeactivateCustomerHandler', () => {
     await customers.save(customer);
     await handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value));
 
-    await expect(handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value))).resolves.not.toThrow();
+    await expect(
+      handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value)),
+    ).resolves.not.toThrow();
   });
 
   it('should refuse when the customer does not exist', async () => {

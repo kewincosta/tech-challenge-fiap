@@ -2,7 +2,10 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
 import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
-import { VEHICLE_REPOSITORY, VehicleRepository } from '../../../domain/repositories/vehicle.repository';
+import {
+  VEHICLE_REPOSITORY,
+  VehicleRepository,
+} from '../../../domain/repositories/vehicle.repository';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { RemoveVehicleCommand } from './remove-vehicle.command';
 

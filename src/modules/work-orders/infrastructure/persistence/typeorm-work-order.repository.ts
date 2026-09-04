@@ -176,7 +176,10 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
             .createQueryBuilder()
             .update(WorkOrderOrmEntity)
             .set({ ...workOrderRow, version: () => 'version + 1' })
-            .where('id = :id AND version = :version', { id: existing.id, version: workOrder.version })
+            .where('id = :id AND version = :version', {
+              id: existing.id,
+              version: workOrder.version,
+            })
             .execute();
           if (result.affected === 0) {
             throw new ConcurrentModificationError();
@@ -195,8 +198,20 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           workOrder,
           budgetRows,
         );
-        await this.replaceServiceItems(manager, workOrderRow.id, workOrder, serviceRows, internalIdByRound);
-        await this.replacePartItems(manager, workOrderRow.id, workOrder, partRows, internalIdByRound);
+        await this.replaceServiceItems(
+          manager,
+          workOrderRow.id,
+          workOrder,
+          serviceRows,
+          internalIdByRound,
+        );
+        await this.replacePartItems(
+          manager,
+          workOrderRow.id,
+          workOrder,
+          partRows,
+          internalIdByRound,
+        );
         await this.appendTrail(manager, workOrderRow.id, events);
       });
     } catch (error) {

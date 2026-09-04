@@ -32,9 +32,7 @@ describe('Address', () => {
   });
 
   it('should reject an invalid state code', () => {
-    expect(() => Address.create({ ...COMPLETE_ADDRESS, state: 'ZZ' })).toThrow(
-      InvalidAddressError,
-    );
+    expect(() => Address.create({ ...COMPLETE_ADDRESS, state: 'ZZ' })).toThrow(InvalidAddressError);
   });
 
   it('should reject a malformed zip code', () => {

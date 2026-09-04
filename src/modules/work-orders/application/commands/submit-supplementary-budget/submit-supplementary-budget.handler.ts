@@ -15,9 +15,10 @@ import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number
 import { SubmitSupplementaryBudgetCommand } from './submit-supplementary-budget.command';
 
 @CommandHandler(SubmitSupplementaryBudgetCommand)
-export class SubmitSupplementaryBudgetHandler
-  implements ICommandHandler<SubmitSupplementaryBudgetCommand, void>
-{
+export class SubmitSupplementaryBudgetHandler implements ICommandHandler<
+  SubmitSupplementaryBudgetCommand,
+  void
+> {
   constructor(
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

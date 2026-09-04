@@ -140,7 +140,11 @@ describe('User', () => {
     const now = new Date('2026-08-26T13:00:00.000Z');
 
     user.updateProfile(
-      { name: 'Jane Updated', email: Email.create('updated@example.com'), document: PersonDocument.create('52998224725') },
+      {
+        name: 'Jane Updated',
+        email: Email.create('updated@example.com'),
+        document: PersonDocument.create('52998224725'),
+      },
       now,
     );
 
@@ -151,7 +155,11 @@ describe('User', () => {
   });
 
   it('should update only the fields supplied, leaving the rest untouched', () => {
-    const user = buildUser({ name: 'Jane Doe', email: 'jane@example.com', document: '11144477735' });
+    const user = buildUser({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      document: '11144477735',
+    });
     const now = new Date('2026-08-26T13:00:00.000Z');
 
     user.updateProfile({ name: 'Jane Renamed' }, now);

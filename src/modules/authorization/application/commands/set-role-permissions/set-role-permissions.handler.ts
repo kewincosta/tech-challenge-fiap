@@ -8,9 +8,7 @@ import { PermissionCatalogService } from '../../services/permission-catalog.serv
 import { SetRolePermissionsCommand } from './set-role-permissions.command';
 
 @CommandHandler(SetRolePermissionsCommand)
-export class SetRolePermissionsHandler
-  implements ICommandHandler<SetRolePermissionsCommand, void>
-{
+export class SetRolePermissionsHandler implements ICommandHandler<SetRolePermissionsCommand, void> {
   constructor(
     @Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
     private readonly permissionCatalog: PermissionCatalogService,

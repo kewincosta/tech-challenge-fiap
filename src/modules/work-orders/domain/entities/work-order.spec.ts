@@ -64,7 +64,10 @@ function openWorkOrder(): WorkOrder {
   });
 }
 
-function restoreWorkOrder(status: WorkOrderStatus, assignedMechanicUserId: string | null = null): WorkOrder {
+function restoreWorkOrder(
+  status: WorkOrderStatus,
+  assignedMechanicUserId: string | null = null,
+): WorkOrder {
   return WorkOrder.restore({
     id: WORK_ORDER_ID,
     number: WorkOrderNumber.create('A1B090-2026'),
@@ -854,9 +857,7 @@ describe('WorkOrder.submitSupplementaryBudget', () => {
 
     expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
     expect(workOrder.budgets).toHaveLength(2);
-    expect(workOrder.budgets.every((budget) => budget.status === BudgetStatus.Approved)).toBe(
-      true,
-    );
+    expect(workOrder.budgets.every((budget) => budget.status === BudgetStatus.Approved)).toBe(true);
     expect(workOrder.executionStartedAt).toEqual(EXECUTION_START);
   });
 });
@@ -1138,7 +1139,9 @@ describe('WorkOrder.withdrawParts', () => {
         now: NOW,
       }),
     ).toThrow(PartNotWithdrawableError);
-    expect(workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity).toBe(0);
+    expect(
+      workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity,
+    ).toBe(0);
   });
 
   it('leaves the first line untouched when the second line alone exceeds its own planned quantity', () => {
@@ -1172,7 +1175,9 @@ describe('WorkOrder.withdrawParts', () => {
         now: NOW,
       }),
     ).toThrow(WithdrawalExceedsPlannedError);
-    expect(workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity).toBe(0);
+    expect(
+      workOrder.partItems.find((item) => item.id.equals(APPROVED_ITEM_ID))?.withdrawnQuantity,
+    ).toBe(0);
   });
 
   it('records exactly one PartWithdrawn for the whole batch, not one per line', () => {
@@ -1213,7 +1218,11 @@ describe('WorkOrder.returnParts', () => {
   const ITEM_A_INVENTORY_ID = '88888888-8888-4888-8888-888888888888';
   const ITEM_B_INVENTORY_ID = '99999999-9999-4999-8999-999999999999';
 
-  function withdrawnPart(id: WorkOrderItemId, inventoryItemId: string, withdrawnQuantity: number): WorkOrderPartItem {
+  function withdrawnPart(
+    id: WorkOrderItemId,
+    inventoryItemId: string,
+    withdrawnQuantity: number,
+  ): WorkOrderPartItem {
     return WorkOrderPartItem.restore({
       id,
       inventoryItemId,
@@ -1354,7 +1363,9 @@ describe('WorkOrder.returnParts', () => {
         now: NOW,
       }),
     ).toThrow(ReturnExceedsWithdrawnError);
-    expect(workOrder.partItems.find((item) => item.id.equals(ITEM_A_ID))?.withdrawnQuantity).toBe(2);
+    expect(workOrder.partItems.find((item) => item.id.equals(ITEM_A_ID))?.withdrawnQuantity).toBe(
+      2,
+    );
   });
 
   it('refuses an item that was never withdrawn on this work order', () => {
@@ -1724,7 +1735,9 @@ describe('WorkOrder.applyDiscount', () => {
       now: NOW,
     });
 
-    expect(workOrder.chargedTotal?.equals(Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS - 3000))).toBe(true);
+    expect(workOrder.chargedTotal?.equals(Money.fromCents(PRE_DISCOUNT_TOTAL_CENTS - 3000))).toBe(
+      true,
+    );
   });
 });
 
@@ -1748,7 +1761,11 @@ describe('WorkOrder.complete', () => {
     decidedByUserId: CUSTOMER_ID,
   });
 
-  function service(id: string, priceCents: number, budgetRound: number | null): WorkOrderServiceItem {
+  function service(
+    id: string,
+    priceCents: number,
+    budgetRound: number | null,
+  ): WorkOrderServiceItem {
     return WorkOrderServiceItem.restore({
       id: WorkOrderItemId.create(id),
       serviceId: '99999999-9999-4999-8999-999999999999',
@@ -1812,7 +1829,10 @@ describe('WorkOrder.complete', () => {
   }
 
   it('moves IN_EXECUTION to COMPLETED, stamps completedAt and records WorkOrderCompleted', () => {
-    const workOrder = restoreInExecution([service('11111111-1111-4111-8111-111111111111', 20000, 1)], []);
+    const workOrder = restoreInExecution(
+      [service('11111111-1111-4111-8111-111111111111', 20000, 1)],
+      [],
+    );
 
     workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW });
 
@@ -1917,7 +1937,9 @@ describe('WorkOrder.complete', () => {
       status: WorkOrderStatus.AwaitingApproval,
     });
 
-    expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(WorkOrderStateError);
+    expect(() => workOrder.complete({ actorUserId: MECHANIC_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
   });
 });
 
@@ -1967,22 +1989,26 @@ describe('WorkOrder.deliver', () => {
   it('refuses from RECEIVED (spec.md edge case)', () => {
     const workOrder = restoreAt(WorkOrderStatus.Received);
 
-    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(WorkOrderStateError);
+    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
   });
 
   it('refuses from IN_EXECUTION', () => {
     const workOrder = restoreAt(WorkOrderStatus.InExecution);
 
-    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(WorkOrderStateError);
+    expect(() => workOrder.deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
+      WorkOrderStateError,
+    );
   });
 
   it('refuses from DELIVERED and from CANCELED', () => {
-    expect(() => restoreAt(WorkOrderStatus.Delivered).deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
-      WorkOrderStateError,
-    );
-    expect(() => restoreAt(WorkOrderStatus.Canceled).deliver({ actorUserId: CREATOR_ID, now: NOW })).toThrow(
-      WorkOrderStateError,
-    );
+    expect(() =>
+      restoreAt(WorkOrderStatus.Delivered).deliver({ actorUserId: CREATOR_ID, now: NOW }),
+    ).toThrow(WorkOrderStateError);
+    expect(() =>
+      restoreAt(WorkOrderStatus.Canceled).deliver({ actorUserId: CREATOR_ID, now: NOW }),
+    ).toThrow(WorkOrderStateError);
   });
 
   it('leaves the charged total exactly as completion froze it', () => {

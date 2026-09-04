@@ -5,6 +5,7 @@ import { Money } from '../../src/shared/domain/value-objects/money';
 import { GetServiceHandler } from '../../src/modules/services/application/queries/get-service/get-service.handler';
 import { GetServiceQuery } from '../../src/modules/services/application/queries/get-service/get-service.query';
 import { ListServicesHandler } from '../../src/modules/services/application/queries/list-services/list-services.handler';
+import { ListServicesQuery } from '../../src/modules/services/application/queries/list-services/list-services.query';
 import { Service } from '../../src/modules/services/domain/entities/service';
 import { ServiceDuration } from '../../src/modules/services/domain/value-objects/service-duration';
 import { ServiceId } from '../../src/modules/services/domain/value-objects/service-id';
@@ -79,7 +80,9 @@ describe('Service read queries', () => {
     deactivated.deactivate(new Date());
     await repository.save(deactivated);
 
-    const ids = (await listServicesHandler.execute()).map((service) => service.id);
+    const ids = (await listServicesHandler.execute(new ListServicesQuery())).map(
+      (service) => service.id,
+    );
 
     expect(ids).toContain(active.id.value);
     expect(ids).not.toContain(deactivated.id.value);

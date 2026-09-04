@@ -23,7 +23,7 @@ beforeAll(async () => {
   await dataSource.initialize();
   const usersRepo = dataSource.getRepository(UserOrmEntity);
   userRepository = new TypeOrmUserRepository(usersRepo);
-  handler = new FindUserByDocumentHandler(new TypeOrmUserQueryAdapter(usersRepo));
+  handler = new FindUserByDocumentHandler(new TypeOrmUserQueryAdapter(usersRepo, dataSource));
 });
 
 afterAll(async () => {

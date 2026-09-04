@@ -21,9 +21,10 @@ import { ConsumedLineDto, ConsumeStockBatchCommand } from './consume-stock-batch
  * commits on its own.
  */
 @CommandHandler(ConsumeStockBatchCommand)
-export class ConsumeStockBatchHandler
-  implements ICommandHandler<ConsumeStockBatchCommand, ConsumedLineDto[]>
-{
+export class ConsumeStockBatchHandler implements ICommandHandler<
+  ConsumeStockBatchCommand,
+  ConsumedLineDto[]
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

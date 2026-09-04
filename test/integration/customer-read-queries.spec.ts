@@ -90,8 +90,8 @@ describe('Customer read queries', () => {
   });
 
   it('should return an empty list for a malformed document filter, not throw', async () => {
-    expect(
-      await listCustomersHandler.execute(new ListCustomersQuery(undefined, '123')),
-    ).toEqual([]);
+    expect(await listCustomersHandler.execute(new ListCustomersQuery(undefined, '123'))).toEqual(
+      [],
+    );
   });
 });

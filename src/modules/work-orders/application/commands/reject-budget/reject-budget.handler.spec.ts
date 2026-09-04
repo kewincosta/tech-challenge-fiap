@@ -129,7 +129,10 @@ function makeHandler(authorizer: BudgetDecisionAuthorizer) {
 
 describe('RejectBudgetHandler', () => {
   it('rejects round one and returns the work order to IN_DIAGNOSIS, publishing one event', async () => {
-    const authorizer = stubAuthorizer({ roles: ['CUSTOMER'], permissions: [] }, customer(CUSTOMER_ID));
+    const authorizer = stubAuthorizer(
+      { roles: ['CUSTOMER'], permissions: [] },
+      customer(CUSTOMER_ID),
+    );
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval(1, null));
 
@@ -141,7 +144,10 @@ describe('RejectBudgetHandler', () => {
   });
 
   it('rejects a round above one and returns to IN_EXECUTION, publishing two events (a different set than round one)', async () => {
-    const authorizer = stubAuthorizer({ roles: ['CUSTOMER'], permissions: [] }, customer(CUSTOMER_ID));
+    const authorizer = stubAuthorizer(
+      { roles: ['CUSTOMER'], permissions: [] },
+      customer(CUSTOMER_ID),
+    );
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval(2, EXECUTION_START));
 

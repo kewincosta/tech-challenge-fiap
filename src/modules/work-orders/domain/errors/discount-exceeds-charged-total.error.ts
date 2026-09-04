@@ -6,6 +6,6 @@ export class DiscountExceedsChargedTotalError extends DomainError {
   readonly kind = ErrorKind.RuleViolation;
 
   constructor() {
-    super('The discount cannot exceed the work order\'s charged total.');
+    super("The discount cannot exceed the work order's charged total.");
   }
 }

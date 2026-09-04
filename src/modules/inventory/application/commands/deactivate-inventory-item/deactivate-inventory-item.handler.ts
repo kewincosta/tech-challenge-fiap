@@ -19,9 +19,10 @@ import { DeactivateInventoryItemCommand } from './deactivate-inventory-item.comm
  * price or withdraw again.
  */
 @CommandHandler(DeactivateInventoryItemCommand)
-export class DeactivateInventoryItemHandler
-  implements ICommandHandler<DeactivateInventoryItemCommand, void>
-{
+export class DeactivateInventoryItemHandler implements ICommandHandler<
+  DeactivateInventoryItemCommand,
+  void
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(INVENTORY_QUERY_PORT) private readonly inventoryQuery: InventoryQueryPort,

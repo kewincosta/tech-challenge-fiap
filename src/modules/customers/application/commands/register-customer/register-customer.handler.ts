@@ -1,7 +1,10 @@
 import { Inject } from '@nestjs/common';
 import { CommandBus, CommandHandler, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import { ID_GENERATOR, IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
+import {
+  ID_GENERATOR,
+  IdGenerator,
+} from '../../../../../shared/application/ports/id-generator.port';
 import {
   TRANSACTION_RUNNER,
   TransactionRunner,
@@ -20,16 +23,20 @@ import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambig
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
 import { TargetUserNotFoundError } from '../../../domain/errors/target-user-not-found.error';
 import { UserMissingCustomerRoleError } from '../../../domain/errors/user-missing-customer-role.error';
-import { CUSTOMER_REPOSITORY, CustomerRepository } from '../../../domain/repositories/customer.repository';
+import {
+  CUSTOMER_REPOSITORY,
+  CustomerRepository,
+} from '../../../domain/repositories/customer.repository';
 import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
 import { RegisteredCustomerDto, RegisterCustomerCommand } from './register-customer.command';
 
 @CommandHandler(RegisterCustomerCommand)
-export class RegisterCustomerHandler
-  implements ICommandHandler<RegisterCustomerCommand, RegisteredCustomerDto>
-{
+export class RegisterCustomerHandler implements ICommandHandler<
+  RegisterCustomerCommand,
+  RegisteredCustomerDto
+> {
   constructor(
     @Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

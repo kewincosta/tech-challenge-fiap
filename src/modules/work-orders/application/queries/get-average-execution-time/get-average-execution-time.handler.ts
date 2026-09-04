@@ -15,9 +15,10 @@ import { GetAverageExecutionTimeQuery } from './get-average-execution-time.query
  * computes the average itself.
  */
 @QueryHandler(GetAverageExecutionTimeQuery)
-export class GetAverageExecutionTimeHandler
-  implements IQueryHandler<GetAverageExecutionTimeQuery, AverageExecutionTimeDto>
-{
+export class GetAverageExecutionTimeHandler implements IQueryHandler<
+  GetAverageExecutionTimeQuery,
+  AverageExecutionTimeDto
+> {
   constructor(
     @Inject(WORK_ORDER_METRICS_QUERY_PORT)
     private readonly metricsQuery: WorkOrderMetricsQueryPort,

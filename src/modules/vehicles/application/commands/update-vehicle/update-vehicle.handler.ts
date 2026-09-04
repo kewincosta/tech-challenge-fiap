@@ -6,7 +6,10 @@ import { GetCustomerQuery } from '../../../../customers/application/queries/get-
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
 import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
-import { VEHICLE_REPOSITORY, VehicleRepository } from '../../../domain/repositories/vehicle.repository';
+import {
+  VEHICLE_REPOSITORY,
+  VehicleRepository,
+} from '../../../domain/repositories/vehicle.repository';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
 import { UpdateVehicleCommand } from './update-vehicle.command';

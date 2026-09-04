@@ -520,16 +520,19 @@ describe('TypeOrmInventoryItemRepository', () => {
     });
     await repository.save(returning);
 
-    const rows: Array<{ status: string | null; undoes_external_id: string; actor_external_id: string }> =
-      await dataSource.query(
-        `SELECT sm.status, undone.external_id AS undoes_external_id, u.external_id AS actor_external_id
+    const rows: Array<{
+      status: string | null;
+      undoes_external_id: string;
+      actor_external_id: string;
+    }> = await dataSource.query(
+      `SELECT sm.status, undone.external_id AS undoes_external_id, u.external_id AS actor_external_id
            FROM stock_movements sm
            JOIN inventory_items ii ON ii.id = sm.inventory_item_id
            JOIN stock_movements undone ON undone.id = sm.undoes_movement_id
            JOIN users u ON u.id = sm.actor_user_id
           WHERE ii.external_id = $1 AND sm.kind = 'RETURN'`,
-        [item.id.value],
-      );
+      [item.id.value],
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBeNull();
     expect(rows[0].undoes_external_id).toBe(consumeMovementId.value);
@@ -675,7 +678,7 @@ describe('TypeOrmInventoryItemRepository', () => {
     expect(rows[0].quantity_on_hand).toBe(before[0].quantity_on_hand);
   });
 
-  it('settleWorkOrderConsumptions touches no other work order\'s movements', async () => {
+  it("settleWorkOrderConsumptions touches no other work order's movements", async () => {
     const item = buildItem();
     item.replenish({
       quantity: 10,

@@ -12,7 +12,9 @@ let dataSource: DataSource;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  await dataSource.query(`CREATE TEMPORARY TABLE money_roundtrip_check (amount_cents bigint NOT NULL)`);
+  await dataSource.query(
+    `CREATE TEMPORARY TABLE money_roundtrip_check (amount_cents bigint NOT NULL)`,
+  );
 });
 
 afterEach(async () => {

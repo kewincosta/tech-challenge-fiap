@@ -40,6 +40,8 @@ describe('CancelInExecutionForbiddenError', () => {
 
   it('names the loss and the permission that would allow it', () => {
     expect(new CancelInExecutionForbiddenError().message).toMatch(/loss/i);
-    expect(new CancelInExecutionForbiddenError().message).toMatch(/work-orders:cancel-in-execution/);
+    expect(new CancelInExecutionForbiddenError().message).toMatch(
+      /work-orders:cancel-in-execution/,
+    );
   });
 });

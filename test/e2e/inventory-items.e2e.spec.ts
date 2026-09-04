@@ -331,7 +331,13 @@ describe('Inventory items - stock shortages', () => {
     const response = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     return (response.body as { id: string }).id;
   }

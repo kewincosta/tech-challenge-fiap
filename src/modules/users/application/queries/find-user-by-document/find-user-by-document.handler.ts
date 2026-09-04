@@ -5,9 +5,10 @@ import { USER_QUERY_PORT, UserQueryPort, UserSummaryDto } from '../../ports/user
 import { FindUserByDocumentQuery } from './find-user-by-document.query';
 
 @QueryHandler(FindUserByDocumentQuery)
-export class FindUserByDocumentHandler
-  implements IQueryHandler<FindUserByDocumentQuery, UserSummaryDto | null>
-{
+export class FindUserByDocumentHandler implements IQueryHandler<
+  FindUserByDocumentQuery,
+  UserSummaryDto | null
+> {
   constructor(@Inject(USER_QUERY_PORT) private readonly userQuery: UserQueryPort) {}
 
   async execute(query: FindUserByDocumentQuery): Promise<UserSummaryDto | null> {

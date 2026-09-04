@@ -10,19 +10,20 @@ export class CustomerMapper {
     return Customer.restore({
       id: CustomerId.create(row.externalId),
       userId: userExternalId,
-      address: Address.create(
-        row.addressStreet !== null
-          ? {
-              street: row.addressStreet,
-              number: row.addressNumber!,
-              complement: row.addressComplement ?? undefined,
-              district: row.addressDistrict!,
-              city: row.addressCity!,
-              state: row.addressState!,
-              zipCode: row.addressZipCode!,
-            }
-          : undefined,
-      ) ?? null,
+      address:
+        Address.create(
+          row.addressStreet !== null
+            ? {
+                street: row.addressStreet,
+                number: row.addressNumber!,
+                complement: row.addressComplement ?? undefined,
+                district: row.addressDistrict!,
+                city: row.addressCity!,
+                state: row.addressState!,
+                zipCode: row.addressZipCode!,
+              }
+            : undefined,
+        ) ?? null,
       phoneNumber: PhoneNumber.create(row.phone ?? undefined) ?? null,
       status: row.status as CustomerStatus,
       createdAt: row.createdAt,

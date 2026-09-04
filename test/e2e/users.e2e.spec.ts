@@ -45,7 +45,9 @@ describe('User administration', () => {
       .get(`/api/v1/users?document=${newDocument}`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(200);
-    expect(list.body).toEqual([expect.objectContaining({ id: target.userId, document: newDocument })]);
+    expect(list.body).toEqual([
+      expect.objectContaining({ id: target.userId, document: newDocument }),
+    ]);
   });
 
   it('should refuse updating another user without users:manage', async () => {
@@ -88,7 +90,7 @@ describe('User administration', () => {
       .expect(404);
   });
 
-  it('should refuse a deactivated account\'s session on its next request', async () => {
+  it("should refuse a deactivated account's session on its next request", async () => {
     const target = await registerAndLogin(app);
 
     await api(app)

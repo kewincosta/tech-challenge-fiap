@@ -70,9 +70,9 @@ describe('DeliverVehicleHandler', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
     const { handler, workOrders } = makeHandler();
 
-    await expect(handler.execute(new DeliverVehicleCommand('ZZZZZZ-2026', CREATOR_ID))).rejects.toThrow(
-      WorkOrderNotFoundError,
-    );
+    await expect(
+      handler.execute(new DeliverVehicleCommand('ZZZZZZ-2026', CREATOR_ID)),
+    ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
   });
 
@@ -122,6 +122,8 @@ describe('DeliverVehicleHandler', () => {
     const { handler, workOrders } = makeHandler(() => Promise.reject(new Error('boom')));
     await workOrders.save(restoreAt(WorkOrderStatus.Completed));
 
-    await expect(handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID))).rejects.toThrow('boom');
+    await expect(handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
+      'boom',
+    );
   });
 });

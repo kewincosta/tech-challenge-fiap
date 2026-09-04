@@ -160,9 +160,10 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
       return 0;
     }
     const ids = candidates.map((row) => row.id);
-    await manager.query(`UPDATE stock_movements SET status = 'WRITTEN_OFF' WHERE id = ANY($1::bigint[])`, [
-      ids,
-    ]);
+    await manager.query(
+      `UPDATE stock_movements SET status = 'WRITTEN_OFF' WHERE id = ANY($1::bigint[])`,
+      [ids],
+    );
     await manager.query(
       `INSERT INTO stock_movement_transitions
          (external_id, stock_movement_id, from_status, to_status, actor_user_id, occurred_at, quantity)

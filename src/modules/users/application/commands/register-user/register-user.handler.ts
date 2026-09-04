@@ -24,7 +24,10 @@ import { PASSWORD_HASHER, PasswordHasher } from '../../ports/password-hasher.por
 import { RegisteredUserDto, RegisterUserCommand } from './register-user.command';
 
 @CommandHandler(RegisterUserCommand)
-export class RegisterUserHandler implements ICommandHandler<RegisterUserCommand, RegisteredUserDto> {
+export class RegisterUserHandler implements ICommandHandler<
+  RegisterUserCommand,
+  RegisteredUserDto
+> {
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,

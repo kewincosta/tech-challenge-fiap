@@ -46,12 +46,21 @@ async function insertVehicle(customerId: number): Promise<number> {
   return rows[0].id;
 }
 
-async function insertWorkOrder(customerId: number, vehicleId: number, creatorId: number): Promise<number> {
+async function insertWorkOrder(
+  customerId: number,
+  vehicleId: number,
+  creatorId: number,
+): Promise<number> {
   const rows: Array<{ id: number }> = await dataSource.query(
     `INSERT INTO work_orders (external_id, number, customer_id, vehicle_id, created_by_user_id, status, customer_name, vehicle_plate, vehicle_brand, vehicle_model, vehicle_year, created_at, updated_at)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'RECEIVED', 'Jane Doe', 'WO01234', 'Toyota', 'Corolla', 2020, now(), now())
      RETURNING id`,
-    [`${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`, customerId, vehicleId, creatorId],
+    [
+      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      customerId,
+      vehicleId,
+      creatorId,
+    ],
   );
   return rows[0].id;
 }
@@ -114,7 +123,9 @@ describe('work order budgets schema migration', () => {
     const vehicleId = await insertVehicle(customerId);
     const workOrderId = await insertWorkOrder(customerId, vehicleId, userId);
 
-    await expect(insertBudget(workOrderId, 1, { status: 'DRAFT' })).rejects.toThrow(/chk_work_order_budgets_status/);
+    await expect(insertBudget(workOrderId, 1, { status: 'DRAFT' })).rejects.toThrow(
+      /chk_work_order_budgets_status/,
+    );
   });
 
   it('should refuse a second round carrying the same number on one work order', async () => {

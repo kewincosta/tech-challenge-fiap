@@ -2,7 +2,10 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
-import { CUSTOMER_REPOSITORY, CustomerRepository } from '../../../domain/repositories/customer.repository';
+import {
+  CUSTOMER_REPOSITORY,
+  CustomerRepository,
+} from '../../../domain/repositories/customer.repository';
 import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';

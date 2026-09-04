@@ -201,9 +201,7 @@ export class TypeOrmSessionRepository implements SessionRepository {
   ): Promise<Map<string, string>> {
     const internalIds = [
       ...new Set(
-        tokenRows
-          .map((row) => row.replacedByInternalId)
-          .filter((id): id is string => id !== null),
+        tokenRows.map((row) => row.replacedByInternalId).filter((id): id is string => id !== null),
       ),
     ];
     if (internalIds.length === 0) {

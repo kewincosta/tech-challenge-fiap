@@ -40,9 +40,7 @@ describe('GetCustomerByUserIdHandler', () => {
   it('returns null for a user with no customer record, not an error', async () => {
     const handler = new GetCustomerByUserIdHandler(fakePort(null));
 
-    await expect(
-      handler.execute(new GetCustomerByUserIdQuery(USER_ID)),
-    ).resolves.toBeNull();
+    await expect(handler.execute(new GetCustomerByUserIdQuery(USER_ID))).resolves.toBeNull();
   });
 
   it('passes a malformed id straight through - every caller supplies a verified JWT subject', async () => {

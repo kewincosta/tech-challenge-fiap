@@ -343,7 +343,7 @@ describe('Work order diagnosis and budget - supplementary cycle', () => {
     expect(body.budgets.every((budget) => budget.status === 'APPROVED')).toBe(true);
   });
 
-  it("returns a refused round to execution with the scope it already had, its items still attached to it", async () => {
+  it('returns a refused round to execution with the scope it already had, its items still attached to it', async () => {
     const workOrder = await createAwaitingApprovalWorkOrder();
     await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/budget/approval`)

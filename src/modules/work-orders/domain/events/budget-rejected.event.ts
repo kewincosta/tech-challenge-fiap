@@ -10,7 +10,12 @@ export const BUDGET_REJECTED_EVENT_TYPE = 'BUDGET_REJECTED';
 export class BudgetRejected extends WorkOrderTrailEvent {
   readonly eventType = BUDGET_REJECTED_EVENT_TYPE;
 
-  constructor(workOrderId: string, actorUserId: string, toStatus: WorkOrderStatus, occurredAt: Date) {
+  constructor(
+    workOrderId: string,
+    actorUserId: string,
+    toStatus: WorkOrderStatus,
+    occurredAt: Date,
+  ) {
     super(workOrderId, actorUserId, WorkOrderStatus.AwaitingApproval, toStatus, occurredAt);
   }
 }

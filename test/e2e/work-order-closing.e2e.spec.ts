@@ -100,7 +100,11 @@ async function createInventoryItem(priceCents: number): Promise<string> {
   return (response.body as { id: string }).id;
 }
 
-async function replenish(inventoryItemId: string, quantity: number, priceCents: number): Promise<void> {
+async function replenish(
+  inventoryItemId: string,
+  quantity: number,
+  priceCents: number,
+): Promise<void> {
   await api(app)
     .post(`/api/v1/inventory-items/${inventoryItemId}/replenishments`)
     .set('Authorization', `Bearer ${admin.accessToken}`)
@@ -252,7 +256,12 @@ async function createInExecutionWorkOrder(
   };
 }
 
-async function withdraw(number: string, itemId: string, quantity: number, accessToken: string): Promise<void> {
+async function withdraw(
+  number: string,
+  itemId: string,
+  quantity: number,
+  accessToken: string,
+): Promise<void> {
   const workOrder = await getWorkOrder(number);
   const line = workOrder.partItems.find((item) => item.inventoryItemId === itemId);
   if (!line) throw new Error('part item not found');
@@ -263,7 +272,12 @@ async function withdraw(number: string, itemId: string, quantity: number, access
     .expect(200);
 }
 
-async function returnPart(number: string, itemId: string, quantity: number, accessToken: string): Promise<void> {
+async function returnPart(
+  number: string,
+  itemId: string,
+  quantity: number,
+  accessToken: string,
+): Promise<void> {
   const workOrder = await getWorkOrder(number);
   const line = workOrder.partItems.find((item) => item.inventoryItemId === itemId);
   if (!line) throw new Error('part item not found');
@@ -297,7 +311,7 @@ describe('Work order closing - main path', () => {
     expect(deliveredBody.deliveredAt).not.toBeNull();
   });
 
-  it("shows the consumption SETTLED and leaves the count on hand unchanged by the settlement, after delivery", async () => {
+  it('shows the consumption SETTLED and leaves the count on hand unchanged by the settlement, after delivery', async () => {
     const workOrder = await createInExecutionWorkOrder(15099, 2500, 2, 10);
     await withdraw(workOrder.number, workOrder.inventoryItemId, 2, workOrder.assigneeAccessToken);
     const afterWithdrawal = await getInventoryItem(workOrder.inventoryItemId);
@@ -328,7 +342,12 @@ describe('Work order closing - main path', () => {
 
   it('answers 403 when a mechanic who is not the assignee completes the work order', async () => {
     const workOrder = await createInExecutionWorkOrder();
-    await withdraw(workOrder.number, workOrder.inventoryItemId, workOrder.plannedQuantity, workOrder.assigneeAccessToken);
+    await withdraw(
+      workOrder.number,
+      workOrder.inventoryItemId,
+      workOrder.plannedQuantity,
+      workOrder.assigneeAccessToken,
+    );
     const otherMechanic = await loginAs('MECHANIC');
 
     const response = await api(app)
@@ -356,7 +375,12 @@ describe('Work order closing - main path', () => {
 
   it('answers 403 when delivering without work-orders:manage, its own test rather than the completion route standing in', async () => {
     const workOrder = await createInExecutionWorkOrder();
-    await withdraw(workOrder.number, workOrder.inventoryItemId, workOrder.plannedQuantity, workOrder.assigneeAccessToken);
+    await withdraw(
+      workOrder.number,
+      workOrder.inventoryItemId,
+      workOrder.plannedQuantity,
+      workOrder.assigneeAccessToken,
+    );
     await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/completion`)
       .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
@@ -383,7 +407,12 @@ describe('Work order closing - main path', () => {
 
   it('shows the completion and the delivery on the trail, each naming its own actor', async () => {
     const workOrder = await createInExecutionWorkOrder();
-    await withdraw(workOrder.number, workOrder.inventoryItemId, workOrder.plannedQuantity, workOrder.assigneeAccessToken);
+    await withdraw(
+      workOrder.number,
+      workOrder.inventoryItemId,
+      workOrder.plannedQuantity,
+      workOrder.assigneeAccessToken,
+    );
     await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/completion`)
       .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
@@ -440,14 +469,21 @@ describe('Work order closing - cancellation and its write-off', () => {
 
   it('refuses a service advisor cancelling a work order carrying withdrawn parts, in IN_EXECUTION and again in AWAITING_APPROVAL after a supplementary round, until an administrator cancels it and the movements read WRITTEN_OFF', async () => {
     const workOrder = await createInExecutionWorkOrder();
-    await withdraw(workOrder.number, workOrder.inventoryItemId, workOrder.plannedQuantity, workOrder.assigneeAccessToken);
+    await withdraw(
+      workOrder.number,
+      workOrder.inventoryItemId,
+      workOrder.plannedQuantity,
+      workOrder.assigneeAccessToken,
+    );
 
     const refusedInExecution = await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
       .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
       .send({ reason: 'Cliente desistiu do servico' })
       .expect(403);
-    expect(refusedInExecution.body).toMatchObject({ code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN' });
+    expect(refusedInExecution.body).toMatchObject({
+      code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN',
+    });
 
     const extraServiceId = await createCatalogService(3000);
     await api(app)
@@ -467,7 +503,9 @@ describe('Work order closing - cancellation and its write-off', () => {
       .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
       .send({ reason: 'Cliente desistiu do servico' })
       .expect(403);
-    expect(refusedAwaitingApproval.body).toMatchObject({ code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN' });
+    expect(refusedAwaitingApproval.body).toMatchObject({
+      code: 'WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN',
+    });
 
     await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)

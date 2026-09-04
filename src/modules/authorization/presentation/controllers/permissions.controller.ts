@@ -27,8 +27,6 @@ export class PermissionsController {
   @ApiOkResponse({ type: [PermissionResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(): Promise<PermissionResponseDto[]> {
-    return this.queryBus.execute<ListPermissionsQuery, PermissionDto[]>(
-      new ListPermissionsQuery(),
-    );
+    return this.queryBus.execute<ListPermissionsQuery, PermissionDto[]>(new ListPermissionsQuery());
   }
 }

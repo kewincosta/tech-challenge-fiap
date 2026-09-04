@@ -48,7 +48,12 @@ describe('WorkOrderCanceled', () => {
   });
 
   it('names whichever state it actually left, not a fixed one', () => {
-    const fromReceived = new WorkOrderCanceled(WORK_ORDER_ID, ACTOR_ID, WorkOrderStatus.Received, NOW);
+    const fromReceived = new WorkOrderCanceled(
+      WORK_ORDER_ID,
+      ACTOR_ID,
+      WorkOrderStatus.Received,
+      NOW,
+    );
     const fromAwaitingApproval = new WorkOrderCanceled(
       WORK_ORDER_ID,
       ACTOR_ID,
@@ -77,11 +82,21 @@ describe('DiscountApplied', () => {
 describe('the four constants', () => {
   it('are distinct from each other and from the fifteen the module already exports', () => {
     const existing = [
-      'DIAGNOSIS_COMPLETED', 'BUDGET_REJECTED', 'BUDGET_GENERATED', 'BUDGET_APPROVED',
-      'DIAGNOSIS_STARTED', 'SUPPLEMENTARY_BUDGET_GENERATED', 'SERVICE_ADDED_TO_WORK_ORDER',
-      'ITEM_REMOVED_FROM_WORK_ORDER', 'EXECUTION_STARTED', 'BUDGET_SENT',
-      'WORK_ORDER_CREATED', 'MECHANIC_ASSIGNED', 'PART_PLANNED_FOR_WORK_ORDER',
-      'PART_WITHDRAWN', 'PART_RETURNED',
+      'DIAGNOSIS_COMPLETED',
+      'BUDGET_REJECTED',
+      'BUDGET_GENERATED',
+      'BUDGET_APPROVED',
+      'DIAGNOSIS_STARTED',
+      'SUPPLEMENTARY_BUDGET_GENERATED',
+      'SERVICE_ADDED_TO_WORK_ORDER',
+      'ITEM_REMOVED_FROM_WORK_ORDER',
+      'EXECUTION_STARTED',
+      'BUDGET_SENT',
+      'WORK_ORDER_CREATED',
+      'MECHANIC_ASSIGNED',
+      'PART_PLANNED_FOR_WORK_ORDER',
+      'PART_WITHDRAWN',
+      'PART_RETURNED',
     ];
     const mine = [
       new WorkOrderCompleted(WORK_ORDER_ID, ACTOR_ID, NOW).eventType,

@@ -20,7 +20,11 @@ function makeHandler() {
 describe('UpdateUserHandler', () => {
   it('should update the name, email and document, each revalidated', async () => {
     const { handler, users } = makeHandler();
-    const user = buildUser({ name: 'Jane Doe', email: 'jane@example.com', document: '11144477735' });
+    const user = buildUser({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      document: '11144477735',
+    });
     await users.save(user);
 
     await handler.execute(
@@ -35,7 +39,11 @@ describe('UpdateUserHandler', () => {
 
   it('should update only the fields supplied', async () => {
     const { handler, users } = makeHandler();
-    const user = buildUser({ name: 'Jane Doe', email: 'jane@example.com', document: '11144477735' });
+    const user = buildUser({
+      name: 'Jane Doe',
+      email: 'jane@example.com',
+      document: '11144477735',
+    });
     await users.save(user);
 
     await handler.execute(new UpdateUserCommand(user.id.value, 'Jane Renamed'));
@@ -52,7 +60,9 @@ describe('UpdateUserHandler', () => {
     await users.save(user);
 
     await expect(
-      handler.execute(new UpdateUserCommand(user.id.value, undefined, 'jane@example.com', '11144477735')),
+      handler.execute(
+        new UpdateUserCommand(user.id.value, undefined, 'jane@example.com', '11144477735'),
+      ),
     ).resolves.toBeUndefined();
   });
 

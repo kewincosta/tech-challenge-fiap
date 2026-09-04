@@ -40,7 +40,9 @@ function stubAuthorizer(access: EffectiveAccessDto): WorkOrderCompletionAuthoriz
   return new WorkOrderCompletionAuthorizer(queryBus.bus);
 }
 
-function restoreInExecution(overrides: { discount?: Money; status?: WorkOrderStatus } = {}): WorkOrder {
+function restoreInExecution(
+  overrides: { discount?: Money; status?: WorkOrderStatus } = {},
+): WorkOrder {
   const budget = Budget.restore({
     id: BudgetId.create('88888888-8888-4888-8888-888888888888'),
     round: 1,
@@ -88,7 +90,12 @@ function restoreInExecution(overrides: { discount?: Money; status?: WorkOrderSta
 function makeHandler(authorizer: WorkOrderCompletionAuthorizer) {
   const workOrders = new InMemoryWorkOrderRepository();
   const eventBus = stubEventBus();
-  const handler = new CompleteWorkOrderHandler(workOrders, authorizer, new FakeClock(NOW), eventBus.bus);
+  const handler = new CompleteWorkOrderHandler(
+    workOrders,
+    authorizer,
+    new FakeClock(NOW),
+    eventBus.bus,
+  );
   return { handler, workOrders, eventBus };
 }
 
@@ -132,9 +139,9 @@ describe('CompleteWorkOrderHandler', () => {
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ status: WorkOrderStatus.AwaitingApproval }));
 
-    await expect(handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID))).rejects.toThrow(
-      WorkOrderStateError,
-    );
+    await expect(
+      handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID)),
+    ).rejects.toThrow(WorkOrderStateError);
   });
 
   it("lets the aggregate's discount-exceeds-total error travel out untouched", async () => {
@@ -142,8 +149,8 @@ describe('CompleteWorkOrderHandler', () => {
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ discount: Money.fromCents(999999) }));
 
-    await expect(handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID))).rejects.toThrow(
-      DiscountExceedsChargedTotalError,
-    );
+    await expect(
+      handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID)),
+    ).rejects.toThrow(DiscountExceedsChargedTotalError);
   });
 });

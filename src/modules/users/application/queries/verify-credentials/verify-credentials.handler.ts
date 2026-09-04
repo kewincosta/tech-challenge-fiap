@@ -6,9 +6,10 @@ import { PASSWORD_HASHER, PasswordHasher } from '../../ports/password-hasher.por
 import { VerifiedCredentialsDto, VerifyCredentialsQuery } from './verify-credentials.query';
 
 @QueryHandler(VerifyCredentialsQuery)
-export class VerifyCredentialsHandler
-  implements IQueryHandler<VerifyCredentialsQuery, VerifiedCredentialsDto | null>
-{
+export class VerifyCredentialsHandler implements IQueryHandler<
+  VerifyCredentialsQuery,
+  VerifiedCredentialsDto | null
+> {
   private dummyHash: string | null = null;
 
   constructor(

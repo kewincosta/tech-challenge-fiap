@@ -11,7 +11,12 @@ export const WORK_ORDER_CANCELED_EVENT_TYPE = 'WORK_ORDER_CANCELED';
 export class WorkOrderCanceled extends WorkOrderTrailEvent {
   readonly eventType = WORK_ORDER_CANCELED_EVENT_TYPE;
 
-  constructor(workOrderId: string, actorUserId: string, fromStatus: WorkOrderStatus, occurredAt: Date) {
+  constructor(
+    workOrderId: string,
+    actorUserId: string,
+    fromStatus: WorkOrderStatus,
+    occurredAt: Date,
+  ) {
     super(workOrderId, actorUserId, fromStatus, WorkOrderStatus.Canceled, occurredAt);
   }
 }

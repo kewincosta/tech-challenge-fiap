@@ -46,7 +46,13 @@ describe('Vehicles', () => {
     const response = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
 
     expect(response.body).toEqual({ id: expect.any(String) as string });
@@ -62,7 +68,13 @@ describe('Vehicles', () => {
     const response = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(422);
 
     expect(response.body).toMatchObject({ code: 'VEHICLE_OWNING_CUSTOMER_INACTIVE' });
@@ -75,7 +87,13 @@ describe('Vehicles', () => {
     const response = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${actor.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(403);
 
     expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
@@ -155,7 +173,13 @@ describe('Vehicles', () => {
     const created = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     const vehicleId = (created.body as { id: string }).id;
 
@@ -174,7 +198,13 @@ describe('Vehicles', () => {
     const created = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     const vehicleId = (created.body as { id: string }).id;
 
@@ -213,7 +243,13 @@ describe('Vehicles', () => {
     const created = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     const vehicleId = (created.body as { id: string }).id;
 
@@ -231,7 +267,13 @@ describe('Vehicles', () => {
     const created = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     const vehicleId = (created.body as { id: string }).id;
 
@@ -249,7 +291,13 @@ describe('Vehicles', () => {
     const created = await api(app)
       .post('/api/v1/vehicles')
       .set('Authorization', `Bearer ${admin.accessToken}`)
-      .send({ customerId, plate: uniqueLicensePlate(), brand: 'Toyota', model: 'Corolla', year: 2020 })
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
       .expect(201);
     const vehicleId = (created.body as { id: string }).id;
 

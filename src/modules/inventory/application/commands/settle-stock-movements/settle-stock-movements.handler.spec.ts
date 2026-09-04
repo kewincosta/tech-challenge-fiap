@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
-import { InventoryItemRepository, MovementClosureInput } from '../../../domain/repositories/inventory-item.repository';
+import {
+  InventoryItemRepository,
+  MovementClosureInput,
+} from '../../../domain/repositories/inventory-item.repository';
 import { SettleStockMovementsCommand } from './settle-stock-movements.command';
 import { SettleStockMovementsHandler } from './settle-stock-movements.handler';
 
@@ -24,7 +27,7 @@ function fakeItems(settleResult: number | Error = 0): InventoryItemRepository {
 }
 
 describe('SettleStockMovementsHandler', () => {
-  it('calls settleWorkOrderConsumptions with the work order, the actor and the clock\'s moment', async () => {
+  it("calls settleWorkOrderConsumptions with the work order, the actor and the clock's moment", async () => {
     const now = new Date('2026-08-31T12:00:00.000Z');
     const items = fakeItems(1);
     const handler = new SettleStockMovementsHandler(items, new FakeClock(now));
@@ -43,15 +46,17 @@ describe('SettleStockMovementsHandler', () => {
     const items = fakeItems(0);
     const handler = new SettleStockMovementsHandler(items, new FakeClock());
 
-    await expect(handler.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID))).resolves.not.toThrow();
+    await expect(
+      handler.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)),
+    ).resolves.not.toThrow();
   });
 
   it('lets an error from the repository travel out untouched', async () => {
     const items = fakeItems(new Error('boom'));
     const handler = new SettleStockMovementsHandler(items, new FakeClock());
 
-    await expect(handler.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID))).rejects.toThrow(
-      'boom',
-    );
+    await expect(
+      handler.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)),
+    ).rejects.toThrow('boom');
   });
 });

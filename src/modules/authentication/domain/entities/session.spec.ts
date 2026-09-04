@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import {
-  buildSession,
-  SESSION_NOW,
-} from '../../../../../test/support/factories/session.factory';
+import { buildSession, SESSION_NOW } from '../../../../../test/support/factories/session.factory';
 import { RefreshTokenReuseError } from '../errors/refresh-token-reuse.error';
 import { SessionNotActiveError } from '../errors/session-not-active.error';
 import { RefreshTokenReuseDetected } from '../events/refresh-token-reuse-detected.event';
@@ -52,9 +49,9 @@ describe('Session', () => {
     expect(previousToken.replacedById).toBe(newTokenId.value);
     expect(session.activeToken.id.equals(newTokenId)).toBe(true);
     expect(session.lastUsedAt).toEqual(minutesAfter(SESSION_NOW, 10));
-    expect(
-      session.pullDomainEvents().some((event) => event instanceof RefreshTokenRotated),
-    ).toBe(true);
+    expect(session.pullDomainEvents().some((event) => event instanceof RefreshTokenRotated)).toBe(
+      true,
+    );
   });
 
   it('should revoke the whole session when a rotated token is presented again', () => {

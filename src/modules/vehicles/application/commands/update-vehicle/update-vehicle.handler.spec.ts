@@ -58,7 +58,13 @@ describe('UpdateVehicleHandler', () => {
     queryBus.execute.mockResolvedValueOnce({ status: 'ACTIVE' });
 
     await handler.execute(
-      new UpdateVehicleCommand(VEHICLE_ID.value, undefined, undefined, undefined, OTHER_CUSTOMER_ID),
+      new UpdateVehicleCommand(
+        VEHICLE_ID.value,
+        undefined,
+        undefined,
+        undefined,
+        OTHER_CUSTOMER_ID,
+      ),
     );
 
     expect(vehicles.vehicles[0].customerId).toBe(OTHER_CUSTOMER_ID);
@@ -71,7 +77,13 @@ describe('UpdateVehicleHandler', () => {
 
     await expect(
       handler.execute(
-        new UpdateVehicleCommand(VEHICLE_ID.value, undefined, undefined, undefined, OTHER_CUSTOMER_ID),
+        new UpdateVehicleCommand(
+          VEHICLE_ID.value,
+          undefined,
+          undefined,
+          undefined,
+          OTHER_CUSTOMER_ID,
+        ),
       ),
     ).rejects.toThrow(OwningCustomerInactiveError);
   });
@@ -83,7 +95,13 @@ describe('UpdateVehicleHandler', () => {
 
     await expect(
       handler.execute(
-        new UpdateVehicleCommand(VEHICLE_ID.value, undefined, undefined, undefined, OTHER_CUSTOMER_ID),
+        new UpdateVehicleCommand(
+          VEHICLE_ID.value,
+          undefined,
+          undefined,
+          undefined,
+          OTHER_CUSTOMER_ID,
+        ),
       ),
     ).rejects.toThrow(ReferencedCustomerNotFoundError);
   });

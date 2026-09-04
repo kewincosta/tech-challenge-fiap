@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
-import { PermissionDto, RbacQueryPort, RoleDto, UserAccessDto } from '../../application/ports/rbac-query.port';
+import {
+  PermissionDto,
+  RbacQueryPort,
+  RoleDto,
+  UserAccessDto,
+} from '../../application/ports/rbac-query.port';
 import { PermissionOrmEntity } from './permission.orm-entity';
 import { RoleOrmEntity } from './role.orm-entity';
 import { RolePermissionOrmEntity } from './role-permission.orm-entity';

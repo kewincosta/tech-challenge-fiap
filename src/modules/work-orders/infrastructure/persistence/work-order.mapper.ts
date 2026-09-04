@@ -46,7 +46,9 @@ export class WorkOrderMapper {
     budgetRows: WorkOrderBudgetOrmEntity[],
     resolved: ResolvedWorkOrderIds,
   ): WorkOrder {
-    const roundByBudgetInternalId = new Map(budgetRows.map((budgetRow) => [budgetRow.id, budgetRow.round]));
+    const roundByBudgetInternalId = new Map(
+      budgetRows.map((budgetRow) => [budgetRow.id, budgetRow.round]),
+    );
     const budgets = [...budgetRows]
       .sort((a, b) => a.round - b.round)
       .map((budgetRow) =>
@@ -58,7 +60,8 @@ export class WorkOrderMapper {
           generatedAt: budgetRow.generatedAt,
           decidedAt: budgetRow.decidedAt,
           decidedByUserId: budgetRow.decidedByInternalId
-            ? (resolved.budgetDeciderExternalIdByInternalId.get(budgetRow.decidedByInternalId) ?? null)
+            ? (resolved.budgetDeciderExternalIdByInternalId.get(budgetRow.decidedByInternalId) ??
+              null)
             : null,
         }),
       );
@@ -164,7 +167,9 @@ export class WorkOrderMapper {
     workOrderRow.diagnosisCompletedAt = workOrder.diagnosisCompletedAt;
     workOrderRow.budgetDecidedAt = workOrder.budgetDecidedAt;
     workOrderRow.executionStartedAt = workOrder.executionStartedAt;
-    workOrderRow.chargedTotalCents = workOrder.chargedTotal ? String(workOrder.chargedTotal.cents) : null;
+    workOrderRow.chargedTotalCents = workOrder.chargedTotal
+      ? String(workOrder.chargedTotal.cents)
+      : null;
     workOrderRow.discountCents = String(workOrder.discount.cents);
     workOrderRow.discountNote = workOrder.discountNote;
     workOrderRow.discountAppliedAt = workOrder.discountAppliedAt;
@@ -178,7 +183,9 @@ export class WorkOrderMapper {
       row.externalId = item.id.value;
       row.serviceName = item.serviceName;
       row.unitPriceCents = String(item.unitPrice.cents);
-      row.budgetedUnitPriceCents = item.budgetedUnitPrice ? String(item.budgetedUnitPrice.cents) : null;
+      row.budgetedUnitPriceCents = item.budgetedUnitPrice
+        ? String(item.budgetedUnitPrice.cents)
+        : null;
       return row;
     });
 
@@ -190,7 +197,9 @@ export class WorkOrderMapper {
       row.plannedQuantity = item.plannedQuantity.units;
       row.withdrawnQuantity = item.withdrawnQuantity;
       row.unitPriceCents = String(item.unitPrice.cents);
-      row.budgetedUnitPriceCents = item.budgetedUnitPrice ? String(item.budgetedUnitPrice.cents) : null;
+      row.budgetedUnitPriceCents = item.budgetedUnitPrice
+        ? String(item.budgetedUnitPrice.cents)
+        : null;
       return row;
     });
 

@@ -278,7 +278,8 @@ export class WorkOrder extends AggregateRoot {
       chargedTotal: props.chargedTotal ?? CLOSING_DEFAULTS.chargedTotal,
       discount: props.discount ?? CLOSING_DEFAULTS.discount,
       discountNote: props.discountNote ?? CLOSING_DEFAULTS.discountNote,
-      discountAppliedByUserId: props.discountAppliedByUserId ?? CLOSING_DEFAULTS.discountAppliedByUserId,
+      discountAppliedByUserId:
+        props.discountAppliedByUserId ?? CLOSING_DEFAULTS.discountAppliedByUserId,
       discountAppliedAt: props.discountAppliedAt ?? CLOSING_DEFAULTS.discountAppliedAt,
       completedAt: props.completedAt ?? CLOSING_DEFAULTS.completedAt,
       deliveredAt: props.deliveredAt ?? CLOSING_DEFAULTS.deliveredAt,
@@ -434,12 +435,20 @@ export class WorkOrder extends AggregateRoot {
     );
     let total = Money.fromCents(0);
     for (const item of this.props.serviceItems) {
-      if (item.budgetedUnitPrice && item.budgetRound !== null && approvedRounds.has(item.budgetRound)) {
+      if (
+        item.budgetedUnitPrice &&
+        item.budgetRound !== null &&
+        approvedRounds.has(item.budgetRound)
+      ) {
         total = total.add(item.budgetedUnitPrice);
       }
     }
     for (const item of this.props.partItems) {
-      if (item.budgetedUnitPrice && item.budgetRound !== null && approvedRounds.has(item.budgetRound)) {
+      if (
+        item.budgetedUnitPrice &&
+        item.budgetRound !== null &&
+        approvedRounds.has(item.budgetRound)
+      ) {
         total = total.add(item.budgetedUnitPrice.multiply(item.withdrawnQuantity));
       }
     }
@@ -495,7 +504,8 @@ export class WorkOrder extends AggregateRoot {
    */
   submitSupplementaryBudget(input: SubmitSupplementaryBudgetInput): void {
     this.assertStateAllows([WorkOrderStatus.InExecution]);
-    const nextRound = this.props.budgets.reduce((max, budget) => Math.max(max, budget.round), 0) + 1;
+    const nextRound =
+      this.props.budgets.reduce((max, budget) => Math.max(max, budget.round), 0) + 1;
     if (!this.hasItemsForRound(nextRound)) {
       throw new EmptyDraftBudgetError();
     }
@@ -512,7 +522,9 @@ export class WorkOrder extends AggregateRoot {
   }
 
   private pendingBudget(): Budget {
-    const budget = this.props.budgets.find((candidate) => candidate.status === BudgetStatus.Pending);
+    const budget = this.props.budgets.find(
+      (candidate) => candidate.status === BudgetStatus.Pending,
+    );
     if (!budget) {
       throw new WorkOrderStateError(this.props.status);
     }
@@ -682,7 +694,9 @@ export class WorkOrder extends AggregateRoot {
     this.props.canceledByUserId = input.actorUserId;
     this.props.cancellationReason = input.reason;
     this.props.updatedAt = input.now;
-    this.record(new WorkOrderCanceled(this.props.id.value, input.actorUserId, fromStatus, input.now));
+    this.record(
+      new WorkOrderCanceled(this.props.id.value, input.actorUserId, fromStatus, input.now),
+    );
   }
 
   private assertStateAllows(allowed: WorkOrderStatus[]): void {

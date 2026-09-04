@@ -26,7 +26,10 @@ describe('Change password', () => {
       .send({ currentPassword: client.password, newPassword: 'NewStrongerPassword2' })
       .expect(204);
 
-    await api(app).get('/api/v1/users/me').set('Authorization', `Bearer ${client.accessToken}`).expect(401);
+    await api(app)
+      .get('/api/v1/users/me')
+      .set('Authorization', `Bearer ${client.accessToken}`)
+      .expect(401);
 
     await api(app)
       .post('/api/v1/auth/sessions')

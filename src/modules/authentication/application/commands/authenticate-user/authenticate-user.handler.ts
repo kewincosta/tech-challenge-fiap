@@ -28,9 +28,10 @@ import { REFRESH_TOKEN_HASHER, RefreshTokenHasher } from '../../ports/refresh-to
 import { AuthenticateUserCommand } from './authenticate-user.command';
 
 @CommandHandler(AuthenticateUserCommand)
-export class AuthenticateUserHandler
-  implements ICommandHandler<AuthenticateUserCommand, AuthResultDto>
-{
+export class AuthenticateUserHandler implements ICommandHandler<
+  AuthenticateUserCommand,
+  AuthResultDto
+> {
   constructor(
     @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
     @Inject(ACCESS_TOKEN_SERVICE) private readonly accessTokens: AccessTokenService,

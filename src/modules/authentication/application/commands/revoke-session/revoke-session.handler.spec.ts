@@ -80,9 +80,7 @@ describe('RevokeSessionHandler', () => {
     const { handler } = makeHandler();
 
     await expect(
-      handler.execute(
-        new RevokeSessionCommand('33333333-3333-4333-8333-333333333333', OWNER_ID),
-      ),
+      handler.execute(new RevokeSessionCommand('33333333-3333-4333-8333-333333333333', OWNER_ID)),
     ).rejects.toThrow(SessionNotFoundError);
   });
 });

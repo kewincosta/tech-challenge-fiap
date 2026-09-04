@@ -46,7 +46,8 @@ export class StockShortageResponseDto {
 
   @ApiProperty({
     example: 4,
-    description: 'Sum, over approved planned parts of work orders in execution, of planned minus withdrawn',
+    description:
+      'Sum, over approved planned parts of work orders in execution, of planned minus withdrawn',
   })
   outstandingQuantity!: number;
 
@@ -83,7 +84,11 @@ export class StockMovementResponseDto {
   })
   status!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true, description: 'Set on a CONSUMPTION or a RETURN' })
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    description: 'Set on a CONSUMPTION or a RETURN',
+  })
   workOrderId!: string | null;
 
   @ApiPropertyOptional({

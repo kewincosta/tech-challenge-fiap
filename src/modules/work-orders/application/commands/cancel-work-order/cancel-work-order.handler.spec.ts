@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus, stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import {
+  stubCommandBus,
+  stubEventBus,
+  stubQueryBus,
+} from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
@@ -112,7 +116,10 @@ describe('CancelWorkOrderHandler', () => {
   });
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
-    const authorizer = makeAuthorizer({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:cancel'] });
+    const authorizer = makeAuthorizer({
+      roles: ['SERVICE_ADVISOR'],
+      permissions: ['work-orders:cancel'],
+    });
     const { handler, workOrders, transactionRunner } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(2));
 
@@ -143,7 +150,10 @@ describe('CancelWorkOrderHandler', () => {
   });
 
   it('still dispatches the write-off command for a work order with no outstanding withdrawn part (spec.md edge case)', async () => {
-    const authorizer = makeAuthorizer({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:cancel'] });
+    const authorizer = makeAuthorizer({
+      roles: ['SERVICE_ADVISOR'],
+      permissions: ['work-orders:cancel'],
+    });
     const { handler, workOrders, commandBus } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(0));
 
@@ -158,7 +168,9 @@ describe('CancelWorkOrderHandler', () => {
       roles: ['ADMIN'],
       permissions: ['work-orders:cancel', 'work-orders:cancel-in-execution'],
     });
-    const { handler, workOrders } = makeHandler(authorizer, () => Promise.reject(new Error('boom')));
+    const { handler, workOrders } = makeHandler(authorizer, () =>
+      Promise.reject(new Error('boom')),
+    );
     await workOrders.save(restoreInExecution(2));
 
     await expect(
@@ -167,7 +179,10 @@ describe('CancelWorkOrderHandler', () => {
   });
 
   it('publishes the recorded events after the transaction', async () => {
-    const authorizer = makeAuthorizer({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:cancel'] });
+    const authorizer = makeAuthorizer({
+      roles: ['SERVICE_ADVISOR'],
+      permissions: ['work-orders:cancel'],
+    });
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(0));
 

@@ -48,10 +48,9 @@ export class TypeOrmCustomerQueryAdapter implements CustomerQueryPort {
   // checks .status) - a filtered query collapses both into null and made every deactivated
   // customer register as 404, not 422, discovered by T20's own e2e gate.
   async getById(externalId: string): Promise<CustomerSummaryDto | null> {
-    const rows: CustomerRow[] = await this.dataSource.query(
-      `${SELECT} WHERE c.external_id = $1`,
-      [externalId],
-    );
+    const rows: CustomerRow[] = await this.dataSource.query(`${SELECT} WHERE c.external_id = $1`, [
+      externalId,
+    ]);
     return rows[0] ? this.toDto(rows[0]) : null;
   }
 

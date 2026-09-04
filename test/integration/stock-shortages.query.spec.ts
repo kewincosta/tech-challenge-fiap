@@ -90,7 +90,11 @@ async function insertBudget(workOrderId: number, round: number, status: string):
 async function insertWorkOrderPart(
   workOrderId: number,
   inventoryItemId: number,
-  overrides: { budgetId?: number | null; plannedQuantity?: number; withdrawnQuantity?: number } = {},
+  overrides: {
+    budgetId?: number | null;
+    plannedQuantity?: number;
+    withdrawnQuantity?: number;
+  } = {},
 ): Promise<void> {
   await dataSource.query(
     `INSERT INTO work_order_parts (external_id, work_order_id, inventory_item_id, sku, item_name, planned_quantity, withdrawn_quantity, unit_price_cents, created_at, budget_id, budgeted_unit_price_cents)
@@ -140,7 +144,11 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     const item = await insertInventoryItem(2);
     const workOrder = await insertWorkOrder('IN_EXECUTION');
     const budgetId = await insertBudget(workOrder.id, 1, 'APPROVED');
-    await insertWorkOrderPart(workOrder.id, item.id, { budgetId, plannedQuantity: 5, withdrawnQuantity: 3 });
+    await insertWorkOrderPart(workOrder.id, item.id, {
+      budgetId,
+      plannedQuantity: 5,
+      withdrawnQuantity: 3,
+    });
 
     const shortages = await queryAdapter.listStockShortages();
 
@@ -155,7 +163,11 @@ describe('TypeOrmInventoryQueryAdapter.listStockShortages', () => {
     const item = await insertInventoryItem(1);
     const workOrder = await insertWorkOrder('IN_EXECUTION');
     const budgetId = await insertBudget(workOrder.id, 1, 'APPROVED');
-    await insertWorkOrderPart(workOrder.id, item.id, { budgetId, plannedQuantity: 5, withdrawnQuantity: 3 });
+    await insertWorkOrderPart(workOrder.id, item.id, {
+      budgetId,
+      plannedQuantity: 5,
+      withdrawnQuantity: 3,
+    });
 
     const shortages = await queryAdapter.listStockShortages();
     const found = shortages.find((row) => row.inventoryItemId === item.externalId);

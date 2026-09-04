@@ -25,8 +25,7 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findByDocument(document: PersonDocument): Promise<User | null> {
     return Promise.resolve(
-      this.users.find((user) => user.document.equals(document) && user.deletedAt === null) ??
-        null,
+      this.users.find((user) => user.document.equals(document) && user.deletedAt === null) ?? null,
     );
   }
 

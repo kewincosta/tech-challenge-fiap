@@ -54,7 +54,9 @@ describe('RemoveVehicleHandler', () => {
     await vehicles.save(vehicle);
     await handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value));
 
-    await expect(handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value))).resolves.not.toThrow();
+    await expect(
+      handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value)),
+    ).resolves.not.toThrow();
   });
 
   it('should refuse when the vehicle does not exist', async () => {

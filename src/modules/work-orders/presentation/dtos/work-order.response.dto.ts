@@ -137,7 +137,8 @@ export class WorkOrderResponseDto {
   @ApiPropertyOptional({
     example: 20099,
     nullable: true,
-    description: 'Services plus withdrawn parts minus the discount, in integer BRL cents. Null before completion',
+    description:
+      'Services plus withdrawn parts minus the discount, in integer BRL cents. Null before completion',
   })
   chargedTotalCents!: number | null;
 
@@ -184,7 +185,10 @@ export class WorkOrderTrailEntryResponseDto {
 }
 
 export class AverageExecutionTimeResponseDto {
-  @ApiProperty({ example: 259200, description: 'Whole seconds between execution start and completion' })
+  @ApiProperty({
+    example: 259200,
+    description: 'Whole seconds between execution start and completion',
+  })
   averageSeconds!: number;
 
   @ApiProperty({ example: 12, description: 'How many work orders the average was computed over' })

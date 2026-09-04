@@ -11,7 +11,7 @@ import { ListServicesQuery } from './list-services.query';
 export class ListServicesHandler implements IQueryHandler<ListServicesQuery, ServiceSummaryDto[]> {
   constructor(@Inject(SERVICE_QUERY_PORT) private readonly serviceQuery: ServiceQueryPort) {}
 
-  async execute(): Promise<ServiceSummaryDto[]> {
+  async execute(_query: ListServicesQuery): Promise<ServiceSummaryDto[]> {
     return this.serviceQuery.listActive();
   }
 }

@@ -57,7 +57,9 @@ describe('RegisterVehicleHandler', () => {
     queryBus.execute.mockResolvedValueOnce({ ...ACTIVE_CUSTOMER, status: 'INACTIVE' });
 
     await expect(
-      handler.execute(new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020)),
+      handler.execute(
+        new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020),
+      ),
     ).rejects.toThrow(OwningCustomerInactiveError);
   });
 
@@ -66,7 +68,9 @@ describe('RegisterVehicleHandler', () => {
     queryBus.execute.mockResolvedValueOnce(null);
 
     await expect(
-      handler.execute(new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020)),
+      handler.execute(
+        new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020),
+      ),
     ).rejects.toThrow(ReferencedCustomerNotFoundError);
   });
 
@@ -75,7 +79,9 @@ describe('RegisterVehicleHandler', () => {
     queryBus.execute.mockResolvedValueOnce(ACTIVE_CUSTOMER);
 
     await expect(
-      handler.execute(new RegisterVehicleCommand(CUSTOMER_ID, 'INVALID', 'Toyota', 'Corolla', 2020)),
+      handler.execute(
+        new RegisterVehicleCommand(CUSTOMER_ID, 'INVALID', 'Toyota', 'Corolla', 2020),
+      ),
     ).rejects.toThrow(InvalidLicensePlateError);
   });
 
@@ -84,7 +90,9 @@ describe('RegisterVehicleHandler', () => {
     queryBus.execute.mockResolvedValueOnce(ACTIVE_CUSTOMER);
 
     await expect(
-      handler.execute(new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 1900)),
+      handler.execute(
+        new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 1900),
+      ),
     ).rejects.toThrow(InvalidVehicleYearError);
   });
 });

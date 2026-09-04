@@ -9,7 +9,10 @@ import {
 import { ListCustomersQuery } from './list-customers.query';
 
 @QueryHandler(ListCustomersQuery)
-export class ListCustomersHandler implements IQueryHandler<ListCustomersQuery, CustomerSummaryDto[]> {
+export class ListCustomersHandler implements IQueryHandler<
+  ListCustomersQuery,
+  CustomerSummaryDto[]
+> {
   constructor(@Inject(CUSTOMER_QUERY_PORT) private readonly customerQuery: CustomerQueryPort) {}
 
   async execute(query: ListCustomersQuery): Promise<CustomerSummaryDto[]> {

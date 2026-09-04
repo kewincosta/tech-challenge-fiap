@@ -79,7 +79,9 @@ describe('TypeOrmServiceRepository', () => {
 
     expect(await repository.existsActiveByName(ServiceName.create(name.toLowerCase()))).toBe(true);
     expect(await repository.existsActiveByName(ServiceName.create(name.toUpperCase()))).toBe(true);
-    expect(await repository.existsActiveByName(ServiceName.create(uniqueServiceName()))).toBe(false);
+    expect(await repository.existsActiveByName(ServiceName.create(uniqueServiceName()))).toBe(
+      false,
+    );
   });
 
   it('should stop matching a name once its service is deactivated, freeing it for reuse', async () => {

@@ -329,7 +329,9 @@ export class WorkOrdersController {
   @RequirePermissions(AppPermission.WorkOrdersExecute)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Submit a supplementary budget over the draft items added during execution' })
+  @ApiOperation({
+    summary: 'Submit a supplementary budget over the draft items added during execution',
+  })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })

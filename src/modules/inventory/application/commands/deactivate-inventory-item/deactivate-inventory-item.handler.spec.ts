@@ -141,8 +141,8 @@ describe('DeactivateInventoryItemHandler', () => {
   it('should refuse an unknown item', async () => {
     const { handler } = makeHandler();
 
-    await expect(
-      handler.execute(new DeactivateInventoryItemCommand(UNKNOWN_ID)),
-    ).rejects.toThrow(InventoryItemNotFoundError);
+    await expect(handler.execute(new DeactivateInventoryItemCommand(UNKNOWN_ID))).rejects.toThrow(
+      InventoryItemNotFoundError,
+    );
   });
 });

@@ -7,6 +7,12 @@ export class VehicleDelivered extends WorkOrderTrailEvent {
   readonly eventType = VEHICLE_DELIVERED_EVENT_TYPE;
 
   constructor(workOrderId: string, actorUserId: string, occurredAt: Date) {
-    super(workOrderId, actorUserId, WorkOrderStatus.Completed, WorkOrderStatus.Delivered, occurredAt);
+    super(
+      workOrderId,
+      actorUserId,
+      WorkOrderStatus.Completed,
+      WorkOrderStatus.Delivered,
+      occurredAt,
+    );
   }
 }

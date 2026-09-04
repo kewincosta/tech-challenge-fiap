@@ -46,28 +46,40 @@ async function insertVehicle(customerId: number): Promise<number> {
   return rows[0].id;
 }
 
-async function insertWorkOrder(customerId: number, vehicleId: number, creatorId: number): Promise<number> {
+async function insertWorkOrder(
+  customerId: number,
+  vehicleId: number,
+  creatorId: number,
+): Promise<number> {
   const rows: Array<{ id: number }> = await dataSource.query(
     `INSERT INTO work_orders (external_id, number, customer_id, vehicle_id, created_by_user_id, status, customer_name, vehicle_plate, vehicle_brand, vehicle_model, vehicle_year, created_at, updated_at)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, 'RECEIVED', 'Jane Doe', 'WO01234', 'Toyota', 'Corolla', 2020, now(), now())
      RETURNING id`,
-    [`${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`, customerId, vehicleId, creatorId],
+    [
+      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      customerId,
+      vehicleId,
+      creatorId,
+    ],
   );
   return rows[0].id;
 }
 
 describe('work order closing schema migration', () => {
   it('should add the closing columns to work_orders with discount_cents and version defaulting to zero, the rest nullable', async () => {
-    const columns: Array<{ column_name: string; is_nullable: string; column_default: string | null }> =
-      await dataSource.query(
-        `SELECT column_name, is_nullable, column_default
+    const columns: Array<{
+      column_name: string;
+      is_nullable: string;
+      column_default: string | null;
+    }> = await dataSource.query(
+      `SELECT column_name, is_nullable, column_default
            FROM information_schema.columns
           WHERE table_name = 'work_orders'
             AND column_name IN ('charged_total_cents', 'discount_cents', 'discount_note',
               'discount_applied_by_user_id', 'discount_applied_at', 'completed_at', 'delivered_at',
               'delivered_by_user_id', 'canceled_at', 'canceled_by_user_id', 'cancellation_reason',
               'version')`,
-      );
+    );
     const byName = new Map(columns.map((column) => [column.column_name, column]));
     expect(columns).toHaveLength(12);
 
@@ -99,22 +111,22 @@ describe('work order closing schema migration', () => {
     const nonExistentUserId = 999999999;
 
     await expect(
-      dataSource.query(
-        `UPDATE work_orders SET discount_applied_by_user_id = $1 WHERE id = $2`,
-        [nonExistentUserId, workOrderId],
-      ),
+      dataSource.query(`UPDATE work_orders SET discount_applied_by_user_id = $1 WHERE id = $2`, [
+        nonExistentUserId,
+        workOrderId,
+      ]),
     ).rejects.toThrow(/foreign key/i);
     await expect(
-      dataSource.query(
-        `UPDATE work_orders SET delivered_by_user_id = $1 WHERE id = $2`,
-        [nonExistentUserId, workOrderId],
-      ),
+      dataSource.query(`UPDATE work_orders SET delivered_by_user_id = $1 WHERE id = $2`, [
+        nonExistentUserId,
+        workOrderId,
+      ]),
     ).rejects.toThrow(/foreign key/i);
     await expect(
-      dataSource.query(
-        `UPDATE work_orders SET canceled_by_user_id = $1 WHERE id = $2`,
-        [nonExistentUserId, workOrderId],
-      ),
+      dataSource.query(`UPDATE work_orders SET canceled_by_user_id = $1 WHERE id = $2`, [
+        nonExistentUserId,
+        workOrderId,
+      ]),
     ).rejects.toThrow(/foreign key/i);
 
     await expect(

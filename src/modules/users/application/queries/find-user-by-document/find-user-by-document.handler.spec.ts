@@ -43,9 +43,7 @@ describe('FindUserByDocumentHandler', () => {
   it('returns null for a document nobody carries', async () => {
     const handler = new FindUserByDocumentHandler(fakePort(null));
 
-    await expect(
-      handler.execute(new FindUserByDocumentQuery('11144477735')),
-    ).resolves.toBeNull();
+    await expect(handler.execute(new FindUserByDocumentQuery('11144477735'))).resolves.toBeNull();
   });
 
   it('answers null for a malformed document - a counter search miss, not a validation failure', async () => {

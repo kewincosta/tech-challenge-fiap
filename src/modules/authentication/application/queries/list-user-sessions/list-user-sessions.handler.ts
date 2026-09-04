@@ -8,9 +8,10 @@ import {
 import { ListUserSessionsQuery } from './list-user-sessions.query';
 
 @QueryHandler(ListUserSessionsQuery)
-export class ListUserSessionsHandler
-  implements IQueryHandler<ListUserSessionsQuery, SessionSummaryDto[]>
-{
+export class ListUserSessionsHandler implements IQueryHandler<
+  ListUserSessionsQuery,
+  SessionSummaryDto[]
+> {
   constructor(@Inject(SESSION_QUERY_PORT) private readonly sessionQuery: SessionQueryPort) {}
 
   async execute(query: ListUserSessionsQuery): Promise<SessionSummaryDto[]> {

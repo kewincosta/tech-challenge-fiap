@@ -97,7 +97,10 @@ describe('CancellationAuthorizer', () => {
   });
 
   it('refuses an actor holding only work-orders:cancel when the work order has an outstanding withdrawal', async () => {
-    const queryBus = stubAccess({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:cancel'] });
+    const queryBus = stubAccess({
+      roles: ['SERVICE_ADVISOR'],
+      permissions: ['work-orders:cancel'],
+    });
     const authorizer = new CancellationAuthorizer(queryBus.bus);
 
     await expect(
@@ -118,7 +121,10 @@ describe('CancellationAuthorizer', () => {
   });
 
   it('refuses the same way in AWAITING_APPROVAL after a supplementary round, not only IN_EXECUTION (H36 against H38)', async () => {
-    const queryBus = stubAccess({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:cancel'] });
+    const queryBus = stubAccess({
+      roles: ['SERVICE_ADVISOR'],
+      permissions: ['work-orders:cancel'],
+    });
     const authorizer = new CancellationAuthorizer(queryBus.bus);
 
     await expect(

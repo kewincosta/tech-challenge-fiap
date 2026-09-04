@@ -34,8 +34,7 @@ function makeGuard(setup: GuardSetup) {
       .mockReturnValueOnce(setup.requiredRoles),
   } as unknown as Reflector;
   const service = new EffectiveAccessService(new FakeAccessCache(), {
-    read: () =>
-      Promise.resolve(setup.access ?? { roles: [], permissions: [] }),
+    read: () => Promise.resolve(setup.access ?? { roles: [], permissions: [] }),
   });
   return {
     guard: new PermissionsGuard(reflector, service),

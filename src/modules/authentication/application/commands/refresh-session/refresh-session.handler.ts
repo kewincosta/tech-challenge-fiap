@@ -21,14 +21,14 @@ import { RefreshTokenId } from '../../../domain/value-objects/refresh-token-id';
 import { AuthResultDto } from '../../dtos/auth-result.dto';
 import { ACCESS_TOKEN_SERVICE, AccessTokenService } from '../../ports/access-token.port';
 import { REFRESH_TOKEN_HASHER, RefreshTokenHasher } from '../../ports/refresh-token-hasher.port';
-import {
-  REVOKED_SESSION_STORE,
-  RevokedSessionStore,
-} from '../../ports/revoked-session-store.port';
+import { REVOKED_SESSION_STORE, RevokedSessionStore } from '../../ports/revoked-session-store.port';
 import { RefreshSessionCommand } from './refresh-session.command';
 
 @CommandHandler(RefreshSessionCommand)
-export class RefreshSessionHandler implements ICommandHandler<RefreshSessionCommand, AuthResultDto> {
+export class RefreshSessionHandler implements ICommandHandler<
+  RefreshSessionCommand,
+  AuthResultDto
+> {
   constructor(
     @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
     @Inject(ACCESS_TOKEN_SERVICE) private readonly accessTokens: AccessTokenService,
@@ -42,7 +42,9 @@ export class RefreshSessionHandler implements ICommandHandler<RefreshSessionComm
   ) {}
 
   async execute(command: RefreshSessionCommand): Promise<AuthResultDto> {
-    const presentedHash = RefreshTokenHash.create(this.refreshTokenHasher.hash(command.refreshToken));
+    const presentedHash = RefreshTokenHash.create(
+      this.refreshTokenHasher.hash(command.refreshToken),
+    );
     const session = await this.sessions.findByRefreshTokenHash(presentedHash);
     if (!session) {
       throw new InvalidRefreshTokenError();

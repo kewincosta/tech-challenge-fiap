@@ -111,21 +111,21 @@ describe('CompleteDiagnosisHandler', () => {
     expect(workOrders.workOrders).toHaveLength(0);
   });
 
-  it("lets DiagnosisWithoutItemsError travel out untouched", async () => {
+  it('lets DiagnosisWithoutItemsError travel out untouched', async () => {
     const { handler, workOrders } = makeHandler();
     await workOrders.save(restoreInDiagnosis(false));
 
-    await expect(
-      handler.execute(new CompleteDiagnosisCommand(NUMBER, CREATOR_ID)),
-    ).rejects.toThrow(DiagnosisWithoutItemsError);
+    await expect(handler.execute(new CompleteDiagnosisCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
+      DiagnosisWithoutItemsError,
+    );
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
     const { handler, workOrders } = makeHandler();
     await workOrders.save(buildReceivedWorkOrder());
 
-    await expect(
-      handler.execute(new CompleteDiagnosisCommand(NUMBER, CREATOR_ID)),
-    ).rejects.toThrow(WorkOrderStateError);
+    await expect(handler.execute(new CompleteDiagnosisCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
+      WorkOrderStateError,
+    );
   });
 });

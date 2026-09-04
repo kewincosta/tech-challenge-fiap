@@ -67,7 +67,11 @@ async function createInventoryItem(priceCents: number): Promise<string> {
   return (response.body as { id: string }).id;
 }
 
-async function replenish(inventoryItemId: string, quantity: number, priceCents: number): Promise<void> {
+async function replenish(
+  inventoryItemId: string,
+  quantity: number,
+  priceCents: number,
+): Promise<void> {
   await api(app)
     .post(`/api/v1/inventory-items/${inventoryItemId}/replenishments`)
     .set('Authorization', `Bearer ${admin.accessToken}`)

@@ -38,9 +38,7 @@ function fakePort(result: WorkOrderSummaryDto | null): WorkOrderQueryPort {
   };
 }
 
-function stubQueries(
-  customerDto: CustomerSummaryDto | null,
-): ReturnType<typeof stubQueryBus> {
+function stubQueries(customerDto: CustomerSummaryDto | null): ReturnType<typeof stubQueryBus> {
   const queryBus = stubQueryBus();
   queryBus.execute.mockImplementation((query: unknown) => {
     if (query instanceof GetCustomerByUserIdQuery) {

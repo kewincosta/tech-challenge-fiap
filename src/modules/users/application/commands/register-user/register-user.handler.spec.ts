@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  stubCommandBus,
-  stubEventBus,
-} from '../../../../../../test/support/fakes/bus.stubs';
+import { stubCommandBus, stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakePasswordHasher } from '../../../../../../test/support/fakes/fake-password-hasher';
@@ -98,7 +95,9 @@ describe('RegisterUserHandler', () => {
     const { handler, users } = makeHandler();
 
     await expect(
-      handler.execute(new RegisterUserCommand('jane@example.com', 'Jane Doe', 'short', '11144477735')),
+      handler.execute(
+        new RegisterUserCommand('jane@example.com', 'Jane Doe', 'short', '11144477735'),
+      ),
     ).rejects.toThrow(WeakPasswordError);
     expect(users.users).toHaveLength(0);
   });

@@ -31,7 +31,10 @@ import { AppPermission } from '../../../authorization/application/contracts/app-
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
 import { Principal } from '../../../authentication/presentation/principal';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
-import { RegisterVehicleCommand, RegisteredVehicleDto } from '../../application/commands/register-vehicle/register-vehicle.command';
+import {
+  RegisterVehicleCommand,
+  RegisteredVehicleDto,
+} from '../../application/commands/register-vehicle/register-vehicle.command';
 import { RemoveVehicleCommand } from '../../application/commands/remove-vehicle/remove-vehicle.command';
 import { UpdateVehicleCommand } from '../../application/commands/update-vehicle/update-vehicle.command';
 import { GetMyVehiclesQuery } from '../../application/queries/get-my-vehicles/get-my-vehicles.query';

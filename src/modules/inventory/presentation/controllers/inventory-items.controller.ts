@@ -113,7 +113,9 @@ export class InventoryItemsController {
   @Get('shortages')
   @RequirePermissions(AppPermission.InventoryRead)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List items whose demand from work orders in execution exceeds the shelf' })
+  @ApiOperation({
+    summary: 'List items whose demand from work orders in execution exceeds the shelf',
+  })
   @ApiOkResponse({ type: [StockShortageResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async shortages(): Promise<StockShortageResponseDto[]> {

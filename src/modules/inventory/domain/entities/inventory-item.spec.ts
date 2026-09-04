@@ -315,7 +315,9 @@ describe('InventoryItem.consume and restoreUnits', () => {
     });
 
     expect(item.quantityOnHand.units).toBe(7);
-    const movement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Consumption);
+    const movement = item.newMovements.find(
+      (candidate) => candidate.kind === StockMovementKind.Consumption,
+    );
     expect(movement?.status).toBe(StockMovementStatus.Pending);
     expect(movement?.workOrderId).toBe(WORK_ORDER_ID);
     expect(movement?.quantity).toBe(3);
@@ -332,7 +334,9 @@ describe('InventoryItem.consume and restoreUnits', () => {
       now: NOW,
     });
 
-    const movement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Consumption);
+    const movement = item.newMovements.find(
+      (candidate) => candidate.kind === StockMovementKind.Consumption,
+    );
     expect(movement?.unitPrice.cents).toBe(2500);
   });
 
@@ -374,7 +378,9 @@ describe('InventoryItem.consume and restoreUnits', () => {
     });
 
     expect(item.quantityOnHand.units).toBe(8);
-    const returnMovement = item.newMovements.find((candidate) => candidate.kind === StockMovementKind.Return);
+    const returnMovement = item.newMovements.find(
+      (candidate) => candidate.kind === StockMovementKind.Return,
+    );
     expect(returnMovement?.undoesMovementId).toBe(consumptionId);
     expect(returnMovement?.status).toBeNull();
   });

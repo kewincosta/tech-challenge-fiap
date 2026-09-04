@@ -48,9 +48,7 @@ export class UserAccessController {
   async getUserAccess(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<UserAccessResponseDto> {
-    return this.queryBus.execute<GetUserAccessQuery, UserAccessDto>(
-      new GetUserAccessQuery(userId),
-    );
+    return this.queryBus.execute<GetUserAccessQuery, UserAccessDto>(new GetUserAccessQuery(userId));
   }
 
   @Put(':userId/roles/:roleId')

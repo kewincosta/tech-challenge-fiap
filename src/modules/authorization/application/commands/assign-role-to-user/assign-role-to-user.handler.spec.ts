@@ -176,7 +176,9 @@ describe('AssignRoleToUserHandler', () => {
     await roles.save(mechanic);
     queryBus.execute.mockImplementation(respondToQueries([]));
 
-    await handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.ServiceAdvisor }));
+    await handler.execute(
+      new AssignRoleToUserCommand(USER_ID, { name: SystemRole.ServiceAdvisor }),
+    );
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Mechanic }));
 
     expect(assignments.userRoles.has(`${USER_ID}:${serviceAdvisor.id.value}`)).toBe(true);

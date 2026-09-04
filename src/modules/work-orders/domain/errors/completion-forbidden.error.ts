@@ -6,6 +6,8 @@ export class CompletionForbiddenError extends DomainError {
   readonly kind = ErrorKind.Forbidden;
 
   constructor() {
-    super('Only the assigned mechanic or a holder of work-orders:manage may complete this work order.');
+    super(
+      'Only the assigned mechanic or a holder of work-orders:manage may complete this work order.',
+    );
   }
 }

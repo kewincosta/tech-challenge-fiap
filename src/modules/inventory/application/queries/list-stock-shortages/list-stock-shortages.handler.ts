@@ -8,12 +8,13 @@ import {
 import { ListStockShortagesQuery } from './list-stock-shortages.query';
 
 @QueryHandler(ListStockShortagesQuery)
-export class ListStockShortagesHandler
-  implements IQueryHandler<ListStockShortagesQuery, StockShortageDto[]>
-{
+export class ListStockShortagesHandler implements IQueryHandler<
+  ListStockShortagesQuery,
+  StockShortageDto[]
+> {
   constructor(@Inject(INVENTORY_QUERY_PORT) private readonly inventoryQuery: InventoryQueryPort) {}
 
-  async execute(): Promise<StockShortageDto[]> {
+  async execute(_query: ListStockShortagesQuery): Promise<StockShortageDto[]> {
     return this.inventoryQuery.listStockShortages();
   }
 }

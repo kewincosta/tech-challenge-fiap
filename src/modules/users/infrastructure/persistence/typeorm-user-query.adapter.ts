@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, IsNull, Repository } from 'typeorm';
-import { ListUsersFilter, UserQueryPort, UserSummaryDto } from '../../application/ports/user-query.port';
+import {
+  ListUsersFilter,
+  UserQueryPort,
+  UserSummaryDto,
+} from '../../application/ports/user-query.port';
 import { UserOrmEntity } from './user.orm-entity';
 
 interface UserListRow {

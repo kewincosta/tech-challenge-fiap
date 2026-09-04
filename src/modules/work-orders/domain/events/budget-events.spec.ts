@@ -111,12 +111,7 @@ describe('BudgetApproved', () => {
 
 describe('BudgetRejected', () => {
   it('carries AWAITING_APPROVAL to a caller-supplied destination', () => {
-    const roundOne = new BudgetRejected(
-      WORK_ORDER_ID,
-      ACTOR_ID,
-      WorkOrderStatus.InDiagnosis,
-      NOW,
-    );
+    const roundOne = new BudgetRejected(WORK_ORDER_ID, ACTOR_ID, WorkOrderStatus.InDiagnosis, NOW);
     const laterRound = new BudgetRejected(
       WORK_ORDER_ID,
       ACTOR_ID,

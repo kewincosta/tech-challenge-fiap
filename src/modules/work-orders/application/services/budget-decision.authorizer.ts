@@ -27,9 +27,10 @@ export class BudgetDecisionAuthorizer {
       return;
     }
 
-    const customer = await this.queryBus.execute<GetCustomerByUserIdQuery, CustomerSummaryDto | null>(
-      new GetCustomerByUserIdQuery(actorUserId),
-    );
+    const customer = await this.queryBus.execute<
+      GetCustomerByUserIdQuery,
+      CustomerSummaryDto | null
+    >(new GetCustomerByUserIdQuery(actorUserId));
     if (customer && customer.id === workOrder.customerId) {
       return;
     }

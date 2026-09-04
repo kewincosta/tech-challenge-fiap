@@ -62,10 +62,7 @@ export class Vehicle extends AggregateRoot {
     return new Vehicle({ ...props });
   }
 
-  updateDetails(
-    input: { brand?: string; model?: string; year?: VehicleYear },
-    now: Date,
-  ): void {
+  updateDetails(input: { brand?: string; model?: string; year?: VehicleYear }, now: Date): void {
     if (input.brand !== undefined) {
       this.props.brand = normaliseText(input.brand);
     }

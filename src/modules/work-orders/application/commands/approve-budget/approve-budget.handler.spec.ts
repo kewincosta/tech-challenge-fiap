@@ -128,7 +128,10 @@ function makeHandler(authorizer: BudgetDecisionAuthorizer) {
 
 describe('ApproveBudgetHandler', () => {
   it('approves the pending round and publishes both recorded events when the authorizer admits the actor', async () => {
-    const authorizer = stubAuthorizer({ roles: ['CUSTOMER'], permissions: [] }, customer(CUSTOMER_ID));
+    const authorizer = stubAuthorizer(
+      { roles: ['CUSTOMER'], permissions: [] },
+      customer(CUSTOMER_ID),
+    );
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval());
 
@@ -166,10 +169,7 @@ describe('ApproveBudgetHandler', () => {
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
-    const authorizer = stubAuthorizer(
-      { roles: [], permissions: ['work-orders:decide'] },
-      null,
-    );
+    const authorizer = stubAuthorizer({ roles: [], permissions: ['work-orders:decide'] }, null);
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(buildReceivedWorkOrder());
 

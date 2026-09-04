@@ -1,6 +1,10 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { VEHICLE_QUERY_PORT, VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
+import {
+  VEHICLE_QUERY_PORT,
+  VehicleQueryPort,
+  VehicleSummaryDto,
+} from '../../ports/vehicle-query.port';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { GetVehicleQuery } from './get-vehicle.query';
 

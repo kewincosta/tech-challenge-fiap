@@ -228,8 +228,12 @@ describe('Work order tracking - the customer routes', () => {
       .expect(404);
 
     // Same shape and code, not the full body: `reference` is a fresh UUID per request.
-    const { reference: strangerReference, ...strangerBody } = forStranger.body as { reference: string };
-    const { reference: unknownReference, ...unknownBody } = forUnknown.body as { reference: string };
+    const { reference: strangerReference, ...strangerBody } = forStranger.body as {
+      reference: string;
+    };
+    const { reference: unknownReference, ...unknownBody } = forUnknown.body as {
+      reference: string;
+    };
     expect(strangerBody).toEqual(unknownBody);
     expect(strangerReference).not.toBe(unknownReference);
   });

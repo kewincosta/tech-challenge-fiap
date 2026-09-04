@@ -33,7 +33,10 @@ afterAll(async () => {
   await dataSource.destroy();
 });
 
-async function registerCustomer(name: string, document: string): Promise<{ customerId: string; userId: string }> {
+async function registerCustomer(
+  name: string,
+  document: string,
+): Promise<{ customerId: string; userId: string }> {
   const user = buildUser({ email: `${randomUUID()}@example.com`, name, document });
   await userRepository.save(user);
   const customer = Customer.register({

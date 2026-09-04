@@ -14,7 +14,10 @@ import { SettleStockMovementsCommand } from './settle-stock-movements.command';
  * delivering a work order that withdrew no part is ordinary, not an error.
  */
 @CommandHandler(SettleStockMovementsCommand)
-export class SettleStockMovementsHandler implements ICommandHandler<SettleStockMovementsCommand, void> {
+export class SettleStockMovementsHandler implements ICommandHandler<
+  SettleStockMovementsCommand,
+  void
+> {
   constructor(
     @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
     @Inject(CLOCK) private readonly clock: Clock,

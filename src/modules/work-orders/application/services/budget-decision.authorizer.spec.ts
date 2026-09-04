@@ -64,7 +64,10 @@ function stubQueries(
 
 describe('BudgetDecisionAuthorizer', () => {
   it('admits an actor holding work-orders:decide, without ever reading their customer', async () => {
-    const queryBus = stubQueries({ roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:decide'] }, null);
+    const queryBus = stubQueries(
+      { roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:decide'] },
+      null,
+    );
     const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).resolves.toBeUndefined();
@@ -80,7 +83,10 @@ describe('BudgetDecisionAuthorizer', () => {
 
   it('refuses a customer who owns a different work order with WorkOrderNotFoundError, not a forbidden error', async () => {
     const otherCustomerId = '66666666-6666-4666-8666-666666666666';
-    const queryBus = stubQueries({ roles: ['CUSTOMER'], permissions: [] }, customer(otherCustomerId));
+    const queryBus = stubQueries(
+      { roles: ['CUSTOMER'], permissions: [] },
+      customer(otherCustomerId),
+    );
     const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).rejects.toThrow(

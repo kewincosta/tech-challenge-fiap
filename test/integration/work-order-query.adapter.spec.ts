@@ -299,7 +299,11 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
 
     const numbers = listed.map((row) => row.number);
     expect(numbers).toEqual(
-      expect.arrayContaining([received.number.value, canceled.number.value, delivered.number.value]),
+      expect.arrayContaining([
+        received.number.value,
+        canceled.number.value,
+        delivered.number.value,
+      ]),
     );
   });
 

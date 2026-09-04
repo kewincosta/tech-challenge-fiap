@@ -88,7 +88,9 @@ function makeHandler(commandBusExecute?: (command: unknown) => Promise<unknown>)
   if (commandBusExecute) {
     commandBus.execute.mockImplementation(commandBusExecute);
   } else {
-    commandBus.execute.mockResolvedValue([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, movementId: 'm1' }]);
+    commandBus.execute.mockResolvedValue([
+      { inventoryItemId: APPROVED_INVENTORY_ITEM_ID, movementId: 'm1' },
+    ]);
   }
   const eventBus = stubEventBus();
   const handler = new WithdrawPartsHandler(
@@ -106,7 +108,13 @@ describe('WithdrawPartsHandler', () => {
     const { handler, workOrders } = makeHandler();
 
     await expect(
-      handler.execute(new WithdrawPartsCommand('ZZZZZZ-2026', [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new WithdrawPartsCommand(
+          'ZZZZZZ-2026',
+          [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
   });
@@ -116,7 +124,13 @@ describe('WithdrawPartsHandler', () => {
     await workOrders.save(restoreInExecution(WorkOrderStatus.AwaitingApproval));
 
     await expect(
-      handler.execute(new WithdrawPartsCommand(NUMBER, [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new WithdrawPartsCommand(
+          NUMBER,
+          [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(WorkOrderStateError);
     expect(transactionRunner.runCalls).toBe(0);
   });
@@ -127,7 +141,9 @@ describe('WithdrawPartsHandler', () => {
     const unknownItemId = '99999999-9999-4999-8999-999999999999';
 
     await expect(
-      handler.execute(new WithdrawPartsCommand(NUMBER, [{ itemId: unknownItemId, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new WithdrawPartsCommand(NUMBER, [{ itemId: unknownItemId, quantity: 1 }], MECHANIC_ID),
+      ),
     ).rejects.toThrow(WorkOrderItemNotFoundError);
     expect(transactionRunner.runCalls).toBe(0);
   });
@@ -137,7 +153,11 @@ describe('WithdrawPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
-      new WithdrawPartsCommand(NUMBER, [{ itemId: APPROVED_ITEM_ID.value, quantity: 2 }], MECHANIC_ID),
+      new WithdrawPartsCommand(
+        NUMBER,
+        [{ itemId: APPROVED_ITEM_ID.value, quantity: 2 }],
+        MECHANIC_ID,
+      ),
     );
 
     expect(transactionRunner.runCalls).toBe(1);
@@ -146,7 +166,9 @@ describe('WithdrawPartsHandler', () => {
     expect(commandBus.execute).toHaveBeenCalledTimes(1);
     const dispatched = commandBus.execute.mock.calls[0][0] as ConsumeStockBatchCommand;
     expect(dispatched).toBeInstanceOf(ConsumeStockBatchCommand);
-    expect(dispatched.lines).toEqual([{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 }]);
+    expect(dispatched.lines).toEqual([
+      { inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 },
+    ]);
     expect(dispatched.workOrderId).toBe(updated.id.value);
     expect(dispatched.actorUserId).toBe(MECHANIC_ID);
   });
@@ -156,7 +178,11 @@ describe('WithdrawPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
-      new WithdrawPartsCommand(NUMBER, [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }], MECHANIC_ID),
+      new WithdrawPartsCommand(
+        NUMBER,
+        [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }],
+        MECHANIC_ID,
+      ),
     );
 
     expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
@@ -167,7 +193,13 @@ describe('WithdrawPartsHandler', () => {
     await workOrders.save(restoreInExecution());
 
     await expect(
-      handler.execute(new WithdrawPartsCommand(NUMBER, [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }], MECHANIC_ID)),
+      handler.execute(
+        new WithdrawPartsCommand(
+          NUMBER,
+          [{ itemId: APPROVED_ITEM_ID.value, quantity: 1 }],
+          MECHANIC_ID,
+        ),
+      ),
     ).rejects.toThrow(InsufficientStockError);
   });
 });

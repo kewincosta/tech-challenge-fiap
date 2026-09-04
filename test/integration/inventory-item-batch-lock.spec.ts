@@ -106,9 +106,7 @@ describe('TypeOrmInventoryItemRepository.findAllByIdsForUpdate', () => {
     const second = await buildStockedItem();
     const runner = new TypeOrmTransactionRunner(dataSource);
 
-    const found = await runner.run(() =>
-      repository.findAllByIdsForUpdate([second.id, first.id]),
-    );
+    const found = await runner.run(() => repository.findAllByIdsForUpdate([second.id, first.id]));
 
     // Internal ids are assigned in insertion order, so `first` sorts before `second`.
     expect(found.map((item) => item.id.value)).toEqual([first.id.value, second.id.value]);

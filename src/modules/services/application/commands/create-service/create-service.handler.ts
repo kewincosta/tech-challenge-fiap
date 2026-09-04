@@ -1,20 +1,27 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import { ID_GENERATOR, IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
+import {
+  ID_GENERATOR,
+  IdGenerator,
+} from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { Service } from '../../../domain/entities/service';
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
-import { SERVICE_REPOSITORY, ServiceRepository } from '../../../domain/repositories/service.repository';
+import {
+  SERVICE_REPOSITORY,
+  ServiceRepository,
+} from '../../../domain/repositories/service.repository';
 import { ServiceDuration } from '../../../domain/value-objects/service-duration';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
 import { CreatedServiceDto, CreateServiceCommand } from './create-service.command';
 
 @CommandHandler(CreateServiceCommand)
-export class CreateServiceHandler
-  implements ICommandHandler<CreateServiceCommand, CreatedServiceDto>
-{
+export class CreateServiceHandler implements ICommandHandler<
+  CreateServiceCommand,
+  CreatedServiceDto
+> {
   constructor(
     @Inject(SERVICE_REPOSITORY) private readonly services: ServiceRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,

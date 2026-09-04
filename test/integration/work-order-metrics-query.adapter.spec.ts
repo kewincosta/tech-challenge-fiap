@@ -138,9 +138,7 @@ function addSeconds(date: Date, seconds: number): Date {
  * wide). Verifying the window is clear before trusting it removes the risk outright: correctness
  * no longer depends on how many times this file has already run.
  */
-async function pickClearDay(
-  buildFilter: (day: Date) => AverageExecutionTimeFilter,
-): Promise<Date> {
+async function pickClearDay(buildFilter: (day: Date) => AverageExecutionTimeFilter): Promise<Date> {
   for (;;) {
     const day = randomDay();
     const probe = await adapter.averageExecutionTime(buildFilter(day));
@@ -311,11 +309,16 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
       completedTo: addSeconds(d, 30 * 86400),
     }));
     const secondVehicleId = await insertVehicle(fixture.customerId);
-    const withFilteredService = await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
-      status: 'COMPLETED',
-      executionStartedAt: addSeconds(day, 0),
-      completedAt: addSeconds(day, 3600),
-    });
+    const withFilteredService = await insertWorkOrder(
+      fixture.customerId,
+      fixture.vehicleId,
+      fixture.creatorId,
+      {
+        status: 'COMPLETED',
+        executionStartedAt: addSeconds(day, 0),
+        completedAt: addSeconds(day, 3600),
+      },
+    );
     await insertWorkOrderService(withFilteredService, filtered.internalId);
     // Carries the filtered service twice - must still count once, never twice, in the average.
     await insertWorkOrderService(withFilteredService, filtered.internalId);

@@ -96,9 +96,7 @@ export class TypeOrmRoleRepository implements RoleRepository {
     const permissionRows = await this.permissions.find({
       where: { id: In([...new Set(links.map((link) => link.permissionId))]) },
     });
-    const externalIdByInternalId = new Map(
-      permissionRows.map((row) => [row.id, row.externalId]),
-    );
+    const externalIdByInternalId = new Map(permissionRows.map((row) => [row.id, row.externalId]));
     const byRole = new Map<string, string[]>();
     for (const link of links) {
       const externalId = externalIdByInternalId.get(link.permissionId);

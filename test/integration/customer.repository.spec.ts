@@ -83,8 +83,16 @@ describe('TypeOrmCustomerRepository', () => {
 
   it('should throw CustomerAlreadyExistsForUserError on a duplicate user_id', async () => {
     const userId = await registerUser();
-    const first = Customer.register({ id: CustomerId.create(randomUUID()), userId, now: new Date() });
-    const second = Customer.register({ id: CustomerId.create(randomUUID()), userId, now: new Date() });
+    const first = Customer.register({
+      id: CustomerId.create(randomUUID()),
+      userId,
+      now: new Date(),
+    });
+    const second = Customer.register({
+      id: CustomerId.create(randomUUID()),
+      userId,
+      now: new Date(),
+    });
     await repository.save(first);
 
     await expect(repository.save(second)).rejects.toThrow(CustomerAlreadyExistsForUserError);

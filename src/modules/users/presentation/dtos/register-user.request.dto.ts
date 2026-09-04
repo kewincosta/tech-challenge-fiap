@@ -16,7 +16,10 @@ export class RegisterUserRequestDto {
   @IsNotEmpty()
   password!: string;
 
-  @ApiProperty({ example: '111.444.777-35', description: 'CPF or CNPJ, with or without punctuation' })
+  @ApiProperty({
+    example: '111.444.777-35',
+    description: 'CPF or CNPJ, with or without punctuation',
+  })
   @IsString()
   @IsNotEmpty()
   document!: string;

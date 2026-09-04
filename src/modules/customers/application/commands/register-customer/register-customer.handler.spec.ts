@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  stubCommandBus,
-  stubQueryBus,
-} from '../../../../../../test/support/fakes/bus.stubs';
+import { stubCommandBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
@@ -159,7 +156,14 @@ describe('RegisterCustomerHandler', () => {
 
     await expect(
       handler.execute(
-        new RegisterCustomerCommand(USER_ID, 'jane@example.com', undefined, undefined, undefined, undefined),
+        new RegisterCustomerCommand(
+          USER_ID,
+          'jane@example.com',
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+        ),
       ),
     ).rejects.toThrow(AmbiguousCustomerRegistrationError);
   });
@@ -169,7 +173,14 @@ describe('RegisterCustomerHandler', () => {
 
     await expect(
       handler.execute(
-        new RegisterCustomerCommand(undefined, undefined, undefined, undefined, undefined, undefined),
+        new RegisterCustomerCommand(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+        ),
       ),
     ).rejects.toThrow(AmbiguousCustomerRegistrationError);
   });

@@ -27,8 +27,8 @@ describe('ListVehiclesByCustomerHandler', () => {
   it('answers an empty list for a customer with no vehicles, never an error', async () => {
     const handler = new ListVehiclesByCustomerHandler(fakePort([]));
 
-    await expect(
-      handler.execute(new ListVehiclesByCustomerQuery(CUSTOMER_ID)),
-    ).resolves.toEqual([]);
+    await expect(handler.execute(new ListVehiclesByCustomerQuery(CUSTOMER_ID))).resolves.toEqual(
+      [],
+    );
   });
 });

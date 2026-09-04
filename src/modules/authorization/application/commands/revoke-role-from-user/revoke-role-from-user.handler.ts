@@ -7,9 +7,7 @@ import { ASSIGNMENT_REPOSITORY, AssignmentRepository } from '../../ports/assignm
 import { RevokeRoleFromUserCommand } from './revoke-role-from-user.command';
 
 @CommandHandler(RevokeRoleFromUserCommand)
-export class RevokeRoleFromUserHandler
-  implements ICommandHandler<RevokeRoleFromUserCommand, void>
-{
+export class RevokeRoleFromUserHandler implements ICommandHandler<RevokeRoleFromUserCommand, void> {
   constructor(
     @Inject(ASSIGNMENT_REPOSITORY) private readonly assignments: AssignmentRepository,
     @Inject(CLOCK) private readonly clock: Clock,

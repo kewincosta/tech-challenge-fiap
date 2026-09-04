@@ -13,10 +13,7 @@ import {
 } from '../../../domain/repositories/session.repository';
 import { SessionRevocationReason } from '../../../domain/session-revocation-reason';
 import { SessionId } from '../../../domain/value-objects/session-id';
-import {
-  REVOKED_SESSION_STORE,
-  RevokedSessionStore,
-} from '../../ports/revoked-session-store.port';
+import { REVOKED_SESSION_STORE, RevokedSessionStore } from '../../ports/revoked-session-store.port';
 import { RevokeSessionCommand } from './revoke-session.command';
 
 @CommandHandler(RevokeSessionCommand)

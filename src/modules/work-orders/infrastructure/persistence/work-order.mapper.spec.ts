@@ -199,7 +199,13 @@ describe('WorkOrderMapper.toDomain', () => {
     roundOneRow.decidedAt = NOW;
     roundOneRow.decidedByInternalId = '9101';
 
-    const workOrder = WorkOrderMapper.toDomain(row, [], [], [roundTwoRow, roundOneRow], baseResolved());
+    const workOrder = WorkOrderMapper.toDomain(
+      row,
+      [],
+      [],
+      [roundTwoRow, roundOneRow],
+      baseResolved(),
+    );
 
     expect(workOrder.budgets.map((budget) => budget.round)).toEqual([1, 2]);
   });
