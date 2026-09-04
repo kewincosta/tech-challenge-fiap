@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Workshop management system MVP: identity and access foundation",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=22"
   },
