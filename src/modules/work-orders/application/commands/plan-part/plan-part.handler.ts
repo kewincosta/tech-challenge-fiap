@@ -8,6 +8,7 @@ import {
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItemSummaryDto } from '../../../../inventory/application/ports/inventory-query.port';
 import { GetInventoryItemQuery } from '../../../../inventory/application/queries/get-inventory-item/get-inventory-item.query';
+import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import {
@@ -18,6 +19,8 @@ import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity'
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { PlanPartCommand } from './plan-part.command';
+
+const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(PlanPartCommand)
 export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
@@ -46,6 +49,12 @@ export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
     >(new GetInventoryItemQuery(command.inventoryItemId));
     if (!inventoryItem) {
       throw new ReferencedInventoryItemNotFoundError();
+    }
+    // Same gate AddRequestedServiceHandler applies to a deactivated service: an item off the
+    // catalog does not enter a new work order, while the parts already planned on open work
+    // orders stay valid - which is also what DeactivateInventoryItemHandler refuses on.
+    if (inventoryItem.status !== ACTIVE_STATUS) {
+      throw new InventoryItemInactiveError();
     }
 
     // This handler has no CommandBus: the stock cannot be touched from here, only read from,

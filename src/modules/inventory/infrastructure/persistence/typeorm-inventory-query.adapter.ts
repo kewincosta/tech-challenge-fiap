@@ -65,6 +65,20 @@ const SELECT_SHORTAGES = `
   HAVING SUM(wop.planned_quantity - wop.withdrawn_quantity) > ii.quantity_on_hand
 `;
 
+// Same cross-table read SELECT_SHORTAGES already performs, narrowed to one item and widened to
+// every non-terminal status: a part planned on a work order still in flight is what blocks the
+// deactivation, whether that work order has been budgeted yet or not. DELIVERED and CANCELED are
+// closed books, so an item they name is free to leave the catalog.
+const SELECT_OPEN_WORK_ORDERS_USING_ITEM = `
+  SELECT DISTINCT wo.number
+    FROM work_order_parts wop
+    JOIN work_orders wo ON wo.id = wop.work_order_id
+    JOIN inventory_items ii ON ii.id = wop.inventory_item_id
+   WHERE ii.external_id = $1
+     AND wo.status NOT IN ('DELIVERED', 'CANCELED')
+   ORDER BY wo.number
+`;
+
 // Raw SQL, not a TypeORM relation: users belongs to the users module, and AD-003 forbids
 // importing another module's repository or entities across module boundaries at this layer -
 // a plain join, the same way TypeOrmCustomerQueryAdapter reads across users, keeps the ledger
@@ -117,6 +131,14 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
   async listStockShortages(): Promise<StockShortageDto[]> {
     const rows: StockShortageRow[] = await this.dataSource.query(SELECT_SHORTAGES);
     return rows.map((row) => this.shortageToDto(row));
+  }
+
+  async listOpenWorkOrderNumbersUsing(externalId: string): Promise<string[]> {
+    const rows: { number: string }[] = await this.dataSource.query(
+      SELECT_OPEN_WORK_ORDERS_USING_ITEM,
+      [externalId],
+    );
+    return rows.map((row) => row.number);
   }
 
   private itemToDto(row: InventoryItemRow): InventoryItemSummaryDto {

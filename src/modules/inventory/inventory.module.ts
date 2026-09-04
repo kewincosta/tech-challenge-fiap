@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdjustStockHandler } from './application/commands/adjust-stock/adjust-stock.handler';
 import { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
 import { CreateInventoryItemHandler } from './application/commands/create-inventory-item/create-inventory-item.handler';
+import { DeactivateInventoryItemHandler } from './application/commands/deactivate-inventory-item/deactivate-inventory-item.handler';
 import { ReplenishStockHandler } from './application/commands/replenish-stock/replenish-stock.handler';
 import { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
 import { SettleStockMovementsHandler } from './application/commands/settle-stock-movements/settle-stock-movements.handler';
@@ -26,6 +27,7 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
   providers: [
     CreateInventoryItemHandler,
     UpdateInventoryItemHandler,
+    DeactivateInventoryItemHandler,
     ReplenishStockHandler,
     AdjustStockHandler,
     GetInventoryItemHandler,

@@ -286,3 +286,97 @@ describe('TypeOrmInventoryQueryAdapter', () => {
     expect(returnMovement?.undoesMovementId).toBe(consumeMovementId.value);
   });
 });
+
+describe('TypeOrmInventoryQueryAdapter.listOpenWorkOrderNumbersUsing', () => {
+  /** A work order in `status`, with one planned part pointing at `item`. Returns its number. */
+  async function planPartOn(item: InventoryItem, status: string): Promise<string> {
+    const number = `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`;
+    const userRows: Array<{ id: number }> = await dataSource.query(
+      `INSERT INTO users (external_id, email, password_hash, name, document, status, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, 'hash', 'Jane Doe', $2, 'ACTIVE', now(), now())
+       RETURNING id`,
+      [`${randomUUID()}@example.com`, Math.random().toString().slice(2, 13)],
+    );
+    const customerRows: Array<{ id: number }> = await dataSource.query(
+      `INSERT INTO customers (external_id, user_id, status, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, 'ACTIVE', now(), now())
+       RETURNING id`,
+      [userRows[0].id],
+    );
+    const vehicleRows: Array<{ id: number }> = await dataSource.query(
+      `INSERT INTO vehicles (external_id, customer_id, plate, brand, model, year, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, 'Toyota', 'Corolla', 2020, now(), now())
+       RETURNING id`,
+      [customerRows[0].id, Math.random().toString(36).slice(2, 9).toUpperCase()],
+    );
+    const workOrderRows: Array<{ id: number }> = await dataSource.query(
+      `INSERT INTO work_orders (external_id, number, customer_id, vehicle_id, created_by_user_id, status, customer_name, vehicle_plate, vehicle_brand, vehicle_model, vehicle_year, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'Jane Doe', 'ABC1234', 'Toyota', 'Corolla', 2020, now(), now())
+       RETURNING id`,
+      [number, customerRows[0].id, vehicleRows[0].id, userRows[0].id, status],
+    );
+    const itemRows: Array<{ id: number }> = await dataSource.query(
+      `SELECT id FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+    await dataSource.query(
+      `INSERT INTO work_order_parts (external_id, work_order_id, inventory_item_id, sku, item_name, planned_quantity, unit_price_cents, created_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, 'Item de teste', 2, 2500, now())`,
+      [workOrderRows[0].id, itemRows[0].id, item.sku.value],
+    );
+    return number;
+  }
+
+  it('should return an empty list for an item nobody planned', async () => {
+    const item = await saveItem();
+
+    await expect(queryAdapter.listOpenWorkOrderNumbersUsing(item.id.value)).resolves.toEqual([]);
+  });
+
+  it('should return an empty list for an unknown external id, never an error', async () => {
+    await expect(queryAdapter.listOpenWorkOrderNumbersUsing(randomUUID())).resolves.toEqual([]);
+  });
+
+  it.each(['RECEIVED', 'IN_DIAGNOSIS', 'AWAITING_APPROVAL', 'IN_EXECUTION', 'COMPLETED'])(
+    'should name a work order in %s, the states that still hold the item',
+    async (status) => {
+      const item = await saveItem();
+      const number = await planPartOn(item, status);
+
+      await expect(queryAdapter.listOpenWorkOrderNumbersUsing(item.id.value)).resolves.toEqual([
+        number,
+      ]);
+    },
+  );
+
+  it.each(['DELIVERED', 'CANCELED'])(
+    'should ignore a work order in %s, a closed book that frees the item',
+    async (status) => {
+      const item = await saveItem();
+      await planPartOn(item, status);
+
+      await expect(queryAdapter.listOpenWorkOrderNumbersUsing(item.id.value)).resolves.toEqual([]);
+    },
+  );
+
+  it('should name every open work order once, sorted, ignoring the closed ones', async () => {
+    const item = await saveItem();
+    const first = await planPartOn(item, 'IN_EXECUTION');
+    const second = await planPartOn(item, 'IN_DIAGNOSIS');
+    await planPartOn(item, 'DELIVERED');
+
+    await expect(queryAdapter.listOpenWorkOrderNumbersUsing(item.id.value)).resolves.toEqual(
+      [first, second].sort(),
+    );
+  });
+
+  it('should never name a work order that planned a different item', async () => {
+    const planned = await saveItem();
+    const untouched = await saveItem();
+    await planPartOn(planned, 'IN_EXECUTION');
+
+    await expect(queryAdapter.listOpenWorkOrderNumbersUsing(untouched.id.value)).resolves.toEqual(
+      [],
+    );
+  });
+});

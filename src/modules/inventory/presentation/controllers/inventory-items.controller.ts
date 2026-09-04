@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,6 +18,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -35,6 +37,7 @@ import {
   CreatedInventoryItemDto,
   CreateInventoryItemCommand,
 } from '../../application/commands/create-inventory-item/create-inventory-item.command';
+import { DeactivateInventoryItemCommand } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.command';
 import { ReplenishStockCommand } from '../../application/commands/replenish-stock/replenish-stock.command';
 import { UpdateInventoryItemCommand } from '../../application/commands/update-inventory-item/update-inventory-item.command';
 import {
@@ -148,6 +151,26 @@ export class InventoryItemsController {
       new UpdateInventoryItemCommand(externalId, body.name, body.description, body.unitPriceCents),
     );
     return this.getItemOrThrow(externalId);
+  }
+
+  @Delete(':externalId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(AppPermission.InventoryManage)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Deactivate a catalog item (the record and its movement history are kept)',
+    description:
+      'Refused with 409 while any work order that planned the item has not been delivered or ' +
+      'canceled. The quantity on hand is left untouched - only a movement moves the count.',
+  })
+  @ApiNoContentResponse()
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  @ApiForbiddenResponse({ type: ErrorResponseDto })
+  async deactivate(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
+    await this.commandBus.execute<DeactivateInventoryItemCommand, void>(
+      new DeactivateInventoryItemCommand(externalId),
+    );
   }
 
   @Post(':externalId/replenishments')

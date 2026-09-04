@@ -9,6 +9,7 @@ function fakePort(result: StockShortageDto[]): InventoryQueryPort {
     listActive: vi.fn(),
     listMovements: vi.fn(),
     listStockShortages: vi.fn().mockResolvedValue(result),
+    listOpenWorkOrderNumbersUsing: vi.fn(),
   };
 }
 

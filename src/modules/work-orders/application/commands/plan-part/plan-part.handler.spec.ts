@@ -5,6 +5,7 @@ import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-ge
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { InventoryItemSummaryDto } from '../../../../inventory/application/ports/inventory-query.port';
 import { WorkOrder } from '../../../domain/entities/work-order';
+import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { InvalidPlannedQuantityError } from '../../../domain/errors/invalid-planned-quantity.error';
 import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
@@ -32,6 +33,8 @@ const ACTIVE_ITEM: InventoryItemSummaryDto = {
   quantityOnHand: 10,
   status: 'ACTIVE',
 };
+
+const INACTIVE_ITEM: InventoryItemSummaryDto = { ...ACTIVE_ITEM, status: 'INACTIVE' };
 
 function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
   if (status === WorkOrderStatus.Received) {
@@ -91,6 +94,16 @@ function makeHandler(inventoryItem: InventoryItemSummaryDto | null) {
 }
 
 describe('PlanPartHandler', () => {
+  it('should refuse a deactivated item with InventoryItemInactiveError, planning nothing', async () => {
+    const { handler, workOrders } = makeHandler(INACTIVE_ITEM);
+    await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
+
+    await expect(
+      handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID)),
+    ).rejects.toThrow(InventoryItemInactiveError);
+    expect(workOrders.workOrders[0].partItems).toHaveLength(0);
+  });
+
   it('should plan a part on a work order in IN_DIAGNOSIS, snapshotting the SKU, name and unit price', async () => {
     const { handler, workOrders } = makeHandler(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));

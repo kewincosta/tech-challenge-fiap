@@ -450,3 +450,215 @@ describe('Inventory items - stock shortages', () => {
     expect(rows.some((candidate) => candidate.inventoryItemId === item.id)).toBe(false);
   });
 });
+
+describe('Inventory item deactivation', () => {
+  async function openWorkOrderWithPart(inventoryItemId: string): Promise<string> {
+    const owner = await registerUser(app);
+    const customer = await api(app)
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ userId: owner.userId })
+      .expect(201);
+    const customerId = (customer.body as { id: string }).id;
+    const vehicle = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
+      .expect(201);
+    const created = await api(app)
+      .post('/api/v1/work-orders')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId, vehicleId: (vehicle.body as { id: string }).id })
+      .expect(201);
+    const number = (created.body as { number: string }).number;
+
+    await api(app)
+      .post(`/api/v1/work-orders/${number}/diagnosis`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${number}/parts`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ inventoryItemId, quantity: 2 })
+      .expect(200);
+    return number;
+  }
+
+  it('takes the item out of the active listing and keeps the record readable by id', async () => {
+    const item = await createItem();
+
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const listed = await api(app)
+      .get('/api/v1/inventory-items')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const rows = listed.body as Array<{ id: string }>;
+    expect(rows.some((candidate) => candidate.id === item.id)).toBe(false);
+
+    const read = await api(app)
+      .get(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    expect(read.body).toMatchObject({ id: item.id, status: 'INACTIVE' });
+  });
+
+  it('keeps the quantity on hand and the movement history intact', async () => {
+    const item = await createItem();
+    await api(app)
+      .post(`/api/v1/inventory-items/${item.id}/replenishments`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ quantity: 7, unitPriceCents: 2500, note: 'Reposicao inicial' })
+      .expect(200);
+
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const read = await api(app)
+      .get(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    expect(read.body).toMatchObject({ quantityOnHand: 7 });
+
+    const movements = await api(app)
+      .get(`/api/v1/inventory-items/${item.id}/movements`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    expect(movements.body).toHaveLength(1);
+  });
+
+  it('frees the SKU for a new active item', async () => {
+    const item = await createItem();
+
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    await api(app)
+      .post('/api/v1/inventory-items')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ sku: item.sku, name: 'Filtro de oleo novo', kind: 'PART', unitPriceCents: 2600 })
+      .expect(201);
+  });
+
+  it('is idempotent when deactivated twice', async () => {
+    const item = await createItem();
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+  });
+
+  it('refuses with 409 while an open work order still plans the item, naming the work order', async () => {
+    const item = await createItem();
+    const number = await openWorkOrderWithPart(item.id);
+
+    const response = await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(409);
+    expect(response.body).toMatchObject({ code: 'INVENTORY_ITEM_IN_USE' });
+    expect((response.body as { message: string }).message).toContain(number);
+
+    const read = await api(app)
+      .get(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    expect(read.body).toMatchObject({ status: 'ACTIVE' });
+  });
+
+  it('lets the item leave the catalog once the work order that planned it is canceled', async () => {
+    const item = await createItem();
+    const number = await openWorkOrderWithPart(item.id);
+    await api(app)
+      .post(`/api/v1/work-orders/${number}/cancellation`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ reason: 'Cliente desistiu do orcamento' })
+      .expect(200);
+
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+  });
+
+  it('refuses a deactivated item when planning a part on a work order', async () => {
+    const item = await createItem();
+    await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const owner = await registerUser(app);
+    const customer = await api(app)
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ userId: owner.userId })
+      .expect(201);
+    const customerId = (customer.body as { id: string }).id;
+    const vehicle = await api(app)
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({
+        customerId,
+        plate: uniqueLicensePlate(),
+        brand: 'Toyota',
+        model: 'Corolla',
+        year: 2020,
+      })
+      .expect(201);
+    const created = await api(app)
+      .post('/api/v1/work-orders')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ customerId, vehicleId: (vehicle.body as { id: string }).id })
+      .expect(201);
+    const number = (created.body as { number: string }).number;
+    await api(app)
+      .post(`/api/v1/work-orders/${number}/diagnosis`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${number}/parts`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ inventoryItemId: item.id, quantity: 2 })
+      .expect(422);
+    expect(response.body).toMatchObject({ code: 'WORK_ORDER_INVENTORY_ITEM_INACTIVE' });
+  });
+
+  it('refuses an actor lacking inventory:manage with 403', async () => {
+    const item = await createItem();
+    const mechanic = await loginAs('MECHANIC');
+
+    const response = await api(app)
+      .delete(`/api/v1/inventory-items/${item.id}`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(403);
+    expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('answers 404 for an unknown item', async () => {
+    const response = await api(app)
+      .delete('/api/v1/inventory-items/00000000-0000-4000-8000-000000000001')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+    expect(response.body).toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
+  });
+});

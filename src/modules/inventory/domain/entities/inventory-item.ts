@@ -2,6 +2,7 @@ import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { AdjustmentNoteRequiredError } from '../errors/adjustment-note-required.error';
 import { InventoryItemCreated } from '../events/inventory-item-created.event';
+import { InventoryItemDeactivated } from '../events/inventory-item-deactivated.event';
 import { InventoryItemUpdated } from '../events/inventory-item-updated.event';
 import { StockAdjusted } from '../events/stock-adjusted.event';
 import { StockReplenished } from '../events/stock-replenished.event';
@@ -127,6 +128,20 @@ export class InventoryItem extends AggregateRoot {
     }
     this.props.updatedAt = now;
     this.record(new InventoryItemUpdated(this.props.id.value, now));
+  }
+
+  /**
+   * Takes the item out of the catalog and keeps the record, the same soft delete `Service`
+   * performs. Idempotent, so a second call records no event. The count is left untouched: the
+   * units are still on the shelf, and only a movement moves the count (INV-01 AC6).
+   */
+  deactivate(now: Date): void {
+    if (this.props.status === InventoryItemStatus.Inactive) {
+      return;
+    }
+    this.props.status = InventoryItemStatus.Inactive;
+    this.props.updatedAt = now;
+    this.record(new InventoryItemDeactivated(this.props.id.value, now));
   }
 
   replenish(input: ReplenishStockInput): void {
