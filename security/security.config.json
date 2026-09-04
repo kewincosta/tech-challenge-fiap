@@ -1,0 +1,34 @@
+{
+  "application": {
+    "baseUrl": "http://localhost:13000",
+    "apiPrefix": "/api/v1"
+  },
+  "openapi": {
+    "url": "http://localhost:13000/api/docs-json",
+    "path": null
+  },
+  "scanners": {
+    "npmAudit": true,
+    "semgrep": true,
+    "dependencyCheck": true,
+    "zap": true
+  },
+  "semgrep": {
+    "config": "p/security-audit",
+    "dockerImage": "semgrep/semgrep:1.97.0",
+    "timeoutMs": 600000
+  },
+  "dependencyCheck": {
+    "dockerImage": "owasp/dependency-check:12.1.0",
+    "timeoutMs": 2700000
+  },
+  "zap": {
+    "dockerImage": "ghcr.io/zaproxy/zaproxy:stable",
+    "mode": "auto",
+    "timeoutMs": 900000
+  },
+  "report": {
+    "title": "Security Vulnerability Assessment",
+    "markdown": true
+  }
+}

@@ -3,7 +3,7 @@ import { swcPlugin } from './vitest.base';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'security/**/*.spec.ts'],
     environment: 'node',
     setupFiles: ['./test/support/setup-tests.ts'],
     coverage: {

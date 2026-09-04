@@ -33,6 +33,7 @@ API REST para a operação de uma oficina mecânica, da chegada do veículo até
 - [Decisões técnicas](#decisões-técnicas)
 - [Requisitos do desafio](#requisitos-do-desafio)
 - [Segurança](#segurança)
+- [Análise de segurança](#análise-de-segurança)
 - [Deploy](#deploy)
 - [Contribuindo](#contribuindo)
 - [Licença](#licença)
@@ -767,6 +768,23 @@ O que está implementado:
 O que este projeto **não** afirma: não passou por auditoria de segurança, não roda em produção e
 não deve ser tratado como pronto para isso. Não há `SECURITY.md` neste repositório; para relatar
 uma vulnerabilidade, abra uma issue sem detalhar o vetor e peça um canal privado.
+
+## Análise de segurança
+
+O projeto inclui uma ferramenta interna de análise de vulnerabilidades, montada sobre ferramentas
+reconhecidas pela OWASP: `npm audit` e OWASP Dependency-Check para as dependências, Semgrep para o
+código, e OWASP ZAP contra a aplicação em execução.
+
+```bash
+docker compose up -d   # o scan dinâmico precisa da aplicação no ar
+npm run security:scan
+```
+
+O resultado é um relatório consolidado em `security/reports/security-report.html`, que abre
+offline e está pronto para virar PDF.
+
+A metodologia, os pré-requisitos, a configuração, a interpretação dos resultados e as limitações
+estão em [Documentação da análise de segurança](security/README.md).
 
 ## Deploy
 

@@ -5,3 +5,8 @@ coverage/
 *.log
 .DS_Store
 *.tsbuildinfo
+
+# Security assessment output: the reports are generated, not versioned
+security/reports/*
+!security/reports/.gitkeep
+security/.cache/
