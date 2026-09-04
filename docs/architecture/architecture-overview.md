@@ -93,9 +93,10 @@ external UUID, and only the UUID appears in a route or a payload
 
 ## Where to go next
 
-| Question                                                      | Document                                       |
-| ------------------------------------------------------------- | ---------------------------------------------- |
-| How do the modules fit together, and what is the guard chain? | [High level design](high-level-design.md)      |
-| What is inside one module?                                    | [Low level design](low-level-design/README.md) |
-| Why was something decided this way?                           | [Decision records](../adr/README.md)           |
-| How do I run it?                                              | [README](../../README.md)                      |
+| Question                                                      | Document                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------- |
+| How do the modules fit together, and what is the guard chain? | [High level design](high-level-design.md)               |
+| What is inside one module?                                    | [Low level design](low-level-design/README.md)          |
+| Why was something decided this way?                           | [Decision records](../adr/README.md)                    |
+| What does the business call it?                               | [Ubiquitous language](../ubiquitous-language/README.md) |
+| How do I run it?                                              | [README](../../README.md)                               |

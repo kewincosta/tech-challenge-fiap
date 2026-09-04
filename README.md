@@ -29,6 +29,7 @@ API REST para a operação de uma oficina mecânica, da chegada do veículo até
 - [Qualidade de código](#qualidade-de-código)
 - [Estrutura de pastas](#estrutura-de-pastas)
 - [Convenções](#convenções)
+- [Linguagem ubíqua](#linguagem-ubíqua)
 - [Decisões técnicas](#decisões-técnicas)
 - [Requisitos do desafio](#requisitos-do-desafio)
 - [Segurança](#segurança)
@@ -72,6 +73,11 @@ vocabulário do domínio consistente do agregado até o nome da coluna.
 
 Os dados de exemplo (nomes de serviço, endereços, os dados que `npm run seed` cria) estão em
 português, porque são conteúdo brasileiro, não código.
+
+A exceção deliberada é
+[`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md), escrito em português. A
+linguagem ubíqua é justamente a ponte entre quem fala do negócio e quem escreve o código, e a
+tradução entre os dois idiomas é o que aquele conjunto existe para registrar.
 
 ## Funcionalidades
 
@@ -200,6 +206,9 @@ Detalhes em [`docs/architecture/`](docs/architecture/):
 [visão geral](docs/architecture/architecture-overview.md),
 [projeto de alto nível](docs/architecture/high-level-design.md),
 [projeto de baixo nível por módulo](docs/architecture/low-level-design/README.md).
+
+O vocabulário de cada contexto, com a tradução entre o termo de negócio e o termo de código, está
+em [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 
 ## Stack
 
@@ -566,6 +575,26 @@ a comunicação é por `CommandBus` e `QueryBus`, trocando identificadores e DTO
 
 **Erros** são classes de domínio com código próprio e um tipo, e o tipo define o status HTTP. Um
 handler nunca escolhe um código de status.
+
+## Linguagem ubíqua
+
+O vocabulário compartilhado entre negócio, produto, desenvolvimento e QA está em
+[`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md), um documento por contexto
+delimitado. Cada um traz os conceitos, atores, comandos, eventos, regras, estados e agregados
+daquele contexto, mais duas seções que o resto da documentação não cobre: os **termos rejeitados**,
+com o que usar no lugar, e a tabela de **vocabulário de domínio × vocabulário técnico**, que liga
+cada termo de negócio ao nome que ele tem no código.
+
+| Documento                                                                | Contexto                               |
+| ------------------------------------------------------------------------ | -------------------------------------- |
+| [Identidade e Acesso](docs/ubiquitous-language/identidade-e-acesso.md)   | Contas, sessões, papéis e permissões   |
+| [Cadastro de Clientes](docs/ubiquitous-language/cadastro-de-clientes.md) | Clientes e veículos                    |
+| [Catálogo de Serviços](docs/ubiquitous-language/catalogo-de-servicos.md) | O que a oficina vende como mão de obra |
+| [Estoque](docs/ubiquitous-language/estoque.md)                           | Peças, insumos e movimentos            |
+| [Ordem de Serviço](docs/ubiquitous-language/ordem-de-servico.md)         | A vida da OS, da recepção à entrega    |
+
+O índice carrega o que atravessa os contextos: os termos ambíguos entre eles, os termos rejeitados
+em todo o projeto, o registro das decisões de linguagem e o checklist de consistência.
 
 ## Decisões técnicas
 
