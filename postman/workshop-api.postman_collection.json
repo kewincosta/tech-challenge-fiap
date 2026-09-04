@@ -1,0 +1,2747 @@
+{
+  "info": {
+    "name": "Workshop Management API",
+    "description": "Colecao dos fluxos principais da operacao de oficina, na ordem em que acontecem.\n\n## Antes de rodar\n\n1. `docker compose up -d`\n2. `npm run migration:run`\n3. `npm run seed`\n\nO seed cria um usuario por papel e os dados de catalogo, estoque, cliente e veiculo que esta colecao usa. Importe tambem o environment `workshop-api.local.postman_environment.json`.\n\n## Como rodar\n\nPelo Collection Runner, de cima para baixo: cada pasta guarda em variaveis o que a proxima precisa. A pasta `00. Autenticacao` e obrigatoria e vem primeiro. A pasta `07. Encerramento` derruba as sessoes, entao fica por ultimo.\n\nAs requisicoes que criam contas geram um CPF valido e um e-mail unico a cada execucao, porque o banco nao e limpo entre rodadas.\n\n## Limite de requisicoes\n\nAs rotas de autenticacao tem um limite proprio, mais estreito que o global: `RATE_LIMIT_AUTH_MAX_REQUESTS` por `RATE_LIMIT_TTL_SECONDS` (10 a cada 60 segundos, por padrao). Uma execucao completa gasta quase toda a cota, entao duas rodadas seguidas recebem 429. Espere a janela fechar antes de repetir, ou suba os dois valores no `.env`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00. Autenticacao",
+      "description": "Login de cada ator criado por `npm run seed`. Rode esta pasta primeiro: todas as outras usam os tokens que ela guarda.",
+      "item": [
+        {
+          "name": "Login - ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Acesso administrativo completo: usuarios, papeis, catalogo, estoque e ordens de servico."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('adminToken', body.accessToken);",
+                  "pm.collectionVariables.set('adminRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - SERVICE_ADVISOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{advisorEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Consultor: recebe o cliente, abre a OS e monta o orcamento."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('advisorToken', body.accessToken);",
+                  "pm.collectionVariables.set('advisorRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - MECHANIC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mechanicEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Mecanico: diagnostica, executa e conclui a OS."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('mechanicToken', body.accessToken);",
+                  "pm.collectionVariables.set('mechanicRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - CUSTOMER",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cliente do seed: acompanha e decide o orcamento das proprias ordens."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('customerToken', body.accessToken);",
+                  "pm.collectionVariables.set('customerRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quem sou eu (MECHANIC)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mechanicToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me"
+              ]
+            },
+            "description": "A unica rota que devolve o identificador do proprio usuario junto dos papeis e permissoes. A OS precisa dele para atribuir o mecanico."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('mechanicUserId', body.id);",
+                  "pm.test('traz os papeis e as permissoes efetivas', () => pm.expect(body.roles).to.include('MECHANIC'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renovar o par de tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "tokens"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{advisorRefreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O refresh token e de uso unico: a resposta traz um novo par e o antigo deixa de valer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('advisorToken', body.accessToken);",
+                  "pm.collectionVariables.set('advisorRefreshToken', body.refreshToken);",
+                  "pm.test('o refresh token e rotacionado', () => pm.expect(body.refreshToken).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar sessoes ativas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a sessao atual esta marcada', () => pm.expect(pm.response.json().some((s) => s.current)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01. Cadastro do cliente",
+      "description": "Da conta ate o primeiro veiculo. A conta e criada em rota publica, recebe o papel CUSTOMER, vira um cadastro de cliente e ganha um veiculo.",
+      "item": [
+        {
+          "name": "Criar conta (rota publica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoClienteEmail}}\",\n  \"name\": \"Joana Pereira\",\n  \"password\": \"{{seedPassword}}\",\n  \"document\": \"{{novoClienteCpf}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Unica rota de escrita sem autenticacao. Tem limite de requisicoes proprio, mais estreito que o global."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Um CPF valido e um e-mail unico a cada execucao: o banco de teste nunca e truncado.",
+                  "const digito = (ds, peso) => { const s = ds.reduce((t, d, i) => t + d * (peso - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
+                  "const base = String(Math.floor(100000000 + Math.random() * 899999999));",
+                  "const ds = base.split('').map(Number);",
+                  "const d1 = digito(ds, 10);",
+                  "const d2 = digito([...ds, d1], 11);",
+                  "pm.collectionVariables.set('novoClienteCpf', `${base}${d1}${d2}`);",
+                  "pm.collectionVariables.set('novoClienteEmail', `joana.${Date.now()}@exemplo.local`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoClienteUserId', body.id);",
+                  "pm.test('novoClienteUserId capturado', () => pm.expect(pm.collectionVariables.get('novoClienteUserId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar papeis",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles"
+              ]
+            },
+            "description": "Guarda os identificadores de CUSTOMER e MECHANIC, usados aqui e na pasta 02."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const papeis = pm.response.json();",
+                  "const porNome = (nome) => papeis.find((r) => r.name === nome);",
+                  "pm.collectionVariables.set('roleCustomerId', porNome('CUSTOMER').id);",
+                  "pm.collectionVariables.set('roleMechanicId', porNome('MECHANIC').id);",
+                  "pm.test('os papeis de sistema existem', () => { pm.expect(porNome('CUSTOMER')).to.be.an('object'); pm.expect(porNome('MECHANIC')).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atribuir o papel CUSTOMER",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoClienteUserId}}/roles/{{roleCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoClienteUserId}}",
+                "roles",
+                "{{roleCustomerId}}"
+              ]
+            },
+            "description": "Idempotente. Sem este papel, o cadastro de cliente do proximo passo e recusado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar como cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{novoClienteUserId}}\",\n  \"address\": {\n    \"street\": \"Rua das Laranjeiras\",\n    \"number\": \"220\",\n    \"complement\": \"Apto 71\",\n    \"district\": \"Centro\",\n    \"city\": \"Campinas\",\n    \"state\": \"SP\",\n    \"zipCode\": \"13010100\"\n  },\n  \"phoneNumber\": \"(19) 99876-5432\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Liga o cadastro de oficina a conta existente. Endereco e telefone sao opcionais, mas o endereco e tudo ou nada."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoClienteId', body.id);",
+                  "pm.test('novoClienteId capturado', () => pm.expect(pm.collectionVariables.get('novoClienteId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastrar veiculo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"plate\": \"{{novaPlaca}}\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Golf\",\n  \"year\": 2021\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Aceita o formato antigo (AAA0000) e o Mercosul (AAA0A00), com ou sem separadores."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Placa Mercosul (AAA0A00) sorteada: a placa e unica entre os veiculos ativos.",
+                  "const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';",
+                  "const l = () => L[Math.floor(Math.random() * L.length)];",
+                  "const n = () => Math.floor(Math.random() * 10);",
+                  "pm.collectionVariables.set('novaPlaca', `${l()}${l()}${l()}${n()}${l()}${n()}${n()}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoVeiculoId', body.id);",
+                  "pm.test('novoVeiculoId capturado', () => pm.expect(pm.collectionVariables.get('novoVeiculoId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login do novo cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoClienteEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoClienteToken', body.accessToken);",
+                  "pm.collectionVariables.set('novoClienteRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Meu cadastro de cliente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('devolve o proprio cadastro', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('novoClienteId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Meus veiculos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('lista o veiculo recem cadastrado', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar o proprio cadastro",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers",
+                "me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"(19) 3232-1010\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('o telefone foi normalizado para digitos', () => pm.expect(pm.response.json().phoneNumber).to.eql('1932321010'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Gestao de usuarios",
+      "description": "Contas de equipe e o modelo de acesso. Uma conta de staff nasce com senha temporaria e so passa pelos guards depois da troca.",
+      "item": [
+        {
+          "name": "Listar permissoes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "permissions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('o catalogo de permissoes nao esta vazio', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar um papel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/roles/{{roleCustomerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "roles",
+                "{{roleCustomerId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar conta de staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "staff"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoStaffEmail}}\",\n  \"name\": \"Rafael Souza\",\n  \"document\": \"{{novoStaffCpf}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A senha temporaria aparece so nesta resposta e nunca e registrada em log. Ate a troca, a conta so alcanca /users/me/password."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const digito = (ds, peso) => { const s = ds.reduce((t, d, i) => t + d * (peso - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
+                  "const base = String(Math.floor(100000000 + Math.random() * 899999999));",
+                  "const ds = base.split('').map(Number);",
+                  "const d1 = digito(ds, 10);",
+                  "const d2 = digito([...ds, d1], 11);",
+                  "pm.collectionVariables.set('novoStaffCpf', `${base}${d1}${d2}`);",
+                  "pm.collectionVariables.set('novoStaffEmail', `rafael.${Date.now()}@oficina.local`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoStaffId', body.id);",
+                  "pm.collectionVariables.set('novoStaffSenha', body.temporaryPassword);",
+                  "pm.test('a senha temporaria vem uma unica vez', () => pm.expect(body.temporaryPassword).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atribuir o papel MECHANIC ao staff",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoStaffId}}",
+                "roles",
+                "{{roleMechanicId}}"
+              ]
+            },
+            "description": "roleMechanicId vem da listagem de papeis da pasta 01."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar os acessos do usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoStaffId}}/access",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoStaffId}}",
+                "access"
+              ]
+            },
+            "description": "Devolve os papeis atribuidos diretamente ao usuario, cada um com seu identificador e nome."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('o papel MECHANIC aparece', () => pm.expect(pm.response.json().roles.map((r) => r.name)).to.include('MECHANIC'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login do staff com a senha temporaria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoStaffEmail}}\",\n  \"password\": \"{{novoStaffSenha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoStaffToken', body.accessToken);",
+                  "pm.collectionVariables.set('novoStaffRefreshToken', body.refreshToken);",
+                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trocar a senha temporaria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoStaffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/me/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "me",
+                "password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{novoStaffSenha}}\",\n  \"newPassword\": \"{{seedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Encerra todas as sessoes do usuario, inclusive a que fez a troca. E preciso logar de novo depois."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios por documento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users?document={{novoStaffCpf}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "document",
+                  "value": "{{novoStaffCpf}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('encontra a conta pelo CPF', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar o usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoStaffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoStaffId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rafael Souza Lima\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revogar o papel",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoStaffId}}",
+                "roles",
+                "{{roleMechanicId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desativar a conta",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{novoStaffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{novoStaffId}}"
+              ]
+            },
+            "description": "Exclusao logica: a linha permanece, as sessoes caem e a conta some das listagens."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Gestao de estoque",
+      "description": "Cadastro de pecas e insumos com contagem verdadeira. A quantidade em maos nunca e escrita direto: so um movimento a move.",
+      "item": [
+        {
+          "name": "Criar item de catalogo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{novoSku}}\",\n  \"name\": \"Correia dentada\",\n  \"description\": \"Kit com tensor\",\n  \"kind\": \"PART\",\n  \"unitPriceCents\": 27500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "`kind` aceita PART ou SUPPLY. O item nasce com quantidade zero."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('novoSku', `CRR-${Date.now().toString().slice(-8)}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('novoItemId', body.id);",
+                  "pm.test('novoItemId capturado', () => pm.expect(pm.collectionVariables.get('novoItemId')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar o catalogo ativo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items?kind=PART",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "PART"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const itens = pm.response.json();",
+                  "const comEstoque = itens.find((i) => i.quantityOnHand > 0) || itens[0];",
+                  "pm.collectionVariables.set('itemComEstoqueId', comEstoque.id);",
+                  "pm.test('o catalogo tem pecas', () => pm.expect(itens).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar um item",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nasce com quantidade zero', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar nome e preco",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Correia dentada reforcada\",\n  \"unitPriceCents\": 29900\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Envie `description: null` para limpar a descricao; omita o campo para nao mexer nela."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a quantidade nao muda com um PATCH', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repor estoque",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/replenishments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}",
+                "replenishments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 30,\n  \"unitPriceCents\": 29900,\n  \"note\": \"Nota fiscal 4471\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Grava um movimento INBOUND e sobe a contagem."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a contagem sobe para 30', () => pm.expect(pm.response.json().quantityOnHand).to.eql(30));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ajustar estoque para baixo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}",
+                "adjustments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 4,\n  \"note\": \"Avaria no transporte\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A justificativa e obrigatoria no ajuste, ao contrario da reposicao. A contagem nunca fica negativa."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a contagem desce para 26', () => pm.expect(pm.response.json().quantityOnHand).to.eql(26));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historico de movimentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}",
+                "movements"
+              ]
+            },
+            "description": "Livro-razao somente-adicao: nenhum movimento e editado ou apagado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('dois movimentos, em ordem cronologica', () => pm.expect(pm.response.json()).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Faltas de estoque",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/shortages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "shortages"
+              ]
+            },
+            "description": "Itens cuja demanda das OS em execucao passa do que ha na prateleira."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desativar o item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items",
+                "{{novoItemId}}"
+              ]
+            },
+            "description": "Exclusao logica. Recusada com 409 enquanto alguma OS que planejou o item nao foi entregue ou cancelada. A contagem e o historico permanecem, e o SKU volta a ficar livre."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "O item desativado saiu da listagem",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory-items"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('nao aparece mais no catalogo ativo', () => pm.expect(pm.response.json().some((i) => i.id === pm.collectionVariables.get('novoItemId'))).to.be.false);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Gestao de ordem de servico",
+      "description": "O fluxo completo, na ordem em que a maquina de estados aceita: RECEBIDA, EM DIAGNOSTICO, AGUARDANDO APROVACAO, EM EXECUCAO, FINALIZADA, ENTREGUE.",
+      "item": [
+        {
+          "name": "Identificar o cliente pelo CPF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/customers?document={{novoClienteCpf}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "document",
+                  "value": "{{novoClienteCpf}}"
+                }
+              ]
+            },
+            "description": "O balcao parte do CPF ou CNPJ. O identificador encontrado aqui e o que abre a OS."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const clientes = pm.response.json();",
+                  "pm.collectionVariables.set('novoClienteId', clientes[0].id);",
+                  "pm.test('encontra o cliente pelo documento', () => pm.expect(clientes).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar os veiculos do cliente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vehicles?customerId={{novoClienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vehicles"
+              ],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "{{novoClienteId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('novoVeiculoId', pm.response.json()[0].id);",
+                  "pm.test('o cliente tem veiculo', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir a OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"vehicleId\": \"{{novoVeiculoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nasce em RECEBIDA. Um veiculo so pode ter uma OS aberta por vez."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('osNumero', body.number);",
+                  "pm.test('nasce com um numero proprio', () => pm.expect(body.number).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar o catalogo de servicos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('servicoId', pm.response.json()[0].id);",
+                  "pm.test('o catalogo tem servicos', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar o diagnostico",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mechanicToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "diagnosis"
+              ]
+            },
+            "description": "O status muda sozinho, como consequencia da acao. Nao existe rota para escrever um status a mao."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('passa para EM DIAGNOSTICO', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atribuir o mecanico",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/mechanic",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "mechanic"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mechanicUserId\": \"{{mechanicUserId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('o mecanico fica registrado na OS', () => pm.expect(pm.response.json().assignedMechanicUserId).to.eql(pm.collectionVariables.get('mechanicUserId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Incluir um servico solicitado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "services"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{servicoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O preco vem do catalogo. Nenhuma rota aceita um preco do cliente."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a OS passa a ter um servico', () => pm.expect(pm.response.json().serviceItems).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Planejar uma peca",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/parts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "parts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inventoryItemId\": \"{{itemComEstoqueId}}\",\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Planejar nao move estoque. A baixa acontece na retirada, mais adiante."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const peca = pm.response.json().partItems[0];",
+                  "pm.collectionVariables.set('osItemPecaId', peca.id);",
+                  "pm.test('a peca entra planejada, sem sair do estoque', () => pm.expect(peca.withdrawnQuantity).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir o diagnostico e gerar o orcamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mechanicToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis/completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "diagnosis",
+                "completion"
+              ]
+            },
+            "description": "O orcamento e somado dentro do agregado, a partir dos servicos e das pecas planejadas. O total nao vem de nenhum campo de entrada."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('passa para AGUARDANDO APROVACAO', () => pm.expect(body.status).to.eql('AWAITING_APPROVAL'));",
+                  "pm.test('a rodada 1 foi gerada com um total', () => pm.expect(body.budgets[0].totalCents).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar a OS orcada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a rodada 1 esta pendente de decisao', () => pm.expect(pm.response.json().budgets[0].status).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cliente aprova o orcamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/budget/approval",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "budget",
+                "approval"
+              ]
+            },
+            "description": "Quem decide e o dono da OS ou quem tem work-orders:decide. Um estranho recebe 404, nao 403: o numero de outra pessoa nao existe para ele."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('passa para EM EXECUCAO', () => pm.expect(pm.response.json().status).to.eql('IN_EXECUTION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retirar a peca do estoque",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mechanicToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/withdrawals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"itemId\": \"{{osItemPecaId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Baixa o estoque, grava o movimento e atualiza a OS numa unica transacao."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a peca sai do estoque e entra na OS', () => pm.expect(pm.response.json().partItems[0].withdrawnQuantity).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Concluir a OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mechanicToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/completion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "completion"
+              ]
+            },
+            "description": "Cobra o que foi retirado, ao preco orcado. Uma peca planejada e nunca retirada nao entra na conta."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('passa para FINALIZADA', () => pm.expect(body.status).to.eql('COMPLETED'));",
+                  "pm.test('o total cobrado e congelado', () => pm.expect(body.chargedTotalCents).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Aplicar um desconto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/discount",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "discount"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountCents\": 1000,\n  \"note\": \"Cortesia por atraso na entrega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A justificativa e obrigatoria e o desconto nao pode passar do total cobrado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('o desconto fica registrado com a justificativa', () => pm.expect(pm.response.json().discountCents).to.eql(1000));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entregar o veiculo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/delivery",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "delivery"
+              ]
+            },
+            "description": "Fecha o livro: os consumos pendentes do estoque passam a liquidados."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('passa para ENTREGUE', () => pm.expect(pm.response.json().status).to.eql('DELIVERED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quadro de OS por status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders?status=DELIVERED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DELIVERED"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a OS entregue aparece no quadro', () => pm.expect(pm.response.json().some((o) => o.number === pm.collectionVariables.get('osNumero'))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir uma segunda OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"vehicleId\": \"{{novoVeiculoId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O veiculo esta livre de novo: a OS anterior foi entregue."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('osCanceladaNumero', body.number);",
+                  "pm.test('osCanceladaNumero capturado', () => pm.expect(pm.collectionVariables.get('osCanceladaNumero')).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar a segunda OS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{advisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osCanceladaNumero}}/cancellation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osCanceladaNumero}}",
+                "cancellation"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cliente decidiu adiar o servico\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Cancelar em execucao exige permissao propria e da baixa definitiva nas pecas ja retiradas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('passa para CANCELADA', () => pm.expect(pm.response.json().status).to.eql('CANCELED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Acompanhamento pelo cliente",
+      "description": "O que o cliente ve das proprias ordens. Nenhuma destas rotas aceita o identificador de outra pessoa.",
+      "item": [
+        {
+          "name": "Minhas ordens de servico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "me"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('lista as OS do proprio cliente', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Uma ordem minha, pelo numero",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{novoClienteToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "me",
+                "{{osNumero}}"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('traz o orcamento e o status', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('DELIVERED'); pm.expect(b.budgets).to.have.lengthOf.at.least(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A OS de outro cliente responde 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "me",
+                "{{osNumero}}"
+              ]
+            },
+            "description": "Mesma resposta de um numero inexistente. Nao ha como descobrir a OS de outra pessoa por diferenca de erro."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('o numero alheio nao existe para quem pergunta', () => pm.expect(pm.response.json().code).to.eql('WORK_ORDER_NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Metricas e auditoria",
+      "description": "O que a operacao mede e o que fica registrado.",
+      "item": [
+        {
+          "name": "Tempo medio de execucao",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "metrics",
+                "average-execution-time"
+              ]
+            },
+            "description": "Aceita os filtros serviceId, completedFrom e completedTo. Com filtro por servico a resposta vem marcada como aproximada: uma OS com varios servicos contribui o tempo inteiro para cada um."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('devolve a media e a contagem', () => { const b = pm.response.json(); pm.expect(b).to.have.property('workOrderCount'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tempo medio por servico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time?serviceId={{servicoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "metrics",
+                "average-execution-time"
+              ],
+              "query": [
+                {
+                  "key": "serviceId",
+                  "value": "{{servicoId}}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('a resposta vem marcada como aproximada', () => pm.expect(pm.response.json().approximated).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trilha da OS",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/trail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "work-orders",
+                "{{osNumero}}",
+                "trail"
+              ]
+            },
+            "description": "Gravada dentro da mesma transacao que muda o agregado: nao existe passo aplicado sem registro."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('registra cada passo em ordem cronologica', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(5));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Encerramento",
+      "description": "Deixe por ultimo: o logout derruba todas as sessoes ativas do usuario, nao so a atual.",
+      "item": [
+        {
+          "name": "Logout do administrador",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('informa quantas sessoes caiu', () => pm.expect(pm.response.json().revokedSessions).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:13000/api/v1"
+    },
+    {
+      "key": "seedPassword",
+      "value": "Str0ngPassword"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@oficina.local"
+    },
+    {
+      "key": "advisorEmail",
+      "value": "consultor@oficina.local"
+    },
+    {
+      "key": "mechanicEmail",
+      "value": "mecanico@oficina.local"
+    },
+    {
+      "key": "customerEmail",
+      "value": "cliente@oficina.local"
+    }
+  ]
+}
