@@ -61,7 +61,15 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['typeorm', '@nestjs/typeorm', 'ioredis', 'argon2', 'pg', '@nestjs/jwt', 'express'],
+              group: [
+                'typeorm',
+                '@nestjs/typeorm',
+                'ioredis',
+                'argon2',
+                'pg',
+                '@nestjs/jwt',
+                'express',
+              ],
               message: 'Application code must depend on ports, not on infrastructure.',
             },
           ],

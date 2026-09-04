@@ -21,13 +21,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -69,13 +64,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -117,13 +107,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -165,13 +150,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -213,13 +193,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
             },
             "description": "A unica rota que devolve o identificador do proprio usuario junto dos papeis e permissoes. A OS precisa dele para atribuir o mecanico."
           },
@@ -251,13 +226,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/tokens",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "tokens"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "tokens"]
             },
             "body": {
               "mode": "raw",
@@ -299,13 +269,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": [],
@@ -340,12 +305,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
             },
             "body": {
               "mode": "raw",
@@ -402,12 +363,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["roles"]
             },
             "description": "Guarda os identificadores de CUSTOMER e MECHANIC, usados aqui e na pasta 02."
           },
@@ -441,15 +398,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoClienteUserId}}/roles/{{roleCustomerId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoClienteUserId}}",
-                "roles",
-                "{{roleCustomerId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoClienteUserId}}", "roles", "{{roleCustomerId}}"]
             },
             "description": "Idempotente. Sem este papel, o cadastro de cliente do proximo passo e recusado."
           },
@@ -459,9 +409,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -482,12 +430,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/customers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "customers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
             },
             "body": {
               "mode": "raw",
@@ -532,12 +476,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/vehicles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vehicles"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles"]
             },
             "body": {
               "mode": "raw",
@@ -591,13 +531,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -638,13 +573,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/customers/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "customers",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "me"]
             }
           },
           "response": [],
@@ -673,13 +603,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/vehicles/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vehicles",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles", "me"]
             }
           },
           "response": [],
@@ -712,13 +637,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/customers/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "customers",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "me"]
             },
             "body": {
               "mode": "raw",
@@ -762,12 +682,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/permissions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "permissions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["permissions"]
             }
           },
           "response": [],
@@ -796,13 +712,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/roles/{{roleCustomerId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "roles",
-                "{{roleCustomerId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["roles", "{{roleCustomerId}}"]
             }
           },
           "response": [],
@@ -811,9 +722,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
-                ]
+                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
@@ -834,13 +743,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/staff",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "staff"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "staff"]
             },
             "body": {
               "mode": "raw",
@@ -897,15 +801,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoStaffId}}",
-                "roles",
-                "{{roleMechanicId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoStaffId}}", "roles", "{{roleMechanicId}}"]
             },
             "description": "roleMechanicId vem da listagem de papeis da pasta 01."
           },
@@ -915,9 +812,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -934,14 +829,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoStaffId}}/access",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoStaffId}}",
-                "access"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoStaffId}}", "access"]
             },
             "description": "Devolve os papeis atribuidos diretamente ao usuario, cada um com seu identificador e nome."
           },
@@ -971,13 +860,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             },
             "body": {
               "mode": "raw",
@@ -1022,14 +906,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/me/password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "me",
-                "password"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me", "password"]
             },
             "body": {
               "mode": "raw",
@@ -1048,9 +926,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -1067,12 +943,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users?document={{novoStaffCpf}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
               "query": [
                 {
                   "key": "document",
@@ -1111,13 +983,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoStaffId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoStaffId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoStaffId}}"]
             },
             "body": {
               "mode": "raw",
@@ -1135,9 +1002,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
-                ]
+                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
@@ -1154,15 +1019,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoStaffId}}",
-                "roles",
-                "{{roleMechanicId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoStaffId}}", "roles", "{{roleMechanicId}}"]
             }
           },
           "response": [],
@@ -1171,9 +1029,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -1190,13 +1046,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/users/{{novoStaffId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "{{novoStaffId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{novoStaffId}}"]
             },
             "description": "Exclusao logica: a linha permanece, as sessoes caem e a conta some das listagens."
           },
@@ -1206,9 +1057,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -1235,12 +1084,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items"]
             },
             "body": {
               "mode": "raw",
@@ -1290,12 +1135,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items?kind=PART",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items"],
               "query": [
                 {
                   "key": "kind",
@@ -1333,13 +1174,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}"]
             }
           },
           "response": [],
@@ -1372,13 +1208,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}"]
             },
             "body": {
               "mode": "raw",
@@ -1421,14 +1252,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/replenishments",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}",
-                "replenishments"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}", "replenishments"]
             },
             "body": {
               "mode": "raw",
@@ -1471,14 +1296,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/adjustments",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}",
-                "adjustments"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}", "adjustments"]
             },
             "body": {
               "mode": "raw",
@@ -1517,14 +1336,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/movements",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}",
-                "movements"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}", "movements"]
             },
             "description": "Livro-razao somente-adicao: nenhum movimento e editado ou apagado."
           },
@@ -1554,13 +1367,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/shortages",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "shortages"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "shortages"]
             },
             "description": "Itens cuja demanda das OS em execucao passa do que ha na prateleira."
           },
@@ -1570,9 +1378,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
-                ]
+                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
@@ -1589,13 +1395,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items",
-                "{{novoItemId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items", "{{novoItemId}}"]
             },
             "description": "Exclusao logica. Recusada com 409 enquanto alguma OS que planejou o item nao foi entregue ou cancelada. A contagem e o historico permanecem, e o SKU volta a ficar livre."
           },
@@ -1605,9 +1406,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 204', () => pm.response.to.have.status(204));"
-                ]
+                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -1624,12 +1423,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/inventory-items",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "inventory-items"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory-items"]
             }
           },
           "response": [],
@@ -1664,12 +1459,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/customers?document={{novoClienteCpf}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "customers"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"],
               "query": [
                 {
                   "key": "document",
@@ -1707,12 +1498,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/vehicles?customerId={{novoClienteId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "vehicles"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles"],
               "query": [
                 {
                   "key": "customerId",
@@ -1752,12 +1539,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders"]
             },
             "body": {
               "mode": "raw",
@@ -1798,12 +1581,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/services",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "services"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["services"]
             }
           },
           "response": [],
@@ -1833,14 +1612,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "diagnosis"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "diagnosis"]
             },
             "description": "O status muda sozinho, como consequencia da acao. Nao existe rota para escrever um status a mao."
           },
@@ -1874,14 +1647,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/mechanic",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "mechanic"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "mechanic"]
             },
             "body": {
               "mode": "raw",
@@ -1923,14 +1690,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/services",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "services"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "services"]
             },
             "body": {
               "mode": "raw",
@@ -1973,14 +1734,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/parts",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "parts"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "parts"]
             },
             "body": {
               "mode": "raw",
@@ -2021,15 +1776,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis/completion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "diagnosis",
-                "completion"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "diagnosis", "completion"]
             },
             "description": "O orcamento e somado dentro do agregado, a partir dos servicos e das pecas planejadas. O total nao vem de nenhum campo de entrada."
           },
@@ -2061,13 +1809,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}"]
             }
           },
           "response": [],
@@ -2096,15 +1839,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/budget/approval",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "budget",
-                "approval"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "budget", "approval"]
             },
             "description": "Quem decide e o dono da OS ou quem tem work-orders:decide. Um estranho recebe 404, nao 403: o numero de outra pessoa nao existe para ele."
           },
@@ -2138,14 +1874,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/withdrawals",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "withdrawals"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "withdrawals"]
             },
             "body": {
               "mode": "raw",
@@ -2184,14 +1914,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/completion",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "completion"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "completion"]
             },
             "description": "Cobra o que foi retirado, ao preco orcado. Uma peca planejada e nunca retirada nao entra na conta."
           },
@@ -2227,14 +1951,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/discount",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "discount"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "discount"]
             },
             "body": {
               "mode": "raw",
@@ -2273,14 +1991,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/delivery",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "delivery"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "delivery"]
             },
             "description": "Fecha o livro: os consumos pendentes do estoque passam a liquidados."
           },
@@ -2310,12 +2022,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders?status=DELIVERED",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders"],
               "query": [
                 {
                   "key": "status",
@@ -2354,12 +2062,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders"]
             },
             "body": {
               "mode": "raw",
@@ -2404,14 +2108,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osCanceladaNumero}}/cancellation",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osCanceladaNumero}}",
-                "cancellation"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osCanceladaNumero}}", "cancellation"]
             },
             "body": {
               "mode": "raw",
@@ -2456,13 +2154,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "me"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "me"]
             }
           },
           "response": [],
@@ -2491,14 +2184,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "me",
-                "{{osNumero}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "me", "{{osNumero}}"]
             }
           },
           "response": [],
@@ -2527,14 +2214,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "me",
-                "{{osNumero}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "me", "{{osNumero}}"]
             },
             "description": "Mesma resposta de um numero inexistente. Nao ha como descobrir a OS de outra pessoa por diferenca de erro."
           },
@@ -2570,14 +2251,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "metrics",
-                "average-execution-time"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "metrics", "average-execution-time"]
             },
             "description": "Aceita os filtros serviceId, completedFrom e completedTo. Com filtro por servico a resposta vem marcada como aproximada: uma OS com varios servicos contribui o tempo inteiro para cada um."
           },
@@ -2607,14 +2282,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time?serviceId={{servicoId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "metrics",
-                "average-execution-time"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "metrics", "average-execution-time"],
               "query": [
                 {
                   "key": "serviceId",
@@ -2649,14 +2318,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/work-orders/{{osNumero}}/trail",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "work-orders",
-                "{{osNumero}}",
-                "trail"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["work-orders", "{{osNumero}}", "trail"]
             },
             "description": "Gravada dentro da mesma transacao que muda o agregado: nao existe passo aplicado sem registro."
           },
@@ -2692,13 +2355,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": [],

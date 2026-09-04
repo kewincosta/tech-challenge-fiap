@@ -181,15 +181,15 @@ import de infraestrutura dentro de `application`, então uma violação de camad
 
 **Padrões táticos em uso**, com exemplos reais:
 
-| Padrão               | Onde vive                                                                     |
-| -------------------- | ----------------------------------------------------------------------------- |
-| Agregado             | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`         |
+| Padrão               | Onde vive                                                                       |
+| -------------------- | ------------------------------------------------------------------------------- |
+| Agregado             | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`          |
 | Entidade filha       | `Budget`, `WorkOrderPartItem`, `StockMovement` (dentro do agregado que as cria) |
-| Value object         | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`  |
-| Evento de domínio    | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                      |
-| Repositório          | Interface em `domain/repositories`, implementação TypeORM em `infrastructure`  |
-| Serviço de aplicação | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                    |
-| Port e adaptador     | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`              |
+| Value object         | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`   |
+| Evento de domínio    | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                       |
+| Repositório          | Interface em `domain/repositories`, implementação TypeORM em `infrastructure`   |
+| Serviço de aplicação | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                     |
+| Port e adaptador     | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`               |
 
 Os cinco contextos delimitados são Identity & Access, Customer Management, Workshop Catalog,
 Inventory e Workshop Operations. Contextos e módulos não são um para um: Identity & Access ocupa
@@ -202,24 +202,24 @@ Detalhes em [`docs/architecture/`](docs/architecture/):
 
 ## Stack
 
-| Camada             | Tecnologia                        |
-| ------------------ | --------------------------------- |
-| Linguagem          | TypeScript 5.9                    |
-| Runtime            | Node.js >= 22                     |
-| Framework          | NestJS 11                         |
-| CQRS               | `@nestjs/cqrs` 11                 |
-| ORM                | TypeORM 0.3                       |
-| Banco              | PostgreSQL 16                     |
-| Cache e limites    | Redis 7 (`ioredis`)               |
-| Documentação da API | `@nestjs/swagger` 11 (OpenAPI 3)  |
-| Validação          | `class-validator` e `zod` (env)   |
-| Hash de senha      | `argon2` (Argon2id)               |
-| Cabeçalhos HTTP    | `helmet`                          |
-| Log                | `nestjs-pino`                     |
-| Testes             | Vitest 3, `supertest`, `@faker-js/faker` |
-| Cobertura          | `@vitest/coverage-v8`             |
-| Lint e formatação  | ESLint 9, Prettier 3              |
-| Containers         | Docker e Docker Compose           |
+| Camada              | Tecnologia                               |
+| ------------------- | ---------------------------------------- |
+| Linguagem           | TypeScript 5.9                           |
+| Runtime             | Node.js >= 22                            |
+| Framework           | NestJS 11                                |
+| CQRS                | `@nestjs/cqrs` 11                        |
+| ORM                 | TypeORM 0.3                              |
+| Banco               | PostgreSQL 16                            |
+| Cache e limites     | Redis 7 (`ioredis`)                      |
+| Documentação da API | `@nestjs/swagger` 11 (OpenAPI 3)         |
+| Validação           | `class-validator` e `zod` (env)          |
+| Hash de senha       | `argon2` (Argon2id)                      |
+| Cabeçalhos HTTP     | `helmet`                                 |
+| Log                 | `nestjs-pino`                            |
+| Testes              | Vitest 3, `supertest`, `@faker-js/faker` |
+| Cobertura           | `@vitest/coverage-v8`                    |
+| Lint e formatação   | ESLint 9, Prettier 3                     |
+| Containers          | Docker e Docker Compose                  |
 
 ## Pré-requisitos
 
@@ -259,32 +259,32 @@ Carregadas de `.env` e validadas na subida por `zod`
 ([`src/config/env.validation.ts`](src/config/env.validation.ts)). Uma variável obrigatória ausente
 derruba a aplicação com a mensagem do campo, em vez de falhar mais tarde.
 
-| Variável                       | Obrigatória | Padrão          | Descrição                                                       |
-| ------------------------------ | ----------- | --------------- | --------------------------------------------------------------- |
-| `NODE_ENV`                     | Não         | `development`   | `development`, `test` ou `production`                            |
-| `PORT`                         | Não         | `3000`          | Porta que a aplicação escuta dentro do container                 |
-| `APP_HOST_PORT`                | Não         | `13000`         | Porta publicada da API na máquina                                |
-| `POSTGRES_HOST_PORT`           | Não         | `15432`         | Porta publicada do Postgres na máquina                           |
-| `REDIS_HOST_PORT`              | Não         | `16379`         | Porta publicada do Redis na máquina                              |
-| `DATABASE_HOST`                | Sim         | -               | Host do Postgres                                                 |
-| `DATABASE_PORT`                | Não         | `5432`          | Porta do Postgres                                                |
-| `DATABASE_USER`                | Sim         | -               | Usuário do Postgres                                              |
-| `DATABASE_PASSWORD`            | Sim         | -               | Senha do Postgres                                                |
-| `DATABASE_NAME`                | Sim         | -               | Nome do banco                                                    |
-| `REDIS_HOST`                   | Sim         | -               | Host do Redis                                                    |
-| `REDIS_PORT`                   | Não         | `6379`          | Porta do Redis                                                   |
-| `REDIS_DB`                     | Não         | `0`             | Índice do banco Redis, de 0 a 15                                 |
-| `JWT_SECRET`                   | Sim         | -               | Segredo de assinatura do token, mínimo de 32 caracteres          |
-| `ACCESS_TOKEN_TTL_SECONDS`     | Não         | `900`           | Validade do token de acesso                                      |
-| `REFRESH_TOKEN_TTL_SECONDS`    | Não         | `604800`        | Validade do refresh token                                        |
-| `SESSION_ABSOLUTE_TTL_SECONDS` | Não         | `2592000`       | Teto absoluto da sessão, independente das renovações             |
-| `RATE_LIMIT_TTL_SECONDS`       | Não         | `60`            | Janela do limite de requisições                                  |
-| `RATE_LIMIT_MAX_REQUESTS`      | Não         | `100`           | Requisições por janela, limite global                            |
-| `RATE_LIMIT_AUTH_MAX_REQUESTS` | Não         | `10`            | Requisições por janela nas rotas de autenticação                 |
-| `ADMIN_EMAIL`                  | Não         | -               | E-mail do `SUPER_ADMIN` criado pelos seeds                       |
-| `ADMIN_PASSWORD`               | Não         | -               | Senha do `SUPER_ADMIN`, mínimo de 8 caracteres, lida por `seed:admin` |
-| `ADMIN_DOCUMENT`               | Não         | -               | CPF ou CNPJ do `SUPER_ADMIN`, lido por `seed:admin`              |
-| `SEED_PASSWORD`                | Não         | `Str0ngPassword` | Senha dada a todas as contas que `npm run seed` cria             |
+| Variável                       | Obrigatória | Padrão           | Descrição                                                             |
+| ------------------------------ | ----------- | ---------------- | --------------------------------------------------------------------- |
+| `NODE_ENV`                     | Não         | `development`    | `development`, `test` ou `production`                                 |
+| `PORT`                         | Não         | `3000`           | Porta que a aplicação escuta dentro do container                      |
+| `APP_HOST_PORT`                | Não         | `13000`          | Porta publicada da API na máquina                                     |
+| `POSTGRES_HOST_PORT`           | Não         | `15432`          | Porta publicada do Postgres na máquina                                |
+| `REDIS_HOST_PORT`              | Não         | `16379`          | Porta publicada do Redis na máquina                                   |
+| `DATABASE_HOST`                | Sim         | -                | Host do Postgres                                                      |
+| `DATABASE_PORT`                | Não         | `5432`           | Porta do Postgres                                                     |
+| `DATABASE_USER`                | Sim         | -                | Usuário do Postgres                                                   |
+| `DATABASE_PASSWORD`            | Sim         | -                | Senha do Postgres                                                     |
+| `DATABASE_NAME`                | Sim         | -                | Nome do banco                                                         |
+| `REDIS_HOST`                   | Sim         | -                | Host do Redis                                                         |
+| `REDIS_PORT`                   | Não         | `6379`           | Porta do Redis                                                        |
+| `REDIS_DB`                     | Não         | `0`              | Índice do banco Redis, de 0 a 15                                      |
+| `JWT_SECRET`                   | Sim         | -                | Segredo de assinatura do token, mínimo de 32 caracteres               |
+| `ACCESS_TOKEN_TTL_SECONDS`     | Não         | `900`            | Validade do token de acesso                                           |
+| `REFRESH_TOKEN_TTL_SECONDS`    | Não         | `604800`         | Validade do refresh token                                             |
+| `SESSION_ABSOLUTE_TTL_SECONDS` | Não         | `2592000`        | Teto absoluto da sessão, independente das renovações                  |
+| `RATE_LIMIT_TTL_SECONDS`       | Não         | `60`             | Janela do limite de requisições                                       |
+| `RATE_LIMIT_MAX_REQUESTS`      | Não         | `100`            | Requisições por janela, limite global                                 |
+| `RATE_LIMIT_AUTH_MAX_REQUESTS` | Não         | `10`             | Requisições por janela nas rotas de autenticação                      |
+| `ADMIN_EMAIL`                  | Não         | -                | E-mail do `SUPER_ADMIN` criado pelos seeds                            |
+| `ADMIN_PASSWORD`               | Não         | -                | Senha do `SUPER_ADMIN`, mínimo de 8 caracteres, lida por `seed:admin` |
+| `ADMIN_DOCUMENT`               | Não         | -                | CPF ou CNPJ do `SUPER_ADMIN`, lido por `seed:admin`                   |
+| `SEED_PASSWORD`                | Não         | `Str0ngPassword` | Senha dada a todas as contas que `npm run seed` cria                  |
 
 `.env` está no `.gitignore` e nunca é versionado. `.env.test` está versionado de propósito: aponta
 para o banco `workshop_test` e só contém credenciais locais de teste.
@@ -416,16 +416,16 @@ Importe os dois no Postman e rode as pastas de cima para baixo pelo Collection R
 requisição guarda em variável o que a próxima precisa, então a sequência inteira funciona sem
 edição manual. Requer `npm run seed` aplicado.
 
-| Pasta                            | O que cobre                                                             |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| 00. Autenticação                 | Login de cada ator, renovação do par de tokens, sessões ativas           |
-| 01. Cadastro do cliente          | Conta, papel, cadastro de cliente, veículo, rotas `me`                   |
-| 02. Gestão de usuários           | Permissões, papéis, conta de staff com senha temporária, desativação     |
-| 03. Gestão de estoque            | CRUD de itens, reposição, ajuste, movimentos, faltas, desativação        |
-| 04. Gestão de ordem de serviço   | Do CPF do cliente à entrega, mais um cancelamento                        |
-| 05. Acompanhamento pelo cliente  | O cliente lendo as próprias ordens, e o 404 para a ordem de terceiro     |
-| 06. Métricas e auditoria         | Tempo médio de execução e a trilha da OS                                 |
-| 07. Encerramento                 | Logout, que derruba todas as sessões do usuário                          |
+| Pasta                           | O que cobre                                                          |
+| ------------------------------- | -------------------------------------------------------------------- |
+| 00. Autenticação                | Login de cada ator, renovação do par de tokens, sessões ativas       |
+| 01. Cadastro do cliente         | Conta, papel, cadastro de cliente, veículo, rotas `me`               |
+| 02. Gestão de usuários          | Permissões, papéis, conta de staff com senha temporária, desativação |
+| 03. Gestão de estoque           | CRUD de itens, reposição, ajuste, movimentos, faltas, desativação    |
+| 04. Gestão de ordem de serviço  | Do CPF do cliente à entrega, mais um cancelamento                    |
+| 05. Acompanhamento pelo cliente | O cliente lendo as próprias ordens, e o 404 para a ordem de terceiro |
+| 06. Métricas e auditoria        | Tempo médio de execução e a trilha da OS                             |
+| 07. Encerramento                | Logout, que derruba todas as sessões do usuário                      |
 
 Pela linha de comando:
 
@@ -441,13 +441,13 @@ rodadas seguidas recebem 429. Espere a janela fechar, ou aumente o limite no `.e
 
 Três suítes, cada uma com seu arquivo de configuração:
 
-| Comando                    | Suíte                          | O que exercita                                                   |
-| -------------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| `npm run test:unit`        | `src/**/*.spec.ts`             | Agregados, value objects e handlers, com dublês de teste          |
-| `npm run test:integration` | `test/integration/`            | Repositórios, adaptadores de leitura e migrations, contra o Postgres real |
-| `npm run test:e2e`         | `test/e2e/`                    | Fluxos completos por HTTP, com a aplicação de pé                  |
-| `npm run test:coverage`    | unitários, com cobertura       | Aplica os limites por caminho crítico                             |
-| `npm run test:unit:watch`  | unitários, em modo observador  | -                                                                 |
+| Comando                    | Suíte                         | O que exercita                                                            |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| `npm run test:unit`        | `src/**/*.spec.ts`            | Agregados, value objects e handlers, com dublês de teste                  |
+| `npm run test:integration` | `test/integration/`           | Repositórios, adaptadores de leitura e migrations, contra o Postgres real |
+| `npm run test:e2e`         | `test/e2e/`                   | Fluxos completos por HTTP, com a aplicação de pé                          |
+| `npm run test:coverage`    | unitários, com cobertura      | Aplica os limites por caminho crítico                                     |
+| `npm run test:unit:watch`  | unitários, em modo observador | -                                                                         |
 
 `npm test` é atalho para `npm run test:unit`.
 
@@ -591,7 +591,7 @@ Quatro propriedades sustentam a escolha:
    mesmo item são resolvidas com `SELECT ... FOR UPDATE` ordenado por id, o que também evita
    deadlock entre lotes que citam os mesmos itens em ordens diferentes.
 4. **Índices únicos parciais.** A regra de exclusão lógica depende de `UNIQUE ... WHERE deleted_at
-   IS NULL`, que o Postgres suporta nativamente.
+IS NULL`, que o Postgres suporta nativamente.
 
 Um banco de documentos resolveria a leitura da OS com menos junções, e pagaria por isso com a
 consistência entre estoque e ordem, que é exatamente o ponto onde este domínio não pode ceder.

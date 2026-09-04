@@ -54,30 +54,95 @@ interface SeedActor {
 }
 
 const ACTORS: SeedActor[] = [
-  { role: 'ADMIN', email: 'admin@oficina.local', name: 'Ana Administradora', documentBase: '529982247' },
+  {
+    role: 'ADMIN',
+    email: 'admin@oficina.local',
+    name: 'Ana Administradora',
+    documentBase: '529982247',
+  },
   {
     role: 'SERVICE_ADVISOR',
     email: 'consultor@oficina.local',
     name: 'Carlos Consultor',
     documentBase: '746273890',
   },
-  { role: 'MECHANIC', email: 'mecanico@oficina.local', name: 'Marcos Mecanico', documentBase: '390533447' },
-  { role: 'CUSTOMER', email: 'cliente@oficina.local', name: 'Clara Cliente', documentBase: '168995500' },
+  {
+    role: 'MECHANIC',
+    email: 'mecanico@oficina.local',
+    name: 'Marcos Mecanico',
+    documentBase: '390533447',
+  },
+  {
+    role: 'CUSTOMER',
+    email: 'cliente@oficina.local',
+    name: 'Clara Cliente',
+    documentBase: '168995500',
+  },
 ];
 
 const SERVICES = [
   { name: 'Troca de oleo', description: 'Oleo e filtro inclusos', priceCents: 15_099, minutes: 60 },
-  { name: 'Alinhamento e balanceamento', description: 'Quatro rodas', priceCents: 12_000, minutes: 90 },
-  { name: 'Revisao completa', description: 'Revisao de 10 mil quilometros', priceCents: 48_000, minutes: 240 },
-  { name: 'Troca de pastilhas de freio', description: 'Dianteiras', priceCents: 32_000, minutes: 120 },
+  {
+    name: 'Alinhamento e balanceamento',
+    description: 'Quatro rodas',
+    priceCents: 12_000,
+    minutes: 90,
+  },
+  {
+    name: 'Revisao completa',
+    description: 'Revisao de 10 mil quilometros',
+    priceCents: 48_000,
+    minutes: 240,
+  },
+  {
+    name: 'Troca de pastilhas de freio',
+    description: 'Dianteiras',
+    priceCents: 32_000,
+    minutes: 120,
+  },
 ];
 
 const INVENTORY = [
-  { sku: 'FLT-OL-001', name: 'Filtro de oleo', description: 'Compativel com motores 1.0 a 1.6', kind: 'PART', priceCents: 4_500, quantity: 40 },
-  { sku: 'PST-FR-001', name: 'Pastilha de freio dianteira', description: 'Jogo com quatro pecas', kind: 'PART', priceCents: 18_900, quantity: 25 },
-  { sku: 'OLE-5W30-001', name: 'Oleo sintetico 5W30', description: 'Litro', kind: 'SUPPLY', priceCents: 5_200, quantity: 120 },
-  { sku: 'FLU-FR-001', name: 'Fluido de freio DOT4', description: 'Frasco de 500ml', kind: 'SUPPLY', priceCents: 3_400, quantity: 60 },
-  { sku: 'EST-LV-001', name: 'Estopa para limpeza', description: 'Pacote com um quilo', kind: 'SUPPLY', priceCents: 1_800, quantity: 80 },
+  {
+    sku: 'FLT-OL-001',
+    name: 'Filtro de oleo',
+    description: 'Compativel com motores 1.0 a 1.6',
+    kind: 'PART',
+    priceCents: 4_500,
+    quantity: 40,
+  },
+  {
+    sku: 'PST-FR-001',
+    name: 'Pastilha de freio dianteira',
+    description: 'Jogo com quatro pecas',
+    kind: 'PART',
+    priceCents: 18_900,
+    quantity: 25,
+  },
+  {
+    sku: 'OLE-5W30-001',
+    name: 'Oleo sintetico 5W30',
+    description: 'Litro',
+    kind: 'SUPPLY',
+    priceCents: 5_200,
+    quantity: 120,
+  },
+  {
+    sku: 'FLU-FR-001',
+    name: 'Fluido de freio DOT4',
+    description: 'Frasco de 500ml',
+    kind: 'SUPPLY',
+    priceCents: 3_400,
+    quantity: 60,
+  },
+  {
+    sku: 'EST-LV-001',
+    name: 'Estopa para limpeza',
+    description: 'Pacote com um quilo',
+    kind: 'SUPPLY',
+    priceCents: 1_800,
+    quantity: 80,
+  },
 ];
 
 const VEHICLES = [
@@ -112,7 +177,9 @@ async function main(): Promise<void> {
   try {
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
 
-    const superAdminEmail = (process.env.ADMIN_EMAIL ?? 'admin@workshop.local').trim().toLowerCase();
+    const superAdminEmail = (process.env.ADMIN_EMAIL ?? 'admin@workshop.local')
+      .trim()
+      .toLowerCase();
     await upsertUser(dataSource, {
       email: superAdminEmail,
       name: 'Super Administrator',
@@ -132,7 +199,9 @@ async function main(): Promise<void> {
       });
       actorIds.set(actor.role, id);
     }
-    console.log(`Actors ready: SUPER_ADMIN (${superAdminEmail}), ${ACTORS.map((a) => a.role).join(', ')}`);
+    console.log(
+      `Actors ready: SUPER_ADMIN (${superAdminEmail}), ${ACTORS.map((a) => a.role).join(', ')}`,
+    );
 
     await seedServices(dataSource, commandBus);
     await seedInventory(dataSource, commandBus, actorIds.get('ADMIN')!);
@@ -204,7 +273,12 @@ async function seedServices(dataSource: DataSource, commandBus: CommandBus): Pro
       continue;
     }
     await commandBus.execute<CreateServiceCommand, CreatedServiceDto>(
-      new CreateServiceCommand(service.name, service.priceCents, service.minutes, service.description),
+      new CreateServiceCommand(
+        service.name,
+        service.priceCents,
+        service.minutes,
+        service.description,
+      ),
     );
     created += 1;
   }
@@ -226,7 +300,13 @@ async function seedInventory(
       continue;
     }
     const { id } = await commandBus.execute<CreateInventoryItemCommand, CreatedInventoryItemDto>(
-      new CreateInventoryItemCommand(item.sku, item.name, item.kind, item.priceCents, item.description),
+      new CreateInventoryItemCommand(
+        item.sku,
+        item.name,
+        item.kind,
+        item.priceCents,
+        item.description,
+      ),
     );
     // A created item has a quantity on hand of zero - only a movement moves the count, so the
     // opening stock is a real INBOUND movement rather than a column written directly.
@@ -279,7 +359,13 @@ async function seedCustomerAndVehicles(
       continue;
     }
     await commandBus.execute<RegisterVehicleCommand, unknown>(
-      new RegisterVehicleCommand(customerId, vehicle.plate, vehicle.brand, vehicle.model, vehicle.year),
+      new RegisterVehicleCommand(
+        customerId,
+        vehicle.plate,
+        vehicle.brand,
+        vehicle.model,
+        vehicle.year,
+      ),
     );
     created += 1;
   }

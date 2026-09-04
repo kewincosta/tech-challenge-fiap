@@ -3,3 +3,7 @@ coverage
 node_modules
 package-lock.json
 .specs
+
+# Vendored tooling: formatted by whoever ships it, not by this repository
+.agents
+.claude
