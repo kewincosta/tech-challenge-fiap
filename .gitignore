@@ -13,3 +13,6 @@ security/.cache/
 
 # Rendered deliverables: generated from the reports, never versioned
 *.pdf
+
+# Personal presentation notes, not part of the project
+docs/roteiro-video.md
