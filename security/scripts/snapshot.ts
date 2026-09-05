@@ -62,11 +62,14 @@ function applyResolutions(findings: readonly SnapshotFinding[]): void {
   if (!existsSync(RESOLUTIONS_FILE)) {
     return;
   }
-  const resolutions = JSON.parse(readFileSync(RESOLUTIONS_FILE, 'utf8')) as Record<string, string>;
+  const resolutions = JSON.parse(readFileSync(RESOLUTIONS_FILE, 'utf8')) as Record<
+    string,
+    { outcome?: string; text?: string }
+  >;
   for (const finding of findings) {
-    const text = resolutions[findingKey(finding)];
-    if (text) {
-      finding.resolution = text;
+    const entry = resolutions[findingKey(finding)];
+    if (entry?.text) {
+      finding.resolution = entry.text;
     }
   }
 }

@@ -248,9 +248,25 @@ severity, what was resolved, what is still open and what turned up new.
 The snapshots come from the dump the scan writes to
 `security/reports/raw/consolidation.json`, so the summary cannot drift from the technical report.
 
-What was done about each finding lives in `security/config/resolutions.json`, written by hand. A
-finding with no entry shows up as "open" rather than getting a generated sentence: a fix without
-an explanation is worse than an open question.
+What was done about each finding lives in `security/config/resolutions.json`, written by hand:
+
+```json
+{
+  "dependency:qs": {
+    "outcome": "fixed",
+    "text": "O qs 6.15.3 chegava transitivamente por express 5.2.1..."
+  }
+}
+```
+
+`outcome` is one of `fixed`, `false-positive`, `no-defect` or `open`, and is stated rather than
+inferred from the prose. An earlier version read the verdict from the first words of the text,
+which tied the status of every finding to the language it happened to be written in. A finding
+with no entry shows up as open rather than getting a generated sentence: a fix without an
+explanation is worse than an open question.
+
+The `text` is written in pt-BR, because it is what the submission document prints and that
+document goes to a Brazilian panel. Everything else in this tool is in English.
 
 ## The submission document
 
@@ -259,9 +275,15 @@ npm run security:deliverable
 ```
 
 Generates `security/reports/tech-challenge-entrega.html` from the two snapshots, the resolutions
-and `security/config/deliverable.json`, which carries the group, the participants and the links.
-It then renders the PDF with headless Chrome. If no browser is found, the command says to print
-the HTML by hand rather than failing.
+and `security/config/deliverable.json`, which carries the group, the participants, the links and
+the project figures section 1 prints. It then renders the PDF with headless Chrome. If no browser
+is found, the command says to print the HTML by hand rather than failing.
+
+The document is the submission for the Tech Challenge, not a security report: section 1 describes
+what was built, section 2 carries the assessment, and section 3 points at the rest of the
+documentation. It is written in pt-BR, along with the before and after comparison, because both go
+to a Brazilian academic panel. The tool, its documentation and the technical report are in
+English.
 
 ## Suppressions
 

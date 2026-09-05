@@ -2,32 +2,41 @@ import { describe, expect, it } from 'vitest';
 import { escapeHtml, outcomeOf, severityLabel } from './deliverable';
 
 describe('outcomeOf', () => {
-  it.each([
-    ['Fixed. The dependency was upgraded.', 'fixed'],
-    ['Analysed and fixed in the scan configuration.', 'fixed'],
-    ['False positive, reviewed and suppressed with a justification.', 'false-positive'],
-    ['No defect. This is ZAP identifying the route.', 'no-defect'],
-  ])('classifies %s', (resolution, expected) => {
-    expect(outcomeOf(resolution)).toBe(expected);
+  it.each(['fixed', 'false-positive', 'no-defect', 'open'] as const)(
+    'returns the %s verdict the entry states',
+    (outcome) => {
+      expect(outcomeOf({ outcome, text: 'anything at all' })).toBe(outcome);
+    },
+  );
+
+  it('reads the verdict from the field, never from the prose', () => {
+    expect(outcomeOf({ outcome: 'fixed', text: 'Falso positivo, revisado.' })).toBe('fixed');
   });
 
-  it('leaves a finding with no written resolution open, rather than assuming it was handled', () => {
+  it('is indifferent to the language the text is written in', () => {
+    const pt = outcomeOf({ outcome: 'no-defect', text: 'Sem defeito. O ZAP identificou a rota.' });
+    const en = outcomeOf({ outcome: 'no-defect', text: 'No defect. ZAP identified the route.' });
+
+    expect(pt).toBe(en);
+  });
+
+  it('leaves a finding with no entry open, rather than assuming it was handled', () => {
     expect(outcomeOf(undefined)).toBe('open');
   });
 
-  it('leaves an unrecognised resolution open', () => {
-    expect(outcomeOf('We will look at it later.')).toBe('open');
+  it('leaves an unrecognised verdict open', () => {
+    expect(outcomeOf({ outcome: 'sorted' as never, text: 'x' })).toBe('open');
   });
 });
 
 describe('severityLabel', () => {
   it.each([
-    ['critical', 'Critical'],
-    ['high', 'High'],
-    ['medium', 'Medium'],
-    ['low', 'Low'],
-    ['informational', 'Informational'],
-  ])('labels %s', (severity, expected) => {
+    ['critical', 'Crítica'],
+    ['high', 'Alta'],
+    ['medium', 'Média'],
+    ['low', 'Baixa'],
+    ['informational', 'Informativa'],
+  ])('labels %s for the submission document, which is written in pt-BR', (severity, expected) => {
     expect(severityLabel(severity)).toBe(expected);
   });
 

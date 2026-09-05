@@ -1,6 +1,7 @@
 {
   "group": "Pantano",
-  "course": "FIAP · Postgraduate Program in Software Architecture (SOAT)",
+  "course": "FIAP · Pós-graduação em Arquitetura de Software (SOAT)",
+  "projectName": "Workshop Management API: sistema de gestão de oficina mecânica",
   "participants": [
     {
       "name": "Kewin Ferreira da Costa",
@@ -8,5 +9,15 @@
     }
   ],
   "documentationUrl": "https://miro.com/app/board/uXjVH1G2HW0=/?share_link_id=217173914722",
-  "repositoryUrl": "https://github.com/kewincosta/tech-challenge-fiap"
+  "repositoryUrl": "https://github.com/kewincosta/tech-challenge-fiap",
+  "stats": {
+    "modules": 8,
+    "httpOperations": 73,
+    "tables": 18,
+    "migrations": 9,
+    "adrs": 25,
+    "unitTests": 953,
+    "integrationTests": 239,
+    "e2eTests": 203
+  }
 }

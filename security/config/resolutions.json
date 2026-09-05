@@ -1,14 +1,47 @@
 {
-  "_comment": "What was done about each finding of the baseline scan. Keyed the same way the comparison keys them: package plus CVE list when there is one, otherwise category plus title. Written by hand after the fix, because only a person can say what was actually done. The first words decide the status shown in the report: \"Fixed\", \"False positive\", \"No defect\", or anything else for open.",
-  "dependency:@faker-js/faker": "Fixed. The development dependency @faker-js/faker was upgraded from 9.9.0 to 10.6.0, the first release that closes the arbitrary code execution in helpers.fake. It is a major upgrade: the five APIs the project uses (internet.email, internet.password, person.fullName, seed, string.uuid) were checked and all three suites passed with no code change.",
-  "dependency:qs": "Fixed. qs 6.15.3 arrived transitively through express 5.2.1 and through supertest. Neither had published a release carrying the fix, so 6.16.0 was forced across the whole tree with an override in package.json. npm audit went to zero vulnerabilities.",
-  "validator:CVE-2025-15104": "False positive, reviewed and suppressed with a justification. CVE-2025-15104 describes an SSRF in Nu Html Checker (validator.nu), a Java service that fetches URLs on behalf of its callers. The npm package validator is a string validation library that makes no network access at all. Dependency-Check reached the finding by matching the package name against cpe:2.3:a:validator:validator, which is the CPE of the Java product. The suppression is in security/config/dependency-check-suppressions.xml with that analysis recorded.",
-  "dast:A Server Error response code was returned by the server": "Fixed. There were five occurrences of HTTP 500, with two distinct causes. Four came from a NUL byte in a list filter (?name=%00, ?kind=%00, ?role=%00): PostgreSQL cannot store or compare \\0 inside a text value and answers with an error, which surfaced as a 500. RejectNullBytesPipe was added, registered as a global APP_PIPE, refusing the input with a 400 before any query (src/shared/presentation/pipes/reject-null-bytes.pipe.ts). The fifth came from GET /vehicles?customerId=..., which took the raw string into a uuid column; the parameter now uses ParseUUIDPipe, as every other route in the project already did. Verified after the fix: both requests now answer 400.",
-  "dast:Application Error Disclosure": "Fixed by the same change. The alert was a consequence of the 500 on GET /vehicles?customerId=customerId, not a separate defect: with no 500 there is no error response to disclose. The route now validates the identifier and answers 400.",
-  "dast:Information Disclosure - Debug Error Messages": "Fixed by the same change. The \"Internal server error\" body ZAP captured came from the same 500 on GET /vehicles?customerId=customerId. With the parameter validated, the response became a 400 that names the invalid field, without revealing that something broke underneath.",
-  "dast:Non-Storable Content": "Fixed at the point that mattered, though the alert remains by construction. The API answered with no cache directive at all, and its responses carry personal data: documents, addresses, phone numbers, user roles. With no directive, each intermediate cache decides for itself whether to store them, which is the weakness in CWE-524. A middleware was added that sets Cache-Control: no-store and Pragma: no-cache on every response (src/shared/presentation/no-store.middleware.ts). ZAP raises this alert precisely when content is not storable, so it keeps appearing: now describing the intended behaviour rather than an accident.",
-  "dast:A Client Error response code was returned by the server": "Analysed. The occurrences were broken down by status code: most were 401 and 429 caused by the scan itself, not by the application. The 401s came from ZAP calling routes that revoke the user's session (DELETE /auth/sessions and POST /users/me/password), destroying the token it was authenticated with; those routes are now removed from the definition that drives the scan. The 429s were the rate limiter working: it answered 72% of the scan traffic, and the limit was raised in the scan environment to obtain real coverage. The remaining 400s and 404s are correct answers from the API to an invalid payload and to a non-existent identifier.",
-  "dast:Private IP Disclosure": "No defect. GET /auth/sessions returns the user their own list of active sessions, with the source address of each one. That is what lets someone recognise a session they did not open, and it is the pattern any service offering session management adopts. The address ZAP flagged (172.19.0.1) is the gateway of the local Docker network, an artefact of the test environment. This finding only appeared once the scan started authenticating, because the route is protected.",
-  "dast:Authentication Request Identified": "No defect. This is ZAP identifying POST /auth/sessions and POST /users as authentication routes, to steer its own rules. Informational by construction.",
-  "dast:Session Management Response Identified": "No defect. This is ZAP recognising the API's session format from the OpenAPI specification. Informational by construction."
+  "_comment": "What was done about each finding of the baseline scan. Keyed the same way the comparison keys them: package plus CVE list when there is one, otherwise category plus title. Written by hand after the fix, because only a person can say what was actually done. `outcome` is one of fixed, false-positive, no-defect or open, and is stated explicitly rather than inferred from the prose, so the text can be written in any language. A finding with no entry here is reported as open.",
+  "dependency:@faker-js/faker": {
+    "outcome": "fixed",
+    "text": "A dependência de desenvolvimento @faker-js/faker foi atualizada de 9.9.0 para 10.6.0, a primeira versão que corrige a execução arbitrária de código em helpers.fake. É um upgrade major: as cinco APIs que o projeto usa (internet.email, internet.password, person.fullName, seed, string.uuid) foram verificadas e as três suítes passaram sem alteração de código."
+  },
+  "dependency:qs": {
+    "outcome": "fixed",
+    "text": "O qs 6.15.3 chegava transitivamente por express 5.2.1 e por supertest. Nenhum dos dois publicou release com a versão corrigida, então a 6.16.0 foi forçada para toda a árvore com um override no package.json. O npm audit passou a reportar zero vulnerabilidades."
+  },
+  "validator:CVE-2025-15104": {
+    "outcome": "false-positive",
+    "text": "Revisado e suprimido com justificativa. O CVE-2025-15104 descreve um SSRF no Nu Html Checker (validator.nu), um serviço Java que busca URLs em nome de quem chama. O pacote npm validator é uma biblioteca de validação de strings que não faz acesso de rede. O Dependency-Check chegou ao achado casando o nome do pacote contra cpe:2.3:a:validator:validator, que é o CPE do produto Java. A supressão está em security/config/dependency-check-suppressions.xml com essa análise registrada."
+  },
+  "dast:A Server Error response code was returned by the server": {
+    "outcome": "fixed",
+    "text": "Foram cinco ocorrências de HTTP 500, com duas causas distintas. Quatro vinham de um byte nulo em filtro de listagem (?name=%00, ?kind=%00, ?role=%00): o PostgreSQL não armazena nem compara \\0 dentro de um valor de texto e responde com erro, que subia como 500. Foi adicionado o RejectNullBytesPipe, registrado como APP_PIPE global, que recusa a entrada com 400 antes de qualquer consulta. A quinta vinha de GET /vehicles?customerId=..., que recebia a string crua e a entregava a uma coluna uuid; o parâmetro passou a usar ParseUUIDPipe, como as demais rotas do projeto já faziam. Verificado após a correção: as duas requisições agora respondem 400."
+  },
+  "dast:Application Error Disclosure": {
+    "outcome": "fixed",
+    "text": "Corrigido pela mesma alteração. O alerta era consequência do 500 em GET /vehicles?customerId=customerId, não um defeito separado: sem o 500 não há resposta de erro a divulgar. A rota agora valida o identificador e responde 400."
+  },
+  "dast:Information Disclosure - Debug Error Messages": {
+    "outcome": "fixed",
+    "text": "Corrigido pela mesma alteração. O corpo \"Internal server error\" que o ZAP capturou vinha do mesmo 500 em GET /vehicles?customerId=customerId. Com a validação do parâmetro, a resposta passou a ser um 400 que nomeia o campo inválido, sem revelar que algo quebrou abaixo."
+  },
+  "dast:Non-Storable Content": {
+    "outcome": "fixed",
+    "text": "Corrigido no ponto que importava, embora o alerta permaneça por construção. A API respondia sem nenhuma diretiva de cache, e suas respostas carregam dado pessoal: CPF, endereço, telefone, papéis de usuário. Sem diretiva, cada cache intermediário decide sozinho se guarda, que é a fraqueza do CWE-524. Foi adicionado um middleware que define Cache-Control: no-store e Pragma: no-cache em toda resposta. O ZAP levanta este alerta justamente quando o conteúdo não é armazenável, então ele continua aparecendo: agora descrevendo o comportamento pretendido em vez de um acaso."
+  },
+  "dast:A Client Error response code was returned by the server": {
+    "outcome": "fixed",
+    "text": "As ocorrências foram decompostas por código: a maior parte eram 401 e 429 causados pela própria varredura, não pela aplicação. Os 401 vinham de o ZAP chamar rotas que revogam a sessão do usuário (DELETE /auth/sessions e POST /users/me/password), destruindo o token com que estava autenticado; essas rotas foram removidas da especificação que dirige o scan. Os 429 eram o limitador de requisições funcionando: ele respondeu a 72% do tráfego da varredura, e o limite foi elevado no ambiente de scan para obter cobertura real. Os 400 e 404 restantes são respostas corretas da API a payload inválido e a identificador inexistente."
+  },
+  "dast:Private IP Disclosure": {
+    "outcome": "no-defect",
+    "text": "O GET /auth/sessions devolve ao usuário a lista das próprias sessões ativas, com o endereço de origem de cada uma. É o que permite a alguém reconhecer uma sessão que não abriu, e é o padrão adotado por qualquer serviço que ofereça gestão de sessões. O endereço que o ZAP sinalizou (172.19.0.1) é o gateway da rede Docker do ambiente local, artefato do ambiente de teste. Este achado só apareceu depois que a varredura passou a autenticar, porque a rota é protegida."
+  },
+  "dast:Authentication Request Identified": {
+    "outcome": "no-defect",
+    "text": "É o ZAP identificando POST /auth/sessions e POST /users como rotas de autenticação, para orientar as próprias regras. Informativo por construção."
+  },
+  "dast:Session Management Response Identified": {
+    "outcome": "no-defect",
+    "text": "É o ZAP reconhecendo o formato de sessão da API a partir da especificação OpenAPI. Informativo por construção."
+  }
 }

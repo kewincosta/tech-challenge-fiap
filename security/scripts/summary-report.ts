@@ -161,7 +161,7 @@ function deltaWord(before: number, after: number): string {
   if (after > before) {
     return `<span class="bad">+${after - before}</span>`;
   }
-  return '<span class="warn">no change</span>';
+  return '<span class="warn">sem mudança</span>';
 }
 
 export function buildSummaryHtml(
@@ -179,40 +179,40 @@ export function buildSummaryHtml(
 <div class="fix ${resolved ? '' : 'open'}">
 <h3>${escapeHtml(finding.title)}</h3>
 <dl>
-<dt>Severity</dt><dd>${escapeHtml(severityLabel(finding.severity))}</dd>
-<dt>Tool</dt><dd>${escapeHtml(finding.tools.join(', '))}</dd>
-<dt>OWASP</dt><dd>${escapeHtml(finding.owasp ?? 'Not determined')}</dd>
+<dt>Severidade</dt><dd>${escapeHtml(severityLabel(finding.severity))}</dd>
+<dt>Ferramenta</dt><dd>${escapeHtml(finding.tools.join(', '))}</dd>
+<dt>OWASP</dt><dd>${escapeHtml(finding.owasp ?? 'Não determinado')}</dd>
 ${finding.cve.length > 0 ? `<dt>CVE</dt><dd>${escapeHtml(finding.cve.join(', '))}</dd>` : ''}
 ${finding.cwe.length > 0 ? `<dt>CWE</dt><dd>${escapeHtml(finding.cwe.join(', '))}</dd>` : ''}
-${finding.location ? `<dt>Location</dt><dd><code>${escapeHtml(finding.location)}</code></dd>` : ''}
-<dt>Status</dt><dd>${resolved ? '<span class="good">Resolved</span>' : '<span class="warn">Open</span>'}</dd>
+${finding.location ? `<dt>Local</dt><dd><code>${escapeHtml(finding.location)}</code></dd>` : ''}
+<dt>Situação</dt><dd>${resolved ? '<span class="good">Resolvido</span>' : '<span class="warn">Em aberto</span>'}</dd>
 </dl>
 ${finding.resolution ? `<p>${escapeHtml(finding.resolution)}</p>` : ''}
 </div>`;
 
   return `<!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vulnerability report: before and after</title>
+<title>Relatório de vulnerabilidades: antes e depois</title>
 <style>${STYLES}</style>
 </head>
 <body>
 <div class="page">
-<h1>Vulnerability report</h1>
-<p class="sub">Workshop Management API · before and after the fixes</p>
+<h1>Relatório de vulnerabilidades</h1>
+<p class="sub">Workshop Management API · comparação antes e depois das correções</p>
 
-<h2>Summary</h2>
+<h2>Resumo</h2>
 <div class="ba">
 <div class="panel">
-<h3>Before</h3>
+<h3>Antes</h3>
 <div class="big">${before.total}</div>
 <div class="delta">${escapeHtml(countsRow(before))}</div>
 <div class="delta">${escapeHtml(new Date(before.generatedAt).toISOString())}</div>
 </div>
 <div class="panel">
-<h3>After</h3>
+<h3>Depois</h3>
 <div class="big">${after.total}</div>
 <div class="delta">${escapeHtml(countsRow(after))}</div>
 <div class="delta">${escapeHtml(new Date(after.generatedAt).toISOString())}</div>
@@ -220,14 +220,14 @@ ${finding.resolution ? `<p>${escapeHtml(finding.resolution)}</p>` : ''}
 </div>
 
 <table>
-<thead><tr><th>Severity</th><th class="num">Before</th><th class="num">After</th><th class="num">Change</th></tr></thead>
+<thead><tr><th>Severidade</th><th class="num">Antes</th><th class="num">Depois</th><th class="num">Variação</th></tr></thead>
 <tbody>${severityRows}
 <tr><th>Total</th><th class="num">${before.total}</th><th class="num">${after.total}</th><th class="num">${deltaWord(before.total, after.total)}</th></tr>
 </tbody></table>
 
-<h2>Tools executed</h2>
+<h2>Ferramentas executadas</h2>
 <table>
-<thead><tr><th>Tool</th><th>Analysis</th><th class="num">Before</th><th class="num">After</th></tr></thead>
+<thead><tr><th>Ferramenta</th><th>Análise</th><th class="num">Antes</th><th class="num">Depois</th></tr></thead>
 <tbody>${before.scanners
     .map((scanner) => {
       const afterScanner = after.scanners.find((candidate) => candidate.tool === scanner.tool);
@@ -237,25 +237,25 @@ ${finding.resolution ? `<p>${escapeHtml(finding.resolution)}</p>` : ''}
     })
     .join('')}</tbody></table>
 
-<h2>Findings resolved (${comparison.resolved.length})</h2>
-${comparison.resolved.length === 0 ? '<p>No finding was resolved between the two runs.</p>' : comparison.resolved.map((finding) => fixCard(finding, true)).join('')}
+<h2>Achados resolvidos (${comparison.resolved.length})</h2>
+${comparison.resolved.length === 0 ? '<p>Nenhum achado foi resolvido entre as duas execuções.</p>' : comparison.resolved.map((finding) => fixCard(finding, true)).join('')}
 
-<h2>Findings still open (${comparison.remaining.length})</h2>
-${comparison.remaining.length === 0 ? '<p>No finding remained.</p>' : comparison.remaining.map((finding) => fixCard(finding, false)).join('')}
+<h2>Achados em aberto (${comparison.remaining.length})</h2>
+${comparison.remaining.length === 0 ? '<p>Nenhum achado permaneceu.</p>' : comparison.remaining.map((finding) => fixCard(finding, false)).join('')}
 
 ${
   comparison.introduced.length > 0
-    ? `<h2>New findings (${comparison.introduced.length})</h2>
-<p>Found on the second run and absent from the first. The coverage of the dynamic analysis changed between them, which explains findings that only turn up afterwards.</p>
+    ? `<h2>Achados novos (${comparison.introduced.length})</h2>
+<p>Encontrados na segunda execução e ausentes na primeira. A cobertura da análise dinâmica mudou entre as duas, o que explica achados que só aparecem depois.</p>
 ${comparison.introduced.map((finding) => fixCard(finding, false)).join('')}`
     : ''
 }
 
-<h2>How this was measured</h2>
-<p>Both runs used the same command, <code>npm run security:scan</code>, against the same target, with the same four tools: npm audit and OWASP Dependency-Check over the dependencies, Semgrep over the source, and OWASP ZAP against the running application.</p>
-<p>The numbers come from the full report the tool writes, frozen in <code>security/reports/snapshots/</code> before and after the fixes. This document is generated from those two files, so it cannot drift from the technical report.</p>
+<h2>Como foi medido</h2>
+<p>As duas execuções usaram o mesmo comando, <code>npm run security:scan</code>, contra o mesmo alvo, com as mesmas quatro ferramentas: npm audit e OWASP Dependency-Check sobre as dependências, Semgrep sobre o código, e OWASP ZAP contra a aplicação em execução.</p>
+<p>Os números vieram do relatório completo que a ferramenta escreve, congelado em <code>security/reports/snapshots/</code> antes e depois das correções. Este documento é gerado a partir desses dois arquivos, então não pode divergir do relatório técnico.</p>
 
-<footer>Generated at ${escapeHtml(new Date().toISOString())} from security/reports/snapshots/.</footer>
+<footer>Gerado em ${escapeHtml(new Date().toISOString())} a partir de security/reports/snapshots/.</footer>
 </div>
 </body>
 </html>`;
@@ -271,46 +271,46 @@ export function buildSummaryMarkdown(
     lines.push(...values);
   };
 
-  push('# Vulnerability report: before and after', '');
-  push('## Summary', '');
-  push('| Severity | Before | After | Change |', '| --- | ---: | ---: | ---: |');
+  push('# Relatório de vulnerabilidades: antes e depois', '');
+  push('## Resumo', '');
+  push('| Severidade | Antes | Depois | Variação |', '| --- | ---: | ---: | ---: |');
   for (const severity of SEVERITY_ORDER) {
     const b = before.counts[severity] ?? 0;
     const a = after.counts[severity] ?? 0;
-    const delta = a === b ? 'no change' : a < b ? `-${b - a}` : `+${a - b}`;
+    const delta = a === b ? 'sem mudança' : a < b ? `-${b - a}` : `+${a - b}`;
     push(`| ${severityLabel(severity)} | ${b} | ${a} | ${delta} |`);
   }
   const totalDelta =
     after.total === before.total
-      ? 'no change'
+      ? 'sem mudança'
       : after.total < before.total
         ? `-${before.total - after.total}`
         : `+${after.total - before.total}`;
   push(`| **Total** | **${before.total}** | **${after.total}** | **${totalDelta}** |`, '');
 
-  push('## Findings resolved', '');
+  push('## Achados resolvidos', '');
   if (comparison.resolved.length === 0) {
-    push('None.', '');
+    push('Nenhum.', '');
   }
   for (const finding of comparison.resolved) {
     push(`### ${finding.title}`, '');
-    push(`- Severity: ${severityLabel(finding.severity)}`);
-    push(`- Tool: ${finding.tools.join(', ')}`);
-    push(`- OWASP: ${finding.owasp ?? 'Not determined'}`);
+    push(`- Severidade: ${severityLabel(finding.severity)}`);
+    push(`- Ferramenta: ${finding.tools.join(', ')}`);
+    push(`- OWASP: ${finding.owasp ?? 'Não determinado'}`);
     if (finding.cve.length > 0) push(`- CVE: ${finding.cve.join(', ')}`);
-    if (finding.location) push(`- Location: ${finding.location}`);
+    if (finding.location) push(`- Local: ${finding.location}`);
     if (finding.resolution) push('', finding.resolution);
     push('');
   }
 
-  push('## Findings still open', '');
+  push('## Achados em aberto', '');
   if (comparison.remaining.length === 0) {
-    push('None.', '');
+    push('Nenhum.', '');
   }
   for (const finding of comparison.remaining) {
     push(`### ${finding.title}`, '');
-    push(`- Severity: ${severityLabel(finding.severity)}`);
-    push(`- Tool: ${finding.tools.join(', ')}`);
+    push(`- Severidade: ${severityLabel(finding.severity)}`);
+    push(`- Ferramenta: ${finding.tools.join(', ')}`);
     if (finding.resolution) push('', finding.resolution);
     push('');
   }
