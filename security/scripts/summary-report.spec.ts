@@ -139,11 +139,11 @@ describe('buildSummaryHtml', () => {
 
   it('prints the written resolution when there is one', () => {
     const b = snapshot('before', [
-      finding({ packageName: 'qs', resolution: 'Atualizado para 6.16.0.' }),
+      finding({ packageName: 'qs', resolution: 'Upgraded to 6.16.0.' }),
     ]);
     const rendered = buildSummaryHtml(b, snapshot('after', []), compare(b, snapshot('after', [])));
 
-    expect(rendered).toContain('Atualizado para 6.16.0.');
+    expect(rendered).toContain('Upgraded to 6.16.0.');
   });
 });
 
@@ -153,14 +153,14 @@ describe('buildSummaryMarkdown', () => {
   const markdown = buildSummaryMarkdown(before, after, compare(before, after));
 
   it('renders the severity comparison table', () => {
-    expect(markdown).toContain('| Severidade | Antes | Depois | Variação |');
+    expect(markdown).toContain('| Severity | Before | After | Change |');
     expect(markdown).toContain('| **Total** | **1** | **0** | **-1** |');
   });
 
   it('says plainly when nothing changed', () => {
     const same = buildSummaryMarkdown(before, before, compare(before, before));
 
-    expect(same).toContain('sem mudança');
+    expect(same).toContain('no change');
   });
 });
 

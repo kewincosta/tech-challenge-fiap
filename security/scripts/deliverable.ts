@@ -39,16 +39,16 @@ export interface DeliverableInfo {
 
 const SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'informational'] as const;
 
-const SEVERITY_PT: Record<string, string> = {
-  critical: 'Crítica',
-  high: 'Alta',
-  medium: 'Média',
-  low: 'Baixa',
-  informational: 'Informativa',
+const SEVERITY_LABEL: Record<string, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  informational: 'Informational',
 };
 
-export function severityPt(severity: string): string {
-  return SEVERITY_PT[severity] ?? severity;
+export function severityLabel(severity: string): string {
+  return SEVERITY_LABEL[severity] ?? severity;
 }
 
 export function escapeHtml(value: string): string {
@@ -63,28 +63,28 @@ export function escapeHtml(value: string): string {
 /** Reads the outcome of a finding out of its written resolution, for the status column. */
 export function outcomeOf(
   resolution: string | undefined,
-): 'corrigido' | 'falso-positivo' | 'sem-defeito' | 'aberto' {
+): 'fixed' | 'false-positive' | 'no-defect' | 'open' {
   if (!resolution) {
-    return 'aberto';
+    return 'open';
   }
   const text = resolution.toLowerCase();
-  if (text.startsWith('falso positivo')) {
-    return 'falso-positivo';
+  if (text.startsWith('false positive')) {
+    return 'false-positive';
   }
-  if (text.startsWith('sem defeito')) {
-    return 'sem-defeito';
+  if (text.startsWith('no defect')) {
+    return 'no-defect';
   }
-  if (text.startsWith('corrigido') || text.startsWith('analisado e corrigido')) {
-    return 'corrigido';
+  if (text.startsWith('fixed') || text.startsWith('analysed and fixed')) {
+    return 'fixed';
   }
-  return 'aberto';
+  return 'open';
 }
 
 const OUTCOME_LABEL: Record<ReturnType<typeof outcomeOf>, string> = {
-  corrigido: 'Corrigido',
-  'falso-positivo': 'Falso positivo',
-  'sem-defeito': 'Sem defeito',
-  aberto: 'Em aberto',
+  fixed: 'Fixed',
+  'false-positive': 'False positive',
+  'no-defect': 'No defect',
+  open: 'Open',
 };
 
 const STYLES = `
@@ -120,14 +120,14 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .sev-low{color:var(--low);font-weight:600}
 .sev-informational{color:var(--info);font-weight:600}
 .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
-.pill.corrigido{background:#e6f4ec;color:var(--ok)}
-.pill.falso-positivo{background:#eef1f4;color:var(--fp)}
-.pill.sem-defeito{background:#eef1f4;color:var(--fp)}
-.pill.aberto{background:#fdf3e0;color:var(--open)}
+.pill.fixed{background:#e6f4ec;color:var(--ok)}
+.pill.false-positive{background:#eef1f4;color:var(--fp)}
+.pill.no-defect{background:#eef1f4;color:var(--fp)}
+.pill.open{background:#fdf3e0;color:var(--open)}
 .item{border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:5px;
 padding:13px 15px;margin:0 0 12px;break-inside:avoid}
-.item.falso-positivo,.item.sem-defeito{border-left-color:var(--fp)}
-.item.aberto{border-left-color:var(--open)}
+.item.false-positive,.item.no-defect{border-left-color:var(--fp)}
+.item.open{border-left-color:var(--open)}
 .item h3{margin:0 0 7px;font-size:13.5px}
 .item .meta{font-size:11.5px;color:var(--muted);margin:0 0 8px}
 .item p{margin:0;font-size:12.5px}
@@ -153,7 +153,7 @@ function severityRows(before: Snapshot, after: Snapshot): string {
     const b = before.counts[severity] ?? 0;
     const a = after.counts[severity] ?? 0;
     const delta = a === b ? '=' : a < b ? `<span class="down">-${b - a}</span>` : `+${a - b}`;
-    return `<tr><td class="sev-${severity}">${severityPt(severity)}</td><td class="num">${b}</td><td class="num">${a}</td><td class="num">${delta}</td></tr>`;
+    return `<tr><td class="sev-${severity}">${severityLabel(severity)}</td><td class="num">${b}</td><td class="num">${a}</td><td class="num">${delta}</td></tr>`;
   }).join('');
 }
 
@@ -162,11 +162,11 @@ function itemCard(finding: SnapshotFinding, resolutions: Record<string, string>)
   const outcome = outcomeOf(resolution);
   const identifiers = [...finding.cve, ...finding.cwe].join(', ');
   const meta = [
-    `Severidade: ${severityPt(finding.severity)}`,
-    `Ferramenta: ${finding.tools.join(', ')}`,
-    `OWASP: ${finding.owasp ?? 'não determinado'}`,
-    identifiers ? `Identificadores: ${identifiers}` : null,
-    finding.location ? `Local: ${finding.location}` : null,
+    `Severity: ${severityLabel(finding.severity)}`,
+    `Tool: ${finding.tools.join(', ')}`,
+    `OWASP: ${finding.owasp ?? 'not determined'}`,
+    identifiers ? `Identifiers: ${identifiers}` : null,
+    finding.location ? `Location: ${finding.location}` : null,
   ]
     .filter(Boolean)
     .join(' &middot; ');
@@ -174,7 +174,7 @@ function itemCard(finding: SnapshotFinding, resolutions: Record<string, string>)
   return `<div class="item ${outcome}">
 <h3>${escapeHtml(finding.title)} <span class="pill ${outcome}">${OUTCOME_LABEL[outcome]}</span></h3>
 <p class="meta">${meta}</p>
-<p>${escapeHtml(resolution ?? 'Sem tratamento registrado.')}</p>
+<p>${escapeHtml(resolution ?? 'No treatment recorded.')}</p>
 </div>`;
 }
 
@@ -186,13 +186,11 @@ export function buildDeliverableHtml(
   resolutions: Record<string, string>,
 ): string {
   const all = before.findings;
-  const fixed = all.filter((f) => outcomeOf(resolutions[findingKey(f)]) === 'corrigido').length;
+  const fixed = all.filter((f) => outcomeOf(resolutions[findingKey(f)]) === 'fixed').length;
   const falsePositives = all.filter(
-    (f) => outcomeOf(resolutions[findingKey(f)]) === 'falso-positivo',
+    (f) => outcomeOf(resolutions[findingKey(f)]) === 'false-positive',
   ).length;
-  const noDefect = all.filter(
-    (f) => outcomeOf(resolutions[findingKey(f)]) === 'sem-defeito',
-  ).length;
+  const noDefect = all.filter((f) => outcomeOf(resolutions[findingKey(f)]) === 'no-defect').length;
 
   const scannerRows = before.scanners
     .map((scanner) => {
@@ -204,10 +202,10 @@ export function buildDeliverableHtml(
     .join('');
 
   return `<!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Tech Challenge - Grupo ${escapeHtml(info.group)}</title>
+<title>Tech Challenge - Group ${escapeHtml(info.group)}</title>
 <style>${STYLES}</style>
 </head>
 <body>
@@ -215,106 +213,108 @@ export function buildDeliverableHtml(
 
 <div class="cover">
 <p class="kicker">${escapeHtml(info.course)}</p>
-<h1>Tech Challenge: Grupo ${escapeHtml(info.group)}</h1>
-<p class="lead">Sistema de gestão de oficina mecânica e análise de vulnerabilidades</p>
+<h1>Tech Challenge: Group ${escapeHtml(info.group)}</h1>
+<p class="lead">Auto repair shop management system and vulnerability assessment</p>
 </div>
 
 <dl class="ident">
-<dt>Grupo</dt><dd>${escapeHtml(info.group)}</dd>
-<dt>Participantes</dt><dd>${info.participants
+<dt>Group</dt><dd>${escapeHtml(info.group)}</dd>
+<dt>Participants</dt><dd>${info.participants
     .map((p) => `${escapeHtml(p.name)} (Discord: ${escapeHtml(p.discord)})`)
     .join('<br>')}</dd>
-<dt>Documentação</dt><dd><a href="${escapeHtml(info.documentationUrl)}">${escapeHtml(info.documentationUrl)}</a></dd>
-<dt>Repositório</dt><dd><a href="${escapeHtml(info.repositoryUrl)}">${escapeHtml(info.repositoryUrl)}</a></dd>
+<dt>Documentation</dt><dd><a href="${escapeHtml(info.documentationUrl)}">${escapeHtml(info.documentationUrl)}</a></dd>
+<dt>Repository</dt><dd><a href="${escapeHtml(info.repositoryUrl)}">${escapeHtml(info.repositoryUrl)}</a></dd>
 </dl>
 
-<h2>1. Análise de vulnerabilidades</h2>
+<h2>1. Vulnerability assessment</h2>
 
-<p>O sistema foi submetido a uma análise automatizada de segurança com quatro ferramentas
-reconhecidas pela OWASP, cobrindo os três ângulos que se complementam: as dependências declaradas,
-o código-fonte e a aplicação em execução. A análise foi executada duas vezes, antes e depois das
-correções, com o mesmo comando e contra o mesmo alvo.</p>
+<p>The system was put through an automated security assessment with four tools recognised by
+OWASP, covering the three complementary angles: the declared dependencies, the source code and the
+running application. The assessment ran twice, before and after the fixes, with the same command
+and against the same target.</p>
 
 <div class="scoreboard">
-<div class="score"><div class="lbl">Antes</div><div class="val">${before.total}</div><div class="sub">achados</div></div>
-<div class="score"><div class="lbl">Depois</div><div class="val down">${after.total}</div><div class="sub">achados</div></div>
-<div class="score"><div class="lbl">Tratados</div><div class="val">${fixed + falsePositives + noDefect}</div><div class="sub">${fixed} corrigidos, ${falsePositives} falso positivo, ${noDefect} sem defeito</div></div>
+<div class="score"><div class="lbl">Before</div><div class="val">${before.total}</div><div class="sub">findings</div></div>
+<div class="score"><div class="lbl">After</div><div class="val down">${after.total}</div><div class="sub">findings</div></div>
+<div class="score"><div class="lbl">Treated</div><div class="val">${fixed + falsePositives + noDefect}</div><div class="sub">${fixed} fixed, ${falsePositives} false positive, ${noDefect} no defect</div></div>
 </div>
 
 <table>
-<thead><tr><th>Severidade</th><th class="num">Antes</th><th class="num">Depois</th><th class="num">Variação</th></tr></thead>
+<thead><tr><th>Severity</th><th class="num">Before</th><th class="num">After</th><th class="num">Change</th></tr></thead>
 <tbody>${severityRows(before, after)}
 <tr><th>Total</th><th class="num">${before.total}</th><th class="num">${after.total}</th><th class="num">${after.total < before.total ? `<span class="down">-${before.total - after.total}</span>` : after.total === before.total ? '=' : `+${after.total - before.total}`}</th></tr>
 </tbody></table>
 
-<h3>Ferramentas executadas</h3>
+<h3>Tools executed</h3>
 <table>
-<thead><tr><th>Ferramenta</th><th>Tipo</th><th class="num">Achados antes</th><th class="num">Achados depois</th></tr></thead>
+<thead><tr><th>Tool</th><th>Type</th><th class="num">Findings before</th><th class="num">Findings after</th></tr></thead>
 <tbody>${scannerRows}</tbody></table>
 
-<p>SCA analisa as dependências contra bases públicas de advisories. SAST aplica regras de
-segurança sobre o código sem executá-lo. DAST exercita a aplicação em execução por HTTP. A
-varredura dinâmica foi feita autenticada, com uma conta de papel administrativo criada pela
-própria ferramenta, para alcançar as rotas protegidas em vez de receber 401 em todas.</p>
+<p>SCA reads the dependencies against public advisory databases. SAST applies security rules to
+the source without running it. DAST exercises the running application over HTTP. The dynamic scan
+was authenticated, with an administrative account the tool creates itself, so it reaches the
+protected routes instead of being answered 401 on all of them.</p>
 
-<h2 class="pagebreak">2. Achados e tratamento</h2>
+<h2 class="pagebreak">2. Findings and treatment</h2>
 
-<p>Os ${before.total} achados da primeira execução, o que foi apurado sobre cada um e o que foi
-feito a respeito.</p>
+<p>The ${before.total} findings of the first run, what was established about each one and what
+was done about it.</p>
 
 ${all.map((finding) => itemCard(finding, resolutions)).join('\n')}
 
-<h2>3. O que mudou no sistema</h2>
+<h2>3. What changed in the system</h2>
 
-<p>As correções que alteraram código ou configuração do projeto:</p>
-
-<ul>
-<li><strong>Atualização de dependência vulnerável.</strong> <code>@faker-js/faker</code> de 9.9.0
-para 10.6.0, fechando a execução arbitrária de código em <code>helpers.fake</code>.</li>
-<li><strong>Versão corrigida forçada em dependência transitiva.</strong> <code>qs</code> elevado a
-6.16.0 por <code>overrides</code>, já que nem <code>express</code> nem <code>supertest</code>
-haviam publicado release com a correção.</li>
-<li><strong>Diretiva de cache nas respostas.</strong> Um middleware passou a definir
-<code>Cache-Control: no-store</code> e <code>Pragma: no-cache</code> em toda resposta. A API
-devolve CPF, endereço e telefone, e sem diretiva cada cache intermediário decidia sozinho se
-guardava, que é a fraqueza descrita no CWE-524.</li>
-<li><strong>Supressão documentada de falso positivo.</strong> O CVE atribuído ao pacote
-<code>validator</code> pertence a outro produto de mesmo nome, e a análise que sustenta essa
-conclusão está registrada no arquivo de supressões.</li>
-<li><strong>Correção na configuração da varredura.</strong> As rotas de logout passaram a ser
-excluídas do scan dinâmico, porque o próprio scanner as chamava e revogava o token com que
-estava autenticado.</li>
-</ul>
-
-<h2>4. Metodologia e limitações</h2>
-
-<p>As duas execuções usaram <code>npm run security:scan</code>, o mesmo alvo e as mesmas versões
-de ferramenta, fixadas por tag de imagem. Os números vieram do relatório técnico da ferramenta,
-congelado em arquivos de snapshot antes e depois das correções; este documento é gerado a partir
-deles.</p>
-
-<div class="note">Um scanner que não roda nunca é apresentado como ausência de vulnerabilidade. As
-duas execuções tiveram as quatro ferramentas com resultado, o que está registrado na tabela
-acima.</div>
-
-<p>Limitações que valem para as duas execuções:</p>
+<p>The fixes that changed code or configuration in the project:</p>
 
 <ul>
-<li>A análise estática é baseada em regras. Ela reporta o que suas regras descrevem e é silenciosa
-sobre fraquezas que nenhuma regra cobre.</li>
-<li>A análise de dependências é limitada pelas bases de advisories no momento da execução. Uma
-vulnerabilidade publicada depois não está nela.</li>
-<li>A varredura dinâmica autenticada usa um papel administrativo. Rotas atrás de permissões que
-esse papel não tem responderam 403 e não foram exercitadas.</li>
-<li>O limitador de requisições da aplicação respondeu 429 a parte das requisições da varredura, o
-que é o controle funcionando e ao mesmo tempo limita a cobertura alcançada.</li>
-<li>Não houve teste de intrusão manual nem revisão de lógica de negócio. Um único achado foi
-classificado como falso positivo, e apenas porque a evidência está no texto do próprio advisory.</li>
+<li><strong>Vulnerable dependency upgraded.</strong> <code>@faker-js/faker</code> from 9.9.0 to
+10.6.0, closing the arbitrary code execution in <code>helpers.fake</code>.</li>
+<li><strong>Patched version forced on a transitive dependency.</strong> <code>qs</code> raised to
+6.16.0 through <code>overrides</code>, since neither <code>express</code> nor
+<code>supertest</code> had published a release carrying the fix.</li>
+<li><strong>Cache directive on the responses.</strong> A middleware now sets
+<code>Cache-Control: no-store</code> and <code>Pragma: no-cache</code> on every response. The API
+returns documents, addresses and phone numbers, and with no directive each intermediate cache
+decided for itself whether to store them, which is the weakness CWE-524 describes.</li>
+<li><strong>Input validation on two list routes.</strong> Four routes answered 500 to a NUL byte
+in a query filter, because PostgreSQL cannot compare <code>\0</code> inside a text value, and one
+route took a raw string into a uuid column. Both now answer 400 before reaching a query.</li>
+<li><strong>Documented suppression of a false positive.</strong> The CVE attributed to the
+<code>validator</code> package belongs to a different product of the same name, and the analysis
+that supports that conclusion is recorded in the suppression file.</li>
+<li><strong>Scan configuration fixed.</strong> The logout routes were removed from the dynamic
+scan definition, because the scanner itself called them and revoked the very token it was
+authenticated with.</li>
 </ul>
 
-<footer>Documento gerado em ${escapeHtml(new Date().toLocaleString('pt-BR'))} a partir de
-security/reports/snapshots/. Execução base: ${escapeHtml(new Date(before.generatedAt).toLocaleString('pt-BR'))};
-execução após as correções: ${escapeHtml(new Date(after.generatedAt).toLocaleString('pt-BR'))}.</footer>
+<h2>4. Methodology and limitations</h2>
+
+<p>Both runs used <code>npm run security:scan</code>, the same target and the same tool
+versions, pinned by image tag. The numbers come from the tool's technical report, frozen into
+snapshot files before and after the fixes; this document is generated from those.</p>
+
+<div class="note">A scanner that does not run is never presented as an absence of
+vulnerabilities. Both runs had all four tools produce results, which the table above records.</div>
+
+<p>Limitations that hold for both runs:</p>
+
+<ul>
+<li>Static analysis is rule based. It reports what its rules describe and stays silent about
+weaknesses no rule covers.</li>
+<li>Dependency analysis is bounded by the advisory databases at the time of the run. A
+vulnerability published afterwards is not in it.</li>
+<li>The authenticated dynamic scan uses an administrative role. Routes behind permissions that
+role does not hold answered 403 and were not exercised.</li>
+<li>The application's rate limiter answered 429 to part of the scan traffic, which is the control
+working and at the same time a bound on the coverage reached.</li>
+<li>There was no manual penetration testing and no business logic review. A single finding was
+classified as a false positive, and only because the evidence is in the text of the advisory
+itself.</li>
+</ul>
+
+<footer>Document generated at ${escapeHtml(new Date().toISOString())} from
+security/reports/snapshots/. Baseline run: ${escapeHtml(new Date(before.generatedAt).toISOString())};
+run after the fixes: ${escapeHtml(new Date(after.generatedAt).toISOString())}.</footer>
 
 </div>
 </body>

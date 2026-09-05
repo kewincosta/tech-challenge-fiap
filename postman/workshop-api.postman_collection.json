@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Workshop Management API",
-    "description": "Colecao dos fluxos principais da operacao de oficina, na ordem em que acontecem.\n\n## Antes de rodar\n\n1. `docker compose up -d`\n2. `npm run migration:run`\n3. `npm run seed`\n\nO seed cria um usuario por papel e os dados de catalogo, estoque, cliente e veiculo que esta colecao usa. Importe tambem o environment `workshop-api.local.postman_environment.json`.\n\n## Como rodar\n\nPelo Collection Runner, de cima para baixo: cada pasta guarda em variaveis o que a proxima precisa. A pasta `00. Autenticacao` e obrigatoria e vem primeiro. A pasta `07. Encerramento` derruba as sessoes, entao fica por ultimo.\n\nAs requisicoes que criam contas geram um CPF valido e um e-mail unico a cada execucao, porque o banco nao e limpo entre rodadas.\n\n## Limite de requisicoes\n\nAs rotas de autenticacao tem um limite proprio, mais estreito que o global: `RATE_LIMIT_AUTH_MAX_REQUESTS` por `RATE_LIMIT_TTL_SECONDS` (10 a cada 60 segundos, por padrao). Uma execucao completa gasta quase toda a cota, entao duas rodadas seguidas recebem 429. Espere a janela fechar antes de repetir, ou suba os dois valores no `.env`.",
+    "description": "The main flows of the workshop operation, in the order they happen.\n\n## Before running\n\n1. `docker compose up -d`\n2. `npm run migration:run`\n3. `npm run seed`\n\nThe seed creates one user per role plus the catalog, stock, customer and vehicle data this collection uses. Import the `workshop-api.local.postman_environment.json` environment as well.\n\n## How to run it\n\nThrough the Collection Runner, top to bottom: each folder stores in a variable what the next one needs. The `00. Authentication` folder is required and comes first. The `07. Wrap-up` folder drops the sessions, so it goes last.\n\nThe requests that create accounts generate a valid CPF and a unique email on every run, because the database is not cleaned between them.\n\nA full run consumes almost the whole authentication rate limit quota, so two runs back to back get a 429. Wait for the window to close, or raise the limit in `.env`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "00. Autenticacao",
-      "description": "Login de cada ator criado por `npm run seed`. Rode esta pasta primeiro: todas as outras usam os tokens que ela guarda.",
+      "name": "00. Authentication",
+      "description": "Signs in as each actor `npm run seed` creates. Run this folder first: every other one uses the tokens it stores.",
       "item": [
         {
           "name": "Login - ADMIN",
@@ -33,7 +33,7 @@
                 }
               }
             },
-            "description": "Acesso administrativo completo: usuarios, papeis, catalogo, estoque e ordens de servico."
+            "description": "Full administrative access: users, roles, catalog, inventory and work orders."
           },
           "response": [],
           "event": [
@@ -42,11 +42,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('adminToken', body.accessToken);",
                   "pm.collectionVariables.set('adminRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
@@ -76,7 +76,7 @@
                 }
               }
             },
-            "description": "Consultor: recebe o cliente, abre a OS e monta o orcamento."
+            "description": "Service advisor: receives the customer, opens the work order and builds the budget."
           },
           "response": [],
           "event": [
@@ -85,11 +85,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('advisorToken', body.accessToken);",
                   "pm.collectionVariables.set('advisorRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
@@ -119,7 +119,7 @@
                 }
               }
             },
-            "description": "Mecanico: diagnostica, executa e conclui a OS."
+            "description": "Mechanic: diagnoses, executes and completes the work order."
           },
           "response": [],
           "event": [
@@ -128,11 +128,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('mechanicToken', body.accessToken);",
                   "pm.collectionVariables.set('mechanicRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
@@ -162,7 +162,7 @@
                 }
               }
             },
-            "description": "Cliente do seed: acompanha e decide o orcamento das proprias ordens."
+            "description": "The seeded customer: follows and decides the budget of their own orders."
           },
           "response": [],
           "event": [
@@ -171,18 +171,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('customerToken', body.accessToken);",
                   "pm.collectionVariables.set('customerRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Quem sou eu (MECHANIC)",
+          "name": "Who am I (MECHANIC)",
           "request": {
             "method": "GET",
             "header": [
@@ -196,7 +196,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["users", "me"]
             },
-            "description": "A unica rota que devolve o identificador do proprio usuario junto dos papeis e permissoes. A OS precisa dele para atribuir o mecanico."
+            "description": "The only route that returns the user's own identifier alongside the roles and permissions. The work order needs it to assign the mechanic."
           },
           "response": [],
           "event": [
@@ -205,17 +205,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('mechanicUserId', body.id);",
-                  "pm.test('traz os papeis e as permissoes efetivas', () => pm.expect(body.roles).to.include('MECHANIC'));"
+                  "pm.test('carries the effective roles and permissions', () => pm.expect(body.roles).to.include('MECHANIC'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Renovar o par de tokens",
+          "name": "Renew the token pair",
           "request": {
             "method": "POST",
             "header": [
@@ -238,7 +238,7 @@
                 }
               }
             },
-            "description": "O refresh token e de uso unico: a resposta traz um novo par e o antigo deixa de valer."
+            "description": "The refresh token is single use: the response carries a new pair and the old one stops working."
           },
           "response": [],
           "event": [
@@ -247,18 +247,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set('advisorToken', body.accessToken);",
                   "pm.collectionVariables.set('advisorRefreshToken', body.refreshToken);",
-                  "pm.test('o refresh token e rotacionado', () => pm.expect(body.refreshToken).to.be.a('string'));"
+                  "pm.test('the refresh token is rotated', () => pm.expect(body.refreshToken).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Listar sessoes ativas",
+          "name": "List active sessions",
           "request": {
             "method": "GET",
             "header": [
@@ -280,8 +280,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a sessao atual esta marcada', () => pm.expect(pm.response.json().some((s) => s.current)).to.be.true);"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the current session is flagged', () => pm.expect(pm.response.json().some((s) => s.current)).to.be.true);"
                 ]
               }
             }
@@ -290,11 +290,11 @@
       ]
     },
     {
-      "name": "01. Cadastro do cliente",
-      "description": "Da conta ate o primeiro veiculo. A conta e criada em rota publica, recebe o papel CUSTOMER, vira um cadastro de cliente e ganha um veiculo.",
+      "name": "01. Customer onboarding",
+      "description": "From the account to the first vehicle. The account is created on a public route, receives the CUSTOMER role, becomes a customer record and gains a vehicle.",
       "item": [
         {
-          "name": "Criar conta (rota publica)",
+          "name": "Create an account (public route)",
           "request": {
             "method": "POST",
             "header": [
@@ -310,14 +310,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{novoClienteEmail}}\",\n  \"name\": \"Joana Pereira\",\n  \"password\": \"{{seedPassword}}\",\n  \"document\": \"{{novoClienteCpf}}\"\n}",
+              "raw": "{\n  \"email\": \"{{newCustomerEmail}}\",\n  \"name\": \"Joana Pereira\",\n  \"password\": \"{{seedPassword}}\",\n  \"document\": \"{{newCustomerCpf}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Unica rota de escrita sem autenticacao. Tem limite de requisicoes proprio, mais estreito que o global."
+            "description": "The only write route with no authentication. It has a rate limit of its own, tighter than the global one."
           },
           "response": [],
           "event": [
@@ -326,14 +326,14 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Um CPF valido e um e-mail unico a cada execucao: o banco de teste nunca e truncado.",
-                  "const digito = (ds, peso) => { const s = ds.reduce((t, d, i) => t + d * (peso - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
+                  "// A valid CPF and a unique email on every run: the test database is never truncated.",
+                  "const digit = (ds, weight) => { const s = ds.reduce((t, d, i) => t + d * (weight - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
                   "const base = String(Math.floor(100000000 + Math.random() * 899999999));",
                   "const ds = base.split('').map(Number);",
-                  "const d1 = digito(ds, 10);",
-                  "const d2 = digito([...ds, d1], 11);",
-                  "pm.collectionVariables.set('novoClienteCpf', `${base}${d1}${d2}`);",
-                  "pm.collectionVariables.set('novoClienteEmail', `joana.${Date.now()}@exemplo.local`);"
+                  "const d1 = digit(ds, 10);",
+                  "const d2 = digit([...ds, d1], 11);",
+                  "pm.collectionVariables.set('newCustomerCpf', `${base}${d1}${d2}`);",
+                  "pm.collectionVariables.set('newCustomerEmail', `joana.${Date.now()}@exemplo.local`);"
                 ]
               }
             },
@@ -342,17 +342,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoClienteUserId', body.id);",
-                  "pm.test('novoClienteUserId capturado', () => pm.expect(pm.collectionVariables.get('novoClienteUserId')).to.be.a('string'));"
+                  "pm.collectionVariables.set('newCustomerUserId', body.id);",
+                  "pm.test('newCustomerUserId captured', () => pm.expect(pm.collectionVariables.get('newCustomerUserId')).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Listar papeis",
+          "name": "List roles",
           "request": {
             "method": "GET",
             "header": [
@@ -366,7 +366,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["roles"]
             },
-            "description": "Guarda os identificadores de CUSTOMER e MECHANIC, usados aqui e na pasta 02."
+            "description": "Stores the CUSTOMER and MECHANIC identifiers, used here and in folder 02."
           },
           "response": [],
           "event": [
@@ -375,19 +375,19 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "const papeis = pm.response.json();",
-                  "const porNome = (nome) => papeis.find((r) => r.name === nome);",
-                  "pm.collectionVariables.set('roleCustomerId', porNome('CUSTOMER').id);",
-                  "pm.collectionVariables.set('roleMechanicId', porNome('MECHANIC').id);",
-                  "pm.test('os papeis de sistema existem', () => { pm.expect(porNome('CUSTOMER')).to.be.an('object'); pm.expect(porNome('MECHANIC')).to.be.an('object'); });"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const roles = pm.response.json();",
+                  "const byName = (name) => roles.find((r) => r.name === name);",
+                  "pm.collectionVariables.set('roleCustomerId', byName('CUSTOMER').id);",
+                  "pm.collectionVariables.set('roleMechanicId', byName('MECHANIC').id);",
+                  "pm.test('the system roles exist', () => { pm.expect(byName('CUSTOMER')).to.be.an('object'); pm.expect(byName('MECHANIC')).to.be.an('object'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atribuir o papel CUSTOMER",
+          "name": "Assign the CUSTOMER role",
           "request": {
             "method": "PUT",
             "header": [
@@ -397,11 +397,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoClienteUserId}}/roles/{{roleCustomerId}}",
+              "raw": "{{baseUrl}}/users/{{newCustomerUserId}}/roles/{{roleCustomerId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoClienteUserId}}", "roles", "{{roleCustomerId}}"]
+              "path": ["users", "{{newCustomerUserId}}", "roles", "{{roleCustomerId}}"]
             },
-            "description": "Idempotente. Sem este papel, o cadastro de cliente do proximo passo e recusado."
+            "description": "Idempotent. Without this role, the customer registration in the next step is refused."
           },
           "response": [],
           "event": [
@@ -409,13 +409,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
         },
         {
-          "name": "Registrar como cliente",
+          "name": "Register as a customer",
           "request": {
             "method": "POST",
             "header": [
@@ -435,14 +435,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": \"{{novoClienteUserId}}\",\n  \"address\": {\n    \"street\": \"Rua das Laranjeiras\",\n    \"number\": \"220\",\n    \"complement\": \"Apto 71\",\n    \"district\": \"Centro\",\n    \"city\": \"Campinas\",\n    \"state\": \"SP\",\n    \"zipCode\": \"13010100\"\n  },\n  \"phoneNumber\": \"(19) 99876-5432\"\n}",
+              "raw": "{\n  \"userId\": \"{{newCustomerUserId}}\",\n  \"address\": {\n    \"street\": \"Rua das Laranjeiras\",\n    \"number\": \"220\",\n    \"complement\": \"Apto 71\",\n    \"district\": \"Centro\",\n    \"city\": \"Campinas\",\n    \"state\": \"SP\",\n    \"zipCode\": \"13010100\"\n  },\n  \"phoneNumber\": \"(19) 99876-5432\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Liga o cadastro de oficina a conta existente. Endereco e telefone sao opcionais, mas o endereco e tudo ou nada."
+            "description": "Links the workshop record to the existing account. Address and phone are optional, but the address is all or nothing."
           },
           "response": [],
           "event": [
@@ -451,17 +451,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoClienteId', body.id);",
-                  "pm.test('novoClienteId capturado', () => pm.expect(pm.collectionVariables.get('novoClienteId')).to.be.a('string'));"
+                  "pm.collectionVariables.set('newCustomerId', body.id);",
+                  "pm.test('newCustomerId captured', () => pm.expect(pm.collectionVariables.get('newCustomerId')).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Cadastrar veiculo",
+          "name": "Register a vehicle",
           "request": {
             "method": "POST",
             "header": [
@@ -481,14 +481,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"plate\": \"{{novaPlaca}}\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Golf\",\n  \"year\": 2021\n}",
+              "raw": "{\n  \"customerId\": \"{{newCustomerId}}\",\n  \"plate\": \"{{newPlate}}\",\n  \"brand\": \"Volkswagen\",\n  \"model\": \"Golf\",\n  \"year\": 2021\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Aceita o formato antigo (AAA0000) e o Mercosul (AAA0A00), com ou sem separadores."
+            "description": "Accepts the old format (AAA0000) and the Mercosul one (AAA0A00), with or without separators."
           },
           "response": [],
           "event": [
@@ -497,11 +497,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Placa Mercosul (AAA0A00) sorteada: a placa e unica entre os veiculos ativos.",
+                  "// A drawn Mercosul plate (AAA0A00): the plate is unique among active vehicles.",
                   "const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';",
                   "const l = () => L[Math.floor(Math.random() * L.length)];",
                   "const n = () => Math.floor(Math.random() * 10);",
-                  "pm.collectionVariables.set('novaPlaca', `${l()}${l()}${l()}${n()}${l()}${n()}${n()}`);"
+                  "pm.collectionVariables.set('newPlate', `${l()}${l()}${l()}${n()}${l()}${n()}${n()}`);"
                 ]
               }
             },
@@ -510,17 +510,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoVeiculoId', body.id);",
-                  "pm.test('novoVeiculoId capturado', () => pm.expect(pm.collectionVariables.get('novoVeiculoId')).to.be.a('string'));"
+                  "pm.collectionVariables.set('newVehicleId', body.id);",
+                  "pm.test('newVehicleId captured', () => pm.expect(pm.collectionVariables.get('newVehicleId')).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Login do novo cliente",
+          "name": "Sign in as the new customer",
           "request": {
             "method": "POST",
             "header": [
@@ -536,7 +536,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{novoClienteEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
+              "raw": "{\n  \"email\": \"{{newCustomerEmail}}\",\n  \"password\": \"{{seedPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -551,24 +551,24 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoClienteToken', body.accessToken);",
-                  "pm.collectionVariables.set('novoClienteRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.collectionVariables.set('newCustomerToken', body.accessToken);",
+                  "pm.collectionVariables.set('newCustomerRefreshToken', body.refreshToken);",
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Meu cadastro de cliente",
+          "name": "My customer record",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
@@ -584,21 +584,21 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('devolve o proprio cadastro', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('novoClienteId')));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the caller own record', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('newCustomerId')));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Meus veiculos",
+          "name": "My vehicles",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
@@ -614,15 +614,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('lista o veiculo recem cadastrado', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('lists the newly registered vehicle', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atualizar o proprio cadastro",
+          "name": "Update my own record",
           "request": {
             "method": "PATCH",
             "header": [
@@ -632,7 +632,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
@@ -657,8 +657,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('o telefone foi normalizado para digitos', () => pm.expect(pm.response.json().phoneNumber).to.eql('1932321010'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the phone number was normalised to digits', () => pm.expect(pm.response.json().phoneNumber).to.eql('1932321010'));"
                 ]
               }
             }
@@ -667,11 +667,11 @@
       ]
     },
     {
-      "name": "02. Gestao de usuarios",
-      "description": "Contas de equipe e o modelo de acesso. Uma conta de staff nasce com senha temporaria e so passa pelos guards depois da troca.",
+      "name": "02. User management",
+      "description": "Staff accounts and the access model. A staff account is born with a temporary password and only gets past the guards after the change.",
       "item": [
         {
-          "name": "Listar permissoes",
+          "name": "List permissions",
           "request": {
             "method": "GET",
             "header": [
@@ -693,15 +693,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('o catalogo de permissoes nao esta vazio', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the permission catalog is not empty', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Consultar um papel",
+          "name": "Read one role",
           "request": {
             "method": "GET",
             "header": [
@@ -722,13 +722,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
         },
         {
-          "name": "Criar conta de staff",
+          "name": "Create a staff account",
           "request": {
             "method": "POST",
             "header": [
@@ -748,14 +748,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{novoStaffEmail}}\",\n  \"name\": \"Rafael Souza\",\n  \"document\": \"{{novoStaffCpf}}\"\n}",
+              "raw": "{\n  \"email\": \"{{newStaffEmail}}\",\n  \"name\": \"Rafael Souza\",\n  \"document\": \"{{newStaffCpf}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "A senha temporaria aparece so nesta resposta e nunca e registrada em log. Ate a troca, a conta so alcanca /users/me/password."
+            "description": "The temporary password appears only in this response and is never written to a log. Until the change, the account reaches only /users/me/password."
           },
           "response": [],
           "event": [
@@ -764,13 +764,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const digito = (ds, peso) => { const s = ds.reduce((t, d, i) => t + d * (peso - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
+                  "const digit = (ds, weight) => { const s = ds.reduce((t, d, i) => t + d * (weight - i), 0); const r = s % 11; return r < 2 ? 0 : 11 - r; };",
                   "const base = String(Math.floor(100000000 + Math.random() * 899999999));",
                   "const ds = base.split('').map(Number);",
-                  "const d1 = digito(ds, 10);",
-                  "const d2 = digito([...ds, d1], 11);",
-                  "pm.collectionVariables.set('novoStaffCpf', `${base}${d1}${d2}`);",
-                  "pm.collectionVariables.set('novoStaffEmail', `rafael.${Date.now()}@oficina.local`);"
+                  "const d1 = digit(ds, 10);",
+                  "const d2 = digit([...ds, d1], 11);",
+                  "pm.collectionVariables.set('newStaffCpf', `${base}${d1}${d2}`);",
+                  "pm.collectionVariables.set('newStaffEmail', `rafael.${Date.now()}@oficina.local`);"
                 ]
               }
             },
@@ -779,18 +779,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoStaffId', body.id);",
-                  "pm.collectionVariables.set('novoStaffSenha', body.temporaryPassword);",
-                  "pm.test('a senha temporaria vem uma unica vez', () => pm.expect(body.temporaryPassword).to.be.a('string'));"
+                  "pm.collectionVariables.set('newStaffId', body.id);",
+                  "pm.collectionVariables.set('newStaffPassword', body.temporaryPassword);",
+                  "pm.test('the temporary password comes exactly once', () => pm.expect(body.temporaryPassword).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atribuir o papel MECHANIC ao staff",
+          "name": "Assign the MECHANIC role to the staff account",
           "request": {
             "method": "PUT",
             "header": [
@@ -800,11 +800,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
+              "raw": "{{baseUrl}}/users/{{newStaffId}}/roles/{{roleMechanicId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoStaffId}}", "roles", "{{roleMechanicId}}"]
+              "path": ["users", "{{newStaffId}}", "roles", "{{roleMechanicId}}"]
             },
-            "description": "roleMechanicId vem da listagem de papeis da pasta 01."
+            "description": "roleMechanicId comes from the role listing in folder 01."
           },
           "response": [],
           "event": [
@@ -812,13 +812,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
         },
         {
-          "name": "Consultar os acessos do usuario",
+          "name": "Read the user's access",
           "request": {
             "method": "GET",
             "header": [
@@ -828,11 +828,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoStaffId}}/access",
+              "raw": "{{baseUrl}}/users/{{newStaffId}}/access",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoStaffId}}", "access"]
+              "path": ["users", "{{newStaffId}}", "access"]
             },
-            "description": "Devolve os papeis atribuidos diretamente ao usuario, cada um com seu identificador e nome."
+            "description": "Returns the roles assigned directly to the user, each with its identifier and name."
           },
           "response": [],
           "event": [
@@ -841,15 +841,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('o papel MECHANIC aparece', () => pm.expect(pm.response.json().roles.map((r) => r.name)).to.include('MECHANIC'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the MECHANIC role shows up', () => pm.expect(pm.response.json().roles.map((r) => r.name)).to.include('MECHANIC'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Login do staff com a senha temporaria",
+          "name": "Sign in as the staff account with the temporary password",
           "request": {
             "method": "POST",
             "header": [
@@ -865,7 +865,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{novoStaffEmail}}\",\n  \"password\": \"{{novoStaffSenha}}\"\n}",
+              "raw": "{\n  \"email\": \"{{newStaffEmail}}\",\n  \"password\": \"{{newStaffPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -880,18 +880,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoStaffToken', body.accessToken);",
-                  "pm.collectionVariables.set('novoStaffRefreshToken', body.refreshToken);",
-                  "pm.test('devolve um par de tokens', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
+                  "pm.collectionVariables.set('newStaffToken', body.accessToken);",
+                  "pm.collectionVariables.set('newStaffRefreshToken', body.refreshToken);",
+                  "pm.test('returns a token pair', () => { pm.expect(body.accessToken).to.be.a('string'); pm.expect(body.refreshToken).to.be.a('string'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Trocar a senha temporaria",
+          "name": "Change the temporary password",
           "request": {
             "method": "POST",
             "header": [
@@ -901,7 +901,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoStaffToken}}"
+                "value": "Bearer {{newStaffToken}}"
               }
             ],
             "url": {
@@ -911,14 +911,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"{{novoStaffSenha}}\",\n  \"newPassword\": \"{{seedPassword}}\"\n}",
+              "raw": "{\n  \"currentPassword\": \"{{newStaffPassword}}\",\n  \"newPassword\": \"{{seedPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Encerra todas as sessoes do usuario, inclusive a que fez a troca. E preciso logar de novo depois."
+            "description": "Ends every session of the user, including the one that made the change. Signing in again is required afterwards."
           },
           "response": [],
           "event": [
@@ -926,13 +926,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
         },
         {
-          "name": "Listar usuarios por documento",
+          "name": "List users by document",
           "request": {
             "method": "GET",
             "header": [
@@ -942,13 +942,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users?document={{novoStaffCpf}}",
+              "raw": "{{baseUrl}}/users?document={{newStaffCpf}}",
               "host": ["{{baseUrl}}"],
               "path": ["users"],
               "query": [
                 {
                   "key": "document",
-                  "value": "{{novoStaffCpf}}"
+                  "value": "{{newStaffCpf}}"
                 }
               ]
             }
@@ -960,15 +960,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('encontra a conta pelo CPF', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('finds the account by CPF', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atualizar o usuario",
+          "name": "Update the user",
           "request": {
             "method": "PATCH",
             "header": [
@@ -982,9 +982,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoStaffId}}",
+              "raw": "{{baseUrl}}/users/{{newStaffId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoStaffId}}"]
+              "path": ["users", "{{newStaffId}}"]
             },
             "body": {
               "mode": "raw",
@@ -1002,13 +1002,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
         },
         {
-          "name": "Revogar o papel",
+          "name": "Revoke the role",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1018,9 +1018,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoStaffId}}/roles/{{roleMechanicId}}",
+              "raw": "{{baseUrl}}/users/{{newStaffId}}/roles/{{roleMechanicId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoStaffId}}", "roles", "{{roleMechanicId}}"]
+              "path": ["users", "{{newStaffId}}", "roles", "{{roleMechanicId}}"]
             }
           },
           "response": [],
@@ -1029,13 +1029,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
         },
         {
-          "name": "Desativar a conta",
+          "name": "Deactivate the account",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1045,11 +1045,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/users/{{novoStaffId}}",
+              "raw": "{{baseUrl}}/users/{{newStaffId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "{{novoStaffId}}"]
+              "path": ["users", "{{newStaffId}}"]
             },
-            "description": "Exclusao logica: a linha permanece, as sessoes caem e a conta some das listagens."
+            "description": "Logical deletion: the row stays, the sessions drop and the account disappears from the listings."
           },
           "response": [],
           "event": [
@@ -1057,7 +1057,7 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
@@ -1065,11 +1065,11 @@
       ]
     },
     {
-      "name": "03. Gestao de estoque",
-      "description": "Cadastro de pecas e insumos com contagem verdadeira. A quantidade em maos nunca e escrita direto: so um movimento a move.",
+      "name": "03. Inventory management",
+      "description": "Parts and supplies with a truthful count. The quantity on hand is never written directly: only a movement changes it.",
       "item": [
         {
-          "name": "Criar item de catalogo",
+          "name": "Create a catalog item",
           "request": {
             "method": "POST",
             "header": [
@@ -1089,14 +1089,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sku\": \"{{novoSku}}\",\n  \"name\": \"Correia dentada\",\n  \"description\": \"Kit com tensor\",\n  \"kind\": \"PART\",\n  \"unitPriceCents\": 27500\n}",
+              "raw": "{\n  \"sku\": \"{{newSku}}\",\n  \"name\": \"Timing belt\",\n  \"description\": \"Kit with tensioner\",\n  \"kind\": \"PART\",\n  \"unitPriceCents\": 27500\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "`kind` aceita PART ou SUPPLY. O item nasce com quantidade zero."
+            "description": "`kind` accepts PART or SUPPLY. The item is born with a quantity of zero."
           },
           "response": [],
           "event": [
@@ -1105,7 +1105,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('novoSku', `CRR-${Date.now().toString().slice(-8)}`);"
+                  "pm.collectionVariables.set('newSku', `CRR-${Date.now().toString().slice(-8)}`);"
                 ]
               }
             },
@@ -1114,17 +1114,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('novoItemId', body.id);",
-                  "pm.test('novoItemId capturado', () => pm.expect(pm.collectionVariables.get('novoItemId')).to.be.a('string'));"
+                  "pm.collectionVariables.set('newItemId', body.id);",
+                  "pm.test('newItemId captured', () => pm.expect(pm.collectionVariables.get('newItemId')).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Listar o catalogo ativo",
+          "name": "List the active catalog",
           "request": {
             "method": "GET",
             "header": [
@@ -1152,18 +1152,18 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "const itens = pm.response.json();",
-                  "const comEstoque = itens.find((i) => i.quantityOnHand > 0) || itens[0];",
-                  "pm.collectionVariables.set('itemComEstoqueId', comEstoque.id);",
-                  "pm.test('o catalogo tem pecas', () => pm.expect(itens).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json();",
+                  "const stocked = items.find((i) => i.quantityOnHand > 0) || items[0];",
+                  "pm.collectionVariables.set('stockedItemId', stocked.id);",
+                  "pm.test('the catalog has parts', () => pm.expect(items).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Consultar um item",
+          "name": "Read one item",
           "request": {
             "method": "GET",
             "header": [
@@ -1173,9 +1173,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}"]
+              "path": ["inventory-items", "{{newItemId}}"]
             }
           },
           "response": [],
@@ -1185,15 +1185,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('nasce com quantidade zero', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('is born with a quantity of zero', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atualizar nome e preco",
+          "name": "Update the name and price",
           "request": {
             "method": "PATCH",
             "header": [
@@ -1207,20 +1207,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}"]
+              "path": ["inventory-items", "{{newItemId}}"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Correia dentada reforcada\",\n  \"unitPriceCents\": 29900\n}",
+              "raw": "{\n  \"name\": \"Reinforced timing belt\",\n  \"unitPriceCents\": 29900\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Envie `description: null` para limpar a descricao; omita o campo para nao mexer nela."
+            "description": "Send `description: null` to clear the description; omit the field to leave it untouched."
           },
           "response": [],
           "event": [
@@ -1229,15 +1229,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a quantidade nao muda com um PATCH', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the quantity does not change on a PATCH', () => pm.expect(pm.response.json().quantityOnHand).to.eql(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Repor estoque",
+          "name": "Take stock in",
           "request": {
             "method": "POST",
             "header": [
@@ -1251,20 +1251,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/replenishments",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}/replenishments",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}", "replenishments"]
+              "path": ["inventory-items", "{{newItemId}}", "replenishments"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"quantity\": 30,\n  \"unitPriceCents\": 29900,\n  \"note\": \"Nota fiscal 4471\"\n}",
+              "raw": "{\n  \"quantity\": 30,\n  \"unitPriceCents\": 29900,\n  \"note\": \"Invoice 4471\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Grava um movimento INBOUND e sobe a contagem."
+            "description": "Writes an INBOUND movement and raises the count."
           },
           "response": [],
           "event": [
@@ -1273,15 +1273,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a contagem sobe para 30', () => pm.expect(pm.response.json().quantityOnHand).to.eql(30));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the count goes up to 30', () => pm.expect(pm.response.json().quantityOnHand).to.eql(30));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Ajustar estoque para baixo",
+          "name": "Adjust stock down",
           "request": {
             "method": "POST",
             "header": [
@@ -1295,20 +1295,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/adjustments",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}/adjustments",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}", "adjustments"]
+              "path": ["inventory-items", "{{newItemId}}", "adjustments"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"quantity\": 4,\n  \"note\": \"Avaria no transporte\"\n}",
+              "raw": "{\n  \"quantity\": 4,\n  \"note\": \"Damaged in transit\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "A justificativa e obrigatoria no ajuste, ao contrario da reposicao. A contagem nunca fica negativa."
+            "description": "The reason is mandatory on an adjustment, unlike a replenishment. The count never goes negative."
           },
           "response": [],
           "event": [
@@ -1317,15 +1317,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a contagem desce para 26', () => pm.expect(pm.response.json().quantityOnHand).to.eql(26));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the count goes down to 26', () => pm.expect(pm.response.json().quantityOnHand).to.eql(26));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Historico de movimentos",
+          "name": "Movement history",
           "request": {
             "method": "GET",
             "header": [
@@ -1335,11 +1335,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}/movements",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}/movements",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}", "movements"]
+              "path": ["inventory-items", "{{newItemId}}", "movements"]
             },
-            "description": "Livro-razao somente-adicao: nenhum movimento e editado ou apagado."
+            "description": "Append-only ledger: no movement is edited or erased."
           },
           "response": [],
           "event": [
@@ -1348,15 +1348,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('dois movimentos, em ordem cronologica', () => pm.expect(pm.response.json()).to.have.lengthOf(2));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('two movements, in chronological order', () => pm.expect(pm.response.json()).to.have.lengthOf(2));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Faltas de estoque",
+          "name": "Stock shortages",
           "request": {
             "method": "GET",
             "header": [
@@ -1370,7 +1370,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["inventory-items", "shortages"]
             },
-            "description": "Itens cuja demanda das OS em execucao passa do que ha na prateleira."
+            "description": "Items whose demand from orders in execution exceeds what is on the shelf."
           },
           "response": [],
           "event": [
@@ -1378,13 +1378,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 200', () => pm.response.to.have.status(200));"]
+                "exec": ["pm.test('answers 200', () => pm.response.to.have.status(200));"]
               }
             }
           ]
         },
         {
-          "name": "Desativar o item",
+          "name": "Deactivate the item",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1394,11 +1394,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory-items/{{novoItemId}}",
+              "raw": "{{baseUrl}}/inventory-items/{{newItemId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["inventory-items", "{{novoItemId}}"]
+              "path": ["inventory-items", "{{newItemId}}"]
             },
-            "description": "Exclusao logica. Recusada com 409 enquanto alguma OS que planejou o item nao foi entregue ou cancelada. A contagem e o historico permanecem, e o SKU volta a ficar livre."
+            "description": "Logical deletion. Refused with 409 while any work order that planned the item has not been delivered or cancelled. The count and the history stay, and the SKU becomes free again."
           },
           "response": [],
           "event": [
@@ -1406,13 +1406,13 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('responde 204', () => pm.response.to.have.status(204));"]
+                "exec": ["pm.test('answers 204', () => pm.response.to.have.status(204));"]
               }
             }
           ]
         },
         {
-          "name": "O item desativado saiu da listagem",
+          "name": "The deactivated item left the listing",
           "request": {
             "method": "GET",
             "header": [
@@ -1434,8 +1434,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('nao aparece mais no catalogo ativo', () => pm.expect(pm.response.json().some((i) => i.id === pm.collectionVariables.get('novoItemId'))).to.be.false);"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('no longer shows up in the active catalog', () => pm.expect(pm.response.json().some((i) => i.id === pm.collectionVariables.get('newItemId'))).to.be.false);"
                 ]
               }
             }
@@ -1444,11 +1444,11 @@
       ]
     },
     {
-      "name": "04. Gestao de ordem de servico",
-      "description": "O fluxo completo, na ordem em que a maquina de estados aceita: RECEBIDA, EM DIAGNOSTICO, AGUARDANDO APROVACAO, EM EXECUCAO, FINALIZADA, ENTREGUE.",
+      "name": "04. Work order management",
+      "description": "The full flow, in the order the state machine accepts: RECEIVED, IN DIAGNOSIS, AWAITING APPROVAL, IN EXECUTION, COMPLETED, DELIVERED.",
       "item": [
         {
-          "name": "Identificar o cliente pelo CPF",
+          "name": "Identify the customer by CPF",
           "request": {
             "method": "GET",
             "header": [
@@ -1458,17 +1458,17 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/customers?document={{novoClienteCpf}}",
+              "raw": "{{baseUrl}}/customers?document={{newCustomerCpf}}",
               "host": ["{{baseUrl}}"],
               "path": ["customers"],
               "query": [
                 {
                   "key": "document",
-                  "value": "{{novoClienteCpf}}"
+                  "value": "{{newCustomerCpf}}"
                 }
               ]
             },
-            "description": "O balcao parte do CPF ou CNPJ. O identificador encontrado aqui e o que abre a OS."
+            "description": "The counter starts from the CPF or CNPJ. The identifier found here is what opens the work order."
           },
           "response": [],
           "event": [
@@ -1477,17 +1477,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "const clientes = pm.response.json();",
-                  "pm.collectionVariables.set('novoClienteId', clientes[0].id);",
-                  "pm.test('encontra o cliente pelo documento', () => pm.expect(clientes).to.have.lengthOf(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const customers = pm.response.json();",
+                  "pm.collectionVariables.set('newCustomerId', customers[0].id);",
+                  "pm.test('finds the customer by document', () => pm.expect(customers).to.have.lengthOf(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Listar os veiculos do cliente",
+          "name": "List the customer's vehicles",
           "request": {
             "method": "GET",
             "header": [
@@ -1497,13 +1497,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/vehicles?customerId={{novoClienteId}}",
+              "raw": "{{baseUrl}}/vehicles?customerId={{newCustomerId}}",
               "host": ["{{baseUrl}}"],
               "path": ["vehicles"],
               "query": [
                 {
                   "key": "customerId",
-                  "value": "{{novoClienteId}}"
+                  "value": "{{newCustomerId}}"
                 }
               ]
             }
@@ -1515,16 +1515,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('novoVeiculoId', pm.response.json()[0].id);",
-                  "pm.test('o cliente tem veiculo', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('newVehicleId', pm.response.json()[0].id);",
+                  "pm.test('the customer has a vehicle', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Abrir a OS",
+          "name": "Open the work order",
           "request": {
             "method": "POST",
             "header": [
@@ -1544,14 +1544,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"vehicleId\": \"{{novoVeiculoId}}\"\n}",
+              "raw": "{\n  \"customerId\": \"{{newCustomerId}}\",\n  \"vehicleId\": \"{{newVehicleId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Nasce em RECEBIDA. Um veiculo so pode ter uma OS aberta por vez."
+            "description": "Born in RECEIVED. A vehicle can have only one open work order at a time."
           },
           "response": [],
           "event": [
@@ -1560,17 +1560,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('osNumero', body.number);",
-                  "pm.test('nasce com um numero proprio', () => pm.expect(body.number).to.be.a('string'));"
+                  "pm.collectionVariables.set('workOrderNumber', body.number);",
+                  "pm.test('is born with a number of its own', () => pm.expect(body.number).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Listar o catalogo de servicos",
+          "name": "List the service catalog",
           "request": {
             "method": "GET",
             "header": [
@@ -1592,16 +1592,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('servicoId', pm.response.json()[0].id);",
-                  "pm.test('o catalogo tem servicos', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('catalogServiceId', pm.response.json()[0].id);",
+                  "pm.test('the catalog has services', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Iniciar o diagnostico",
+          "name": "Start the diagnosis",
           "request": {
             "method": "POST",
             "header": [
@@ -1611,11 +1611,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/diagnosis",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "diagnosis"]
+              "path": ["work-orders", "{{workOrderNumber}}", "diagnosis"]
             },
-            "description": "O status muda sozinho, como consequencia da acao. Nao existe rota para escrever um status a mao."
+            "description": "The status changes on its own, as a consequence of the action. There is no route to write a status by hand."
           },
           "response": [],
           "event": [
@@ -1624,15 +1624,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('passa para EM DIAGNOSTICO', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('moves to IN_DIAGNOSIS', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Atribuir o mecanico",
+          "name": "Assign the mechanic",
           "request": {
             "method": "PUT",
             "header": [
@@ -1646,9 +1646,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/mechanic",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/mechanic",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "mechanic"]
+              "path": ["work-orders", "{{workOrderNumber}}", "mechanic"]
             },
             "body": {
               "mode": "raw",
@@ -1667,15 +1667,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('o mecanico fica registrado na OS', () => pm.expect(pm.response.json().assignedMechanicUserId).to.eql(pm.collectionVariables.get('mechanicUserId')));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the mechanic is recorded on the order', () => pm.expect(pm.response.json().assignedMechanicUserId).to.eql(pm.collectionVariables.get('mechanicUserId')));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Incluir um servico solicitado",
+          "name": "Add a requested service",
           "request": {
             "method": "POST",
             "header": [
@@ -1689,20 +1689,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/services",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/services",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "services"]
+              "path": ["work-orders", "{{workOrderNumber}}", "services"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"serviceId\": \"{{servicoId}}\"\n}",
+              "raw": "{\n  \"serviceId\": \"{{catalogServiceId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "O preco vem do catalogo. Nenhuma rota aceita um preco do cliente."
+            "description": "The price comes from the catalog. No route accepts a price from the caller."
           },
           "response": [],
           "event": [
@@ -1711,15 +1711,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a OS passa a ter um servico', () => pm.expect(pm.response.json().serviceItems).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the order now carries a service', () => pm.expect(pm.response.json().serviceItems).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Planejar uma peca",
+          "name": "Plan a part",
           "request": {
             "method": "POST",
             "header": [
@@ -1733,20 +1733,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/parts",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/parts",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "parts"]
+              "path": ["work-orders", "{{workOrderNumber}}", "parts"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"inventoryItemId\": \"{{itemComEstoqueId}}\",\n  \"quantity\": 2\n}",
+              "raw": "{\n  \"inventoryItemId\": \"{{stockedItemId}}\",\n  \"quantity\": 2\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Planejar nao move estoque. A baixa acontece na retirada, mais adiante."
+            "description": "Planning moves no stock. The write-down happens at withdrawal, further along."
           },
           "response": [],
           "event": [
@@ -1755,17 +1755,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "const peca = pm.response.json().partItems[0];",
-                  "pm.collectionVariables.set('osItemPecaId', peca.id);",
-                  "pm.test('a peca entra planejada, sem sair do estoque', () => pm.expect(peca.withdrawnQuantity).to.eql(0));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "const part = pm.response.json().partItems[0];",
+                  "pm.collectionVariables.set('workOrderPartItemId', part.id);",
+                  "pm.test('the part enters planned, without leaving the shelf', () => pm.expect(part.withdrawnQuantity).to.eql(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Concluir o diagnostico e gerar o orcamento",
+          "name": "Complete the diagnosis and generate the budget",
           "request": {
             "method": "POST",
             "header": [
@@ -1775,11 +1775,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/diagnosis/completion",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/diagnosis/completion",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "diagnosis", "completion"]
+              "path": ["work-orders", "{{workOrderNumber}}", "diagnosis", "completion"]
             },
-            "description": "O orcamento e somado dentro do agregado, a partir dos servicos e das pecas planejadas. O total nao vem de nenhum campo de entrada."
+            "description": "The budget is summed inside the aggregate, from the services and the planned parts. The total comes from no input field."
           },
           "response": [],
           "event": [
@@ -1788,17 +1788,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('passa para AGUARDANDO APROVACAO', () => pm.expect(body.status).to.eql('AWAITING_APPROVAL'));",
-                  "pm.test('a rodada 1 foi gerada com um total', () => pm.expect(body.budgets[0].totalCents).to.be.above(0));"
+                  "pm.test('moves to AWAITING_APPROVAL', () => pm.expect(body.status).to.eql('AWAITING_APPROVAL'));",
+                  "pm.test('round 1 was generated with a total', () => pm.expect(body.budgets[0].totalCents).to.be.above(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Consultar a OS orcada",
+          "name": "Read the quoted work order",
           "request": {
             "method": "GET",
             "header": [
@@ -1808,9 +1808,9 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}"]
+              "path": ["work-orders", "{{workOrderNumber}}"]
             }
           },
           "response": [],
@@ -1820,29 +1820,29 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a rodada 1 esta pendente de decisao', () => pm.expect(pm.response.json().budgets[0].status).to.eql('PENDING'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('round 1 is pending a decision', () => pm.expect(pm.response.json().budgets[0].status).to.eql('PENDING'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Cliente aprova o orcamento",
+          "name": "Customer approves the budget",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/budget/approval",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/budget/approval",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "budget", "approval"]
+              "path": ["work-orders", "{{workOrderNumber}}", "budget", "approval"]
             },
-            "description": "Quem decide e o dono da OS ou quem tem work-orders:decide. Um estranho recebe 404, nao 403: o numero de outra pessoa nao existe para ele."
+            "description": "The decision belongs to the order's owner or to whoever holds work-orders:decide. A stranger gets a 404, not a 403: someone else's number does not exist for them."
           },
           "response": [],
           "event": [
@@ -1851,15 +1851,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('passa para EM EXECUCAO', () => pm.expect(pm.response.json().status).to.eql('IN_EXECUTION'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('moves to IN_EXECUTION', () => pm.expect(pm.response.json().status).to.eql('IN_EXECUTION'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Retirar a peca do estoque",
+          "name": "Withdraw the part from stock",
           "request": {
             "method": "POST",
             "header": [
@@ -1873,20 +1873,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/withdrawals",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/withdrawals",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "withdrawals"]
+              "path": ["work-orders", "{{workOrderNumber}}", "withdrawals"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"lines\": [\n    {\n      \"itemId\": \"{{osItemPecaId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "raw": "{\n  \"lines\": [\n    {\n      \"itemId\": \"{{workOrderPartItemId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Baixa o estoque, grava o movimento e atualiza a OS numa unica transacao."
+            "description": "Decreases the stock, writes the movement and updates the order in a single transaction."
           },
           "response": [],
           "event": [
@@ -1895,15 +1895,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a peca sai do estoque e entra na OS', () => pm.expect(pm.response.json().partItems[0].withdrawnQuantity).to.eql(2));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the part leaves the shelf and enters the order', () => pm.expect(pm.response.json().partItems[0].withdrawnQuantity).to.eql(2));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Concluir a OS",
+          "name": "Complete the work order",
           "request": {
             "method": "POST",
             "header": [
@@ -1913,11 +1913,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/completion",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/completion",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "completion"]
+              "path": ["work-orders", "{{workOrderNumber}}", "completion"]
             },
-            "description": "Cobra o que foi retirado, ao preco orcado. Uma peca planejada e nunca retirada nao entra na conta."
+            "description": "Charges what was withdrawn, at the budgeted price. A part planned and never withdrawn does not enter the bill."
           },
           "response": [],
           "event": [
@@ -1926,17 +1926,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('passa para FINALIZADA', () => pm.expect(body.status).to.eql('COMPLETED'));",
-                  "pm.test('o total cobrado e congelado', () => pm.expect(body.chargedTotalCents).to.be.above(0));"
+                  "pm.test('moves to COMPLETED', () => pm.expect(body.status).to.eql('COMPLETED'));",
+                  "pm.test('the charged total is frozen', () => pm.expect(body.chargedTotalCents).to.be.above(0));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Aplicar um desconto",
+          "name": "Apply a discount",
           "request": {
             "method": "POST",
             "header": [
@@ -1950,20 +1950,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/discount",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/discount",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "discount"]
+              "path": ["work-orders", "{{workOrderNumber}}", "discount"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"amountCents\": 1000,\n  \"note\": \"Cortesia por atraso na entrega\"\n}",
+              "raw": "{\n  \"amountCents\": 1000,\n  \"note\": \"Courtesy for the delivery delay\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "A justificativa e obrigatoria e o desconto nao pode passar do total cobrado."
+            "description": "The reason is mandatory and the discount cannot exceed the charged total."
           },
           "response": [],
           "event": [
@@ -1972,15 +1972,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('o desconto fica registrado com a justificativa', () => pm.expect(pm.response.json().discountCents).to.eql(1000));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the discount is recorded with its reason', () => pm.expect(pm.response.json().discountCents).to.eql(1000));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Entregar o veiculo",
+          "name": "Deliver the vehicle",
           "request": {
             "method": "POST",
             "header": [
@@ -1990,11 +1990,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/delivery",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/delivery",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "delivery"]
+              "path": ["work-orders", "{{workOrderNumber}}", "delivery"]
             },
-            "description": "Fecha o livro: os consumos pendentes do estoque passam a liquidados."
+            "description": "Closes the book: the pending stock consumptions become settled."
           },
           "response": [],
           "event": [
@@ -2003,15 +2003,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('passa para ENTREGUE', () => pm.expect(pm.response.json().status).to.eql('DELIVERED'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('moves to DELIVERED', () => pm.expect(pm.response.json().status).to.eql('DELIVERED'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Quadro de OS por status",
+          "name": "Work order board by status",
           "request": {
             "method": "GET",
             "header": [
@@ -2039,15 +2039,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a OS entregue aparece no quadro', () => pm.expect(pm.response.json().some((o) => o.number === pm.collectionVariables.get('osNumero'))).to.be.true);"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the delivered order shows up on the board', () => pm.expect(pm.response.json().some((o) => o.number === pm.collectionVariables.get('workOrderNumber'))).to.be.true);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Abrir uma segunda OS",
+          "name": "Open a second work order",
           "request": {
             "method": "POST",
             "header": [
@@ -2067,14 +2067,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerId\": \"{{novoClienteId}}\",\n  \"vehicleId\": \"{{novoVeiculoId}}\"\n}",
+              "raw": "{\n  \"customerId\": \"{{newCustomerId}}\",\n  \"vehicleId\": \"{{newVehicleId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "O veiculo esta livre de novo: a OS anterior foi entregue."
+            "description": "The vehicle is free again: the previous order was delivered."
           },
           "response": [],
           "event": [
@@ -2083,17 +2083,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('answers 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.collectionVariables.set('osCanceladaNumero', body.number);",
-                  "pm.test('osCanceladaNumero capturado', () => pm.expect(pm.collectionVariables.get('osCanceladaNumero')).to.be.a('string'));"
+                  "pm.collectionVariables.set('cancelledOrderNumber', body.number);",
+                  "pm.test('cancelledOrderNumber captured', () => pm.expect(pm.collectionVariables.get('cancelledOrderNumber')).to.be.a('string'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Cancelar a segunda OS",
+          "name": "Cancel the second work order",
           "request": {
             "method": "POST",
             "header": [
@@ -2107,20 +2107,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osCanceladaNumero}}/cancellation",
+              "raw": "{{baseUrl}}/work-orders/{{cancelledOrderNumber}}/cancellation",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osCanceladaNumero}}", "cancellation"]
+              "path": ["work-orders", "{{cancelledOrderNumber}}", "cancellation"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Cliente decidiu adiar o servico\"\n}",
+              "raw": "{\n  \"reason\": \"Customer decided to postpone the service\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "description": "Cancelar em execucao exige permissao propria e da baixa definitiva nas pecas ja retiradas."
+            "description": "Cancelling in execution requires a permission of its own and writes off the parts already withdrawn."
           },
           "response": [],
           "event": [
@@ -2129,8 +2129,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('passa para CANCELADA', () => pm.expect(pm.response.json().status).to.eql('CANCELED'));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('moves to CANCELED', () => pm.expect(pm.response.json().status).to.eql('CANCELED'));"
                 ]
               }
             }
@@ -2139,17 +2139,17 @@
       ]
     },
     {
-      "name": "05. Acompanhamento pelo cliente",
-      "description": "O que o cliente ve das proprias ordens. Nenhuma destas rotas aceita o identificador de outra pessoa.",
+      "name": "05. Customer tracking",
+      "description": "What the customer sees of their own orders. None of these routes accepts someone else's identifier.",
       "item": [
         {
-          "name": "Minhas ordens de servico",
+          "name": "My work orders",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
@@ -2165,27 +2165,27 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('lista as OS do proprio cliente', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('lists the customer own orders', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(1));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Uma ordem minha, pelo numero",
+          "name": "One of my orders, by number",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{novoClienteToken}}"
+                "value": "Bearer {{newCustomerToken}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
+              "raw": "{{baseUrl}}/work-orders/me/{{workOrderNumber}}",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "me", "{{osNumero}}"]
+              "path": ["work-orders", "me", "{{workOrderNumber}}"]
             }
           },
           "response": [],
@@ -2195,15 +2195,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('traz o orcamento e o status', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('DELIVERED'); pm.expect(b.budgets).to.have.lengthOf.at.least(1); });"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('carries the budget and the status', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('DELIVERED'); pm.expect(b.budgets).to.have.lengthOf.at.least(1); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "A OS de outro cliente responde 404",
+          "name": "Another customer's order answers 404",
           "request": {
             "method": "GET",
             "header": [
@@ -2213,11 +2213,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/me/{{osNumero}}",
+              "raw": "{{baseUrl}}/work-orders/me/{{workOrderNumber}}",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "me", "{{osNumero}}"]
+              "path": ["work-orders", "me", "{{workOrderNumber}}"]
             },
-            "description": "Mesma resposta de um numero inexistente. Nao ha como descobrir a OS de outra pessoa por diferenca de erro."
+            "description": "The same answer as a non-existent number. There is no way to discover someone else's order from a difference in the error."
           },
           "response": [],
           "event": [
@@ -2226,8 +2226,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
-                  "pm.test('o numero alheio nao existe para quem pergunta', () => pm.expect(pm.response.json().code).to.eql('WORK_ORDER_NOT_FOUND'));"
+                  "pm.test('answers 404', () => pm.response.to.have.status(404));",
+                  "pm.test('someone else number does not exist for the caller', () => pm.expect(pm.response.json().code).to.eql('WORK_ORDER_NOT_FOUND'));"
                 ]
               }
             }
@@ -2236,11 +2236,11 @@
       ]
     },
     {
-      "name": "06. Metricas e auditoria",
-      "description": "O que a operacao mede e o que fica registrado.",
+      "name": "06. Metrics and audit",
+      "description": "What the operation measures and what stays on record.",
       "item": [
         {
-          "name": "Tempo medio de execucao",
+          "name": "Average execution time",
           "request": {
             "method": "GET",
             "header": [
@@ -2254,7 +2254,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["work-orders", "metrics", "average-execution-time"]
             },
-            "description": "Aceita os filtros serviceId, completedFrom e completedTo. Com filtro por servico a resposta vem marcada como aproximada: uma OS com varios servicos contribui o tempo inteiro para cada um."
+            "description": "Accepts the serviceId, completedFrom and completedTo filters. With a service filter the response is marked as approximated: an order carrying several services contributes its whole elapsed time to each one."
           },
           "response": [],
           "event": [
@@ -2263,15 +2263,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('devolve a media e a contagem', () => { const b = pm.response.json(); pm.expect(b).to.have.property('workOrderCount'); });"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('returns the average and the count', () => { const b = pm.response.json(); pm.expect(b).to.have.property('workOrderCount'); });"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Tempo medio por servico",
+          "name": "Average execution time per service",
           "request": {
             "method": "GET",
             "header": [
@@ -2281,13 +2281,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time?serviceId={{servicoId}}",
+              "raw": "{{baseUrl}}/work-orders/metrics/average-execution-time?serviceId={{catalogServiceId}}",
               "host": ["{{baseUrl}}"],
               "path": ["work-orders", "metrics", "average-execution-time"],
               "query": [
                 {
                   "key": "serviceId",
-                  "value": "{{servicoId}}"
+                  "value": "{{catalogServiceId}}"
                 }
               ]
             }
@@ -2299,15 +2299,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('a resposta vem marcada como aproximada', () => pm.expect(pm.response.json().approximated).to.be.true);"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('the response is marked as approximated', () => pm.expect(pm.response.json().approximated).to.be.true);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Trilha da OS",
+          "name": "Work order trail",
           "request": {
             "method": "GET",
             "header": [
@@ -2317,11 +2317,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/work-orders/{{osNumero}}/trail",
+              "raw": "{{baseUrl}}/work-orders/{{workOrderNumber}}/trail",
               "host": ["{{baseUrl}}"],
-              "path": ["work-orders", "{{osNumero}}", "trail"]
+              "path": ["work-orders", "{{workOrderNumber}}", "trail"]
             },
-            "description": "Gravada dentro da mesma transacao que muda o agregado: nao existe passo aplicado sem registro."
+            "description": "Written inside the same transaction that changes the aggregate: there is no step applied without a record."
           },
           "response": [],
           "event": [
@@ -2330,8 +2330,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('registra cada passo em ordem cronologica', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(5));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('records each step in chronological order', () => pm.expect(pm.response.json()).to.have.lengthOf.at.least(5));"
                 ]
               }
             }
@@ -2340,11 +2340,11 @@
       ]
     },
     {
-      "name": "07. Encerramento",
-      "description": "Deixe por ultimo: o logout derruba todas as sessoes ativas do usuario, nao so a atual.",
+      "name": "07. Wrap-up",
+      "description": "Leave this for last: signing out drops every active session of the user, not only the current one.",
       "item": [
         {
-          "name": "Logout do administrador",
+          "name": "Sign the administrator out",
           "request": {
             "method": "DELETE",
             "header": [
@@ -2366,8 +2366,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('informa quantas sessoes caiu', () => pm.expect(pm.response.json().revokedSessions).to.be.at.least(1));"
+                  "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports how many sessions were dropped', () => pm.expect(pm.response.json().revokedSessions).to.be.at.least(1));"
                 ]
               }
             }

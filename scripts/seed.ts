@@ -57,46 +57,46 @@ const ACTORS: SeedActor[] = [
   {
     role: 'ADMIN',
     email: 'admin@oficina.local',
-    name: 'Ana Administradora',
+    name: 'Ana Administrator',
     documentBase: '529982247',
   },
   {
     role: 'SERVICE_ADVISOR',
     email: 'consultor@oficina.local',
-    name: 'Carlos Consultor',
+    name: 'Carlos Advisor',
     documentBase: '746273890',
   },
   {
     role: 'MECHANIC',
     email: 'mecanico@oficina.local',
-    name: 'Marcos Mecanico',
+    name: 'Marcos Mechanic',
     documentBase: '390533447',
   },
   {
     role: 'CUSTOMER',
     email: 'cliente@oficina.local',
-    name: 'Clara Cliente',
+    name: 'Clara Customer',
     documentBase: '168995500',
   },
 ];
 
 const SERVICES = [
-  { name: 'Troca de oleo', description: 'Oleo e filtro inclusos', priceCents: 15_099, minutes: 60 },
+  { name: 'Oil change', description: 'Oil and filter included', priceCents: 15_099, minutes: 60 },
   {
-    name: 'Alinhamento e balanceamento',
-    description: 'Quatro rodas',
+    name: 'Wheel alignment and balancing',
+    description: 'All four wheels',
     priceCents: 12_000,
     minutes: 90,
   },
   {
-    name: 'Revisao completa',
-    description: 'Revisao de 10 mil quilometros',
+    name: 'Full service',
+    description: '10,000 kilometre service',
     priceCents: 48_000,
     minutes: 240,
   },
   {
-    name: 'Troca de pastilhas de freio',
-    description: 'Dianteiras',
+    name: 'Brake pad replacement',
+    description: 'Front axle',
     priceCents: 32_000,
     minutes: 120,
   },
@@ -105,40 +105,40 @@ const SERVICES = [
 const INVENTORY = [
   {
     sku: 'FLT-OL-001',
-    name: 'Filtro de oleo',
-    description: 'Compativel com motores 1.0 a 1.6',
+    name: 'Oil filter',
+    description: 'Fits 1.0 to 1.6 engines',
     kind: 'PART',
     priceCents: 4_500,
     quantity: 40,
   },
   {
     sku: 'PST-FR-001',
-    name: 'Pastilha de freio dianteira',
-    description: 'Jogo com quatro pecas',
+    name: 'Front brake pad',
+    description: 'Set of four',
     kind: 'PART',
     priceCents: 18_900,
     quantity: 25,
   },
   {
     sku: 'OLE-5W30-001',
-    name: 'Oleo sintetico 5W30',
-    description: 'Litro',
+    name: '5W30 synthetic oil',
+    description: 'One litre',
     kind: 'SUPPLY',
     priceCents: 5_200,
     quantity: 120,
   },
   {
     sku: 'FLU-FR-001',
-    name: 'Fluido de freio DOT4',
-    description: 'Frasco de 500ml',
+    name: 'DOT4 brake fluid',
+    description: '500 ml bottle',
     kind: 'SUPPLY',
     priceCents: 3_400,
     quantity: 60,
   },
   {
     sku: 'EST-LV-001',
-    name: 'Estopa para limpeza',
-    description: 'Pacote com um quilo',
+    name: 'Cleaning rags',
+    description: 'One kilo pack',
     kind: 'SUPPLY',
     priceCents: 1_800,
     quantity: 80,
@@ -311,7 +311,7 @@ async function seedInventory(
     // A created item has a quantity on hand of zero - only a movement moves the count, so the
     // opening stock is a real INBOUND movement rather than a column written directly.
     await commandBus.execute<ReplenishStockCommand, void>(
-      new ReplenishStockCommand(id, item.quantity, item.priceCents, actorUserId, 'Estoque inicial'),
+      new ReplenishStockCommand(id, item.quantity, item.priceCents, actorUserId, 'Opening stock'),
     );
     created += 1;
   }

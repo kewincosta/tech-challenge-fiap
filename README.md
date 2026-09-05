@@ -1,174 +1,154 @@
 # Workshop Management API
 
-API REST para a operação de uma oficina mecânica, da chegada do veículo até a entrega.
+A REST API for running an auto repair shop, from the moment the vehicle arrives to the moment it
+is handed back.
 
-[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
 [![NestJS](https://img.shields.io/badge/NestJS-11-e0234e.svg)](https://nestjs.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org)
 
-> **Status:** MVP em desenvolvimento ativo. As funcionalidades descritas abaixo estão
-> implementadas, cobertas por testes e verificadas por hooks de git a cada commit e push. O
-> projeto nunca rodou em produção.
+> **Status:** MVP under active development. The features described below are implemented, covered
+> by tests and verified by git hooks on every commit and push. The project has never run in
+> production.
 
-## Sumário
+## Contents
 
-- [Visão geral](#visão-geral)
-- [Convenção de linguagem](#convenção-de-linguagem)
-- [Funcionalidades](#funcionalidades)
-- [Arquitetura](#arquitetura)
-- [Stack](#stack)
-- [Pré-requisitos](#pré-requisitos)
-- [Começando](#começando)
-- [Variáveis de ambiente](#variáveis-de-ambiente)
-- [Banco de dados](#banco-de-dados)
-- [Executando a aplicação](#executando-a-aplicação)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Requirements](#requirements)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [Database](#database)
+- [Running the application](#running-the-application)
 - [API](#api)
-- [Collection do Postman](#collection-do-postman)
-- [Testes](#testes)
-- [Qualidade de código](#qualidade-de-código)
-- [Estrutura de pastas](#estrutura-de-pastas)
-- [Convenções](#convenções)
-- [Linguagem ubíqua](#linguagem-ubíqua)
-- [Decisões técnicas](#decisões-técnicas)
-- [Requisitos do desafio](#requisitos-do-desafio)
-- [Segurança](#segurança)
-- [Análise de segurança](#análise-de-segurança)
-- [Deploy](#deploy)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
+- [Postman collection](#postman-collection)
+- [Testing](#testing)
+- [Code quality](#code-quality)
+- [Project structure](#project-structure)
+- [Conventions](#conventions)
+- [Ubiquitous language](#ubiquitous-language)
+- [Technical decisions](#technical-decisions)
+- [Challenge requirements](#challenge-requirements)
+- [Security](#security)
+- [Security assessment](#security-assessment)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Visão geral
+## Overview
 
-Uma oficina de pequeno porte administra o mesmo problema todos os dias: um veículo chega, alguém
-diagnostica, alguém precisa aprovar o custo antes que o trabalho comece, peças saem do estoque
-enquanto o serviço acontece, e no fim é preciso saber o que foi cobrado e por quê. Sem sistema,
-esse controle vive em papel e planilha, o cliente liga para saber do carro e ninguém sabe
-responder, e o estoque só é conferido quando falta.
+A small repair shop runs the same cycle every day: a car arrives, someone diagnoses it, the
+customer has to approve the cost before the work starts, parts leave the shelf while the service
+happens, and at the end somebody needs to know what was charged and why. Without a system this
+lives in paper and spreadsheets, the customer calls to ask about the car and nobody can answer,
+and the stock is only checked when something runs out.
 
-Esta API centraliza essa operação em torno de um conceito: a **ordem de serviço**. Ela guarda quem
-é o cliente, qual é o veículo, o que foi diagnosticado, quanto custa, quem aprovou, quais peças
-saíram da prateleira e quando o carro foi entregue. Cada mudança de status acontece como
-consequência de uma ação, nunca por escrita direta, e cada passo fica registrado numa trilha que
-não pode ser reescrita.
+This API centres that operation on one concept: the **work order**. It holds who the customer is,
+which vehicle it is, what was diagnosed, what it costs, who approved it, which parts left the
+shelf and when the car was delivered. Every status change happens as the consequence of an action,
+never through a direct write, and every step is recorded in a trail that cannot be rewritten.
 
-**Para quem é:** desenvolvedores construindo ou avaliando um back-end de gestão de oficina, e
-quem quiser um exemplo concreto de monolito modular com DDD e CQRS em NestJS. É uma API HTTP: não
-há interface de usuário neste repositório.
+**Who it is for:** developers building or evaluating a repair shop backend, and anyone who wants a
+concrete example of a modular monolith with DDD and CQRS in NestJS. It is an HTTP API: there is no
+user interface in this repository.
 
-**Por que existe:** nasceu como Tech Challenge da pós-graduação em Arquitetura de Software da
-FIAP (SOAT). O escopo é o de uma oficina única, com um estoque e um endereço. Não cobre
-faturamento, gestão de fornecedores nem agendamento.
+**Why it exists:** it started as the Tech Challenge of the postgraduate program in Software
+Architecture at FIAP (SOAT). The scope is a single shop, with one stock and one address. It does
+not cover invoicing, supplier management or scheduling.
 
-## Convenção de linguagem
+## Features
 
-Este README e a documentação de entrada estão em **português**. O código, os commits, os nomes de
-rota, os identificadores, as mensagens de erro e os documentos em `docs/` estão em **inglês**.
+### Identity and access
 
-A separação é deliberada. A documentação de entrada existe para quem chega ao projeto, e o público
-deste projeto é brasileiro: forçar inglês aqui só adiciona uma barreira sem contrapartida. O
-código, por outro lado, convive com o vocabulário do ecossistema em que roda. NestJS, TypeORM,
-class-validator e o próprio SQL são em inglês, e misturar os dois idiomas dentro de um mesmo
-arquivo produz nomes como `RegistrarCustomerHandler`. Manter o código inteiro em inglês mantém o
-vocabulário do domínio consistente do agregado até o nome da coluna.
+- Account registration on a public route, with CPF and CNPJ validated by check digit
+- JWT authentication with an access token and a single-use rotating refresh token
+- Sessions that can be listed and revoked, one at a time or all at once
+- Staff accounts created with a temporary password, locked until the first change
+- Permission-based access control, grouped into roles: `SUPER_ADMIN`, `ADMIN`, `SERVICE_ADVISOR`,
+  `MECHANIC`, `CUSTOMER`
+- Rate limiting through Redis, with a tighter band on the authentication routes
 
-Os dados de exemplo (nomes de serviço, endereços, os dados que `npm run seed` cria) estão em
-português, porque são conteúdo brasileiro, não código.
+### Customers and vehicles
 
-A exceção deliberada é
-[`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md), escrito em português. A
-linguagem ubíqua é justamente a ponte entre quem fala do negócio e quem escreve o código, e a
-tradução entre os dois idiomas é o que aquele conjunto existe para registrar.
+- Customer CRUD, with the address checked against the real list of Brazilian states and the phone
+  number normalised
+- Customer lookup by name or by document, which is how the counter works
+- Vehicle CRUD with plates in the old (AAA0000) and Mercosul (AAA0A00) formats
+- Vehicle transfer between customers
+- `me` routes for the customer to read and update their own record
 
-## Funcionalidades
+### Service catalog
 
-### Identidade e acesso
+- Service CRUD with a price and an estimated duration
+- Logical deletion: the record stays and the name becomes available again
 
-- Cadastro de conta em rota pública, com validação de CPF e CNPJ por dígito verificador
-- Autenticação JWT com token de acesso e refresh token rotativo de uso único
-- Sessões listáveis e revogáveis, individualmente ou todas de uma vez
-- Contas de equipe criadas com senha temporária, bloqueadas até a primeira troca
-- Controle de acesso por permissão, agrupadas em papéis: `SUPER_ADMIN`, `ADMIN`,
-  `SERVICE_ADVISOR`, `MECHANIC`, `CUSTOMER`
-- Limite de requisições por Redis, com uma faixa mais estreita nas rotas de autenticação
+### Inventory
 
-### Clientes e veículos
+- Part and supply CRUD, with the SKU unique among active items
+- Replenishment and downward adjustment, each writing a movement
+- A count that never goes negative, changed only by a movement
+- Append-only movement history, with the actor of each one
+- Shortage report: items whose demand from orders in execution exceeds what is on the shelf
+- Deactivation refused while an open work order still plans the item
 
-- CRUD de clientes, com endereço validado contra a lista real de UFs e telefone normalizado
-- Busca de cliente por nome ou por documento, que é o caminho do balcão
-- CRUD de veículos com placa nos formatos antigo (AAA0000) e Mercosul (AAA0A00)
-- Transferência de veículo entre clientes
-- Rotas `me` para o cliente ler e atualizar o próprio cadastro
+### Work orders
 
-### Catálogo de serviços
-
-- CRUD de serviços com preço e duração estimada
-- Exclusão lógica: o registro permanece e o nome volta a ficar disponível
-
-### Estoque
-
-- CRUD de peças e insumos, com SKU único entre os itens ativos
-- Reposição e ajuste para baixo, cada um gravando um movimento
-- Contagem que nunca fica negativa, alterada apenas por movimento
-- Histórico de movimentos somente-adição, com o ator de cada um
-- Relatório de faltas: itens cuja demanda das OS em execução passa do que há na prateleira
-- Desativação recusada enquanto uma OS aberta ainda planeja o item
-
-### Ordens de serviço
-
-- Abertura a partir do cliente e do veículo, com um veículo por OS aberta
-- Inclusão de serviços do catálogo e de peças do estoque
-- Orçamento somado dentro do agregado, a partir dos serviços e das peças planejadas
-- Rodadas de orçamento numeradas, para o trabalho extra descoberto durante a execução
-- Aprovação ou rejeição pelo cliente, ou por quem tem a permissão para decidir
-- Retirada de peças do estoque, com baixa e movimento na mesma transação da OS
-- Devolução do que sobrou, cancelamento com baixa definitiva, desconto com justificativa
-- Sete estados, alterados apenas como consequência de uma ação:
+- Opened from the customer and the vehicle, with one vehicle per open order
+- Catalog services and inventory parts added to the order
+- Budget summed inside the aggregate, from the services and the planned parts
+- Numbered budget rounds, for extra work found during execution
+- Approval or rejection by the customer, or by whoever holds the permission to decide
+- Part withdrawal from stock, with the decrease and the movement in the same transaction as the order
+- Return of what was left over, cancellation with a definitive write-off, discount with a reason
+- Seven states, changed only as the consequence of an action:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> RECEIVED: abertura
-    RECEIVED --> IN_DIAGNOSIS: iniciar diagnóstico
-    IN_DIAGNOSIS --> AWAITING_APPROVAL: concluir diagnóstico
-    AWAITING_APPROVAL --> IN_EXECUTION: cliente aprova
-    AWAITING_APPROVAL --> IN_DIAGNOSIS: cliente rejeita a rodada 1
-    IN_EXECUTION --> AWAITING_APPROVAL: orçamento complementar
-    IN_EXECUTION --> COMPLETED: concluir
-    COMPLETED --> DELIVERED: entregar
+    [*] --> RECEIVED: open
+    RECEIVED --> IN_DIAGNOSIS: start diagnosis
+    IN_DIAGNOSIS --> AWAITING_APPROVAL: complete diagnosis
+    AWAITING_APPROVAL --> IN_EXECUTION: customer approves
+    AWAITING_APPROVAL --> IN_DIAGNOSIS: customer rejects round 1
+    IN_EXECUTION --> AWAITING_APPROVAL: supplementary budget
+    IN_EXECUTION --> COMPLETED: complete
+    COMPLETED --> DELIVERED: deliver
     DELIVERED --> [*]
-    RECEIVED --> CANCELED: cancelar
-    IN_DIAGNOSIS --> CANCELED: cancelar
-    AWAITING_APPROVAL --> CANCELED: cancelar
-    IN_EXECUTION --> CANCELED: cancelar (permissão própria)
+    RECEIVED --> CANCELED: cancel
+    IN_DIAGNOSIS --> CANCELED: cancel
+    AWAITING_APPROVAL --> CANCELED: cancel
+    IN_EXECUTION --> CANCELED: cancel (elevated permission)
     CANCELED --> [*]
 ```
 
-### Acompanhamento e métricas
+### Tracking and metrics
 
-- O cliente consulta as próprias ordens por API, sem acesso às de terceiros
-- Trilha completa da OS, gravada na mesma transação que muda o agregado
-- Tempo médio de execução, com filtro por serviço e por período
+- The customer reads their own orders through the API, with no access to anyone else's
+- Full work order trail, written in the same transaction that changes the aggregate
+- Average execution time, filterable by service and by period
 
-## Arquitetura
+## Architecture
 
-Monolito modular com CQRS, num único processo e um único banco. Oito módulos, cada um com quatro
-camadas, e uma regra dura entre eles: módulos só conversam pelos barramentos de comando e consulta,
-nunca importando o repositório ou a entidade do vizinho.
+A modular monolith with CQRS, in a single process against a single database. Eight modules, each
+with four layers, and one hard rule between them: modules talk only through the command and query
+buses, never by importing a neighbour's repository or entity.
 
 ```mermaid
 flowchart TB
-    Cliente[Cliente HTTP] --> Guards
-    subgraph Guards["Cadeia de guards (global)"]
+    Client[HTTP client] --> Guards
+    subgraph Guards["Guard chain (global)"]
         direction LR
         T[ThrottlerGuard] --> J[JwtAuthGuard] --> P[PendingPasswordGuard] --> A[PermissionsGuard]
     end
     Guards --> Presentation
-    subgraph Modulo["Um módulo"]
+    subgraph Module["One module"]
         direction TB
         Presentation["presentation<br/>controllers, DTOs, guards"]
-        Application["application<br/>handlers de comando e consulta, ports"]
-        Domain["domain<br/>agregados, value objects, eventos, erros"]
-        Infrastructure["infrastructure<br/>repositórios TypeORM, adaptadores de leitura"]
+        Application["application<br/>command and query handlers, ports"]
+        Domain["domain<br/>aggregates, value objects, events, errors"]
+        Infrastructure["infrastructure<br/>TypeORM repositories, read adapters"]
         Presentation --> Application
         Application --> Domain
         Application -.->|ports| Infrastructure
@@ -178,72 +158,72 @@ flowchart TB
     Application -.-> Redis[(Redis)]
 ```
 
-A dependência aponta sempre para dentro. `application` conhece `domain` e conversa com
-`infrastructure` só através de interfaces (`ports`) que ela mesma declara. As regras de negócio
-vivem nos agregados, não nos handlers: quem decide se uma OS pode sair do diagnóstico é a própria
-`WorkOrder`, e quem garante que o estoque nunca fica negativo é o value object `StockQuantity`.
+Dependencies always point inward. `application` knows `domain` and talks to `infrastructure` only
+through interfaces (`ports`) that it declares itself. The business rules live in the aggregates,
+not in the handlers: what decides whether a work order can leave the diagnosis is `WorkOrder`
+itself, and what guarantees the stock never goes negative is the `StockQuantity` value object.
 
-Isso não é convenção de nome de pasta. O ESLint recusa import de framework dentro de `domain` e
-import de infraestrutura dentro de `application`, então uma violação de camada quebra
-`npm run lint` em vez de passar pela revisão.
+This is not a folder naming convention. ESLint refuses framework imports inside `domain` and
+infrastructure imports inside `application`, so a layering violation breaks `npm run lint` rather
+than passing review.
 
-**Padrões táticos em uso**, com exemplos reais:
+**Tactical patterns in use**, with real examples:
 
-| Padrão               | Onde vive                                                                       |
-| -------------------- | ------------------------------------------------------------------------------- |
-| Agregado             | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`          |
-| Entidade filha       | `Budget`, `WorkOrderPartItem`, `StockMovement` (dentro do agregado que as cria) |
-| Value object         | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`   |
-| Evento de domínio    | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                       |
-| Repositório          | Interface em `domain/repositories`, implementação TypeORM em `infrastructure`   |
-| Serviço de aplicação | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                     |
-| Port e adaptador     | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`               |
+| Pattern             | Where it lives                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| Aggregate           | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`                  |
+| Child entity        | `Budget`, `WorkOrderPartItem`, `StockMovement` (inside the aggregate that creates them) |
+| Value object        | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`           |
+| Domain event        | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                               |
+| Repository          | Interface in `domain/repositories`, TypeORM implementation in `infrastructure`          |
+| Application service | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                             |
+| Port and adapter    | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`                       |
 
-Os cinco contextos delimitados são Identity & Access, Customer Management, Workshop Catalog,
-Inventory e Workshop Operations. Contextos e módulos não são um para um: Identity & Access ocupa
-três módulos e Customer Management dois.
+The five bounded contexts are Identity & Access, Customer Management, Workshop Catalog, Inventory
+and Workshop Operations. Contexts and modules are not one for one: Identity & Access occupies
+three modules and Customer Management two.
 
-Detalhes em [`docs/architecture/`](docs/architecture/):
-[visão geral](docs/architecture/architecture-overview.md),
-[projeto de alto nível](docs/architecture/high-level-design.md),
-[projeto de baixo nível por módulo](docs/architecture/low-level-design/README.md).
+Details in [`docs/architecture/`](docs/architecture/):
+[overview](docs/architecture/architecture-overview.md),
+[high level design](docs/architecture/high-level-design.md),
+[low level design per module](docs/architecture/low-level-design/README.md).
 
-O vocabulário de cada contexto, com a tradução entre o termo de negócio e o termo de código, está
-em [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
+The vocabulary of each context, with the translation between the business term and the code term,
+is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 
-## Stack
+## Tech stack
 
-| Camada              | Tecnologia                               |
-| ------------------- | ---------------------------------------- |
-| Linguagem           | TypeScript 5.9                           |
-| Runtime             | Node.js >= 22                            |
-| Framework           | NestJS 11                                |
-| CQRS                | `@nestjs/cqrs` 11                        |
-| ORM                 | TypeORM 0.3                              |
-| Banco               | PostgreSQL 16                            |
-| Cache e limites     | Redis 7 (`ioredis`)                      |
-| Documentação da API | `@nestjs/swagger` 11 (OpenAPI 3)         |
-| Validação           | `class-validator` e `zod` (env)          |
-| Hash de senha       | `argon2` (Argon2id)                      |
-| Cabeçalhos HTTP     | `helmet`                                 |
-| Log                 | `nestjs-pino`                            |
-| Testes              | Vitest 3, `supertest`, `@faker-js/faker` |
-| Cobertura           | `@vitest/coverage-v8`                    |
-| Lint e formatação   | ESLint 9, Prettier 3                     |
-| Containers          | Docker e Docker Compose                  |
+| Layer             | Technology                               |
+| ----------------- | ---------------------------------------- |
+| Language          | TypeScript 5.9                           |
+| Runtime           | Node.js >= 22                            |
+| Framework         | NestJS 11                                |
+| CQRS              | `@nestjs/cqrs` 11                        |
+| ORM               | TypeORM 0.3                              |
+| Database          | PostgreSQL 16                            |
+| Cache and limits  | Redis 7 (`ioredis`)                      |
+| API documentation | `@nestjs/swagger` 11 (OpenAPI 3)         |
+| Validation        | `class-validator` and `zod` (env)        |
+| Password hashing  | `argon2` (Argon2id)                      |
+| HTTP headers      | `helmet`                                 |
+| Logging           | `nestjs-pino`                            |
+| Testing           | Vitest 3, `supertest`, `@faker-js/faker` |
+| Coverage          | `@vitest/coverage-v8`                    |
+| Lint and format   | ESLint 9, Prettier 3                     |
+| Containers        | Docker and Docker Compose                |
 
-## Pré-requisitos
+## Requirements
 
-- **Node.js 22 ou superior** (campo `engines` do `package.json`; a imagem Docker usa Node 24)
-- **npm** (o repositório versiona `package-lock.json`)
-- **Docker** e **Docker Compose**, para Postgres e Redis
+- **Node.js 22 or newer** (the `engines` field in `package.json`; the Docker image uses Node 24)
+- **npm** (the repository versions `package-lock.json`)
+- **Docker** and **Docker Compose**, for PostgreSQL and Redis
 
-Não é preciso instalar Postgres nem Redis na máquina: o `docker-compose.yml` sobe os dois.
+There is no need to install PostgreSQL or Redis on the machine: `docker-compose.yml` starts both.
 
-## Começando
+## Getting started
 
 ```bash
-git clone <url-do-repositorio>
+git clone <repository-url>
 cd tech_challenger_1
 
 npm install
@@ -254,127 +234,128 @@ npm run migration:run
 npm run seed
 ```
 
-Ao final disso a API responde em `http://localhost:13000`, o Swagger em
-`http://localhost:13000/api/docs`, e o banco tem um usuário por papel mais catálogo, estoque,
-cliente e veículos de demonstração.
+After that the API answers at `http://localhost:13000`, Swagger at
+`http://localhost:13000/api/docs`, and the database holds one user per role plus a catalog, stock,
+a customer and demo vehicles.
 
-O `.env.example` já vem com valores que casam com o `docker-compose.yml`. Em ambiente local não é
-preciso mudar nada além de `JWT_SECRET`, se quiser.
+`.env.example` already carries values that match `docker-compose.yml`. In a local environment
+nothing needs changing beyond `JWT_SECRET`, if you want to.
 
-> O serviço `app` do compose roda a imagem construída no momento do `up`. Depois de mudar código,
-> use `docker compose up -d --build`, senão o container continua servindo a versão anterior.
+> The compose `app` service runs the image built at the time of the `up`. After changing code, use
+> `docker compose up -d --build`, otherwise the container keeps serving the previous version.
 
-## Variáveis de ambiente
+## Environment variables
 
-Carregadas de `.env` e validadas na subida por `zod`
-([`src/config/env.validation.ts`](src/config/env.validation.ts)). Uma variável obrigatória ausente
-derruba a aplicação com a mensagem do campo, em vez de falhar mais tarde.
+Loaded from `.env` and validated at startup by `zod`
+([`src/config/env.validation.ts`](src/config/env.validation.ts)). A missing required variable
+brings the application down with the field's message, rather than failing later.
 
-| Variável                       | Obrigatória | Padrão           | Descrição                                                             |
-| ------------------------------ | ----------- | ---------------- | --------------------------------------------------------------------- |
-| `NODE_ENV`                     | Não         | `development`    | `development`, `test` ou `production`                                 |
-| `PORT`                         | Não         | `3000`           | Porta que a aplicação escuta dentro do container                      |
-| `APP_HOST_PORT`                | Não         | `13000`          | Porta publicada da API na máquina                                     |
-| `POSTGRES_HOST_PORT`           | Não         | `15432`          | Porta publicada do Postgres na máquina                                |
-| `REDIS_HOST_PORT`              | Não         | `16379`          | Porta publicada do Redis na máquina                                   |
-| `DATABASE_HOST`                | Sim         | -                | Host do Postgres                                                      |
-| `DATABASE_PORT`                | Não         | `5432`           | Porta do Postgres                                                     |
-| `DATABASE_USER`                | Sim         | -                | Usuário do Postgres                                                   |
-| `DATABASE_PASSWORD`            | Sim         | -                | Senha do Postgres                                                     |
-| `DATABASE_NAME`                | Sim         | -                | Nome do banco                                                         |
-| `REDIS_HOST`                   | Sim         | -                | Host do Redis                                                         |
-| `REDIS_PORT`                   | Não         | `6379`           | Porta do Redis                                                        |
-| `REDIS_DB`                     | Não         | `0`              | Índice do banco Redis, de 0 a 15                                      |
-| `JWT_SECRET`                   | Sim         | -                | Segredo de assinatura do token, mínimo de 32 caracteres               |
-| `ACCESS_TOKEN_TTL_SECONDS`     | Não         | `900`            | Validade do token de acesso                                           |
-| `REFRESH_TOKEN_TTL_SECONDS`    | Não         | `604800`         | Validade do refresh token                                             |
-| `SESSION_ABSOLUTE_TTL_SECONDS` | Não         | `2592000`        | Teto absoluto da sessão, independente das renovações                  |
-| `RATE_LIMIT_TTL_SECONDS`       | Não         | `60`             | Janela do limite de requisições                                       |
-| `RATE_LIMIT_MAX_REQUESTS`      | Não         | `100`            | Requisições por janela, limite global                                 |
-| `RATE_LIMIT_AUTH_MAX_REQUESTS` | Não         | `10`             | Requisições por janela nas rotas de autenticação                      |
-| `ADMIN_EMAIL`                  | Não         | -                | E-mail do `SUPER_ADMIN` criado pelos seeds                            |
-| `ADMIN_PASSWORD`               | Não         | -                | Senha do `SUPER_ADMIN`, mínimo de 8 caracteres, lida por `seed:admin` |
-| `ADMIN_DOCUMENT`               | Não         | -                | CPF ou CNPJ do `SUPER_ADMIN`, lido por `seed:admin`                   |
-| `SEED_PASSWORD`                | Não         | `Str0ngPassword` | Senha dada a todas as contas que `npm run seed` cria                  |
+| Variable                       | Required | Default          | Description                                                                |
+| ------------------------------ | -------- | ---------------- | -------------------------------------------------------------------------- |
+| `NODE_ENV`                     | No       | `development`    | `development`, `test` or `production`                                      |
+| `PORT`                         | No       | `3000`           | The port the application listens on inside the container                   |
+| `APP_HOST_PORT`                | No       | `13000`          | The API port published on the host                                         |
+| `POSTGRES_HOST_PORT`           | No       | `15432`          | The PostgreSQL port published on the host                                  |
+| `REDIS_HOST_PORT`              | No       | `16379`          | The Redis port published on the host                                       |
+| `DATABASE_HOST`                | Yes      | -                | PostgreSQL host                                                            |
+| `DATABASE_PORT`                | No       | `5432`           | PostgreSQL port                                                            |
+| `DATABASE_USER`                | Yes      | -                | PostgreSQL user                                                            |
+| `DATABASE_PASSWORD`            | Yes      | -                | PostgreSQL password                                                        |
+| `DATABASE_NAME`                | Yes      | -                | Database name                                                              |
+| `REDIS_HOST`                   | Yes      | -                | Redis host                                                                 |
+| `REDIS_PORT`                   | No       | `6379`           | Redis port                                                                 |
+| `REDIS_DB`                     | No       | `0`              | Redis database index, 0 to 15                                              |
+| `JWT_SECRET`                   | Yes      | -                | Token signing secret, at least 32 characters                               |
+| `ACCESS_TOKEN_TTL_SECONDS`     | No       | `900`            | Access token lifetime                                                      |
+| `REFRESH_TOKEN_TTL_SECONDS`    | No       | `604800`         | Refresh token lifetime                                                     |
+| `SESSION_ABSOLUTE_TTL_SECONDS` | No       | `2592000`        | Absolute session ceiling, regardless of renewals                           |
+| `RATE_LIMIT_TTL_SECONDS`       | No       | `60`             | Rate limit window                                                          |
+| `RATE_LIMIT_MAX_REQUESTS`      | No       | `100`            | Requests per window, global limit                                          |
+| `RATE_LIMIT_AUTH_MAX_REQUESTS` | No       | `10`             | Requests per window on the authentication routes                           |
+| `ADMIN_EMAIL`                  | No       | -                | Email of the `SUPER_ADMIN` the seeds create                                |
+| `ADMIN_PASSWORD`               | No       | -                | Password of the `SUPER_ADMIN`, at least 8 characters, read by `seed:admin` |
+| `ADMIN_DOCUMENT`               | No       | -                | CPF or CNPJ of the `SUPER_ADMIN`, read by `seed:admin`                     |
+| `SEED_PASSWORD`                | No       | `Str0ngPassword` | Password given to every account `npm run seed` creates                     |
 
-`.env` está no `.gitignore` e nunca é versionado. `.env.test` está versionado de propósito: aponta
-para o banco `workshop_test` e só contém credenciais locais de teste.
+`.env` is in `.gitignore` and never versioned. `.env.test` is versioned on purpose: it points at
+the `workshop_test` database and holds only local test credentials.
 
-## Banco de dados
+## Database
 
-PostgreSQL, acessado por TypeORM com migrations escritas à mão. O schema tem 18 tabelas de
-domínio, mais a tabela de controle do próprio TypeORM, criadas por nove migrations em
+PostgreSQL, reached through TypeORM with hand-written migrations. The schema has 18 domain tables,
+plus TypeORM's own bookkeeping table, created by nine migrations in
 [`src/shared/infrastructure/database/migrations/`](src/shared/infrastructure/database/migrations/).
-`synchronize` está desligado: nada altera o schema fora de uma migration.
+`synchronize` is off: nothing changes the schema outside a migration.
 
 ```bash
-npm run migration:run       # aplica as migrations pendentes
-npm run migration:revert    # desfaz a última
-npm run migration:generate  # gera uma nova a partir das diferenças de entidade
+npm run migration:run       # applies the pending migrations
+npm run migration:revert    # undoes the last one
+npm run migration:generate  # generates a new one from the entity differences
 ```
 
 ### Seeds
 
 ```bash
-npm run seed        # atores, catálogo, estoque, cliente e veículos
-npm run seed:admin  # apenas o SUPER_ADMIN, a partir das variáveis ADMIN_*
+npm run seed        # actors, catalog, stock, customer and vehicles
+npm run seed:admin  # only the SUPER_ADMIN, from the ADMIN_* variables
 ```
 
-`npm run seed` é idempotente: rodar duas vezes deixa o mesmo banco. Ele cria uma conta por papel,
-todas com a senha de `SEED_PASSWORD`:
+`npm run seed` is idempotent: running it twice leaves the same database. It creates one account
+per role, all with the password from `SEED_PASSWORD`:
 
-| Papel             | E-mail                    |
+| Role              | Email                     |
 | ----------------- | ------------------------- |
-| `SUPER_ADMIN`     | valor de `ADMIN_EMAIL`    |
+| `SUPER_ADMIN`     | value of `ADMIN_EMAIL`    |
 | `ADMIN`           | `admin@oficina.local`     |
 | `SERVICE_ADVISOR` | `consultor@oficina.local` |
 | `MECHANIC`        | `mecanico@oficina.local`  |
 | `CUSTOMER`        | `cliente@oficina.local`   |
 
-Mais quatro serviços de catálogo, cinco itens de estoque com saldo inicial, e um cliente com
-endereço e dois veículos. É o suficiente para a [collection do Postman](#collection-do-postman)
-rodar de ponta a ponta sem nenhum passo manual.
+Plus four catalog services, five stock items with an opening balance, and one customer with an
+address and two vehicles. That is enough for the [Postman collection](#postman-collection) to run
+end to end with no manual step.
 
-O catálogo de papéis e permissões não vem do seed: é criado pela migration
-`1787702400001-seed-rbac-catalog`, porque o modelo de acesso é parte do schema.
+The role and permission catalog does not come from the seed: it is created by the
+`1787702400001-seed-rbac-catalog` migration, because the access model is part of the schema.
 
-### Banco de teste
+### Test database
 
-O script de inicialização do Postgres
-([`docker/postgres/init/`](docker/postgres/init/)) cria também o banco `workshop_test`, usado pelas
-suítes de integração e e2e. Não há passo adicional para preparar os testes.
+The PostgreSQL init script ([`docker/postgres/init/`](docker/postgres/init/)) also creates the
+`workshop_test` database, used by the integration and e2e suites. There is no extra step to
+prepare the tests.
 
-## Executando a aplicação
+## Running the application
 
 ```bash
-npm run start:dev    # desenvolvimento, com recarga automática
-npm run start:debug  # desenvolvimento, com o inspetor do Node aberto
-npm run build        # compila para dist/
-npm run start:prod   # roda o build compilado
+npm run start:dev    # development, with automatic reload
+npm run start:debug  # development, with the Node inspector open
+npm run build        # compiles to dist/
+npm run start:prod   # runs the compiled build
 ```
 
-Pelo Docker, o compose sobe os três serviços de uma vez:
+Through Docker, compose starts all three services at once:
 
 ```bash
-docker compose up -d          # postgres, redis e a aplicação
-docker compose up -d --build  # reconstrói a imagem antes de subir
+docker compose up -d          # postgres, redis and the application
+docker compose up -d --build  # rebuilds the image before starting
 docker compose logs -f app
-docker compose down           # para tudo, preservando o volume do Postgres
+docker compose down           # stops everything, keeping the PostgreSQL volume
 ```
 
-A aplicação espera os healthchecks do Postgres e do Redis antes de subir.
+The application waits for the PostgreSQL and Redis healthchecks before starting.
 
 ## API
 
-Todas as rotas ficam sob o prefixo `/api/v1`. São 49 caminhos e 72 operações, em 10 controllers.
+Every route sits under the `/api/v1` prefix. There are 49 paths and 73 operations, across 10
+controllers.
 
 **Swagger UI:** `http://localhost:13000/api/docs`
-**Especificação OpenAPI:** `http://localhost:13000/api/docs-json`
+**OpenAPI specification:** `http://localhost:13000/api/docs-json`
 
-A autenticação é por Bearer token. Só três rotas dispensam o token: criar conta (`POST /users`),
-login (`POST /auth/sessions`) e renovar (`POST /auth/tokens`).
+Authentication is by bearer token. Only three routes need no token: create an account
+(`POST /users`), sign in (`POST /auth/sessions`) and renew (`POST /auth/tokens`).
 
-Exemplo de login e de uma chamada autenticada:
+Signing in and making an authenticated call:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:13000/api/v1/auth/sessions \
@@ -386,25 +367,25 @@ curl -s http://localhost:13000/api/v1/work-orders \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
-Abrindo uma ordem de serviço a partir do CPF do cliente:
+Opening a work order starting from the customer's CPF:
 
 ```bash
-CLIENTE=$(curl -s "http://localhost:13000/api/v1/customers?document=11144477735" \
+CUSTOMER=$(curl -s "http://localhost:13000/api/v1/customers?document=11144477735" \
   -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
 
-VEICULO=$(curl -s "http://localhost:13000/api/v1/vehicles?customerId=$CLIENTE" \
+VEHICLE=$(curl -s "http://localhost:13000/api/v1/vehicles?customerId=$CUSTOMER" \
   -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
 
 curl -s -X POST http://localhost:13000/api/v1/work-orders \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d "{\"customerId\":\"$CLIENTE\",\"vehicleId\":\"$VEICULO\"}" | jq
+  -d "{\"customerId\":\"$CUSTOMER\",\"vehicleId\":\"$VEHICLE\"}" | jq
 ```
 
-Todo valor monetário trafega como inteiro em centavos de real, na entrada e na saída.
+Every monetary value travels as an integer number of cents, on the way in and on the way out.
 
-Os erros seguem um formato único, e o tipo do erro de domínio define o status:
+Errors follow one shape, and the kind of the domain error decides the status:
 
-| Tipo do erro    | Status |
+| Error kind      | Status |
 | --------------- | ------ |
 | `Validation`    | 400    |
 | `Unauthorized`  | 401    |
@@ -413,9 +394,9 @@ Os erros seguem um formato único, e o tipo do erro de domínio define o status:
 | `Conflict`      | 409    |
 | `RuleViolation` | 422    |
 
-## Collection do Postman
+## Postman collection
 
-[`postman/`](postman/) traz a collection e o environment local:
+[`postman/`](postman/) carries the collection and the local environment:
 
 ```
 postman/
@@ -423,423 +404,429 @@ postman/
 └── workshop-api.local.postman_environment.json
 ```
 
-Importe os dois no Postman e rode as pastas de cima para baixo pelo Collection Runner. Cada
-requisição guarda em variável o que a próxima precisa, então a sequência inteira funciona sem
-edição manual. Requer `npm run seed` aplicado.
+Import both into Postman and run the folders top to bottom with the Collection Runner. Each
+request stores what the next one needs in a variable, so the whole sequence works without manual
+editing. It requires `npm run seed` to have been applied.
 
-| Pasta                           | O que cobre                                                          |
-| ------------------------------- | -------------------------------------------------------------------- |
-| 00. Autenticação                | Login de cada ator, renovação do par de tokens, sessões ativas       |
-| 01. Cadastro do cliente         | Conta, papel, cadastro de cliente, veículo, rotas `me`               |
-| 02. Gestão de usuários          | Permissões, papéis, conta de staff com senha temporária, desativação |
-| 03. Gestão de estoque           | CRUD de itens, reposição, ajuste, movimentos, faltas, desativação    |
-| 04. Gestão de ordem de serviço  | Do CPF do cliente à entrega, mais um cancelamento                    |
-| 05. Acompanhamento pelo cliente | O cliente lendo as próprias ordens, e o 404 para a ordem de terceiro |
-| 06. Métricas e auditoria        | Tempo médio de execução e a trilha da OS                             |
-| 07. Encerramento                | Logout, que derruba todas as sessões do usuário                      |
+| Folder                    | What it covers                                                            |
+| ------------------------- | ------------------------------------------------------------------------- |
+| 00. Authentication        | Signing in as each actor, renewing the token pair, active sessions        |
+| 01. Customer onboarding   | Account, role, customer record, vehicle, `me` routes                      |
+| 02. User management       | Permissions, roles, staff account with a temporary password, deactivation |
+| 03. Inventory management  | Item CRUD, replenishment, adjustment, movements, shortages, deactivation  |
+| 04. Work order management | From the customer's CPF to delivery, plus a cancellation                  |
+| 05. Customer tracking     | The customer reading their own orders, and the 404 for someone else's     |
+| 06. Metrics and audit     | Average execution time and the work order trail                           |
+| 07. Wrap-up               | Logout, which drops every session of the user                             |
 
-Pela linha de comando:
+From the command line:
 
 ```bash
 npx newman run postman/workshop-api.postman_collection.json \
   -e postman/workshop-api.local.postman_environment.json
 ```
 
-Uma execução completa consome quase toda a cota de `RATE_LIMIT_AUTH_MAX_REQUESTS`, então duas
-rodadas seguidas recebem 429. Espere a janela fechar, ou aumente o limite no `.env`.
+A full run consumes almost the whole `RATE_LIMIT_AUTH_MAX_REQUESTS` quota, so two runs back to
+back get a 429. Wait for the window to close, or raise the limit in `.env`.
 
-## Testes
+## Testing
 
-Três suítes, cada uma com seu arquivo de configuração:
+Three suites, each with its own configuration file:
 
-| Comando                    | Suíte                         | O que exercita                                                            |
-| -------------------------- | ----------------------------- | ------------------------------------------------------------------------- |
-| `npm run test:unit`        | `src/**/*.spec.ts`            | Agregados, value objects e handlers, com dublês de teste                  |
-| `npm run test:integration` | `test/integration/`           | Repositórios, adaptadores de leitura e migrations, contra o Postgres real |
-| `npm run test:e2e`         | `test/e2e/`                   | Fluxos completos por HTTP, com a aplicação de pé                          |
-| `npm run test:coverage`    | unitários, com cobertura      | Aplica os limites por caminho crítico                                     |
-| `npm run test:unit:watch`  | unitários, em modo observador | -                                                                         |
+| Command                    | Suite                     | What it exercises                                                       |
+| -------------------------- | ------------------------- | ----------------------------------------------------------------------- |
+| `npm run test:unit`        | `src/**/*.spec.ts`        | Aggregates, value objects and handlers, with test doubles               |
+| `npm run test:integration` | `test/integration/`       | Repositories, read adapters and migrations, against the real PostgreSQL |
+| `npm run test:e2e`         | `test/e2e/`               | Full flows over HTTP, with the application running                      |
+| `npm run test:coverage`    | unit tests, with coverage | Enforces the thresholds on each critical path                           |
+| `npm run test:unit:watch`  | unit tests, in watch mode | -                                                                       |
 
-`npm test` é atalho para `npm run test:unit`.
+`npm test` is a shortcut for `npm run test:unit`.
 
-As suítes de integração e e2e leem `.env.test`, rodam as próprias migrations em `workshop_test`
-antes de começar ([`test/support/global-setup.ts`](test/support/global-setup.ts)) e não precisam de
-nenhum passo além de `docker compose up -d`. O banco de teste nunca é truncado entre execuções, e
-por isso cada teste gera seus próprios dados únicos em vez de contar com um banco limpo.
+The integration and e2e suites read `.env.test`, run their own migrations on `workshop_test`
+before starting ([`test/support/global-setup.ts`](test/support/global-setup.ts)) and need no step
+beyond `docker compose up -d`. The test database is never truncated between runs, which is why
+each test generates its own unique data rather than relying on a clean slate.
 
-### Cobertura
+### Coverage
 
-O limite de 80% é aplicado por caminho crítico, não como um número global
-([`vitest.config.ts`](vitest.config.ts)). Cada faixa quebra o build sozinha, o que impede que uma
-camada bem coberta compense outra descoberta. As faixas cobrem a camada de domínio de work-orders,
-inventory, customers, os value objects de users e vehicles, o `Money` do núcleo compartilhado, e a
-camada de aplicação dos seis módulos de negócio.
+The 80% floor is enforced per critical path, not as a single global number
+([`vitest.config.ts`](vitest.config.ts)). Each band breaks the build on its own, which stops a
+well-covered layer from compensating for an uncovered one. The bands cover the domain layer of
+work-orders, inventory and customers, the value objects of users and vehicles, `Money` from the
+shared kernel, and the application layer of the six business modules.
 
-O número global fica bem abaixo disso, e de propósito: controllers, DTOs, mappers e repositórios
-não são exercitados pelos testes unitários, e sim pelas suítes de integração e e2e, que não entram
-no relatório de cobertura.
+The global number sits well below that, deliberately: controllers, DTOs, mappers and repositories
+are not exercised by the unit tests but by the integration and e2e suites, which do not feed the
+coverage report.
 
-## Qualidade de código
+## Code quality
 
 ```bash
-npm run lint          # ESLint com regras de tipo
-npm run lint:fix      # corrige o que for automatizável
-npm run format        # Prettier em todo o repositório
-npm run format:check  # confere sem escrever
+npm run lint          # ESLint with type-aware rules
+npm run lint:fix      # fixes what can be fixed automatically
+npm run format        # Prettier across the repository
+npm run format:check  # checks without writing
 ```
 
-O ESLint faz mais do que estilo aqui: as regras `no-restricted-imports` dos blocos por pasta em
-[`eslint.config.mjs`](eslint.config.mjs) proíbem framework dentro de `domain` e infraestrutura
-dentro de `application`. É o que torna as camadas obrigatórias em vez de sugeridas.
+ESLint does more than style here: the `no-restricted-imports` rules in the per-folder blocks of
+[`eslint.config.mjs`](eslint.config.mjs) forbid the framework inside `domain` and infrastructure
+inside `application`. That is what makes the layers mandatory rather than suggested.
 
-Dois hooks do `husky` rodam sozinhos, instalados por `npm install`:
+Two `husky` hooks run on their own, installed by `npm install`:
 
-| Hook         | O que roda                                                                       |
-| ------------ | -------------------------------------------------------------------------------- |
-| `pre-commit` | `lint-staged`: ESLint com `--fix` e Prettier sobre os arquivos em stage          |
-| `pre-push`   | `lint`, `build`, testes unitários, e integração e e2e quando o Postgres responde |
+| Hook         | What it runs                                                                  |
+| ------------ | ----------------------------------------------------------------------------- |
+| `pre-commit` | `lint-staged`: ESLint with `--fix` and Prettier over the staged files         |
+| `pre-push`   | `lint`, `build`, unit tests, plus integration and e2e when PostgreSQL answers |
 
-O `pre-push` checa a porta do Postgres antes de decidir. Numa máquina sem o Docker no ar ele roda
-lint, build e unitários, e diz quais suítes ficaram de fora em vez de falhar por falta de
-infraestrutura.
+`pre-push` checks the PostgreSQL port before deciding. On a machine without Docker running it
+executes lint, build and the unit tests, and says which suites were left out rather than failing
+for infrastructure it does not have.
 
-O `tsconfig.json` roda em modo estrito. `npm run build` compila com `tsconfig.build.json`, que
-exclui os arquivos de teste.
+`tsconfig.json` runs in strict mode. `npm run build` compiles with `tsconfig.build.json`, which
+excludes the test files.
 
-## Estrutura de pastas
+## Project structure
 
 ```
 .
 ├── src/
-│   ├── config/                    # configuração tipada e validação do ambiente
-│   ├── modules/                   # um diretório por módulo, quatro camadas em cada
-│   │   ├── authentication/        # sessões, tokens, revogação
-│   │   ├── authorization/         # papéis, permissões, acesso efetivo
-│   │   ├── customers/             # cadastro de clientes
-│   │   ├── inventory/             # peças, insumos e movimentos de estoque
-│   │   ├── services/              # catálogo de serviços
-│   │   ├── users/                 # contas e credenciais
-│   │   ├── vehicles/              # veículos dos clientes
-│   │   └── work-orders/           # ordens de serviço, orçamentos, trilha
-│   ├── shared/                    # núcleo compartilhado e infraestrutura comum
-│   │   ├── domain/                # AggregateRoot, DomainEvent, Money, erros base
-│   │   ├── application/           # ports de Clock, IdGenerator, TransactionRunner
-│   │   ├── infrastructure/        # datasource, migrations, Redis, relógio, ids
-│   │   └── presentation/          # filtro global de erro, pipe de validação
-│   ├── app.module.ts              # composição da aplicação e guards globais
-│   └── main.ts                    # bootstrap e Swagger
+│   ├── config/                    typed configuration and environment validation
+│   ├── modules/                   one directory per module, four layers in each
+│   │   ├── authentication/        sessions, tokens, revocation
+│   │   ├── authorization/         roles, permissions, effective access
+│   │   ├── customers/             customer records
+│   │   ├── inventory/             parts, supplies and stock movements
+│   │   ├── services/              service catalog
+│   │   ├── users/                 accounts and credentials
+│   │   ├── vehicles/              customer vehicles
+│   │   └── work-orders/           work orders, budgets, trail
+│   ├── shared/                    shared kernel and common infrastructure
+│   │   ├── domain/                AggregateRoot, DomainEvent, Money, base errors
+│   │   ├── application/           Clock, IdGenerator and TransactionRunner ports
+│   │   ├── infrastructure/        datasource, migrations, Redis, clock, ids
+│   │   └── presentation/          global error filter, validation pipes, middleware
+│   ├── app.module.ts              application composition and global guards
+│   └── main.ts                    bootstrap and Swagger
 ├── test/
-│   ├── e2e/                       # fluxos completos por HTTP
-│   ├── integration/               # persistência contra o Postgres real
-│   └── support/                   # fábricas, dublês e setup das suítes
+│   ├── e2e/                       full flows over HTTP
+│   ├── integration/               persistence against the real PostgreSQL
+│   └── support/                   factories, test doubles and suite setup
 ├── docs/
-│   ├── adr/                       # 25 registros de decisão de arquitetura
-│   └── architecture/              # visão geral, alto nível, baixo nível por módulo
-├── postman/                       # collection e environment
-├── scripts/                       # seeds
-├── docker/                        # script de inicialização do Postgres
+│   ├── adr/                       25 architecture decision records
+│   ├── architecture/              overview, high level, low level per module
+│   └── ubiquitous-language/       the shared vocabulary, one page per context
+├── postman/                       collection and environment
+├── security/                      the vulnerability assessment tool
+├── scripts/                       seeds
+├── docker/                        PostgreSQL init script
 ├── Dockerfile
 └── docker-compose.yml
 ```
 
-Dentro de cada módulo, as quatro camadas seguem sempre a mesma forma:
+Inside each module, the four layers always take the same shape:
 
 ```
 modules/work-orders/
-├── domain/          # agregados, entidades, value objects, eventos, erros, interfaces de repositório
-├── application/     # handlers de comando e consulta, ports, autorizadores
-├── infrastructure/  # repositórios TypeORM, adaptadores de leitura, mappers
-└── presentation/    # controllers, DTOs de requisição e resposta
+├── domain/          aggregates, entities, value objects, events, errors, repository interfaces
+├── application/     command and query handlers, ports, authorizers
+├── infrastructure/  TypeORM repositories, read adapters, mappers
+└── presentation/    controllers, request and response DTOs
 ```
 
-Os testes unitários ficam ao lado do arquivo que cobrem (`inventory-item.spec.ts` ao lado de
-`inventory-item.ts`), e não numa árvore paralela.
+Unit tests sit next to the file they cover (`inventory-item.spec.ts` beside
+`inventory-item.ts`), rather than in a parallel tree.
 
-## Convenções
+## Conventions
 
-**Commits** seguem [Conventional Commits](https://www.conventionalcommits.org/), com escopo de
-módulo: `feat(inventory): deactivate a catalog item`, `docs(architecture): ...`. Não há commitlint
-configurado, então a convenção é mantida à mão.
+**Commits** follow [Conventional Commits](https://www.conventionalcommits.org/), scoped by module:
+`feat(inventory): deactivate a catalog item`, `docs(architecture): ...`. There is no commitlint
+configured, so the convention is kept by hand.
 
-**Identificadores.** Toda tabela endereçável tem `id bigserial` para uso interno e chaves
-estrangeiras, mais `external_id uuid` para o que sai do processo. Nenhuma chave sequencial aparece
-em URL ou payload ([ADR 0006](docs/adr/0006-internal-key-plus-external-uuid.md)).
+**Identifiers.** Every addressable table carries `id bigserial` for internal use and foreign keys,
+plus `external_id uuid` for anything that leaves the process. No sequential key ever appears in a
+URL or a payload ([ADR 0006](docs/adr/0006-internal-key-plus-external-uuid.md)).
 
-**Dinheiro** é sempre inteiro em centavos de real, em coluna `bigint`
-([ADR 0007](docs/adr/0007-money-in-integer-brl-cents.md)). Formatação e conversão de moeda são
-responsabilidade do cliente.
+**Money** is always an integer number of cents in a `bigint` column
+([ADR 0007](docs/adr/0007-money-in-integer-brl-cents.md)). Formatting and currency conversion are
+the client's responsibility.
 
-**Exclusão é lógica.** Clientes, veículos, serviços, itens de estoque e usuários são desativados,
-não apagados. Os índices únicos são parciais, filtrados por `deleted_at IS NULL` ou pelo status,
-então o e-mail, a placa ou o SKU voltam a ficar livres.
+**Deletion is logical.** Customers, vehicles, services, inventory items and users are deactivated,
+not erased. The unique indexes are partial, filtered by `deleted_at IS NULL` or by the status, so
+the email, the plate or the SKU becomes available again.
 
-**Histórico é somente-adição.** `stock_movements`, `stock_movement_transitions` e
-`work_order_events` nunca são apagados nem reescritos
+**History is append-only.** `stock_movements`, `stock_movement_transitions` and
+`work_order_events` are never deleted nor rewritten
 ([ADR 0015](docs/adr/0015-stock-movements-append-only.md)).
 
-**Módulos conversam por barramento.** Nenhum módulo importa o repositório ou a entidade de outro;
-a comunicação é por `CommandBus` e `QueryBus`, trocando identificadores e DTOs
+**Modules talk through buses.** No module imports another's repository or entity; communication
+goes through the `CommandBus` and the `QueryBus`, exchanging identifiers and DTOs
 ([ADR 0008](docs/adr/0008-cross-context-calls-through-the-buses.md)).
 
-**Erros** são classes de domínio com código próprio e um tipo, e o tipo define o status HTTP. Um
-handler nunca escolhe um código de status.
+**Errors** are domain classes with a code of their own and a kind, and the kind decides the HTTP
+status. A handler never picks a status code.
 
-## Linguagem ubíqua
+## Ubiquitous language
 
-O vocabulário compartilhado entre negócio, produto, desenvolvimento e QA está em
-[`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md), um documento por contexto
-delimitado. Cada um traz os conceitos, atores, comandos, eventos, regras, estados e agregados
-daquele contexto, mais duas seções que o resto da documentação não cobre: os **termos rejeitados**,
-com o que usar no lugar, e a tabela de **vocabulário de domínio × vocabulário técnico**, que liga
-cada termo de negócio ao nome que ele tem no código.
+The vocabulary shared between the business, product, development and QA lives in
+[`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md), one document per bounded
+context. Each one carries the concepts, actors, commands, events, rules, states and aggregates of
+that context, plus two sections the rest of the documentation does not cover: the **rejected
+terms**, with what to use instead, and the **domain vocabulary against technical vocabulary**
+table, which ties each business term to the name it has in the code.
 
-| Documento                                                                | Contexto                               |
-| ------------------------------------------------------------------------ | -------------------------------------- |
-| [Identidade e Acesso](docs/ubiquitous-language/identidade-e-acesso.md)   | Contas, sessões, papéis e permissões   |
-| [Cadastro de Clientes](docs/ubiquitous-language/cadastro-de-clientes.md) | Clientes e veículos                    |
-| [Catálogo de Serviços](docs/ubiquitous-language/catalogo-de-servicos.md) | O que a oficina vende como mão de obra |
-| [Estoque](docs/ubiquitous-language/estoque.md)                           | Peças, insumos e movimentos            |
-| [Ordem de Serviço](docs/ubiquitous-language/ordem-de-servico.md)         | A vida da OS, da recepção à entrega    |
+| Document                                                               | Context                                     |
+| ---------------------------------------------------------------------- | ------------------------------------------- |
+| [Identity and Access](docs/ubiquitous-language/identity-and-access.md) | Accounts, sessions, roles and permissions   |
+| [Customer Registry](docs/ubiquitous-language/customer-registry.md)     | Customers and vehicles                      |
+| [Service Catalog](docs/ubiquitous-language/service-catalog.md)         | What the workshop sells as labour           |
+| [Inventory](docs/ubiquitous-language/inventory.md)                     | Parts, supplies and movements               |
+| [Work Order](docs/ubiquitous-language/work-order.md)                   | The life of an order, reception to delivery |
 
-O índice carrega o que atravessa os contextos: os termos ambíguos entre eles, os termos rejeitados
-em todo o projeto, o registro das decisões de linguagem e o checklist de consistência.
+The index carries what crosses contexts: the terms whose meaning shifts between them, the terms
+rejected across the project, the record of the language decisions and the consistency checklist.
 
-## Decisões técnicas
+## Technical decisions
 
-Vinte e cinco registros numerados em [`docs/adr/`](docs/adr/README.md), um por decisão, cada um com
-contexto, decisão e consequências. As sete abaixo são as que mais moldam o sistema.
+Twenty-five numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+context, the decision and the consequences. The seven below shape the system the most.
 
-### Por que PostgreSQL
+### Why PostgreSQL
 
-O desafio deixa a escolha do banco livre e pede a justificativa. Ela está por inteiro na
+The challenge leaves the database open and asks for the justification. It is written in full in
 [ADR 0002](docs/adr/0002-postgresql-as-the-relational-database.md).
 
-Os dados aqui são relacionais no sentido estrito. Uma ordem de serviço aponta para um cliente, um
-veículo, um conjunto de itens de serviço, um conjunto de itens de peça e uma série de rodadas de
-orçamento. Um movimento de estoque aponta para o item e para a OS que o consumiu. A leitura mais
-frequente do sistema atravessa cinco dessas tabelas de uma vez.
+The data here is relational in the strict sense. A work order points at a customer, a vehicle, a
+set of service items, a set of part items and a series of budget rounds. A stock movement points
+at the item and at the work order that consumed it. The system's most frequent read crosses five
+of those tables at once.
 
-Quatro propriedades sustentam a escolha:
+Four properties carry the choice:
 
-1. **Integridade referencial declarada no schema.** As chaves estrangeiras são verificadas pelo
-   banco, então um item de OS não pode apontar para uma ordem inexistente e um movimento não pode
-   referenciar um item que não existe. A garantia é do schema, não do código que por acaso
-   escreve.
-2. **Transação atravessando dois agregados em dois módulos.** A retirada de peça baixa o estoque,
-   grava um movimento no livro-razão e atualiza a ordem de serviço. Se qualquer parte falhar, as
-   três precisam falhar juntas, senão a oficina fica com peça baixada e OS que não sabe disso. O
-   PostgreSQL entrega isso como um único `COMMIT`
+1. **Referential integrity declared in the schema.** The foreign keys are enforced by the
+   database, so a work order item cannot point at a non-existent order and a movement cannot
+   reference an item that does not exist. The guarantee belongs to the schema, not to whichever
+   code happens to write.
+2. **A transaction crossing two aggregates in two modules.** Withdrawing a part decreases the
+   stock, writes a movement in the ledger and updates the work order. If any part fails, all three
+   have to fail together, otherwise the shop ends up with a part written down and an order that
+   does not know about it. PostgreSQL delivers that as a single `COMMIT`
    ([ADR 0023](docs/adr/0023-repositories-honour-an-ambient-transaction.md)).
-3. **Bloqueio de linha para a concorrência que este caso tem de verdade.** Duas retiradas
-   simultâneas sobre o mesmo item são resolvidas com `SELECT ... FOR UPDATE` ordenado por id, o
-   que também evita deadlock entre lotes que citam os mesmos itens em ordem diferente.
-4. **Índices únicos parciais.** A exclusão lógica depende de `UNIQUE ... WHERE deleted_at IS NULL`
-   para que um e-mail, uma placa ou um SKU voltem a ficar livres depois da desativação. O
-   PostgreSQL suporta isso nativamente; sem esse recurso, a regra teria que virar código de
-   aplicação e deixaria de ser garantida.
+3. **Row locking for the concurrency this case actually has.** Two simultaneous withdrawals of the
+   same item are resolved with `SELECT ... FOR UPDATE` ordered by id, which also prevents a
+   deadlock between batches naming the same items in a different order.
+4. **Partial unique indexes.** Logical deletion depends on `UNIQUE ... WHERE deleted_at IS NULL`
+   so an email, a plate or a SKU becomes free again after a deactivation. PostgreSQL supports that
+   natively; without it, the rule would become application code and would stop being guaranteed.
 
-**O que foi considerado e descartado.** Um banco de documentos resolveria a leitura da OS com menos
-junções, gravando a ordem inteira num documento só, e pagaria por isso na consistência entre
-estoque e ordem, que é justamente onde este domínio não pode ceder: os dois vivem em agregados
-diferentes e precisam mudar juntos. MySQL atenderia os pontos 1 a 3, mas não tem índice único
-parcial, que é a base da regra de exclusão lógica do projeto inteiro. SQLite serviria ao
-desenvolvimento e não à concorrência do ponto 3.
+**What was considered and set aside.** A document database would resolve the work order read with
+fewer joins, writing the whole order into a single document, and would pay for that in the
+consistency between stock and order, which is exactly where this domain cannot give: the two live
+in different aggregates and have to change together. MySQL covers points 1 to 3, but has no
+partial unique index, which is the basis of logical deletion across the whole project. SQLite
+would serve development and not the concurrency of point 3.
 
-### Por que monolito modular com CQRS
+### Why a modular monolith with CQRS
 
-O desafio pede um back-end monolítico, e para um MVP de oficina única isso é também o que faz
-sentido: um processo, um banco, um deploy, sem a latência e a complexidade operacional de rede
-entre serviços. O que separa este monolito de um bloco único é a fronteira entre módulos ser real:
-nenhum módulo importa o repositório ou a entidade de outro, e a comunicação passa por `CommandBus`
-e `QueryBus` trocando identificadores e DTOs
+The challenge asks for a monolithic backend, and for an MVP of a single workshop that is also what
+makes sense: one process, one database, one deployment, without the latency and the operational
+complexity of a network between services. What separates this monolith from a single block is
+that the boundary between modules is real: no module imports another's repository or entity, and
+communication goes through the `CommandBus` and the `QueryBus` exchanging identifiers and DTOs
 ([ADR 0001](docs/adr/0001-modular-monolith-with-cqrs.md),
 [ADR 0008](docs/adr/0008-cross-context-calls-through-the-buses.md)).
 
-O custo é uma volta pelo barramento onde caberia uma junção. O ganho é que a fronteira que um dia
-viraria um serviço já está desenhada, e um acoplamento acidental quebra o lint em vez de passar
-pela revisão.
+The cost is a trip through the bus where a join would fit. The gain is that the boundary that
+would one day become a service is already drawn, and an accidental coupling breaks the lint rather
+than passing review.
 
-A separação entre comando e consulta segue o mesmo raciocínio: a escrita passa pelo agregado, que
-protege o invariante, enquanto a leitura vai direto ao banco por um adaptador que devolve o DTO
-pronto. Montar a tela do quadro de OS pelo agregado exigiria carregar cada ordem inteira, com
-itens e orçamentos, para exibir seis campos.
+The split between command and query follows the same reasoning: writes go through the aggregate,
+which protects the invariant, while reads go straight to the database through an adapter that
+returns the DTO ready. Building the work order board through the aggregate would mean loading each
+order in full, with items and budgets, to display six fields.
 
-### Por que Redis ao lado do PostgreSQL
+### Why Redis alongside PostgreSQL
 
-Três usos, todos com a mesma propriedade: nada que o Redis guarda é insubstituível
+Three uses, all with the same property: nothing Redis holds is irreplaceable
 ([ADR 0003](docs/adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
 
-- **Acesso efetivo em cache.** Resolver papéis e permissões de um usuário a cada requisição é uma
-  junção de quatro tabelas no caminho crítico de toda rota autenticada. O cache é invalidado por
-  evento quando uma atribuição muda, não por expiração.
-- **Lista de sessões revogadas.** Um JWT é válido até expirar, então logout e troca de senha
-  precisam de um lugar onde a revogação seja consultada em toda requisição.
-- **Contadores de limite de requisições**, que precisam ser compartilhados entre instâncias.
+- **Effective access cache.** Resolving a user's roles and permissions on every request is a
+  four-table join on the critical path of every authenticated route. The cache is invalidated by
+  event when an assignment changes, not by expiry.
+- **Revoked session list.** A JWT is valid until it expires, so logout and password change need
+  somewhere the revocation is checked on every request.
+- **Rate limit counters**, which have to be shared between instances.
 
-Se o Redis for perdido, tudo se reconstrói: o cache é recalculado do PostgreSQL e as sessões
-revogadas seguem registradas na tabela de sessões.
+If Redis is lost, everything rebuilds: the cache is recomputed from PostgreSQL and the revoked
+sessions remain recorded in the sessions table.
 
-### Por que JWT com refresh token rotativo
+### Why JWT with a rotating refresh token
 
-O desafio pede autenticação JWT nas APIs administrativas. O token de acesso é curto (15 minutos
-por padrão) e não é consultado no banco, o que é o ponto do JWT. O refresh é longo, de uso único e
-rotativo: cada renovação invalida o anterior, e a apresentação de um token já usado é tratada como
-indício de roubo e derruba a sessão inteira
-([ADR 0004](docs/adr/0004-jwt-with-refresh-token-rotation.md)).
+The challenge asks for JWT authentication on the administrative APIs. The access token is short
+lived (15 minutes by default) and is not looked up in the database, which is the point of a JWT.
+The refresh token is long lived, single use and rotating: each renewal invalidates the previous
+one, and presenting an already spent token is treated as evidence of theft and brings down the
+whole session ([ADR 0004](docs/adr/0004-jwt-with-refresh-token-rotation.md)).
 
-Sem a rotação, um refresh token vazado valeria por sete dias sem deixar rastro. Com ela, o uso
-paralelo pelo atacante e pelo dono legítimo se denuncia na primeira renovação.
+Without the rotation, a leaked refresh token would be worth seven days with no trace. With it, the
+parallel use by the attacker and by the legitimate owner announces itself at the first renewal.
 
-### Por que Argon2id para as senhas
+### Why Argon2id for passwords
 
-Argon2id venceu a Password Hashing Competition e é a recomendação atual do OWASP. Ao contrário de
-bcrypt, ele é custoso em memória além de custoso em tempo, o que encarece o ataque com GPU e ASIC,
-que é exatamente o vetor contra um vazamento de base
+Argon2id won the Password Hashing Competition and is OWASP's current recommendation. Unlike
+bcrypt, it is memory-hard as well as time-hard, which raises the cost of GPU and ASIC attacks,
+which is exactly the vector against a leaked database
 ([ADR 0005](docs/adr/0005-argon2id-for-password-hashing.md)).
 
-### Por que dinheiro em centavos inteiros
+### Why money in integer cents
 
-Ponto flutuante não representa `0,1` exatamente, e um orçamento é uma soma de muitos itens cujo
-total precisa fechar com o que foi cobrado. Todo valor é `bigint` em centavos de real, do agregado
-à coluna e ao payload da API. A formatação e a conversão de moeda são responsabilidade do cliente
-([ADR 0007](docs/adr/0007-money-in-integer-brl-cents.md)).
+Floating point does not represent `0.1` exactly, and a budget is a sum of many items whose total
+has to reconcile with what was charged. Every value is a `bigint` in cents, from the aggregate to
+the column and the API payload. Formatting and currency conversion are the client's
+responsibility ([ADR 0007](docs/adr/0007-money-in-integer-brl-cents.md)).
 
-O TypeORM devolve `bigint` como string, então os mappers convertem explicitamente. É um custo
-aceito para não ter o erro de arredondamento em lugar nenhum.
+TypeORM returns `bigint` as a string, so the mappers convert explicitly. That is a cost accepted
+in order to have no rounding error anywhere.
 
-### Por que id interno e UUID externo
+### Why an internal id and an external UUID
 
-Toda tabela endereçável carrega `id bigserial` para uso interno e chaves estrangeiras, mais
-`external_id uuid` para tudo que sai do processo
+Every addressable table carries `id bigserial` for internal use and foreign keys, plus
+`external_id uuid` for everything that leaves the process
 ([ADR 0006](docs/adr/0006-internal-key-plus-external-uuid.md)).
 
-Chave sequencial em URL é enumerável: quem recebe a OS 41 sabe que existem a 40 e a 42. Só UUID,
-por outro lado, engorda todo índice e toda chave estrangeira do schema. Os dois juntos dão índice
-compacto por dentro e identificador opaco por fora, ao custo de os repositórios traduzirem um no
-outro na fronteira.
+A sequential key in a URL is enumerable: whoever receives work order 41 knows 40 and 42 exist. A
+UUID alone, on the other hand, inflates every index and every foreign key in the schema. The two
+together give a compact index on the inside and an opaque identifier on the outside, at the cost
+of the repositories translating one into the other at the boundary.
 
-## Requisitos do desafio
+## Challenge requirements
 
-Onde cada capacidade obrigatória do Tech Challenge está atendida.
+Where each mandatory capability of the Tech Challenge is met.
 
-| Requisito                                       | Onde está                                                                                                |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Identificação do cliente por CPF/CNPJ           | `GET /customers?document=`, com validação por dígito verificador em `PersonDocument`                     |
-| Cadastro de veículo (placa, marca, modelo, ano) | `POST /vehicles`, com `LicensePlate` nos formatos antigo e Mercosul                                      |
-| Inclusão dos serviços solicitados               | `POST /work-orders/:number/services`                                                                     |
-| Inclusão de peças e insumos                     | `POST /work-orders/:number/parts`                                                                        |
-| Orçamento gerado automaticamente                | `POST /work-orders/:number/diagnosis/completion`, somado dentro do agregado                              |
-| Envio do orçamento ao cliente para aprovação    | Status vai a `AWAITING_APPROVAL` e o cliente lê em `GET /work-orders/me/:number` (ver a ressalva abaixo) |
-| Os seis status da OS                            | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts)                            |
-| Alteração automática dos status                 | Cada transição é consequência de um método do agregado; não há rota que escreva status                   |
-| Consulta pelo cliente via API                   | `GET /work-orders/me` e `GET /work-orders/me/:number`                                                    |
-| CRUD de clientes                                | `/customers`                                                                                             |
-| CRUD de veículos                                | `/vehicles`                                                                                              |
-| CRUD de serviços                                | `/services`                                                                                              |
-| CRUD de peças e insumos com controle de estoque | `/inventory-items`, mais reposição, ajuste, movimentos e faltas                                          |
-| Listagem e detalhamento de ordens de serviço    | `GET /work-orders` e `GET /work-orders/:number`                                                          |
-| Monitoramento do tempo médio de execução        | `GET /work-orders/metrics/average-execution-time`                                                        |
-| Autenticação JWT nas APIs administrativas       | `JwtAuthGuard` global; só três rotas são públicas                                                        |
-| Validação de dados sensíveis (CPF/CNPJ, placa)  | `PersonDocument` e `LicensePlate`, com teste unitário próprio                                            |
-| Testes unitários e de integração                | Três suítes, ver [Testes](#testes)                                                                       |
-| Back-end monolítico em camadas                  | Ver [Arquitetura](#arquitetura)                                                                          |
-| Justificativa do banco                          | [Por que PostgreSQL](#por-que-postgresql)                                                                |
-| API RESTful documentada                         | Swagger em `/api/docs`                                                                                   |
-| Dockerfile                                      | [`Dockerfile`](Dockerfile), multi-estágio                                                                |
-| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), três serviços com healthcheck                                |
-| Cobertura mínima de 80% nos domínios críticos   | Limites por caminho em [`vitest.config.ts`](vitest.config.ts), ver [Cobertura](#cobertura)               |
-| Execução local simples                          | [Começando](#começando)                                                                                  |
+| Requirement                                     | Where it lives                                                                                                            |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Customer identification by CPF/CNPJ             | `GET /customers?document=`, validated by check digit in `PersonDocument`                                                  |
+| Vehicle registration (plate, make, model, year) | `POST /vehicles`, with `LicensePlate` in the old and Mercosul formats                                                     |
+| Adding the requested services                   | `POST /work-orders/:number/services`                                                                                      |
+| Adding parts and supplies                       | `POST /work-orders/:number/parts`                                                                                         |
+| Budget generated automatically                  | `POST /work-orders/:number/diagnosis/completion`, summed inside the aggregate                                             |
+| Sending the budget to the customer for approval | The status moves to `AWAITING_APPROVAL` and the customer reads it at `GET /work-orders/me/:number` (see the caveat below) |
+| The six work order statuses                     | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts)                                             |
+| Automatic status changes                        | Every transition follows from an aggregate method; no route writes a status                                               |
+| Customer tracking through the API               | `GET /work-orders/me` and `GET /work-orders/me/:number`                                                                   |
+| Customer CRUD                                   | `/customers`                                                                                                              |
+| Vehicle CRUD                                    | `/vehicles`                                                                                                               |
+| Service CRUD                                    | `/services`                                                                                                               |
+| Part and supply CRUD with stock control         | `/inventory-items`, plus replenishment, adjustment, movements and shortages                                               |
+| Work order listing and detail                   | `GET /work-orders` and `GET /work-orders/:number`                                                                         |
+| Average execution time monitoring               | `GET /work-orders/metrics/average-execution-time`                                                                         |
+| JWT authentication on the administrative APIs   | Global `JwtAuthGuard`; only three routes are public                                                                       |
+| Sensitive data validation (CPF/CNPJ, plate)     | `PersonDocument` and `LicensePlate`, each with its own unit tests                                                         |
+| Unit and integration tests                      | Three suites, see [Testing](#testing)                                                                                     |
+| Layered monolithic backend                      | See [Architecture](#architecture)                                                                                         |
+| Database justification                          | [Why PostgreSQL](#why-postgresql)                                                                                         |
+| Documented RESTful API                          | Swagger at `/api/docs`                                                                                                    |
+| Dockerfile                                      | [`Dockerfile`](Dockerfile), multi-stage                                                                                   |
+| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), three services with healthchecks                                              |
+| Minimum 80% coverage on the critical domains    | Per-path thresholds in [`vitest.config.ts`](vitest.config.ts), see [Coverage](#coverage)                                  |
+| Simple local setup                              | [Getting started](#getting-started)                                                                                       |
 
-**Uma ressalva honesta sobre o envio do orçamento.** O sistema registra o evento `BudgetSent` na
-trilha e move a OS para `AWAITING_APPROVAL`, e o cliente consulta e decide por API. Não há canal
-de saída ativo: nenhum e-mail, push ou webhook parte daqui. O modelo é de puxada, não de empurrada.
-Adicionar um canal significa consumir o evento que já é gravado, sem mexer no agregado.
+**An honest caveat about sending the budget.** The system records the `BudgetSent` event in the
+trail and moves the order to `AWAITING_APPROVAL`, and the customer reads it and decides through
+the API. There is no active outbound channel: no email, push or webhook starts here. The model is
+pull, not push. Adding a channel means consuming the event that is already recorded, without
+touching the aggregate.
 
-## Segurança
+## Security
 
-O que está implementado:
+What is implemented:
 
-- Senhas com Argon2id ([ADR 0005](docs/adr/0005-argon2id-for-password-hashing.md))
-- JWT de vida curta com refresh token rotativo de uso único, reuso detectado
+- Passwords with Argon2id ([ADR 0005](docs/adr/0005-argon2id-for-password-hashing.md))
+- Short-lived JWT with a single-use rotating refresh token, with reuse detection
   ([ADR 0004](docs/adr/0004-jwt-with-refresh-token-rotation.md))
-- Revogação de sessão consultada a cada requisição, com a lista em Redis
-- Controle de acesso por permissão, com o acesso efetivo em cache e invalidado por evento
-- `SUPER_ADMIN` criado fora da API, o único que pode conceder `ADMIN`
+- Session revocation checked on every request, with the list in Redis
+- Permission-based access control, with the effective access cached and invalidated by event
+- `SUPER_ADMIN` created outside the API, the only one that can grant `ADMIN`
   ([ADR 0012](docs/adr/0012-super-administrator-created-outside-the-api.md))
-- Limite de requisições por Redis, mais estreito nas rotas de autenticação
-- `helmet` nos cabeçalhos de resposta
-- Validação de entrada em toda rota, com CPF, CNPJ e placa verificados de verdade
-- Log com redação de `authorization`, `password` e `refreshToken`
-- O container roda como usuário `node`, não como root
+- Rate limiting through Redis, tighter on the authentication routes
+- `helmet` on the response headers
+- `Cache-Control: no-store` on the responses, which carry documents, addresses and phone numbers
+- Input validation on every route, with CPF, CNPJ and plate genuinely verified
+- NUL bytes refused before they reach a query, with a 400 instead of a 500
+- Logging with `authorization`, `password` and `refreshToken` redacted
+- The container runs as the `node` user, not as root
 
-O que este projeto **não** afirma: não passou por auditoria de segurança, não roda em produção e
-não deve ser tratado como pronto para isso. Para relatar uma vulnerabilidade, abra uma issue sem
-detalhar o vetor e peça um canal privado.
+What this project does **not** claim: it has not been through a security audit, does not run in
+production and should not be treated as ready for it. To report a vulnerability, open an issue
+without detailing the vector and ask for a private channel.
 
-## Análise de segurança
+## Security assessment
 
-O projeto inclui uma ferramenta interna de análise de vulnerabilidades, montada sobre ferramentas
-reconhecidas pela OWASP. Ela cobre as três perguntas que se complementam:
+The project includes an internal vulnerability assessment tool, built on tools recognised by
+OWASP. It covers the three complementary questions:
 
-| Pergunta                                                 | Análise | Ferramenta                        |
-| -------------------------------------------------------- | ------- | --------------------------------- |
-| As bibliotecas que eu uso têm vulnerabilidade conhecida? | SCA     | npm audit, OWASP Dependency-Check |
-| O código que eu escrevi tem padrão inseguro?             | SAST    | Semgrep                           |
-| A aplicação em execução responde de forma insegura?      | DAST    | OWASP ZAP                         |
+| Question                                         | Analysis | Tool                              |
+| ------------------------------------------------ | -------- | --------------------------------- |
+| Do my libraries have known vulnerabilities?      | SCA      | npm audit, OWASP Dependency-Check |
+| Does my code match an insecure pattern?          | SAST     | Semgrep                           |
+| Does the running application respond insecurely? | DAST     | OWASP ZAP                         |
 
 ```bash
 npm run security:scan -- --prepare
 ```
 
-O `--prepare` sobe a stack, aplica as migrations, roda o seed e cria uma conta de scan com papel
-administrativo. Com ela o OWASP ZAP autentica e exercita as rotas de verdade; sem ela toda rota
-protegida responde 401 e a análise dinâmica só consegue dizer que a API recusa anônimos.
+`--prepare` starts the stack, applies the migrations, runs the seed and creates a scan account
+with an administrative role. With it, OWASP ZAP authenticates and exercises the routes for real;
+without it every protected route answers 401 and the dynamic analysis can only report that the API
+refuses anonymous callers.
 
-> A varredura autenticada envia requisições de escrita com um token administrativo. Rode contra um
-> ambiente descartável, como o `docker compose` local, nunca contra dados que importam.
+> The authenticated scan sends write requests with an administrative token. Run it against a
+> disposable environment, such as the local `docker compose`, never against data that matters.
 
-Com a stack já no ar, `npm run security:scan` basta. O resultado é um relatório consolidado em
-`security/reports/security-report.html`, que abre offline e está pronto para virar PDF.
+With the stack already up, `npm run security:scan` is enough. The result is a consolidated report
+at `security/reports/security-report.html`, which opens offline and is ready to print to PDF.
 
-Para comparar duas execuções, por exemplo antes e depois de corrigir os achados:
+To compare two runs, for instance before and after fixing the findings:
 
 ```bash
-npm run security:snapshot before   # congela o resultado atual
-# aplique as correções
+npm run security:snapshot before   # freezes the current result
+# apply the fixes
 npm run security:scan
 npm run security:snapshot after
-npm run security:summary           # gera security/reports/security-summary.html
+npm run security:summary           # writes security/reports/security-summary.html
 ```
 
-A metodologia, os pré-requisitos, a configuração, a interpretação dos resultados e as limitações
-estão em [Documentação da análise de segurança](security/README.md).
+The methodology, the prerequisites, the configuration, how to read the results and the limitations
+are in [Security assessment documentation](security/README.md).
 
-## Deploy
+## Deployment
 
-O que existe no repositório é o suficiente para rodar em qualquer host com Docker:
+What exists in the repository is enough to run on any host with Docker:
 
-- [`Dockerfile`](Dockerfile) multi-estágio, com `npm ci` e `npm prune --omit=dev`, gerando uma
-  imagem de produção que roda como usuário `node` e expõe a porta 3000
-- [`docker-compose.yml`](docker-compose.yml) orquestrando aplicação, Postgres e Redis, com
-  healthcheck nos dois últimos e volume nomeado para os dados
+- A multi-stage [`Dockerfile`](Dockerfile), with `npm ci` and `npm prune --omit=dev`, producing a
+  production image that runs as the `node` user and exposes port 3000
+- A [`docker-compose.yml`](docker-compose.yml) orchestrating the application, PostgreSQL and
+  Redis, with healthchecks on the last two and a named volume for the data
 
-Não há configuração de nuvem, Kubernetes, Terraform nem pipeline de CI neste repositório, e o
-compose foi escrito para ambiente local. Subir isso em produção pediria pelo menos segredos fora
-do `.env`, TLS na borda, backup do volume do Postgres e um passo que rode as migrations antes da
-aplicação começar a servir.
+There is no cloud, Kubernetes, Terraform or CI configuration in this repository, and the compose
+file was written for a local environment. Taking this to production would need at least secrets
+outside `.env`, TLS at the edge, a backup of the PostgreSQL volume and a step that runs the
+migrations before the application starts serving.
 
-## Contribuindo
+## Contributing
 
-As convenções que o repositório segue:
+The conventions the repository follows:
 
-1. Trabalhe em um branch a partir de `main`
-2. Um commit por unidade de trabalho, em Conventional Commits, com escopo de módulo
-3. Teste junto com o código: agregado e handler em teste unitário, persistência em integração,
-   fluxo em e2e
-4. O `pre-push` roda lint, build e testes por você. Com o Docker no ar ele inclui integração e
-   e2e; sem ele, rode as duas suítes à mão antes de abrir o PR
-5. Decisão que muda a forma do sistema vira um ADR novo em `docs/adr/`, numerado em sequência
+1. Work on a branch from `main`
+2. One commit per unit of work, in Conventional Commits, scoped by module
+3. Test alongside the code: aggregate and handler in unit tests, persistence in integration, flow
+   in e2e
+4. `pre-push` runs lint, build and tests for you. With Docker up it includes integration and e2e;
+   without it, run those two suites by hand before opening the PR
+5. A decision that changes the shape of the system becomes a new ADR in `docs/adr/`, numbered in
+   sequence
 
-## Licença
+## License
 
-Distribuído sob a licença MIT. Veja [LICENSE](LICENSE).
+Distributed under the MIT license. See [LICENSE](LICENSE).

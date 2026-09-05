@@ -1,112 +1,114 @@
 # Security Assessment Tool
 
-Ferramenta interna de análise de vulnerabilidades deste projeto. Executa quatro scanners
-reconhecidos, consolida os resultados num modelo único e gera um relatório pronto para anexar a um
-trabalho acadêmico.
+The project's internal vulnerability assessment tool. It runs four recognised scanners,
+consolidates the results into one model and writes a report ready to attach to a piece of academic
+work.
 
-## Objetivo
+## Purpose
 
-Produzir uma análise de segurança **reproduzível**: quem clonar este repositório em outra máquina
-roda um comando e obtém o mesmo tipo de relatório, com as mesmas ferramentas e as mesmas versões.
+Produce a **reproducible** security assessment: anyone who clones this repository on another
+machine runs one command and gets the same kind of report, with the same tools at the same
+versions.
 
-A ferramenta responde a três perguntas que se complementam:
+The tool answers three complementary questions:
 
-| Pergunta                                                 | Análise | Ferramenta                        |
-| -------------------------------------------------------- | ------- | --------------------------------- |
-| As bibliotecas que eu uso têm vulnerabilidade conhecida? | SCA     | npm audit, OWASP Dependency-Check |
-| O código que eu escrevi tem padrão inseguro?             | SAST    | Semgrep                           |
-| A aplicação em execução responde de forma insegura?      | DAST    | OWASP ZAP                         |
+| Question                                           | Analysis | Tool                              |
+| -------------------------------------------------- | -------- | --------------------------------- |
+| Do the libraries I use have known vulnerabilities? | SCA      | npm audit, OWASP Dependency-Check |
+| Does the code I wrote match an insecure pattern?   | SAST     | Semgrep                           |
+| Does the running application respond insecurely?   | DAST     | OWASP ZAP                         |
 
 ```text
 npm run security:scan
         │
-        ├── npm audit              (SCA, dependências declaradas)
-        ├── Semgrep                (SAST, código-fonte)
-        ├── OWASP Dependency-Check (SCA, componentes empacotados)
-        └── OWASP ZAP              (DAST, aplicação em execução)
+        ├── npm audit              (SCA, declared dependencies)
+        ├── Semgrep                (SAST, source code)
+        ├── OWASP Dependency-Check (SCA, bundled components)
+        └── OWASP ZAP              (DAST, running application)
                 │
                 ▼
-       Normalização e consolidação
+       Normalisation and consolidation
                 │
                 ▼
        security/reports/security-report.html
 ```
 
-## Ferramentas utilizadas
+## Tools
 
-| Ferramenta                 | Papel                              | Como roda                              |
-| -------------------------- | ---------------------------------- | -------------------------------------- |
-| **npm audit**              | Advisories do registro npm         | Binário local, já vem com o npm        |
-| **Semgrep**                | Regras de segurança sobre o código | Binário local, ou imagem Docker fixada |
-| **OWASP Dependency-Check** | CVEs do NVD sobre os componentes   | Imagem Docker fixada                   |
-| **OWASP ZAP**              | Varredura da API em execução       | Imagem Docker fixada                   |
+| Tool                       | Role                             | How it runs                            |
+| -------------------------- | -------------------------------- | -------------------------------------- |
+| **npm audit**              | Advisories from the npm registry | Local binary, ships with npm           |
+| **Semgrep**                | Security rules over the source   | Local binary, or a pinned Docker image |
+| **OWASP Dependency-Check** | NVD CVEs over the components     | Pinned Docker image                    |
+| **OWASP ZAP**              | Scan of the running API          | Pinned Docker image                    |
 
-As regras do Semgrep são o pacote `p/security-audit`, configurável.
+The Semgrep rules are the `p/security-audit` pack, configurable.
 
-## Pré-requisitos
+## Prerequisites
 
-| Requisito    | Obrigatório | Para quê                                               |
-| ------------ | ----------- | ------------------------------------------------------ |
-| Node.js ≥ 22 | Sim         | Executar a ferramenta                                  |
-| npm          | Sim         | Executar o `npm audit`                                 |
-| Docker       | Não         | Dependency-Check, ZAP e o Semgrep sem instalação local |
-| Semgrep      | Não         | Alternativa ao Docker para o SAST                      |
+| Requirement  | Required | What for                                                   |
+| ------------ | -------- | ---------------------------------------------------------- |
+| Node.js ≥ 22 | Yes      | Running the tool                                           |
+| npm          | Yes      | Running `npm audit`                                        |
+| Docker       | No       | Dependency-Check, ZAP, and Semgrep without a local install |
+| Semgrep      | No       | An alternative to Docker for the SAST                      |
 
-Sem Docker e sem Semgrep, o `npm audit` ainda roda e o relatório declara os três scanners ausentes
-na seção de limitações. **Um scanner que não rodou nunca é apresentado como ausência de
-vulnerabilidade.**
+Without Docker and without Semgrep, `npm audit` still runs and the report declares the other three
+scanners absent in its limitations section. **A scanner that did not run is never presented as an
+absence of vulnerabilities.**
 
-Para o ZAP, a aplicação precisa estar no ar. A ferramenta sobe tudo sozinha com `--prepare`:
+For ZAP, the application has to be up. The tool brings everything up on its own with `--prepare`:
 
 ```bash
 npm run security:scan -- --prepare
 ```
 
-Isso executa `docker compose up -d`, aplica as migrations, roda o seed e garante a conta de scan
-descrita abaixo. Com a stack já no ar, `npm run security:scan` basta.
+That runs `docker compose up -d`, applies the migrations, runs the seed and makes sure the scan
+account described below exists. With the stack already up, `npm run security:scan` is enough.
 
-## Instalação
+## Installation
 
-Nada a instalar além do que o projeto já pede:
+Nothing to install beyond what the project already asks for:
 
 ```bash
 npm install
 ```
 
-A ferramenta resolve o Semgrep sozinha, na ordem do menos intrusivo para o mais:
+The tool resolves Semgrep on its own, from the least intrusive option to the most:
 
-1. Binário `semgrep` já instalado na máquina.
-2. Imagem Docker fixada (`semgrep/semgrep:1.97.0`), sem instalar nada no host.
-3. Só com `--install` explícito, e só quando não há Docker: `pipx install semgrep==1.97.0`.
+1. A `semgrep` binary already installed on the machine.
+2. A pinned Docker image (`semgrep/semgrep:1.97.0`), installing nothing on the host.
+3. Only with an explicit `--install`, and only when there is no Docker:
+   `pipx install semgrep==1.97.0`.
 
-O passo 3 usa **pipx** e não `pip`, para não alterar os pacotes do interpretador do sistema. Se o
-pipx não existir, a ferramenta imprime as instruções manuais em vez de tentar outra coisa.
+Step 3 uses **pipx** rather than `pip`, so the system interpreter's packages are left alone. If
+pipx is missing, the tool prints the manual instructions instead of trying something else.
 
 ```bash
 npm run security:scan -- --install
 ```
 
-### Chave da NVD (recomendado)
+### NVD API key (recommended)
 
-O Dependency-Check baixa a base do NVD na primeira execução. Sem chave de API, esse download é
-lento e sujeito a limite de requisições, e pode estourar o timeout. Peça uma chave gratuita em
-<https://nvd.nist.gov/developers/request-an-api-key> e exporte:
+Dependency-Check downloads the NVD database on the first run. Without an API key that download is
+slow, rate limited, and can hit the timeout. Request a free key at
+<https://nvd.nist.gov/developers/request-an-api-key> and export it:
 
 ```bash
-export NVD_API_KEY=sua-chave
+export NVD_API_KEY=your-key
 npm run security:scan
 ```
 
-A base fica em cache em `security/.cache/dependency-check`, que está no `.gitignore`. A segunda
-execução é rápida.
+The database is cached in `security/.cache/dependency-check`, which is in `.gitignore`. The second
+run is fast.
 
-## Execução
+## Running it
 
 ```bash
 npm run security:scan
 ```
 
-Saída:
+Output:
 
 ```text
 Security Assessment
@@ -122,6 +124,11 @@ Security Assessment
 
   Semgrep is not installed locally; it will run from a pinned container image.
 
+[Security] Preparing the environment...
+
+  ✓ Application: Answering at http://localhost:13000.
+  ✓ Scan account: Reused the existing scan account security-scanner@oficina.local, which already holds ADMIN.
+
   Pulling owasp/dependency-check:12.1.0 ... ✓
   Pulling ghcr.io/zaproxy/zaproxy:stable ... ✓
   Pulling semgrep/semgrep:1.97.0 ... ✓
@@ -129,148 +136,146 @@ Security Assessment
 [1/4] npm audit ..................... ✓
 [2/4] Semgrep ....................... ✓
 [3/4] Dependency-Check .............. ✓
-[4/4] OWASP ZAP ..................... ✓ API scan, driven by the OpenAPI definition.
+[4/4] OWASP ZAP ..................... ✓ API scan, driven by the OpenAPI definition, authenticated as security-scanner@oficina.local.
 
 Generating report ............... ✓
 
-Findings: 6 (critical 0, high 1, medium 2, low 0, informational 3)
+Findings: 4 (critical 0, high 0, medium 0, low 1, informational 3)
 
 Report:
   security/reports/security-report.html
   security/reports/security-report.md
 ```
 
-Saída real deste projeto em 2026-09-04. O Semgrep aparece ausente e roda do container mesmo assim,
-que é o caminho normal numa máquina sem ele instalado.
+Real output from this project on 2026-09-04. Semgrep shows up as absent and runs from the
+container anyway, which is the normal path on a machine without it installed.
 
-### Opções
+### Options
 
-| Opção                     | Efeito                                                     |
-| ------------------------- | ---------------------------------------------------------- |
-| `--prepare`               | Sobe a stack, migra, roda o seed e prepara a conta de scan |
-| `--install`               | Autoriza instalar o Semgrep com pipx quando não há Docker  |
-| `--only=npmaudit,semgrep` | Roda apenas os scanners listados                           |
+| Option                    | Effect                                                          |
+| ------------------------- | --------------------------------------------------------------- |
+| `--prepare`               | Starts the stack, migrates, seeds and prepares the scan account |
+| `--install`               | Authorises installing Semgrep with pipx when there is no Docker |
+| `--only=npmaudit,semgrep` | Runs only the listed scanners                                   |
 
 ```bash
 npm run security:scan -- --only=npmaudit,semgrep
 npm run security:scan -- --install
 ```
 
-Os nomes aceitos em `--only` são `npmaudit`, `semgrep`, `dependencycheck` e `zap`.
+The names accepted by `--only` are `npmaudit`, `semgrep`, `dependencycheck` and `zap`.
 
-### Código de saída
+### Exit code
 
-O comando sai com 0 mesmo quando encontra vulnerabilidades. O código de saída informa se a
-**análise rodou**, não se ela achou algo: um comando que quebra o build a cada advisory nova acaba
-sendo desligado, e aí não protege mais nada. Se algum scanner falhar, isso é dito no terminal e
-registrado na seção de limitações do relatório.
+The command exits 0 even when it finds vulnerabilities. The exit code reports whether the
+**analysis ran**, not whether it found anything: a command that breaks the build on every new
+advisory ends up being switched off, and then it protects nothing. If a scanner fails, that is
+said in the terminal and recorded in the report's limitations section.
 
-## Varredura autenticada
+## Authenticated scanning
 
-Sem token, toda rota atrás do guard JWT responde 401. A análise dinâmica então consegue afirmar
-uma coisa só: que a API recusa chamadas anônimas. Nada sobre o comportamento das rotas.
+Without a token, every route behind the JWT guard answers 401. The dynamic analysis can then
+establish exactly one thing: that the API refuses anonymous calls. Nothing about the behaviour of
+the routes.
 
-A ferramenta resolve isso preparando uma conta dedicada antes de escanear:
+The tool solves that by preparing a dedicated account before scanning:
 
-1. Faz login na conta de scan. Se ela existe e já tem o papel configurado, reaproveita.
-2. Caso contrário, entra com a conta de bootstrap (o `SUPER_ADMIN` que o seed cria).
-3. Registra a conta de scan pela rota pública e concede o papel a ela.
-4. Faz login e passa o token ao ZAP.
+1. It signs in as the scan account. If it exists and already holds the configured role, it reuses it.
+2. Otherwise it signs in as the bootstrap account (the `SUPER_ADMIN` the seed creates).
+3. It registers the scan account through the public route and grants it the role.
+4. It signs in and hands the token to ZAP.
 
-O token entra no ZAP pelo add-on `replacer`, que reescreve o cabeçalho `Authorization` de cada
-requisição. É o mecanismo que a própria documentação do ZAP indica para bearer token em API scan.
+The token reaches ZAP through the `replacer` add-on, which rewrites the `Authorization` header on
+every request. That is the mechanism ZAP's own documentation points to for a bearer token on an
+API scan.
 
-A conta é criada só pela API, com as mesmas rotas que um operador usaria. Nada escreve direto no
-banco. O CPF é calculado pelo mesmo algoritmo que o `PersonDocument` do domínio verifica, derivado
-do e-mail, então re-executar reaproveita a conta em vez de criar outra.
+The account is created through the API only, using the same routes an operator would. Nothing
+writes to the database directly. The CPF is computed by the same algorithm the domain's
+`PersonDocument` verifies, derived from the email, so re-running reuses the account rather than
+creating another.
 
-> **Aviso.** A varredura autenticada envia requisições de escrita com um token administrativo.
-> Rode contra um ambiente descartável. No `docker compose` local os dados voltam com
+> **Warning.** The authenticated scan sends write requests with an administrative token. Run it
+> against a disposable environment. In the local `docker compose`, the data comes back with
 > `npm run seed`.
 
-Nenhuma senha fica no arquivo de configuração versionado. Elas vêm do ambiente:
+No password lives in the versioned configuration file. They come from the environment:
 
-| Variável                 | Para quê                                               |
-| ------------------------ | ------------------------------------------------------ |
-| `SECURITY_SCAN_PASSWORD` | Senha da conta de scan. Default local `Str0ngPassword` |
-| `ADMIN_PASSWORD`         | Senha do `SUPER_ADMIN`, usada para conceder o papel    |
+| Variable                 | What for                                                    |
+| ------------------------ | ----------------------------------------------------------- |
+| `SECURITY_SCAN_PASSWORD` | The scan account's password. Local default `Str0ngPassword` |
+| `ADMIN_PASSWORD`         | The `SUPER_ADMIN`'s password, used to grant the role        |
 
-Só o `SUPER_ADMIN` pode conceder `ADMIN` (ADR 0012), então `authentication.bootstrapEmail` precisa
-apontar para essa conta. Um `ADMIN` comum recebe 403 e a ferramenta diz isso na mensagem.
+Only the `SUPER_ADMIN` can grant `ADMIN` (ADR 0012), so `authentication.bootstrapEmail` has to
+point at that account. A plain `ADMIN` gets a 403 and the tool says so in the message.
 
-Para desligar e escanear anonimamente, coloque `authentication.enabled: false`. O relatório
-registra a escolha na seção de limitações.
+To switch it off and scan anonymously, set `authentication.enabled: false`. The report records the
+choice in its limitations section.
 
-### O limitador de requisições e a cobertura
+### The rate limiter and coverage
 
-O `ThrottlerGuard` é o primeiro da cadeia e responde antes do JWT. Com o limite padrão de 100
-requisições por minuto, uma varredura que envia milhares em menos de um minuto recebe 429 na maior
-parte delas: uma execução medida respondeu **429 a 72% do tráfego do scan**.
+The `ThrottlerGuard` is first in the chain and answers before the JWT one. With the default limit
+of 100 requests per minute, a scan that sends thousands in under a minute gets a 429 for most of
+them: one measured run answered **429 to 72% of the scan traffic**.
 
-O controle está funcionando, e ao mesmo tempo limita o que a análise dinâmica consegue alcançar.
-Para obter cobertura real, eleve o limite no ambiente de scan antes de rodar:
+The control is working, and at the same time it bounds what the dynamic analysis can reach. To get
+real coverage, raise the limit in the scan environment before running:
 
 ```bash
 RATE_LIMIT_MAX_REQUESTS=100000 RATE_LIMIT_AUTH_MAX_REQUESTS=10000 docker compose up -d
 npm run security:scan
 ```
 
-Devolva os valores originais depois. O relatório declara a alteração na seção de limitações quando
-ela é feita, porque um scan com o limitador afrouxado não mede o mesmo sistema que roda em
-produção.
+Put the original values back afterwards. The report declares the change in its limitations section
+when it is made, because a scan with the limiter loosened does not measure the same system that
+runs in production.
 
-## Relatório simplificado
+## The short report
 
-O relatório completo responde "o que as ferramentas disseram". O simplificado responde "qual é o
-estado e o que mudou", que é a pergunta de quem não vai rodar os scanners.
+The full report answers "what did the tools say". The short one answers "what is the state, and
+what changed", which is the question a reader who is not going to run the scanners actually has.
 
 ```bash
-npm run security:snapshot before   # congela o resultado atual como linha de base
-# aplique as correções
-npm run security:scan              # mede de novo
+npm run security:snapshot before   # freezes the current result as the baseline
+# apply the fixes
+npm run security:scan              # measure again
 npm run security:snapshot after
-npm run security:summary           # escreve a comparação
+npm run security:summary           # writes the comparison
 ```
 
-Sai em `security/reports/security-summary.html` e `.md`, com contagens antes e depois por
-severidade, o que foi resolvido, o que continua aberto e o que apareceu novo.
+It lands in `security/reports/security-summary.html` and `.md`, with before and after counts per
+severity, what was resolved, what is still open and what turned up new.
 
-Os snapshots vêm do dump que o scan grava em `security/reports/raw/consolidation.json`, então o
-resumo não tem como divergir do relatório técnico.
+The snapshots come from the dump the scan writes to
+`security/reports/raw/consolidation.json`, so the summary cannot drift from the technical report.
 
-O que foi feito sobre cada achado fica em `security/config/resolutions.json`, escrito à mão. Um
-achado sem entrada aparece como "em aberto" em vez de receber uma frase gerada: uma correção sem
-explicação é pior do que uma pergunta em aberto.
+What was done about each finding lives in `security/config/resolutions.json`, written by hand. A
+finding with no entry shows up as "open" rather than getting a generated sentence: a fix without
+an explanation is worse than an open question.
 
-## Documento de entrega
+## The submission document
 
 ```bash
 npm run security:deliverable
 ```
 
-Gera `security/reports/tech-challenge-entrega.html` a partir dos dois snapshots, das resoluções e
-de `security/config/deliverable.json`, que carrega grupo, participantes e links. Para o PDF, abra
-no navegador e imprima, ou use o Chrome em modo headless:
+Generates `security/reports/tech-challenge-entrega.html` from the two snapshots, the resolutions
+and `security/config/deliverable.json`, which carries the group, the participants and the links.
+It then renders the PDF with headless Chrome. If no browser is found, the command says to print
+the HTML by hand rather than failing.
 
-```bash
-google-chrome --headless --disable-gpu --no-pdf-header-footer \
-  --print-to-pdf=security/reports/tech-challenge-entrega.pdf \
-  security/reports/tech-challenge-entrega.html
-```
+## Suppressions
 
-## Supressões
+`security/config/dependency-check-suppressions.xml` records the findings that were reviewed and
+judged false positives, each with the reasoning that supports it.
 
-`security/config/dependency-check-suppressions.xml` registra os achados analisados e considerados
-falso positivo, cada um com a justificativa que o sustenta.
+The case that sits there today: Dependency-Check matches components against CPE entries by name,
+and the npm package `validator` (a string validation library) was matched to the CPE of the Nu
+Html Checker (`validator.nu`), a Java service. CVE-2025-15104 is an SSRF in that service, which
+fetches URLs on behalf of its callers. The npm package makes no network access at all.
 
-O caso que está lá hoje: o Dependency-Check casa componentes com entradas CPE por nome, e o pacote
-npm `validator` (biblioteca de validação de strings) foi casado com o CPE do Nu Html Checker
-(`validator.nu`), um serviço Java. O CVE-2025-15104 é um SSRF nesse serviço, que faz requisições
-HTTP em nome de quem chama. O pacote npm não faz acesso de rede nenhum.
+A suppression without the reasoning written beside it does not go in this file.
 
-Uma supressão sem a justificativa escrita ao lado não entra neste arquivo.
-
-## Configuração
+## Configuration
 
 `security/security.config.json`:
 
@@ -304,6 +309,12 @@ Uma supressão sem a justificativa escrita ao lado não entra neste arquivo.
     "mode": "auto",
     "timeoutMs": 900000
   },
+  "authentication": {
+    "enabled": true,
+    "email": "security-scanner@oficina.local",
+    "role": "ADMIN",
+    "bootstrapEmail": "admin@workshop.local"
+  },
   "report": {
     "title": "Security Vulnerability Assessment",
     "markdown": true
@@ -311,165 +322,181 @@ Uma supressão sem a justificativa escrita ao lado não entra neste arquivo.
 }
 ```
 
-| Campo                 | Significado                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------- |
-| `application.baseUrl` | Alvo do ZAP. Só `http` e `https` são aceitos                                              |
-| `openapi.url`         | Especificação OpenAPI. `null` desliga o API scan                                          |
-| `scanners.*`          | Liga e desliga cada scanner                                                               |
-| `semgrep.config`      | Pacote de regras do Semgrep                                                               |
-| `*.dockerImage`       | Imagem usada, sempre fixada por tag                                                       |
-| `zap.mode`            | `auto` usa o API scan se a OpenAPI responder, senão o baseline. `baseline` e `api` forçam |
-| `*.timeoutMs`         | Tempo máximo de cada scanner                                                              |
-| `report.markdown`     | Gera também o `.md` ao lado do HTML                                                       |
+| Field                           | Meaning                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `application.baseUrl`           | ZAP's target. Only `http` and `https` are accepted                                                        |
+| `openapi.url`                   | The OpenAPI specification. `null` switches the API scan off                                               |
+| `scanners.*`                    | Turns each scanner on and off                                                                             |
+| `semgrep.config`                | The Semgrep rule pack                                                                                     |
+| `*.dockerImage`                 | The image used, always pinned by tag                                                                      |
+| `zap.mode`                      | `auto` uses the API scan when the OpenAPI answers, otherwise the baseline. `baseline` and `api` force one |
+| `*.timeoutMs`                   | The maximum time for each scanner                                                                         |
+| `authentication.enabled`        | Whether the dynamic scan authenticates                                                                    |
+| `authentication.email`          | The scan account's address                                                                                |
+| `authentication.role`           | The role granted to the scan account                                                                      |
+| `authentication.bootstrapEmail` | The account used to create and promote the scan account                                                   |
+| `report.markdown`               | Also writes the `.md` alongside the HTML                                                                  |
 
-A configuração é validada na subida. Um campo inválido produz uma mensagem que nomeia o campo, em
-vez de um erro obscuro no meio do scan.
+The configuration is validated at startup. An invalid field produces a message that names the
+field, rather than an obscure error in the middle of the scan.
 
-## Estrutura dos relatórios
+## Report structure
 
 ```text
 security/
-├── README.md                  este arquivo
-├── security.config.json       configuração
+├── README.md                  this file
+├── security.config.json       configuration
+├── config/
+│   ├── deliverable.json       group, participants and links for the submission
+│   ├── resolutions.json       what was done about each finding
+│   └── dependency-check-suppressions.xml   reviewed false positives
 ├── scripts/
-│   ├── security-scan.ts       orquestrador e ponto de entrada
-│   ├── config.ts              leitura e validação da configuração
-│   ├── environment.ts         checagem e resolução de dependências
-│   ├── exec.ts                execução de processos externos
-│   ├── finding.ts             o modelo normalizado
-│   ├── owasp.ts               catálogo e mapeamento OWASP Top 10
-│   ├── consolidate.ts         deduplicação, contagens e resumo
-│   ├── report.ts              geração do HTML e do Markdown
-│   └── scanners/              um parser por ferramenta
-└── reports/                   gerado, fora do versionamento
-    ├── security-report.html   o artefato principal
-    ├── security-report.md     o mesmo conteúdo em Markdown
-    └── raw/                   saída original de cada ferramenta
+│   ├── security-scan.ts       orchestrator and entry point
+│   ├── config.ts              configuration reading and validation
+│   ├── environment.ts         dependency checks and resolution
+│   ├── prepare.ts             environment and scan account preparation
+│   ├── exec.ts                external process execution
+│   ├── finding.ts             the normalised model
+│   ├── owasp.ts               OWASP Top 10 catalog and mapping
+│   ├── consolidate.ts         deduplication, counts and summary
+│   ├── report.ts              HTML and Markdown generation
+│   ├── snapshot.ts            snapshot and comparison CLI
+│   ├── summary-report.ts      the short report
+│   ├── deliverable.ts         the submission document and its PDF
+│   └── scanners/              one parser per tool
+└── reports/                   generated, outside version control
+    ├── security-report.html   the main artefact
+    ├── security-report.md     the same content in Markdown
+    ├── security-summary.html  the before and after comparison
+    ├── snapshots/             the frozen results
+    └── raw/                   each tool's original output
 ```
 
-`reports/` inteiro está no `.gitignore`, exceto o `.gitkeep`. As saídas originais ficam em
-`reports/raw/` para quem quiser conferir uma conclusão do relatório contra o que a ferramenta
-disse.
+The whole of `reports/` is in `.gitignore`, except the `.gitkeep`. The original outputs stay in
+`reports/raw/` for anyone who wants to check a conclusion in the report against what the tool
+actually said.
 
-O HTML tem o CSS embutido e não busca nada na rede: abre igual numa máquina sem internet. Para o
-PDF, abra no navegador e imprima; há regras de `@media print` para isso.
+The HTML has its stylesheet inline and fetches nothing from the network: it opens the same way on
+a machine with no internet. For the PDF, open it in a browser and print; there are `@media print`
+rules for that.
 
-O relatório tem dez seções: sumário executivo, escopo, metodologia, ferramentas, resumo dos
-resultados, vulnerabilidades, mapeamento OWASP Top 10, recomendações, limitações e conclusão.
+The report has ten sections: executive summary, scope, methodology, tools, results summary,
+vulnerabilities, OWASP Top 10 mapping, recommendations, limitations and conclusion.
 
-## Interpretação dos resultados
+## Reading the results
 
-### Severidades
+### Severities
 
-| Nível             | Leitura                                                           |
-| ----------------- | ----------------------------------------------------------------- |
-| **Critical**      | Explorável com impacto grave. Corrigir antes de expor a aplicação |
-| **High**          | Impacto relevante. Priorizar                                      |
-| **Medium**        | Depende de contexto ou de pré-condições                           |
-| **Low**           | Impacto limitado                                                  |
-| **Informational** | Observação, não necessariamente um problema                       |
+| Level             | How to read it                                                       |
+| ----------------- | -------------------------------------------------------------------- |
+| **Critical**      | Exploitable with serious impact. Fix before exposing the application |
+| **High**          | Relevant impact. Prioritise                                          |
+| **Medium**        | Depends on context or on preconditions                               |
+| **Low**           | Limited impact                                                       |
+| **Informational** | An observation, not necessarily a problem                            |
 
-`moderate` do npm vira `medium`. Quando a ferramenta não dá uma palavra de severidade utilizável
-mas dá um CVSS, a severidade vem das faixas que a própria especificação do CVSS define. Uma
-severidade desconhecida vira `informational`, nunca algo mais alto: inventar severidade é inventar
-achado.
+npm's `moderate` becomes `medium`. When a tool gives no usable severity word but does give a CVSS
+score, the severity comes from the bands the CVSS specification itself defines. An unknown
+severity becomes `informational`, never something higher: inventing a severity is inventing a
+finding.
 
-### Classificação
+### Classification
 
-A ferramenta não decide o que é falso positivo. Isso exige leitura humana do código, e afirmar
-sem essa leitura seria descartar um achado real com a mesma facilidade com que se confirma um
-falso.
+The tool does not decide what is a false positive. That requires a human reading the code, and
+claiming it without that reading would discard a real finding as easily as it confirms a false
+one.
 
-| Classificação     | Significado                                                             |
-| ----------------- | ----------------------------------------------------------------------- |
-| **Confirmed**     | A ferramenta estabelece o fato: um CVE em versão instalada, por exemplo |
-| **Potential**     | Candidato até alguém ler o contexto. Todo match do Semgrep começa aqui  |
-| **Informational** | Observado e relatado, sem afirmação de risco                            |
+| Classification    | What it means                                                                |
+| ----------------- | ---------------------------------------------------------------------------- |
+| **Confirmed**     | The tool establishes the fact: a CVE in an installed version, for instance   |
+| **Potential**     | A candidate until someone reads the context. Every Semgrep match starts here |
+| **Informational** | Observed and reported, with no claim of risk                                 |
 
-Um achado que duas ferramentas reportam independentemente sobe para **Confirmed** e lista as duas.
+A finding two tools report independently is promoted to **Confirmed** and lists both.
 
-### Mapeamento OWASP
+### OWASP mapping
 
-Um achado só entra numa categoria do Top 10 quando a ferramenta forneceu base para isso:
+A finding only lands in a Top 10 category when the tool supplied the basis for it:
 
-- **CWE** que consta da lista publicada pela OWASP para aquela categoria;
-- **identificador OWASP 2021** publicado pela própria regra, como o Semgrep faz;
-- **advisory de dependência**, que é A06 por definição.
+- a **CWE** that appears on the list OWASP publishes for that category;
+- an **OWASP 2021 identifier** published by the rule itself, as Semgrep does;
+- a **dependency advisory**, which is A06 by definition.
 
-Sem base, o achado aparece como **Not determined**. A lista de 2017 é ignorada de propósito: é
-outra taxonomia, e tratar `A3:2017` como `A03:2021` classificaria errado.
+Without a basis, the finding shows up as **Not determined**. The 2017 list is ignored on purpose:
+it is a different taxonomy, and treating `A3:2017` as `A03:2021` would misfile it.
 
-### Deduplicação
+### Deduplication
 
-npm audit e Dependency-Check enxergam a mesma árvore de dependências e reportam os mesmos CVEs. A
-consolidação agrupa por CVE mais nome do pacote, mantém a severidade mais alta das duas, une CVEs
-e CWEs, e mostra uma linha só citando as duas ferramentas.
+npm audit and Dependency-Check see the same dependency tree and report the same CVEs. The
+consolidation groups by CVE plus package name, keeps the higher of the two severities, unions the
+CVEs and CWEs, and shows a single row naming both tools.
 
-## Limitações
+## Limitations
 
-Limitações estruturais, que valem em toda execução:
+Structural limitations, which hold on every run:
 
-- **O DAST roda sem autenticação.** Toda rota atrás do guard JWT responde 401 e não é exercitada.
-  A ferramenta não implementa autenticação de sessão no ZAP de propósito: seria a parte mais
-  frágil e mais complexa da implementação. O relatório declara isso.
-- **O SAST é baseado em regras.** Reporta o que as regras descrevem, e é silencioso sobre o que
-  nenhuma regra cobre.
-- **A análise de dependência depende das bases de advisories** no momento da execução.
-- **Não há teste de intrusão nem revisão manual.** O relatório distingue o que uma ferramenta
-  estabeleceu do que ela apenas sinalizou.
+- **The DAST runs with an administrative role.** Routes behind a permission that role lacks answer
+  403 and are not exercised.
+- **The SAST is rule based.** It reports what its rules describe, and stays silent about
+  weaknesses no rule covers.
+- **The dependency analysis is bounded by the advisory databases** at the time of the run.
+- **There is no manual penetration testing and no business logic review.** The report distinguishes
+  what a tool established from what it merely flagged.
 
-O relatório gerado lista apenas as limitações **que de fato ocorreram naquela execução**, mais
-essas estruturais.
+The generated report lists only the limitations that **actually occurred on that run**, plus these
+structural ones.
 
 ## Troubleshooting
 
 **`Docker is required for OWASP ZAP`**
-O daemon não respondeu. `docker info` para conferir. No Linux, veja se seu usuário está no grupo
-`docker`.
+The daemon did not answer. Check with `docker info`. On Linux, see whether your user is in the
+`docker` group.
 
 **`The application did not answer at http://localhost:13000`**
-Suba a aplicação com `docker compose up -d`. O ZAP é pulado, não falha o scan.
+Start the application with `docker compose up -d`, or pass `--prepare`. ZAP is skipped, not failed.
 
-**Dependency-Check estoura o timeout**
-É o download do NVD na primeira execução. Defina `NVD_API_KEY` e rode de novo; o cache em
-`security/.cache/` torna as execuções seguintes rápidas.
+**Dependency-Check hits the timeout**
+That is the NVD download on the first run. Set `NVD_API_KEY` and try again; the cache in
+`security/.cache/` makes the following runs fast.
 
-**ZAP não alcança `localhost`**
-No Linux, o container usa `--network host` quando o alvo é local. No Docker Desktop (macOS,
-Windows) o host networking não funciona igual: troque `application.baseUrl` para
+**ZAP cannot reach `localhost`**
+On Linux the container uses `--network host` when the target is local. On Docker Desktop (macOS,
+Windows) host networking does not behave the same way: change `application.baseUrl` to
 `http://host.docker.internal:13000`.
 
-**Semgrep indisponível e sem Docker**
-Instale manualmente e rode de novo:
+**Semgrep unavailable and no Docker**
+Install it by hand and try again:
 
 ```bash
 pipx install semgrep==1.97.0
 ```
 
-**O relatório saiu com poucos achados de DAST**
-Esperado. Uma API que devolve JSON oferece poucos links para o crawler seguir, e sem credenciais
-o ZAP não passa do 401. Use `zap.mode: "api"` com a OpenAPI para alcançar as rotas documentadas.
+**The scan account could not be granted its role**
+Only the `SUPER_ADMIN` grants `ADMIN`. Point `authentication.bootstrapEmail` at that account and
+make sure `ADMIN_PASSWORD` in `.env` matches the one the seed used.
 
-## Segurança da própria ferramenta
+## The tool's own security
 
-- **Read-only sobre o projeto.** Nunca roda `npm audit fix`, não atualiza dependências e não toca
-  no `package-lock.json`.
-- **Sem shell.** Todo processo externo é iniciado com `spawn` e um array de argumentos, sem
-  `shell: true`. Valores vindos da configuração nunca são concatenados numa string de comando.
-- **Sem `eval`** e sem segredo embutido. A chave da NVD vem de variável de ambiente.
-- **Configuração validada**, inclusive o protocolo das URLs, que precisa ser `http` ou `https`.
-- **Imagens fixadas por tag**, para que a execução de amanhã seja a mesma de hoje.
-- **Escape na geração do relatório**: título de achado vindo de scanner é escapado antes de entrar
-  no HTML.
+- **Read-only against the project.** It never runs `npm audit fix`, never upgrades a dependency
+  and never touches `package-lock.json`.
+- **No shell.** Every external process is started with `spawn` and an argument array, without
+  `shell: true`. Values from the configuration are never concatenated into a command string.
+- **No `eval`** and no embedded secret. The NVD key and the scan passwords come from the
+  environment.
+- **Validated configuration**, including the protocol of the URLs, which has to be `http` or
+  `https`.
+- **Images pinned by tag**, so tomorrow's run is the same as today's.
+- **Escaping on report generation**: a finding title coming from a scanner is escaped before it
+  enters the HTML.
 
-## Testes
+## Tests
 
-A lógica própria da ferramenta é testada com o Vitest do projeto:
+The tool's own logic is tested with the project's Vitest:
 
 ```bash
 npm run test:unit
 ```
 
-Cobrem parsing das quatro ferramentas, normalização de severidade e CWE, mapeamento OWASP,
-deduplicação, consolidação, geração do resumo, tratamento de scanner que falhou e escape do
-relatório. As ferramentas externas em si não são testadas: elas têm os próprios testes.
+They cover the parsing of all four tools, severity and CWE normalisation, OWASP mapping,
+deduplication, consolidation, summary generation, handling of a scanner that failed, and report
+escaping. The external tools themselves are not tested: they have tests of their own.

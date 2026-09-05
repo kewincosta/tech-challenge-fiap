@@ -1,38 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { escapeHtml, outcomeOf, severityPt } from './deliverable';
+import { escapeHtml, outcomeOf, severityLabel } from './deliverable';
 
 describe('outcomeOf', () => {
   it.each([
-    ['Corrigido. A dependência foi atualizada.', 'corrigido'],
-    ['Analisado e corrigido na configuração da varredura.', 'corrigido'],
-    ['Falso positivo, revisado e suprimido com justificativa.', 'falso-positivo'],
-    ['Sem defeito. É o ZAP identificando a rota.', 'sem-defeito'],
+    ['Fixed. The dependency was upgraded.', 'fixed'],
+    ['Analysed and fixed in the scan configuration.', 'fixed'],
+    ['False positive, reviewed and suppressed with a justification.', 'false-positive'],
+    ['No defect. This is ZAP identifying the route.', 'no-defect'],
   ])('classifies %s', (resolution, expected) => {
     expect(outcomeOf(resolution)).toBe(expected);
   });
 
   it('leaves a finding with no written resolution open, rather than assuming it was handled', () => {
-    expect(outcomeOf(undefined)).toBe('aberto');
+    expect(outcomeOf(undefined)).toBe('open');
   });
 
   it('leaves an unrecognised resolution open', () => {
-    expect(outcomeOf('Vamos ver depois.')).toBe('aberto');
+    expect(outcomeOf('We will look at it later.')).toBe('open');
   });
 });
 
-describe('severityPt', () => {
+describe('severityLabel', () => {
   it.each([
-    ['critical', 'Crítica'],
-    ['high', 'Alta'],
-    ['medium', 'Média'],
-    ['low', 'Baixa'],
-    ['informational', 'Informativa'],
-  ])('translates %s', (severity, expected) => {
-    expect(severityPt(severity)).toBe(expected);
+    ['critical', 'Critical'],
+    ['high', 'High'],
+    ['medium', 'Medium'],
+    ['low', 'Low'],
+    ['informational', 'Informational'],
+  ])('labels %s', (severity, expected) => {
+    expect(severityLabel(severity)).toBe(expected);
   });
 
   it('passes an unknown level through unchanged', () => {
-    expect(severityPt('desconhecida')).toBe('desconhecida');
+    expect(severityLabel('unknown-level')).toBe('unknown-level');
   });
 });
 
