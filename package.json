@@ -8,6 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "setup": "bash scripts/setup.sh",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",

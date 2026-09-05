@@ -226,6 +226,20 @@ There is no need to install PostgreSQL or Redis on the machine: `docker-compose.
 git clone <repository-url>
 cd tech_challenger_1
 
+npm run setup
+```
+
+[`scripts/setup.sh`](scripts/setup.sh) does the whole local bring-up: it checks Node, Docker and
+the Docker daemon, creates `.env` from `.env.example`, installs the dependencies, starts the
+containers, waits for PostgreSQL and Redis to answer, guarantees the `workshop_test` database used
+by the tests exists, runs the migrations and seeds the users and the demo data. Every step checks
+what it is about to do and skips it when the work is already there, so running it over an
+environment that is already up changes nothing. Pass `--rebuild` to rebuild the app image on the
+way through.
+
+To walk the same steps by hand:
+
+```bash
 npm install
 cp .env.example .env
 
@@ -321,8 +335,11 @@ The role and permission catalog does not come from the seed: it is created by th
 ### Test database
 
 The PostgreSQL init script ([`docker/postgres/init/`](docker/postgres/init/)) also creates the
-`workshop_test` database, used by the integration and e2e suites. There is no extra step to
-prepare the tests.
+`workshop_test` database, used by the integration and e2e suites.
+
+That script runs only on the first initialisation of the PostgreSQL data directory. A volume
+created before it existed has no test database, which is why `npm run setup` checks for
+`workshop_test` and creates it when it is missing.
 
 ## Running the application
 
@@ -443,10 +460,16 @@ Three suites, each with its own configuration file:
 
 `npm test` is a shortcut for `npm run test:unit`.
 
-The integration and e2e suites read `.env.test`, run their own migrations on `workshop_test`
-before starting ([`test/support/global-setup.ts`](test/support/global-setup.ts)) and need no step
-beyond `docker compose up -d`. The test database is never truncated between runs, which is why
-each test generates its own unique data rather than relying on a clean slate.
+The unit suite needs nothing beyond `npm install`. The integration and e2e suites need PostgreSQL
+and Redis answering, which `npm run setup` leaves ready; on an environment already set up,
+`docker compose up -d` is enough. They do not need the `app` container, because each one boots its
+own instance of the application in process.
+
+Those two suites read `.env.test`, which is versioned on purpose because it carries no secret, and
+run their own migrations on `workshop_test` before starting
+([`test/support/global-setup.ts`](test/support/global-setup.ts)). Neither `npm run migration:run`
+nor `npm run seed` is a prerequisite for them. The test database is never truncated between runs,
+which is why each test generates its own unique data rather than relying on a clean slate.
 
 ### Coverage
 
@@ -519,7 +542,7 @@ excludes the test files.
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── postman/                       collection and environment
 ├── security/                      the vulnerability assessment tool
-├── scripts/                       seeds
+├── scripts/                       setup and seeds
 ├── docker/                        PostgreSQL init script
 ├── Dockerfile
 └── docker-compose.yml
