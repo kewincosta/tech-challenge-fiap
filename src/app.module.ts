@@ -21,6 +21,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { ServicesModule } from './modules/services/services.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { WorkOrderReadsModule } from './modules/work-orders/work-order-reads.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
@@ -80,6 +81,7 @@ import { SharedModule } from './shared/shared.module';
     ServicesModule,
     InventoryModule,
     WorkOrdersModule,
+    WorkOrderReadsModule,
   ],
   providers: [
     // Runs before the validation pipe: a NUL byte reaches the database through any filter

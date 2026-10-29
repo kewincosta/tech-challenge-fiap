@@ -890,11 +890,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `src/modules/inventory/infrastructure/work-order-reads.ts` declares the interface and token, exported by inventory's `index.ts`
-- [ ] `test/integration/work-order-reads.spec.ts` proves `internalIdOf`, `externalIdsOf`, `outstandingDemand` (only approved budgets of work orders in execution, planned minus withdrawn) and `openWorkOrderNumbersUsing` (neither delivered nor canceled, ordered by number)
-- [ ] The application boots in the e2e suite with `WorkOrderReadsModule` registered once in `app.module.ts`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total grows by the new cases
+- [x] `src/modules/inventory/infrastructure/work-order-reads.ts` declares the interface and token, exported by inventory's `index.ts`
+- [x] `test/integration/work-order-reads.spec.ts` proves `internalIdOf`, `externalIdsOf`, `outstandingDemand` (only approved budgets of work orders in execution, planned minus withdrawn) and `openWorkOrderNumbersUsing` (neither delivered nor canceled, ordered by number)
+- [x] The application boots in the e2e suite with `WorkOrderReadsModule` registered once in `app.module.ts`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total grows by the new cases
 
 **Tests**: integration
 **Gate**: full
