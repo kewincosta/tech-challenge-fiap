@@ -1907,9 +1907,9 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The circles, the folder mapping and the module graph are in the README
-- [ ] The README names no bus, no `*Handler` class and none of the three old identity module paths
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] The circles, the folder mapping and the module graph are in the README
+- [x] The README names no bus, no `*Handler` class and none of the three old identity module paths
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs

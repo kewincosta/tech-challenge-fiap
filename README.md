@@ -52,8 +52,8 @@ shelf and when the car was delivered. Every status change happens as the consequ
 never through a direct write, and every step is recorded in a trail that cannot be rewritten.
 
 **Who it is for:** developers building or evaluating a repair shop backend, and anyone who wants a
-concrete example of a modular monolith with DDD and CQRS in NestJS. It is an HTTP API: there is no
-user interface in this repository.
+concrete example of a modular monolith with DDD and Clean Architecture in NestJS. It is an HTTP API:
+there is no user interface in this repository.
 
 **Why it exists:** it started as the Tech Challenge of the postgraduate program in Software
 Architecture at FIAP (SOAT). The scope is a single shop, with one stock and one address. It does
@@ -131,57 +131,131 @@ stateDiagram-v2
 
 ## Architecture
 
-A modular monolith with CQRS, in a single process against a single database. Eight modules, each
-with four layers, and one hard rule between them: modules talk only through the command and query
-buses, never by importing a neighbour's repository or entity.
+A modular monolith in layers, in a single process against a single database. It has six modules and
+a shared kernel, and each module has four layers. Two rules hold it together. Source dependencies
+point inward, and a module reaches another only through a port it declares and the public API of
+the other.
+
+### The dependency circles
+
+The business rules sit at the center and import nothing from the circles around them. Each circle
+is a folder in every module, and each arrow is an import:
 
 ```mermaid
 flowchart TB
-    Client[HTTP client] --> Guards
-    subgraph Guards["Guard chain (global)"]
-        direction LR
-        T[ThrottlerGuard] --> J[JwtAuthGuard] --> P[PendingPasswordGuard] --> A[PermissionsGuard]
+    subgraph Frameworks["Frameworks and drivers: *.module.ts and *.tokens.ts, NestJS, TypeORM, PostgreSQL, Redis"]
+        subgraph Adapters["Interface adapters: infrastructure/ and presentation/"]
+            Presentation["controllers, DTOs, guards"]
+            Infrastructure["repositories, query adapters,<br/>gateways, key resolvers"]
+            subgraph UseCases["Use cases: application/"]
+                Application["use cases, ports"]
+                subgraph Entities["Entities: domain/"]
+                    Domain["aggregates, value objects,<br/>events, errors"]
+                end
+            end
+        end
     end
-    Guards --> Presentation
-    subgraph Module["One module"]
-        direction TB
-        Presentation["presentation<br/>controllers, DTOs, guards"]
-        Application["application<br/>command and query handlers, ports"]
-        Domain["domain<br/>aggregates, value objects, events, errors"]
-        Infrastructure["infrastructure<br/>TypeORM repositories, read adapters"]
-        Presentation --> Application
-        Application --> Domain
-        Application -.->|ports| Infrastructure
-        Infrastructure --> Domain
-    end
-    Infrastructure --> PG[(PostgreSQL)]
-    Application -.-> Redis[(Redis)]
+    Presentation --> Application
+    Infrastructure --> Application
+    Infrastructure --> Domain
+    Application --> Domain
 ```
 
-Dependencies always point inward. `application` knows `domain` and talks to `infrastructure` only
-through interfaces (`ports`) that it declares itself. The business rules live in the aggregates,
-not in the handlers: what decides whether a work order can leave the diagnosis is `WorkOrder`
-itself, and what guarantees the stock never goes negative is the `StockQuantity` value object.
+The business rules live in the aggregates. What decides whether a work order can leave the
+diagnosis is `WorkOrder` itself, and what guarantees the stock never goes negative is the
+`StockQuantity` value object. A use case loads an aggregate through a repository port, calls a
+method on it and saves it. A controller turns the request into a `<Name>Command` or `<Name>Query`,
+calls the use case class directly and turns the result into the response.
 
-This is not a folder naming convention. ESLint refuses framework imports inside `domain` and
-infrastructure imports inside `application`, so a layering violation breaks `npm run lint` rather
-than passing review.
+Each module's composition root, `<module>.module.ts`, builds every use case with its collaborators
+and binds every port to its adapter. It is the one place that knows Nest's container and every
+concrete class. The `identity` module keeps its three areas, `users`, `authentication` and
+`authorization`, each with the same four folders, under one Nest module. Every request passes the
+global guard chain before it reaches a controller, which
+[the high level design](docs/architecture/high-level-design.md) describes.
 
 **Tactical patterns in use**, with real examples:
 
-| Pattern             | Where it lives                                                                          |
-| ------------------- | --------------------------------------------------------------------------------------- |
-| Aggregate           | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`                  |
-| Child entity        | `Budget`, `WorkOrderPartItem`, `StockMovement` (inside the aggregate that creates them) |
-| Value object        | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`           |
-| Domain event        | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                               |
-| Repository          | Interface in `domain/repositories`, TypeORM implementation in `infrastructure`          |
-| Application service | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                             |
-| Port and adapter    | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`                       |
+| Pattern             | Where it lives                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| Aggregate           | `WorkOrder`, `InventoryItem`, `Customer`, `Vehicle`, `Service`, `User`                           |
+| Child entity        | `Budget`, `WorkOrderPartItem`, `StockMovement` (inside the aggregate that creates them)          |
+| Value object        | `PersonDocument`, `LicensePlate`, `Money`, `StockQuantity`, `WorkOrderNumber`                    |
+| Domain event        | `BudgetGenerated`, `StockReplenished`, `VehicleDelivered`                                        |
+| Use case            | `CreateWorkOrderUseCase`, one class per operation, with one `execute` method                     |
+| Repository          | Contract in `application/ports`, TypeORM implementation in `infrastructure`                      |
+| Application service | `BudgetDecisionAuthorizer`, `WorkOrderCompletionAuthorizer`                                      |
+| Port and adapter    | `InventoryQueryPort`, `Clock`, `IdGenerator`, `TransactionRunner`                                |
+| Gateway             | `CustomerDirectory` is a port of `work-orders`, and `CustomerDirectoryGateway` calls `customers` |
+| Key resolver        | `UserKeyResolver` and four more, turning a UUID into an internal key for the other modules       |
 
 The five bounded contexts are Identity & Access, Customer Management, Workshop Catalog, Inventory
-and Workshop Operations. Contexts and modules are not one for one: Identity & Access occupies
-three modules and Customer Management two.
+and Workshop Operations. Identity & Access is the `identity` module, and Customer Management spans
+`customers` and `vehicles`.
+
+### The module dependency graph
+
+Each arrow is an import of one module by another, and the graph has no cycle. `shared` imports no
+module, and `identity` imports only `shared`:
+
+```mermaid
+flowchart TD
+    wo["work-orders"] --> veh["vehicles"]
+    wo --> cus["customers"]
+    wo --> svc["services"]
+    wo --> inv["inventory"]
+    wo --> idn["identity"]
+    wo --> sh["shared"]
+    veh --> cus
+    veh --> idn
+    veh --> sh
+    cus --> idn
+    cus --> sh
+    inv --> idn
+    inv --> sh
+    svc --> idn
+    svc --> sh
+    idn --> sh
+```
+
+dependency-cruiser draws the same graph from the code:
+
+```bash
+npx depcruise src --include-only "^src/(modules|shared)/" \
+  --collapse "^src/(modules/[^/]+|shared)" --output-type mermaid
+```
+
+A module reaches another in one way. It declares a port in its own `application/ports`, implements
+the port in its own `infrastructure/gateways`, and the gateway calls the use cases the other module
+exports from its `index.ts` ([ADR 0027](docs/adr/0027-ports-between-modules.md)). `work-orders` reads
+a customer this way: its `CustomerDirectory` port is implemented by a gateway that calls `customers`.
+
+One pair needs the inverse. `work-orders` calls `inventory` to move stock, and `inventory` needs work
+order data for the shortage report and the in-use check. `inventory` declares the `WorkOrderReads`
+interface, `work-orders` implements it, and a global `WorkOrderReadsModule` binds the two at the
+root, so the arrow between the two modules stays one way.
+
+Each module also queries only its own tables. A repository that has to turn another module's UUID
+into an internal key asks that module's key resolver, and data another module owns comes through its
+public API ([ADR 0028](docs/adr/0028-each-module-queries-only-its-own-tables.md)).
+
+### What `npm run lint` enforces
+
+`npm run lint` runs ESLint and then `npm run lint:architecture`. It exits non-zero on any of these
+and names the file and the rule:
+
+| Rule              | It fails when                                                                                                                                                                                                                                                       | Checked by                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Core purity       | A file under `domain/` or `application/`, specs included, imports `@nestjs/*`, `typeorm`, `ioredis`, `argon2`, `pg`, `express`, `class-validator`, `class-transformer`, `zod`, `rxjs` or a `node:*` module, carries a decorator or declares a token with `Symbol()` | ESLint, and `core-no-frameworks` in dependency-cruiser                               |
+| Layer direction   | `domain/` or `application/` imports `infrastructure/` or `presentation/`, or `domain/` imports `application/`                                                                                                                                                       | dependency-cruiser, `inward-only`                                                    |
+| Module boundaries | A `domain/` or `application/` file imports another module, a module imports another without going through its `index.ts`, or `src/shared` imports a module                                                                                                          | dependency-cruiser, `core-stays-in-module`, `through-public-api`, `shared-is-a-leaf` |
+| Cycles            | Files import one another in a loop, or modules depend on one another in a cycle                                                                                                                                                                                     | dependency-cruiser, `no-circular`, and `scripts/architecture/check-module-cycles.ts` |
+| Table ownership   | An adapter's SQL names a table another module owns, a table the owner map does not list, or a table name built at runtime                                                                                                                                           | `scripts/architecture/check-table-ownership.ts`                                      |
+
+The two lists of tolerated violations, `.dependency-cruiser-known-violations.json` and
+`scripts/architecture/known-table-findings.json`, are empty, and a test keeps them so. A test in
+`test/architecture/` proves each rule against a fixture tree that breaks it. The `pre-push` hook runs
+`npm run lint`.
 
 Details in [`docs/architecture/`](docs/architecture/):
 [overview](docs/architecture/architecture-overview.md),
@@ -198,7 +272,6 @@ is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 | Language          | TypeScript 5.9                           |
 | Runtime           | Node.js >= 22                            |
 | Framework         | NestJS 11                                |
-| CQRS              | `@nestjs/cqrs` 11                        |
 | ORM               | TypeORM 0.3                              |
 | Database          | PostgreSQL 16                            |
 | Cache and limits  | Redis 7 (`ioredis`)                      |
@@ -450,13 +523,13 @@ back get a 429. Wait for the window to close, or raise the limit in `.env`.
 
 Three suites, each with its own configuration file:
 
-| Command                    | Suite                     | What it exercises                                                       |
-| -------------------------- | ------------------------- | ----------------------------------------------------------------------- |
-| `npm run test:unit`        | `src/**/*.spec.ts`        | Aggregates, value objects and handlers, with test doubles               |
-| `npm run test:integration` | `test/integration/`       | Repositories, read adapters and migrations, against the real PostgreSQL |
-| `npm run test:e2e`         | `test/e2e/`               | Full flows over HTTP, with the application running                      |
-| `npm run test:coverage`    | unit tests, with coverage | Enforces the thresholds on each critical path                           |
-| `npm run test:unit:watch`  | unit tests, in watch mode | -                                                                       |
+| Command                    | Suite                     | What it exercises                                                          |
+| -------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| `npm run test:unit`        | `src/**/*.spec.ts`        | Aggregates, value objects and use cases, with in-memory fakes at the ports |
+| `npm run test:integration` | `test/integration/`       | Repositories, read adapters and migrations, against the real PostgreSQL    |
+| `npm run test:e2e`         | `test/e2e/`               | Full flows over HTTP, with the application running                         |
+| `npm run test:coverage`    | unit tests, with coverage | Enforces the thresholds on each critical path                              |
+| `npm run test:unit:watch`  | unit tests, in watch mode | -                                                                          |
 
 `npm test` is a shortcut for `npm run test:unit`.
 
@@ -486,15 +559,19 @@ coverage report.
 ## Code quality
 
 ```bash
-npm run lint          # ESLint with type-aware rules
-npm run lint:fix      # fixes what can be fixed automatically
-npm run format        # Prettier across the repository
-npm run format:check  # checks without writing
+npm run lint               # ESLint with type-aware rules, then the architecture checks
+npm run lint:architecture  # the architecture checks alone
+npm run lint:fix           # fixes what can be fixed automatically
+npm run format             # Prettier across the repository
+npm run format:check       # checks without writing
 ```
 
-ESLint does more than style here: the `no-restricted-imports` rules in the per-folder blocks of
-[`eslint.config.mjs`](eslint.config.mjs) forbid the framework inside `domain` and infrastructure
-inside `application`. That is what makes the layers mandatory rather than suggested.
+`npm run lint` does more than style here. ESLint refuses framework imports, decorators and injection
+tokens inside `domain` and `application` ([`eslint.config.mjs`](eslint.config.mjs)), and the
+architecture checks refuse an import that crosses a layer or a module boundary the wrong way, a
+dependency cycle and a query on a table another module owns
+([what `npm run lint` enforces](#what-npm-run-lint-enforces)). A broken layer or module boundary
+fails the build.
 
 Two `husky` hooks run on their own, installed by `npm install`:
 
@@ -517,32 +594,35 @@ excludes the test files.
 ├── src/
 │   ├── config/                    typed configuration and environment validation
 │   ├── modules/                   one directory per module, four layers in each
-│   │   ├── authentication/        sessions, tokens, revocation
-│   │   ├── authorization/         roles, permissions, effective access
 │   │   ├── customers/             customer records
+│   │   ├── identity/              accounts, sessions, roles and permissions
+│   │   │   ├── authentication/    sessions, tokens, revocation
+│   │   │   ├── authorization/     roles, permissions, effective access
+│   │   │   └── users/             accounts and credentials
 │   │   ├── inventory/             parts, supplies and stock movements
 │   │   ├── services/              service catalog
-│   │   ├── users/                 accounts and credentials
 │   │   ├── vehicles/              customer vehicles
 │   │   └── work-orders/           work orders, budgets, trail
 │   ├── shared/                    shared kernel and common infrastructure
 │   │   ├── domain/                AggregateRoot, DomainEvent, Money, base errors
-│   │   ├── application/           Clock, IdGenerator and TransactionRunner ports
-│   │   ├── infrastructure/        datasource, migrations, Redis, clock, ids
+│   │   ├── application/           Clock, IdGenerator, TransactionRunner, DomainEventPublisher ports
+│   │   ├── infrastructure/        datasource, migrations, Redis, clock, ids, event dispatcher
 │   │   └── presentation/          global error filter, validation pipes, middleware
 │   ├── app.module.ts              application composition and global guards
 │   └── main.ts                    bootstrap and Swagger
 ├── test/
+│   ├── architecture/              the lint rules, each proven against a fixture tree
+│   ├── contract/                  the OpenAPI document the e2e suite compares against
 │   ├── e2e/                       full flows over HTTP
 │   ├── integration/               persistence against the real PostgreSQL
-│   └── support/                   factories, test doubles and suite setup
+│   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       25 architecture decision records
+│   ├── adr/                       31 architecture decision records
 │   ├── architecture/              overview, high level, low level per module
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── postman/                       collection and environment
 ├── security/                      the vulnerability assessment tool
-├── scripts/                       setup and seeds
+├── scripts/                       setup, seeds and the architecture checks
 ├── docker/                        PostgreSQL init script
 ├── Dockerfile
 └── docker-compose.yml
@@ -551,11 +631,14 @@ excludes the test files.
 Inside each module, the four layers always take the same shape:
 
 ```
-modules/work-orders/
-├── domain/          aggregates, entities, value objects, events, errors, repository interfaces
-├── application/     command and query handlers, ports, authorizers
-├── infrastructure/  TypeORM repositories, read adapters, mappers
-└── presentation/    controllers, request and response DTOs
+modules/customers/
+├── domain/               aggregates, entities, value objects, events, errors
+├── application/          use cases under commands/ and queries/, ports, services
+├── infrastructure/       TypeORM repositories, query adapters, gateways, key resolver, mappers
+├── presentation/         controllers, request and response DTOs
+├── customers.module.ts   composition root: builds each use case and binds each port
+├── customers.tokens.ts   the injection tokens of the module's ports
+└── index.ts              the public API other modules import
 ```
 
 Unit tests sit next to the file they cover (`inventory-item.spec.ts` beside
@@ -583,12 +666,12 @@ the email, the plate or the SKU becomes available again.
 `work_order_events` are never deleted nor rewritten
 ([ADR 0015](docs/adr/0015-stock-movements-append-only.md)).
 
-**Modules talk through buses.** No module imports another's repository or entity; communication
-goes through the `CommandBus` and the `QueryBus`, exchanging identifiers and DTOs
-([ADR 0008](docs/adr/0008-cross-context-calls-through-the-buses.md)).
+**Modules talk through ports.** No module imports another's repository or entity. A module declares
+a port for what it needs, and a gateway implements it by calling the other module's public API
+([ADR 0027](docs/adr/0027-ports-between-modules.md)).
 
 **Errors** are domain classes with a code of their own and a kind, and the kind decides the HTTP
-status. A handler never picks a status code.
+status. A use case never picks a status code.
 
 ## Ubiquitous language
 
@@ -612,7 +695,7 @@ rejected across the project, the record of the language decisions and the consis
 
 ## Technical decisions
 
-Twenty-five numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+Thirty-one numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
 context, the decision and the consequences. The seven below shape the system the most.
 
 ### Why PostgreSQL
@@ -650,24 +733,26 @@ in different aggregates and have to change together. MySQL covers points 1 to 3,
 partial unique index, which is the basis of logical deletion across the whole project. SQLite
 would serve development and not the concurrency of point 3.
 
-### Why a modular monolith with CQRS
+### Why a modular monolith with use cases behind ports
 
 The challenge asks for a monolithic backend, and for an MVP of a single workshop that is also what
-makes sense: one process, one database, one deployment, without the latency and the operational
-complexity of a network between services. What separates this monolith from a single block is
-that the boundary between modules is real: no module imports another's repository or entity, and
-communication goes through the `CommandBus` and the `QueryBus` exchanging identifiers and DTOs
+makes sense: one process, one database, one deployment, with no network between the parts. What
+separates this monolith from a single block is that the boundary between modules is real. No module
+imports another's repository or entity, a module calls another only through a port it declares, and
+`npm run lint` fails on any import that crosses a boundary another way
 ([ADR 0001](docs/adr/0001-modular-monolith-with-cqrs.md),
-[ADR 0008](docs/adr/0008-cross-context-calls-through-the-buses.md)).
+[ADR 0026](docs/adr/0026-use-cases-are-plain-classes.md),
+[ADR 0027](docs/adr/0027-ports-between-modules.md)).
 
-The cost is a trip through the bus where a join would fit. The gain is that the boundary that
-would one day become a service is already drawn, and an accidental coupling breaks the lint rather
-than passing review.
+The cost is a port, a gateway and an in-memory fake for each need that crosses modules, where a
+join or a direct import would fit. The gain is that an accidental coupling breaks the lint instead
+of passing review, and that the use cases run in a unit test without Nest.
 
-The split between command and query follows the same reasoning: writes go through the aggregate,
-which protects the invariant, while reads go straight to the database through an adapter that
-returns the DTO ready. Building the work order board through the aggregate would mean loading each
-order in full, with items and budgets, to display six fields.
+The split between command and query use cases follows the same reasoning: writes go through the
+aggregate, which protects the invariant, while reads go straight to the database through an adapter
+that returns the DTO ready. Building the work order board through the aggregate would mean loading
+each order in full, with items and budgets, to display six fields
+([ADR 0031](docs/adr/0031-patterns-kept-beyond-the-dependency-rule.md)).
 
 ### Why Redis alongside PostgreSQL
 
@@ -843,7 +928,7 @@ The conventions the repository follows:
 
 1. Work on a branch from `main`
 2. One commit per unit of work, in Conventional Commits, scoped by module
-3. Test alongside the code: aggregate and handler in unit tests, persistence in integration, flow
+3. Test alongside the code: aggregate and use case in unit tests, persistence in integration, flow
    in e2e
 4. `pre-push` runs lint, build and tests for you. With Docker up it includes integration and e2e;
    without it, run those two suites by hand before opening the PR
