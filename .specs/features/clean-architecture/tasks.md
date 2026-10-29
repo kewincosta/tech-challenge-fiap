@@ -1946,8 +1946,8 @@ T58 → T59 → T60
 
 #### T60: C4 diagrams and overviews
 
-**What**: Update the C4 component diagrams, the architecture overview and the high level design.
-**Where**: `docs/architecture/`
+**What**: Update the C4 component diagrams, the architecture overview and the high level design, and give ADR 0001 the status `Amended by 0026` (the user's decision of 2026-10-29).
+**Where**: `docs/architecture/`, `docs/adr/README.md`, `docs/adr/0001-modular-monolith-with-cqrs.md`
 **Depends on**: T59
 **Reuses**: The current diagrams
 **Requirement**: CA-09
@@ -1960,6 +1960,7 @@ T58 → T59 → T60
 **Done when**:
 
 - [ ] The identity diagram no longer says every cross-module arrow is a bus dispatch
+- [ ] The status table of `docs/adr/README.md` defines `Amended by NNNN` as "In force, except the part NNNN replaces. The record stays as it was decided.", the index lists 0001 as `Amended by 0026`, and the Status line of ADR 0001 reads `Amended by 0026` with its body unchanged
 - [ ] `grep -rnE "CommandBus|QueryBus|@nestjs/cqrs|Handler\b|modules/(users|authentication|authorization)" README.md docs/architecture` finds nothing
 - [ ] Gate check passes: `npx prettier --check README.md docs`
 
