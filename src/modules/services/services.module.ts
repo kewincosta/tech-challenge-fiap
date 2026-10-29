@@ -7,6 +7,7 @@ import { SERVICE_QUERY_PORT } from './application/ports/service-query.port';
 import { GetServiceHandler } from './application/queries/get-service/get-service.handler';
 import { ListServicesHandler } from './application/queries/list-services/list-services.handler';
 import { SERVICE_REPOSITORY } from './domain/repositories/service.repository';
+import { ServiceKeyResolver } from './infrastructure/persistence/service-key-resolver';
 import { ServiceOrmEntity } from './infrastructure/persistence/service.orm-entity';
 import { TypeOrmServiceQueryAdapter } from './infrastructure/persistence/typeorm-service-query.adapter';
 import { TypeOrmServiceRepository } from './infrastructure/persistence/typeorm-service.repository';
@@ -23,6 +24,8 @@ import { ServicesController } from './presentation/controllers/services.controll
     ListServicesHandler,
     { provide: SERVICE_REPOSITORY, useClass: TypeOrmServiceRepository },
     { provide: SERVICE_QUERY_PORT, useClass: TypeOrmServiceQueryAdapter },
+    ServiceKeyResolver,
   ],
+  exports: [ServiceKeyResolver],
 })
 export class ServicesModule {}

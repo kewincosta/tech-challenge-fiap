@@ -718,10 +718,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `test/integration/service-key-resolver.spec.ts` proves both directions, batch, `null` for unknown, and in-transaction resolution
-- [ ] Exported by `ServicesModule` and `index.ts`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total grows by the resolver's cases
+- [x] `test/integration/service-key-resolver.spec.ts` proves both directions, batch, `null` for unknown, and in-transaction resolution
+- [x] Exported by `ServicesModule` and `index.ts`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total grows by the resolver's cases
 
 **Tests**: integration
 **Gate**: full
