@@ -264,21 +264,21 @@ Each requirement gets a unique ID for tracking across design, tasks, and validat
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CA-01 | P1: The core runs without the framework | Design | In Design |
-| CA-02 | P1: Every route answers exactly as before | Design | In Design |
-| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | Design | In Design |
-| CA-04 | P1: The build enforces the architecture | Design | In Design |
-| CA-05 | P1: Use case tests exercise real collaborators | Design | In Design |
-| CA-06 | P1: A second entry point reuses the use cases | Design | In Design |
-| CA-07 | P1: The decisions and extra choices are recorded | Design | In Design |
-| CA-08 | P2: Use cases carry the use case name | Design | In Design |
-| CA-09 | P2: The documentation matches the new structure | Design | In Design |
+| CA-01 | P1: The core runs without the framework | Tasks | In Tasks |
+| CA-02 | P1: Every route answers exactly as before | Tasks | In Tasks |
+| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | Tasks | In Tasks |
+| CA-04 | P1: The build enforces the architecture | Tasks | In Tasks |
+| CA-05 | P1: Use case tests exercise real collaborators | Tasks | In Tasks |
+| CA-06 | P1: A second entry point reuses the use cases | Tasks | In Tasks |
+| CA-07 | P1: The decisions and extra choices are recorded | Tasks | In Tasks |
+| CA-08 | P2: Use cases carry the use case name | Tasks | In Tasks |
+| CA-09 | P2: The documentation matches the new structure | Tasks | In Tasks |
 
 **ID format:** `CA-NN`
 
 **Status values:** Pending, In Design, In Tasks, Implementing, Verified
 
-**Coverage:** 9 total, 0 mapped to tasks, 9 unmapped (tasks not written yet)
+**Coverage:** 9 total, 9 mapped to tasks, 0 unmapped
 
 ---
 

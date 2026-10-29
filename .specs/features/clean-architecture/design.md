@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/clean-architecture/spec.md`
 **Context**: `.specs/features/clean-architecture/context.md`
-**Status**: Draft
+**Status**: Approved
 
 ---
 
