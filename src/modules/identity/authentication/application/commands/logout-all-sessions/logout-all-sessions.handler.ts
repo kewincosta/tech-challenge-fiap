@@ -1,32 +1,22 @@
-import { Inject } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { authConfig } from '../../../../../../config/auth.config';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { AllUserSessionsRevoked } from '../../../domain/events/all-user-sessions-revoked.event';
-import {
-  SESSION_REPOSITORY,
-  SessionRepository,
-} from '../../../domain/repositories/session.repository';
 import { SessionRevocationReason } from '../../../domain/session-revocation-reason';
-import { REVOKED_SESSION_STORE, RevokedSessionStore } from '../../ports/revoked-session-store.port';
+import { AuthSettings } from '../../auth-settings';
+import { RevokedSessionStore } from '../../ports/revoked-session-store.port';
+import { SessionRepository } from '../../ports/session.repository';
 import {
   LogoutAllSessionsCommand,
   LogoutAllSessionsResultDto,
 } from './logout-all-sessions.command';
 
-@CommandHandler(LogoutAllSessionsCommand)
-export class LogoutAllSessionsHandler implements ICommandHandler<
-  LogoutAllSessionsCommand,
-  LogoutAllSessionsResultDto
-> {
+export class LogoutAllSessionsHandler {
   constructor(
-    @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
-    @Inject(REVOKED_SESSION_STORE) private readonly revokedSessions: RevokedSessionStore,
-    @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(authConfig.KEY) private readonly config: ConfigType<typeof authConfig>,
-    private readonly eventBus: EventBus,
+    private readonly sessions: SessionRepository,
+    private readonly revokedSessions: RevokedSessionStore,
+    private readonly clock: Clock,
+    private readonly settings: AuthSettings,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: LogoutAllSessionsCommand): Promise<LogoutAllSessionsResultDto> {
@@ -37,15 +27,15 @@ export class LogoutAllSessionsHandler implements ICommandHandler<
       now,
     );
     if (revokedIds.length > 0) {
-      await this.revokedSessions.addMany(revokedIds, this.config.accessTokenTtlSeconds);
-      this.eventBus.publish(
+      await this.revokedSessions.addMany(revokedIds, this.settings.accessTokenTtlSeconds);
+      this.events.publish([
         new AllUserSessionsRevoked(
           command.userId,
           revokedIds,
           SessionRevocationReason.LogoutAll,
           now,
         ),
-      );
+      ]);
     }
     return { revokedSessions: revokedIds.length };
   }

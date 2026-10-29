@@ -7,14 +7,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import {
-  ACCESS_TOKEN_SERVICE,
-  AccessTokenService,
-} from '../../application/ports/access-token.port';
-import {
-  REVOKED_SESSION_STORE,
-  RevokedSessionStore,
-} from '../../application/ports/revoked-session-store.port';
+import { ACCESS_TOKEN_SERVICE, REVOKED_SESSION_STORE } from '../../../identity.tokens';
+import { AccessTokenService } from '../../application/ports/access-token.port';
+import { RevokedSessionStore } from '../../application/ports/revoked-session-store.port';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { Principal } from '../principal';
 

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import { SessionRepository } from '../../application/ports/session.repository';
 import { Session } from '../../domain/entities/session';
 import { InvalidRefreshTokenError } from '../../domain/errors/invalid-refresh-token.error';
 import { RefreshTokenStatus } from '../../domain/refresh-token-status';
-import { SessionRepository } from '../../domain/repositories/session.repository';
 import { SessionRevocationReason } from '../../domain/session-revocation-reason';
 import { SessionStatus } from '../../domain/session-status';
 import { RefreshTokenHash } from '../../domain/value-objects/refresh-token-hash';

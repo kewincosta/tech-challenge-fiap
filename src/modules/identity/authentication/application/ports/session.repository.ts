@@ -1,7 +1,7 @@
-import { Session } from '../entities/session';
-import { SessionRevocationReason } from '../session-revocation-reason';
-import { RefreshTokenHash } from '../value-objects/refresh-token-hash';
-import { SessionId } from '../value-objects/session-id';
+import { Session } from '../../domain/entities/session';
+import { SessionRevocationReason } from '../../domain/session-revocation-reason';
+import { RefreshTokenHash } from '../../domain/value-objects/refresh-token-hash';
+import { SessionId } from '../../domain/value-objects/session-id';
 
 export interface SessionRepository {
   findById(id: SessionId): Promise<Session | null>;
@@ -13,5 +13,3 @@ export interface SessionRepository {
     now: Date,
   ): Promise<string[]>;
 }
-
-export const SESSION_REPOSITORY = Symbol('SessionRepository');

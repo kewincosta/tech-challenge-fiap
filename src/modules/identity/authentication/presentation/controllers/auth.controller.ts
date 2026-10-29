@@ -10,7 +10,6 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -27,14 +26,14 @@ import { Request } from 'express';
 import { authThrottle } from '../../../../../config/rate-limit.config';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
 import { AuthenticateUserCommand } from '../../application/commands/authenticate-user/authenticate-user.command';
-import {
-  LogoutAllSessionsCommand,
-  LogoutAllSessionsResultDto,
-} from '../../application/commands/logout-all-sessions/logout-all-sessions.command';
+import { AuthenticateUserHandler } from '../../application/commands/authenticate-user/authenticate-user.handler';
+import { LogoutAllSessionsCommand } from '../../application/commands/logout-all-sessions/logout-all-sessions.command';
+import { LogoutAllSessionsHandler } from '../../application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { RefreshSessionCommand } from '../../application/commands/refresh-session/refresh-session.command';
+import { RefreshSessionHandler } from '../../application/commands/refresh-session/refresh-session.handler';
 import { RevokeSessionCommand } from '../../application/commands/revoke-session/revoke-session.command';
-import { AuthResultDto } from '../../application/dtos/auth-result.dto';
-import { SessionSummaryDto } from '../../application/ports/session-query.port';
+import { RevokeSessionHandler } from '../../application/commands/revoke-session/revoke-session.handler';
+import { ListUserSessionsHandler } from '../../application/queries/list-user-sessions/list-user-sessions.handler';
 import { ListUserSessionsQuery } from '../../application/queries/list-user-sessions/list-user-sessions.query';
 import { AllowsPendingPassword } from '../decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -51,8 +50,11 @@ const USER_AGENT_MAX_LENGTH = 512;
 @Controller('auth')
 export class AuthController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly authenticateUser: AuthenticateUserHandler,
+    private readonly refreshSession: RefreshSessionHandler,
+    private readonly logoutAllSessions: LogoutAllSessionsHandler,
+    private readonly revokeUserSession: RevokeSessionHandler,
+    private readonly listUserSessions: ListUserSessionsHandler,
   ) {}
 
   @Public()
@@ -64,7 +66,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiTooManyRequestsResponse({ type: ErrorResponseDto })
   async login(@Body() body: LoginRequestDto, @Req() request: Request): Promise<AuthResponseDto> {
-    return this.commandBus.execute<AuthenticateUserCommand, AuthResultDto>(
+    return this.authenticateUser.execute(
       new AuthenticateUserCommand(
         body.email,
         body.password,
@@ -83,9 +85,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiTooManyRequestsResponse({ type: ErrorResponseDto })
   async refresh(@Body() body: RefreshTokenRequestDto): Promise<AuthResponseDto> {
-    return this.commandBus.execute<RefreshSessionCommand, AuthResultDto>(
-      new RefreshSessionCommand(body.refreshToken),
-    );
+    return this.refreshSession.execute(new RefreshSessionCommand(body.refreshToken));
   }
 
   @Delete('sessions')
@@ -95,9 +95,7 @@ export class AuthController {
   @ApiOkResponse({ type: LogoutAllResponseDto })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async logout(@CurrentUser() principal: Principal): Promise<LogoutAllResponseDto> {
-    return this.commandBus.execute<LogoutAllSessionsCommand, LogoutAllSessionsResultDto>(
-      new LogoutAllSessionsCommand(principal.userId),
-    );
+    return this.logoutAllSessions.execute(new LogoutAllSessionsCommand(principal.userId));
   }
 
   @Get('sessions')
@@ -106,7 +104,7 @@ export class AuthController {
   @ApiOkResponse({ type: [SessionResponseDto] })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async listSessions(@CurrentUser() principal: Principal): Promise<SessionResponseDto[]> {
-    const sessions = await this.queryBus.execute<ListUserSessionsQuery, SessionSummaryDto[]>(
+    const sessions = await this.listUserSessions.execute(
       new ListUserSessionsQuery(principal.userId),
     );
     return sessions.map((session) => ({
@@ -126,9 +124,7 @@ export class AuthController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() principal: Principal,
   ): Promise<void> {
-    await this.commandBus.execute<RevokeSessionCommand, void>(
-      new RevokeSessionCommand(id, principal.userId),
-    );
+    await this.revokeUserSession.execute(new RevokeSessionCommand(id, principal.userId));
   }
 
   private userAgentOf(request: Request): string | null {

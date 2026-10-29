@@ -3,7 +3,7 @@ import { faker } from '@faker-js/faker';
 import { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { uniqueValidCpf } from '../support/factories/document.factory';
-import { createTestApp } from '../support/app';
+import { createTestApp, TestApp } from '../support/app';
 import { api, grantRole, login, registerAndLogin, registerUser } from '../support/http';
 
 let app: INestApplication;
@@ -360,3 +360,48 @@ describe('Authentication', () => {
     expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
   });
 });
+
+describe('Authentication settings', () => {
+  it('should expire the refresh token REFRESH_TOKEN_TTL_SECONDS and the session SESSION_ABSOLUTE_TTL_SECONDS after the login', async () => {
+    // The lifetimes are read when the application boots, so this application boots after the
+    // change. The e2e suite runs in one process, so the environment goes back as it was.
+    const previous = {
+      refresh: process.env.REFRESH_TOKEN_TTL_SECONDS,
+      absolute: process.env.SESSION_ABSOLUTE_TTL_SECONDS,
+    };
+    process.env.REFRESH_TOKEN_TTL_SECONDS = '600';
+    process.env.SESSION_ABSOLUTE_TTL_SECONDS = '86400';
+    let dedicated: TestApp | undefined;
+    try {
+      dedicated = await createTestApp();
+      const credentials = await registerUser(dedicated.app);
+
+      const response = await api(dedicated.app)
+        .post('/api/v1/auth/sessions')
+        .send({ email: credentials.email, password: credentials.password })
+        .expect(201);
+
+      const body = response.body as { refreshTokenExpiresAt: string; sessionId: string };
+      const sessions: Array<{ created_at: Date; absolute_expires_at: Date }> =
+        await dedicated.dataSource.query(
+          `SELECT created_at, absolute_expires_at FROM sessions WHERE external_id = $1`,
+          [body.sessionId],
+        );
+      const loggedInAt = sessions[0].created_at.getTime();
+      expect(new Date(body.refreshTokenExpiresAt).getTime() - loggedInAt).toBe(600 * 1000);
+      expect(sessions[0].absolute_expires_at.getTime() - loggedInAt).toBe(86400 * 1000);
+    } finally {
+      restoreEnv('REFRESH_TOKEN_TTL_SECONDS', previous.refresh);
+      restoreEnv('SESSION_ABSOLUTE_TTL_SECONDS', previous.absolute);
+      await dedicated?.close();
+    }
+  });
+});
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}

@@ -1,5 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { RefreshTokenOrmEntity } from './refresh-token.orm-entity';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('sessions')
 export class SessionOrmEntity {
@@ -35,7 +34,4 @@ export class SessionOrmEntity {
 
   @Column({ name: 'revocation_reason', type: 'varchar', length: 40, nullable: true })
   revocationReason!: string | null;
-
-  @OneToMany(() => RefreshTokenOrmEntity, (token) => token.session)
-  tokens?: RefreshTokenOrmEntity[];
 }

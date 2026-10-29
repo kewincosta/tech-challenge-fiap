@@ -3,5 +3,3 @@ export interface RevokedSessionStore {
   addMany(sessionIds: string[], ttlSeconds: number): Promise<void>;
   isRevoked(sessionId: string): Promise<boolean>;
 }
-
-export const REVOKED_SESSION_STORE = Symbol('RevokedSessionStore');

@@ -13,14 +13,16 @@ import { AuthenticateUserHandler } from './authentication/application/commands/a
 import { LogoutAllSessionsHandler } from './authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { RefreshSessionHandler } from './authentication/application/commands/refresh-session/refresh-session.handler';
 import { RevokeSessionHandler } from './authentication/application/commands/revoke-session/revoke-session.handler';
-import { ACCESS_TOKEN_SERVICE } from './authentication/application/ports/access-token.port';
-import { REFRESH_TOKEN_HASHER } from './authentication/application/ports/refresh-token-hasher.port';
-import { REVOKED_SESSION_STORE } from './authentication/application/ports/revoked-session-store.port';
-import { SESSION_QUERY_PORT } from './authentication/application/ports/session-query.port';
+import { AuthSettings } from './authentication/application/auth-settings';
+import { AccessTokenService } from './authentication/application/ports/access-token.port';
+import { RefreshTokenHasher } from './authentication/application/ports/refresh-token-hasher.port';
+import { RevokedSessionStore } from './authentication/application/ports/revoked-session-store.port';
+import { SessionQueryPort } from './authentication/application/ports/session-query.port';
+import { SessionRepository } from './authentication/application/ports/session.repository';
 import { ListUserSessionsHandler } from './authentication/application/queries/list-user-sessions/list-user-sessions.handler';
-import { RefreshTokenReuseSubscriber } from './authentication/application/subscribers/security-events.subscriber';
-import { SESSION_REPOSITORY } from './authentication/domain/repositories/session.repository';
+import { RefreshTokenReuseDetected } from './authentication/domain/events/refresh-token-reuse-detected.event';
 import { RedisRevokedSessionStore } from './authentication/infrastructure/cache/redis-revoked-session-store';
+import { RefreshTokenReuseSubscriber } from './authentication/infrastructure/logging/security-events.subscriber';
 import { RefreshTokenOrmEntity } from './authentication/infrastructure/persistence/refresh-token.orm-entity';
 import { SessionOrmEntity } from './authentication/infrastructure/persistence/session.orm-entity';
 import { TypeOrmSessionQueryAdapter } from './authentication/infrastructure/persistence/typeorm-session-query.adapter';
@@ -86,11 +88,17 @@ import { Argon2PasswordHasher } from './users/infrastructure/security/argon2-pas
 import { UsersController } from './users/presentation/controllers/users.controller';
 import {
   ACCESS_CACHE,
+  ACCESS_TOKEN_SERVICE,
   ASSIGNMENT_REPOSITORY,
+  AUTH_SETTINGS,
   EFFECTIVE_ACCESS_READER,
   PERMISSION_REPOSITORY,
   RBAC_QUERY_PORT,
+  REFRESH_TOKEN_HASHER,
+  REVOKED_SESSION_STORE,
   ROLE_REPOSITORY,
+  SESSION_QUERY_PORT,
+  SESSION_REPOSITORY,
 } from './identity.tokens';
 
 @Module({
@@ -129,11 +137,136 @@ import {
     VerifyCredentialsHandler,
     FindUserByDocumentHandler,
     ListUsersHandler,
-    AuthenticateUserHandler,
-    RefreshSessionHandler,
-    LogoutAllSessionsHandler,
-    RevokeSessionHandler,
-    ListUserSessionsHandler,
+    {
+      provide: AUTH_SETTINGS,
+      useFactory: (config: ConfigType<typeof authConfig>): AuthSettings => ({
+        accessTokenTtlSeconds: config.accessTokenTtlSeconds,
+        refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
+        sessionAbsoluteTtlSeconds: config.sessionAbsoluteTtlSeconds,
+      }),
+      inject: [authConfig.KEY],
+    },
+    {
+      provide: AuthenticateUserHandler,
+      useFactory: (
+        sessions: SessionRepository,
+        accessTokens: AccessTokenService,
+        refreshTokenHasher: RefreshTokenHasher,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        settings: AuthSettings,
+        verifyCredentials: VerifyCredentialsHandler,
+        getUserById: GetUserByIdHandler,
+        events: DomainEventPublisher,
+      ) =>
+        new AuthenticateUserHandler(
+          sessions,
+          accessTokens,
+          refreshTokenHasher,
+          idGenerator,
+          clock,
+          settings,
+          verifyCredentials,
+          getUserById,
+          events,
+        ),
+      inject: [
+        SESSION_REPOSITORY,
+        ACCESS_TOKEN_SERVICE,
+        REFRESH_TOKEN_HASHER,
+        ID_GENERATOR,
+        CLOCK,
+        AUTH_SETTINGS,
+        VerifyCredentialsHandler,
+        GetUserByIdHandler,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: RefreshSessionHandler,
+      useFactory: (
+        sessions: SessionRepository,
+        accessTokens: AccessTokenService,
+        refreshTokenHasher: RefreshTokenHasher,
+        revokedSessions: RevokedSessionStore,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        settings: AuthSettings,
+        getUserById: GetUserByIdHandler,
+        events: DomainEventPublisher,
+      ) =>
+        new RefreshSessionHandler(
+          sessions,
+          accessTokens,
+          refreshTokenHasher,
+          revokedSessions,
+          idGenerator,
+          clock,
+          settings,
+          getUserById,
+          events,
+        ),
+      inject: [
+        SESSION_REPOSITORY,
+        ACCESS_TOKEN_SERVICE,
+        REFRESH_TOKEN_HASHER,
+        REVOKED_SESSION_STORE,
+        ID_GENERATOR,
+        CLOCK,
+        AUTH_SETTINGS,
+        GetUserByIdHandler,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: LogoutAllSessionsHandler,
+      useFactory: (
+        sessions: SessionRepository,
+        revokedSessions: RevokedSessionStore,
+        clock: Clock,
+        settings: AuthSettings,
+        events: DomainEventPublisher,
+      ) => new LogoutAllSessionsHandler(sessions, revokedSessions, clock, settings, events),
+      inject: [
+        SESSION_REPOSITORY,
+        REVOKED_SESSION_STORE,
+        CLOCK,
+        AUTH_SETTINGS,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: RevokeSessionHandler,
+      useFactory: (
+        sessions: SessionRepository,
+        revokedSessions: RevokedSessionStore,
+        clock: Clock,
+        settings: AuthSettings,
+        getUserEffectiveAccess: GetUserEffectiveAccessHandler,
+        events: DomainEventPublisher,
+      ) =>
+        new RevokeSessionHandler(
+          sessions,
+          revokedSessions,
+          clock,
+          settings,
+          getUserEffectiveAccess,
+          events,
+        ),
+      inject: [
+        SESSION_REPOSITORY,
+        REVOKED_SESSION_STORE,
+        CLOCK,
+        AUTH_SETTINGS,
+        GetUserEffectiveAccessHandler,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: ListUserSessionsHandler,
+      useFactory: (sessionQuery: SessionQueryPort) => new ListUserSessionsHandler(sessionQuery),
+      inject: [SESSION_QUERY_PORT],
+    },
     RefreshTokenReuseSubscriber,
     JwtAuthGuard,
     PendingPasswordGuard,
@@ -280,10 +413,12 @@ export class IdentityModule implements OnModuleInit {
   constructor(
     private readonly dispatcher: InMemoryDomainEventDispatcher,
     private readonly accessCacheInvalidation: AccessCacheInvalidationSubscriber,
+    private readonly refreshTokenReuse: RefreshTokenReuseSubscriber,
   ) {}
 
   onModuleInit(): void {
     this.dispatcher.subscribe(RoleAssignedToUser, this.accessCacheInvalidation);
     this.dispatcher.subscribe(RoleRevokedFromUser, this.accessCacheInvalidation);
+    this.dispatcher.subscribe(RefreshTokenReuseDetected, this.refreshTokenReuse);
   }
 }

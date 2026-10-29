@@ -1,31 +1,24 @@
-import { Inject } from '@nestjs/common';
-import { ConfigType } from '@nestjs/config';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { authConfig } from '../../../../../../config/auth.config';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { AppPermission } from '../../../../authorization/application/contracts/app-permissions';
 import { GetUserEffectiveAccessHandler } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
 import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { SessionNotFoundError } from '../../../domain/errors/session-not-found.error';
-import {
-  SESSION_REPOSITORY,
-  SessionRepository,
-} from '../../../domain/repositories/session.repository';
 import { SessionRevocationReason } from '../../../domain/session-revocation-reason';
 import { SessionId } from '../../../domain/value-objects/session-id';
-import { REVOKED_SESSION_STORE, RevokedSessionStore } from '../../ports/revoked-session-store.port';
+import { AuthSettings } from '../../auth-settings';
+import { RevokedSessionStore } from '../../ports/revoked-session-store.port';
+import { SessionRepository } from '../../ports/session.repository';
 import { RevokeSessionCommand } from './revoke-session.command';
 
-@CommandHandler(RevokeSessionCommand)
-export class RevokeSessionHandler implements ICommandHandler<RevokeSessionCommand, void> {
+export class RevokeSessionHandler {
   constructor(
-    @Inject(SESSION_REPOSITORY) private readonly sessions: SessionRepository,
-    @Inject(REVOKED_SESSION_STORE) private readonly revokedSessions: RevokedSessionStore,
-    @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(authConfig.KEY) private readonly config: ConfigType<typeof authConfig>,
+    private readonly sessions: SessionRepository,
+    private readonly revokedSessions: RevokedSessionStore,
+    private readonly clock: Clock,
+    private readonly settings: AuthSettings,
     private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
-    private readonly eventBus: EventBus,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: RevokeSessionCommand): Promise<void> {
@@ -47,7 +40,7 @@ export class RevokeSessionHandler implements ICommandHandler<RevokeSessionComman
       : SessionRevocationReason.AdminRevocation;
     session.revoke(reason, this.clock.now());
     await this.sessions.save(session);
-    await this.revokedSessions.add(session.id.value, this.config.accessTokenTtlSeconds);
-    this.eventBus.publishAll(session.pullDomainEvents());
+    await this.revokedSessions.add(session.id.value, this.settings.accessTokenTtlSeconds);
+    this.events.publish(session.pullDomainEvents());
   }
 }

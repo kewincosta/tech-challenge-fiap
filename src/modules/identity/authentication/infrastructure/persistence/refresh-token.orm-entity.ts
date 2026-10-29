@@ -12,7 +12,7 @@ export class RefreshTokenOrmEntity {
   @Column({ name: 'session_id', type: 'bigint' })
   sessionInternalId!: string;
 
-  @ManyToOne(() => SessionOrmEntity, (session) => session.tokens, { onDelete: 'CASCADE' })
+  @ManyToOne(() => SessionOrmEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'session_id' })
   session?: SessionOrmEntity;
 

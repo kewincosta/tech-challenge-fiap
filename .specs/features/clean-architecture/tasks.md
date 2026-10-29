@@ -1509,14 +1509,14 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The authentication tokens live in `src/modules/identity/identity.tokens.ts`, the session repository contract in `authentication/application/ports`, and no file under `authentication/domain` or `authentication/application` declares a `Symbol`
-- [ ] No file in `identity/authentication/application` imports `@nestjs/config` or Nest's `Logger`
-- [ ] `session.orm-entity.ts` and `refresh-token.orm-entity.ts` no longer import each other, sessions and refresh tokens persist as before (the authentication integration and e2e specs pass unchanged), and the regenerated dependency baseline has no `no-circular` entry
-- [ ] An e2e case boots a dedicated app with `REFRESH_TOKEN_TTL_SECONDS=600`, logs in, asserts `refreshTokenExpiresAt` 600 seconds after the login, and restores the environment
-- [ ] A spec of the moved subscriber asserts the warn line `Refresh token reuse detected for session <sessionId>; the session was revoked.` under `AuthenticationSecurity`
-- [ ] `authentication.e2e.spec.ts` passes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by 1; unit unchanged or larger
+- [x] The authentication tokens live in `src/modules/identity/identity.tokens.ts`, the session repository contract in `authentication/application/ports`, and no file under `authentication/domain` or `authentication/application` declares a `Symbol`
+- [x] No file in `identity/authentication/application` imports `@nestjs/config` or Nest's `Logger`
+- [x] `session.orm-entity.ts` and `refresh-token.orm-entity.ts` no longer import each other, sessions and refresh tokens persist as before (the authentication integration and e2e specs pass unchanged), and the regenerated dependency baseline has no `no-circular` entry
+- [x] An e2e case boots a dedicated app with `REFRESH_TOKEN_TTL_SECONDS=600`, logs in, asserts `refreshTokenExpiresAt` 600 seconds after the login, and restores the environment
+- [x] A spec of the moved subscriber asserts the warn line `Refresh token reuse detected for session <sessionId>; the session was revoked.` under `AuthenticationSecurity`
+- [x] `authentication.e2e.spec.ts` passes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by 1; unit unchanged or larger
 
 **Tests**: e2e
 **Gate**: full

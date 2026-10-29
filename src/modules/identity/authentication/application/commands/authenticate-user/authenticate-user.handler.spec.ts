@@ -1,66 +1,64 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeAccessTokenService } from '../../../../../../../test/support/fakes/fake-access-token.service';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../../test/support/fakes/fake-id-generator';
+import { FakePasswordHasher } from '../../../../../../../test/support/fakes/fake-password-hasher';
 import { FakeRefreshTokenHasher } from '../../../../../../../test/support/fakes/fake-refresh-token-hasher';
 import { InMemorySessionRepository } from '../../../../../../../test/support/fakes/in-memory-session.repository';
+import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { buildUser } from '../../../../../../../test/support/factories/user.factory';
+import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
+import { VerifyCredentialsHandler } from '../../../../users/application/queries/verify-credentials/verify-credentials.handler';
 import { InvalidCredentialsError } from '../../../domain/errors/invalid-credentials.error';
+import { SessionCreated } from '../../../domain/events/session-created.event';
 import { SessionStatus } from '../../../domain/session-status';
-import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
-import { VerifyCredentialsQuery } from '../../../../users/application/queries/verify-credentials/verify-credentials.query';
+import { AuthSettings } from '../../auth-settings';
 import { AuthenticateUserCommand } from './authenticate-user.command';
 import { AuthenticateUserHandler } from './authenticate-user.handler';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
-function stubUserLookups(queryBus: ReturnType<typeof stubQueryBus>, mustChangePassword = false) {
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof VerifyCredentialsQuery) {
-      return Promise.resolve(query.password === 'Str0ngPassword' ? { userId: USER_ID } : null);
-    }
-    if (query instanceof GetUserByIdQuery) {
-      return Promise.resolve({
-        id: USER_ID,
-        email: 'jane@example.com',
-        name: 'Jane Doe',
-        status: 'ACTIVE',
-        mustChangePassword,
-        createdAt: new Date().toISOString(),
-      });
-    }
-    return Promise.resolve(null);
-  });
-}
-
-const AUTH_CONFIG = {
-  jwtSecret: 'test-secret',
+const SETTINGS: AuthSettings = {
   accessTokenTtlSeconds: 900,
   refreshTokenTtlSeconds: 604800,
   sessionAbsoluteTtlSeconds: 2592000,
 };
 
-function makeHandler() {
+// The user and the credential check are the real use cases over the in-memory users: Jane signs in
+// with Str0ngPassword, and her account is pending a password change when a case says so.
+async function makeHandler(
+  options: { mustChangePassword?: boolean; settings?: AuthSettings } = {},
+) {
+  const users = new InMemoryUserRepository();
+  await users.save(
+    buildUser({
+      id: USER_ID,
+      email: 'jane@example.com',
+      passwordHash: 'hashed:Str0ngPassword',
+      temporary: options.mustChangePassword,
+    }),
+  );
   const sessions = new InMemorySessionRepository();
-  const queryBus = stubQueryBus();
-  const eventBus = stubEventBus();
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
   const handler = new AuthenticateUserHandler(
     sessions,
     new FakeAccessTokenService(),
     new FakeRefreshTokenHasher(),
     new FakeIdGenerator(),
-    new FakeClock(),
-    AUTH_CONFIG,
-    queryBus.bus,
-    eventBus.bus,
+    clock,
+    options.settings ?? SETTINGS,
+    new VerifyCredentialsHandler(users, new FakePasswordHasher()),
+    new GetUserByIdHandler(users),
+    events,
   );
-  return { handler, sessions, queryBus, eventBus };
+  return { handler, sessions, events, clock };
 }
 
 describe('AuthenticateUserHandler', () => {
   it('should create a session and return an access and refresh token pair', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
-    stubUserLookups(queryBus);
+    const { handler, sessions, events, clock } = await makeHandler();
 
     const result = await handler.execute(
       new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', '127.0.0.1', 'vitest'),
@@ -73,11 +71,11 @@ describe('AuthenticateUserHandler', () => {
     expect(result.tokenType).toBe('Bearer');
     expect(result.expiresInSeconds).toBe(900);
     expect(result.refreshToken).not.toHaveLength(0);
+    expect(events.published).toEqual([new SessionCreated(session.id.value, USER_ID, clock.now())]);
   });
 
   it('should embed the pending password flag in the issued access token', async () => {
-    const { handler, queryBus } = makeHandler();
-    stubUserLookups(queryBus, true);
+    const { handler } = await makeHandler({ mustChangePassword: true });
 
     const result = await handler.execute(
       new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', null, null),
@@ -87,8 +85,7 @@ describe('AuthenticateUserHandler', () => {
   });
 
   it('should store only the hash of the refresh token', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
-    stubUserLookups(queryBus);
+    const { handler, sessions } = await makeHandler();
 
     const result = await handler.execute(
       new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', null, null),
@@ -100,8 +97,7 @@ describe('AuthenticateUserHandler', () => {
   });
 
   it('should reject invalid credentials without creating a session', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
-    queryBus.execute.mockResolvedValue(null);
+    const { handler, sessions, events } = await makeHandler();
 
     await expect(
       handler.execute(
@@ -109,5 +105,27 @@ describe('AuthenticateUserHandler', () => {
       ),
     ).rejects.toThrow(InvalidCredentialsError);
     expect(sessions.sessions).toHaveLength(0);
+    expect(events.published).toEqual([]);
+  });
+
+  it('should expire the refresh token and the session after the lifetimes of the settings', async () => {
+    const { handler, sessions, clock } = await makeHandler({
+      settings: {
+        accessTokenTtlSeconds: 111,
+        refreshTokenTtlSeconds: 600,
+        sessionAbsoluteTtlSeconds: 2000,
+      },
+    });
+
+    const result = await handler.execute(
+      new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', null, null),
+    );
+
+    expect(result.refreshTokenExpiresAt).toBe(
+      new Date(clock.now().getTime() + 600 * 1000).toISOString(),
+    );
+    expect(sessions.sessions[0].absoluteExpiresAt).toEqual(
+      new Date(clock.now().getTime() + 2000 * 1000),
+    );
   });
 });

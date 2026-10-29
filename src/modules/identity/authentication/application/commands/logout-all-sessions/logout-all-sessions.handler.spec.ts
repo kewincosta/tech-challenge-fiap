@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { FakeRevokedSessionStore } from '../../../../../../../test/support/fakes/fake-revoked-session-store';
 import { InMemorySessionRepository } from '../../../../../../../test/support/fakes/in-memory-session.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { buildSession } from '../../../../../../../test/support/factories/session.factory';
 import { AllUserSessionsRevoked } from '../../../domain/events/all-user-sessions-revoked.event';
+import { SessionRevocationReason } from '../../../domain/session-revocation-reason';
 import { SessionStatus } from '../../../domain/session-status';
+import { AuthSettings } from '../../auth-settings';
 import { LogoutAllSessionsCommand } from './logout-all-sessions.command';
 import { LogoutAllSessionsHandler } from './logout-all-sessions.handler';
 
-const AUTH_CONFIG = {
-  jwtSecret: 'test-secret',
+const SETTINGS: AuthSettings = {
   accessTokenTtlSeconds: 900,
   refreshTokenTtlSeconds: 604800,
   sessionAbsoluteTtlSeconds: 2592000,
@@ -22,20 +23,15 @@ const OTHER_USER_ID = '22222222-2222-4222-8222-222222222222';
 function makeHandler() {
   const sessions = new InMemorySessionRepository();
   const revokedSessions = new FakeRevokedSessionStore();
-  const eventBus = stubEventBus();
-  const handler = new LogoutAllSessionsHandler(
-    sessions,
-    revokedSessions,
-    new FakeClock(),
-    AUTH_CONFIG,
-    eventBus.bus,
-  );
-  return { handler, sessions, revokedSessions, eventBus };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new LogoutAllSessionsHandler(sessions, revokedSessions, clock, SETTINGS, events);
+  return { handler, sessions, revokedSessions, events, clock };
 }
 
 describe('LogoutAllSessionsHandler', () => {
   it('should revoke every active session of the user and keep other users untouched', async () => {
-    const { handler, sessions, revokedSessions, eventBus } = makeHandler();
+    const { handler, sessions, revokedSessions, events, clock } = makeHandler();
     const first = buildSession({ userId: USER_ID });
     const second = buildSession({ userId: USER_ID });
     const foreign = buildSession({ userId: OTHER_USER_ID });
@@ -51,15 +47,39 @@ describe('LogoutAllSessionsHandler', () => {
     expect(foreign.status).toBe(SessionStatus.Active);
     expect(await revokedSessions.isRevoked(first.id.value)).toBe(true);
     expect(await revokedSessions.isRevoked(foreign.id.value)).toBe(false);
-    expect(eventBus.publish).toHaveBeenCalledWith(expect.any(AllUserSessionsRevoked));
+    expect(events.published).toEqual([
+      new AllUserSessionsRevoked(
+        USER_ID,
+        [first.id.value, second.id.value],
+        SessionRevocationReason.LogoutAll,
+        clock.now(),
+      ),
+    ]);
+  });
+
+  it('should keep each revoked session marked for the access token lifetime of the settings', async () => {
+    const { sessions, revokedSessions, clock } = makeHandler();
+    const session = buildSession({ userId: USER_ID });
+    await sessions.save(session);
+    const handler = new LogoutAllSessionsHandler(
+      sessions,
+      revokedSessions,
+      clock,
+      { accessTokenTtlSeconds: 111, refreshTokenTtlSeconds: 600, sessionAbsoluteTtlSeconds: 2000 },
+      new RecordingDomainEventPublisher(),
+    );
+
+    await handler.execute(new LogoutAllSessionsCommand(USER_ID));
+
+    expect(revokedSessions.ttlSeconds.get(session.id.value)).toBe(111);
   });
 
   it('should report zero revoked sessions when the user has none', async () => {
-    const { handler, eventBus } = makeHandler();
+    const { handler, events } = makeHandler();
 
     const result = await handler.execute(new LogoutAllSessionsCommand(USER_ID));
 
     expect(result.revokedSessions).toBe(0);
-    expect(eventBus.publish).not.toHaveBeenCalled();
+    expect(events.published).toEqual([]);
   });
 });

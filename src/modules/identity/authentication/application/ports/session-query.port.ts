@@ -9,5 +9,3 @@ export interface SessionSummaryDto {
 export interface SessionQueryPort {
   listActiveByUserId(userId: string): Promise<SessionSummaryDto[]>;
 }
-
-export const SESSION_QUERY_PORT = Symbol('SessionQueryPort');

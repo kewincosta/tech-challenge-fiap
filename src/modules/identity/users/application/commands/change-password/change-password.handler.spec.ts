@@ -1,22 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { FakePasswordHasher } from '../../../../../../../test/support/fakes/fake-password-hasher';
+import { FakeRevokedSessionStore } from '../../../../../../../test/support/fakes/fake-revoked-session-store';
+import { InMemorySessionRepository } from '../../../../../../../test/support/fakes/in-memory-session.repository';
 import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { buildSession } from '../../../../../../../test/support/factories/session.factory';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
-import { LogoutAllSessionsCommand } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command';
+import { LogoutAllSessionsHandler } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { InvalidCredentialsError } from '../../../../authentication/domain/errors/invalid-credentials.error';
+import { SessionStatus } from '../../../../authentication/domain/session-status';
 import { WeakPasswordError } from '../../../domain/errors/weak-password.error';
 import { ChangePasswordCommand } from './change-password.command';
 import { ChangePasswordHandler } from './change-password.handler';
 
+// Ending the sessions is the real use case over the in-memory sessions.
 function makeHandler() {
   const users = new InMemoryUserRepository();
   const passwordHasher = new FakePasswordHasher();
   const clock = new FakeClock();
-  const commandBus = stubCommandBus();
-  const handler = new ChangePasswordHandler(users, passwordHasher, clock, commandBus.bus);
-  return { handler, users, passwordHasher, clock, commandBus };
+  const sessions = new InMemorySessionRepository();
+  const revokedSessions = new FakeRevokedSessionStore();
+  const logoutAllSessions = new LogoutAllSessionsHandler(
+    sessions,
+    revokedSessions,
+    clock,
+    {
+      accessTokenTtlSeconds: 900,
+      refreshTokenTtlSeconds: 604800,
+      sessionAbsoluteTtlSeconds: 2592000,
+    },
+    new RecordingDomainEventPublisher(),
+  );
+  const handler = new ChangePasswordHandler(users, passwordHasher, clock, logoutAllSessions);
+  return { handler, users, passwordHasher, clock, sessions, revokedSessions };
 }
 
 describe('ChangePasswordHandler', () => {
@@ -63,12 +80,18 @@ describe('ChangePasswordHandler', () => {
   });
 
   it('should revoke every session of the user on success', async () => {
-    const { handler, users, commandBus } = makeHandler();
+    const { handler, users, sessions, revokedSessions } = makeHandler();
     const user = buildUser({ passwordHash: 'hashed:OldPassword1' });
     await users.save(user);
+    const session = buildSession({ userId: user.id.value });
+    const foreignSession = buildSession();
+    await sessions.save(session);
+    await sessions.save(foreignSession);
 
     await handler.execute(new ChangePasswordCommand(user.id.value, 'OldPassword1', 'NewPassword2'));
 
-    expect(commandBus.execute).toHaveBeenCalledWith(new LogoutAllSessionsCommand(user.id.value));
+    expect(session.status).toBe(SessionStatus.Revoked);
+    expect(await revokedSessions.isRevoked(session.id.value)).toBe(true);
+    expect(foreignSession.status).toBe(SessionStatus.Active);
   });
 });
