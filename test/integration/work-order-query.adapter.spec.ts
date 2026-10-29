@@ -262,6 +262,40 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     expect(trail[0].actorUserId).toBe(fixture.creator.externalId);
   });
 
+  it('should return trail events that share one timestamp in the order they were written', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+    const [workOrderRow]: Array<{ id: string }> = await dataSource.query(
+      `SELECT id FROM work_orders WHERE external_id = $1`,
+      [workOrder.id.value],
+    );
+    // The ids come from the sequence in ascending order and the rows are inserted in the opposite
+    // order, so the physical order of the rows differs from their write order.
+    const writeOrder: Array<{ id: string; externalId: string }> = [];
+    for (let position = 0; position < 3; position += 1) {
+      const [nextId]: Array<{ id: string }> = await dataSource.query(
+        `SELECT nextval(pg_get_serial_sequence('work_order_events', 'id')) AS id`,
+      );
+      writeOrder.push({ id: nextId.id, externalId: randomUUID() });
+    }
+    const sharedInstant = new Date(Date.now() + 60_000);
+    for (const event of [...writeOrder].reverse()) {
+      await dataSource.query(
+        `INSERT INTO work_order_events (id, external_id, work_order_id, event_type, actor_user_id, occurred_at)
+         VALUES ($1, $2, $3, 'SERVICE_ADDED_TO_WORK_ORDER', $4, $5)`,
+        [event.id, event.externalId, workOrderRow.id, fixture.creator.internalId, sharedInstant],
+      );
+    }
+
+    const trail = await queryAdapter.listTrail(workOrder.number.value);
+
+    const sharedIds = new Set(writeOrder.map((event) => event.externalId));
+    expect(trail.filter((entry) => sharedIds.has(entry.id)).map((entry) => entry.id)).toEqual(
+      writeOrder.map((event) => event.externalId),
+    );
+  });
+
   it('should return prices as numbers on both getByNumber and listByStatus', async () => {
     const fixture = await seedWorkOrderRefs();
     const service = await insertService();

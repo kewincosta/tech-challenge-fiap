@@ -154,10 +154,14 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
     return Promise.all(rows.map((row) => this.toDto(row)));
   }
 
-  /** Ordered by `occurred_at` - chronological, the order INV-04's sibling AC in this feature asks for. */
+  /**
+   * Ordered by `occurred_at` - chronological, the order INV-04's sibling AC in this feature asks for.
+   * A use case stamps several events with one clock reading, and `id` (a bigserial) follows the
+   * write order, so it breaks those ties.
+   */
   async listTrail(number: string): Promise<WorkOrderTrailEntryDto[]> {
     const rows: TrailRow[] = await this.dataSource.query(
-      `${SELECT_TRAIL} WHERE wo.number = $1 ORDER BY we.occurred_at ASC`,
+      `${SELECT_TRAIL} WHERE wo.number = $1 ORDER BY we.occurred_at ASC, we.id ASC`,
       [number],
     );
     return rows.map((row) => this.trailToDto(row));
