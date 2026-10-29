@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 (T20 to T25) dispatched.
-- **Completed**: T1 to T19 and T61. Totals after batch 3: unit 997, integration 280, e2e 243 (baseline 955, 239, 203). Baselines: 361 dependency violations, 17 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 (T26 to T31) dispatched.
+- **Completed**: T1 to T25 and T61. Totals after batch 4: unit 1012, integration 310, e2e 243 (baseline 955, 239, 203). Baselines: 343 dependency violations, 11 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 4's compact summary, then dispatch batch 5 (T26 to T31).
+- **Next step**: read batch 5's compact summary, then dispatch batch 6 (T32 to T38).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -246,6 +246,15 @@ entry. They apply to every feature.
 
 - The resolvers' batch forms return a `Map` without the unknown keys, one entry per repeated key. Every resolver resolves rows of any status, as today's lookups do, and each has a case for it.
 - `FindUsersUseCase` takes `FindUsersQuery(ids?, nameContains?, document?)` and returns users of any status, unordered. An empty `ids` list returns no user, the filters combine with AND, the name filter keeps `ILIKE` wildcards, and a masked CPF finds the same user. `IdentityModule` and `index.ts` export it, with `FindUsersQuery` and `UserSummaryDto`. T33 builds on it.
+
+**Facts from batch 4 that later tasks build on**:
+
+- T22 wrote the pilot's findings into `design.md`: a module's `index.ts` also exports its Nest class and each use case's not-found error (C2); a gateway is an `@Injectable()` class wired with `useClass` under a consumer token, taking the provider's use case classes, and its spec stands in for them with an object that has `execute` alone (C3); the baseline shrinks with `--baseline --baseline-mode shrink-only` (C12); the in-memory `WorkOrderRepository` refuses what the unique indexes refuse (C15).
+- `SELECT_OPEN_WORK_ORDERS_USING_ITEM` became an `EXISTS` query in T23, so the ordering case fails without `ORDER BY`. The strict shortage comparison (`outstanding > quantity_on_hand`) lives in the inventory adapter.
+- Nothing defines the row order of `GET /inventory-items/shortages`. It was unordered before T24 and stays unordered.
+- `InventoryModule` imports `IdentityModule` for `UserKeyResolver`, and `identity/index.ts` exports `IdentityModule`.
+
+**Plan change after batch 4**: 78 `core-stays-in-module` entries are left, and phase 8 removes all of them except `list-customers.handler.ts` importing identity's `PersonDocument`, which T33 removes. T31's bullet now names that exception, and T33 checks that no `application` file imports another module.
 
 **Notes for later batches** (from batch 1):
 
