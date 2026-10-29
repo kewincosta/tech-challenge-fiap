@@ -1,12 +1,12 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
-import { ConsumeStockBatchCommand } from '../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { STOCK_LEDGER, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WithdrawPartsCommand } from './withdraw-parts.command';
@@ -15,7 +15,7 @@ import { WithdrawPartsCommand } from './withdraw-parts.command';
  * Owns the write that spans two modules and two aggregates (AD-008). Validates the whole batch
  * on the aggregate first, purely in memory - a rejected batch never opens a transaction at all.
  * Only once the aggregate has accepted it does this open `transactionRunner.run`, save the work
- * order, and dispatch `ConsumeStockBatchCommand` inside that same transaction, the structural
+ * order, and consume the stock through the ledger inside that same transaction, the structural
  * template `RegisterUserHandler` already established for a cross-module write.
  */
 @CommandHandler(WithdrawPartsCommand)
@@ -24,7 +24,7 @@ export class WithdrawPartsHandler implements ICommandHandler<WithdrawPartsComman
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly commandBus: CommandBus,
+    @Inject(STOCK_LEDGER) private readonly stockLedger: StockLedger,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -47,15 +47,13 @@ export class WithdrawPartsHandler implements ICommandHandler<WithdrawPartsComman
 
     await this.transactionRunner.run(async () => {
       await this.workOrders.save(workOrder);
-      await this.commandBus.execute(
-        new ConsumeStockBatchCommand(
-          resolved.map((line) => ({
-            inventoryItemId: line.inventoryItemId,
-            quantity: line.quantity,
-          })),
-          workOrder.id.value,
-          command.actorUserId,
-        ),
+      await this.stockLedger.consume(
+        workOrder.id.value,
+        resolved.map((line) => ({
+          inventoryItemId: line.inventoryItemId,
+          quantity: line.quantity,
+        })),
+        command.actorUserId,
       );
     });
     this.eventBus.publishAll(workOrder.pullDomainEvents());

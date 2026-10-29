@@ -1004,10 +1004,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The four handlers stop injecting `CommandBus`; their specs assert the fake ledger's recorded lines
-- [ ] `cross-module-transaction.spec.ts` and the withdrawal and closing e2e specs pass, including the 422 that changes nothing
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] The four handlers stop injecting `CommandBus`; their specs assert the fake ledger's recorded lines
+- [x] `cross-module-transaction.spec.ts` and the withdrawal and closing e2e specs pass, including the 422 that changes nothing
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full

@@ -1,22 +1,22 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
-import { RestoreStockBatchCommand } from '../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { STOCK_LEDGER, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { ReturnPartsCommand } from './return-parts.command';
 
 /**
  * Same transaction shape as `WithdrawPartsHandler` (AD-008). Validates the whole batch on the
- * aggregate first, then opens `transactionRunner.run`, saves the work order, and dispatches
- * `RestoreStockBatchCommand` with plain `{ inventoryItemId, quantity }` lines - which movement(s)
- * that undoes is `RestoreStockBatchHandler`'s own job, resolved from inventory's own ledger (see
- * the T12 correction in tasks.md). This side has no movement id to pass and needs none.
+ * aggregate first, then opens `transactionRunner.run`, saves the work order, and restores the
+ * stock through the ledger with plain `{ inventoryItemId, quantity }` lines - which movement(s)
+ * that undoes is inventory's own job, resolved from its own ledger (see the T12 correction in
+ * tasks.md). This side has no movement id to pass and needs none.
  */
 @CommandHandler(ReturnPartsCommand)
 export class ReturnPartsHandler implements ICommandHandler<ReturnPartsCommand, void> {
@@ -24,7 +24,7 @@ export class ReturnPartsHandler implements ICommandHandler<ReturnPartsCommand, v
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly commandBus: CommandBus,
+    @Inject(STOCK_LEDGER) private readonly stockLedger: StockLedger,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -47,15 +47,13 @@ export class ReturnPartsHandler implements ICommandHandler<ReturnPartsCommand, v
 
     await this.transactionRunner.run(async () => {
       await this.workOrders.save(workOrder);
-      await this.commandBus.execute(
-        new RestoreStockBatchCommand(
-          resolved.map((line) => ({
-            inventoryItemId: line.inventoryItemId,
-            quantity: line.quantity,
-          })),
-          workOrder.id.value,
-          command.actorUserId,
-        ),
+      await this.stockLedger.restore(
+        workOrder.id.value,
+        resolved.map((line) => ({
+          inventoryItemId: line.inventoryItemId,
+          quantity: line.quantity,
+        })),
+        command.actorUserId,
       );
     });
     this.eventBus.publishAll(workOrder.pullDomainEvents());

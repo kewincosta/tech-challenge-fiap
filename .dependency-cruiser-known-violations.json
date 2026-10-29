@@ -2773,34 +2773,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.ts",
-    "to": "src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
     "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
@@ -2818,34 +2790,6 @@
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
     "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.ts",
-    "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -2902,76 +2846,6 @@
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
     "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.ts",
-    "to": "src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.spec.ts",
-    "to": "src/modules/inventory/domain/errors/insufficient-stock.error.ts",
-    "unresolvedTo": "../../../../inventory/domain/errors/insufficient-stock.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.ts",
-    "to": "src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -4007,34 +3881,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.ts",
-    "to": "src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
     "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
@@ -4052,34 +3898,6 @@
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
     "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.ts",
-    "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -4136,76 +3954,6 @@
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
     "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.ts",
-    "to": "src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.spec.ts",
-    "to": "src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.spec.ts",
-    "to": "src/modules/inventory/domain/errors/insufficient-stock.error.ts",
-    "unresolvedTo": "../../../../inventory/domain/errors/insufficient-stock.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.handler.ts",
-    "to": "src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command.ts",
-    "unresolvedTo": "../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command",
     "dependencyTypes": [
       "local",
       "import"

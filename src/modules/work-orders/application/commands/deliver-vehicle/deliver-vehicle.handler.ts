@@ -1,12 +1,12 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
-import { SettleStockMovementsCommand } from '../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { STOCK_LEDGER, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { DeliverVehicleCommand } from './deliver-vehicle.command';
 
@@ -14,7 +14,7 @@ import { DeliverVehicleCommand } from './deliver-vehicle.command';
  * Owns the write that spans two modules (AD-008), `WithdrawPartsHandler`'s shape. The aggregate
  * validates the transition purely in memory first - a refused delivery never opens a transaction
  * at all. Only once it is accepted does this open `transactionRunner.run`, save the work order,
- * and dispatch `SettleStockMovementsCommand` inside that same transaction.
+ * and settle the stock through the ledger inside that same transaction.
  */
 @CommandHandler(DeliverVehicleCommand)
 export class DeliverVehicleHandler implements ICommandHandler<DeliverVehicleCommand, void> {
@@ -22,7 +22,7 @@ export class DeliverVehicleHandler implements ICommandHandler<DeliverVehicleComm
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly commandBus: CommandBus,
+    @Inject(STOCK_LEDGER) private readonly stockLedger: StockLedger,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -38,9 +38,7 @@ export class DeliverVehicleHandler implements ICommandHandler<DeliverVehicleComm
 
     await this.transactionRunner.run(async () => {
       await this.workOrders.save(workOrder);
-      await this.commandBus.execute(
-        new SettleStockMovementsCommand(workOrder.id.value, command.actorUserId),
-      );
+      await this.stockLedger.settle(workOrder.id.value, command.actorUserId);
     });
     this.eventBus.publishAll(workOrder.pullDomainEvents());
   }

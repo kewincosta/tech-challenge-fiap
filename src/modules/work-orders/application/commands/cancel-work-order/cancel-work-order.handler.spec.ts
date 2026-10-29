@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import {
-  stubCommandBus,
-  stubEventBus,
-  stubQueryBus,
-} from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { WriteOffStockMovementsCommand } from '../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
 import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
 import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { WorkOrder } from '../../../domain/entities/work-order';
@@ -27,6 +23,7 @@ import { CancelWorkOrderHandler } from './cancel-work-order.handler';
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const VEHICLE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
+const ACTOR_ID = '99999999-9999-4999-8999-999999999999';
 const ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
 const INVENTORY_ITEM_ID = '77777777-7777-4777-8777-777777777777';
 const NUMBER = 'A1B090-2026';
@@ -84,24 +81,23 @@ function makeAuthorizer(access: EffectiveAccessDto): CancellationAuthorizer {
   return new CancellationAuthorizer(queryBus.bus);
 }
 
-function makeHandler(
-  authorizer: CancellationAuthorizer,
-  commandBusExecute?: (command: unknown) => Promise<unknown>,
-) {
+function makeHandler(authorizer: CancellationAuthorizer, refusal?: Error) {
   const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const commandBus = stubCommandBus();
-  commandBus.execute.mockImplementation(commandBusExecute ?? (() => Promise.resolve(undefined)));
+  const stockLedger = new FakeStockLedger();
+  if (refusal) {
+    stockLedger.refuseWith(refusal);
+  }
   const eventBus = stubEventBus();
   const handler = new CancelWorkOrderHandler(
     workOrders,
     transactionRunner,
     authorizer,
     new FakeClock(NOW),
-    commandBus.bus,
+    stockLedger,
     eventBus.bus,
   );
-  return { handler, workOrders, transactionRunner, commandBus, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
 }
 
 describe('CancelWorkOrderHandler', () => {
@@ -130,37 +126,36 @@ describe('CancelWorkOrderHandler', () => {
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.InExecution);
   });
 
-  it('opens exactly one transaction, saves the work order and dispatches WriteOffStockMovementsCommand', async () => {
+  it('opens exactly one transaction, saves the work order and writes the stock off through the ledger', async () => {
     const authorizer = makeAuthorizer({
       roles: ['ADMIN'],
       permissions: ['work-orders:cancel', 'work-orders:cancel-in-execution'],
     });
-    const { handler, workOrders, transactionRunner, commandBus } = makeHandler(authorizer);
+    const { handler, workOrders, transactionRunner, stockLedger } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(2));
 
-    await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', CREATOR_ID));
+    await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', ACTOR_ID));
 
     expect(transactionRunner.runCalls).toBe(1);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Canceled);
-    expect(commandBus.execute).toHaveBeenCalledTimes(1);
-    const dispatched = commandBus.execute.mock.calls[0][0] as WriteOffStockMovementsCommand;
-    expect(dispatched).toBeInstanceOf(WriteOffStockMovementsCommand);
-    expect(dispatched.workOrderId).toBe(workOrders.workOrders[0].id.value);
-    expect(dispatched.actorUserId).toBe(CREATOR_ID);
+    expect(stockLedger.writtenOff).toEqual([
+      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+    ]);
   });
 
-  it('still dispatches the write-off command for a work order with no outstanding withdrawn part (spec.md edge case)', async () => {
+  it('still asks the ledger to write off for a work order with no outstanding withdrawn part (spec.md edge case)', async () => {
     const authorizer = makeAuthorizer({
       roles: ['SERVICE_ADVISOR'],
       permissions: ['work-orders:cancel'],
     });
-    const { handler, workOrders, commandBus } = makeHandler(authorizer);
+    const { handler, workOrders, stockLedger } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(0));
 
-    await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', CREATOR_ID));
+    await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', ACTOR_ID));
 
-    expect(commandBus.execute).toHaveBeenCalledTimes(1);
-    expect(commandBus.execute.mock.calls[0][0]).toBeInstanceOf(WriteOffStockMovementsCommand);
+    expect(stockLedger.writtenOff).toEqual([
+      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+    ]);
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
@@ -168,9 +163,7 @@ describe('CancelWorkOrderHandler', () => {
       roles: ['ADMIN'],
       permissions: ['work-orders:cancel', 'work-orders:cancel-in-execution'],
     });
-    const { handler, workOrders } = makeHandler(authorizer, () =>
-      Promise.reject(new Error('boom')),
-    );
+    const { handler, workOrders } = makeHandler(authorizer, new Error('boom'));
     await workOrders.save(restoreInExecution(2));
 
     await expect(

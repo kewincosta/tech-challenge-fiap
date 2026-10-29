@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus, stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { RestoreStockBatchCommand } from '../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
@@ -80,24 +80,22 @@ function restoreInExecution(status: WorkOrderStatus = WorkOrderStatus.InExecutio
   });
 }
 
-function makeHandler(commandBusExecute?: (command: unknown) => Promise<unknown>) {
+function makeHandler(refusal?: Error) {
   const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const commandBus = stubCommandBus();
-  if (commandBusExecute) {
-    commandBus.execute.mockImplementation(commandBusExecute);
-  } else {
-    commandBus.execute.mockResolvedValue(undefined);
+  const stockLedger = new FakeStockLedger();
+  if (refusal) {
+    stockLedger.refuseWith(refusal);
   }
   const eventBus = stubEventBus();
   const handler = new ReturnPartsHandler(
     workOrders,
     transactionRunner,
     new FakeClock(),
-    commandBus.bus,
+    stockLedger,
     eventBus.bus,
   );
-  return { handler, workOrders, transactionRunner, commandBus, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
 }
 
 describe('ReturnPartsHandler', () => {
@@ -148,8 +146,8 @@ describe('ReturnPartsHandler', () => {
     expect(transactionRunner.runCalls).toBe(0);
   });
 
-  it('opens exactly one transaction, saves the work order, then dispatches RestoreStockBatchCommand with plain lines', async () => {
-    const { handler, workOrders, transactionRunner, commandBus } = makeHandler();
+  it('opens exactly one transaction, saves the work order, then restores the stock through the ledger with plain lines', async () => {
+    const { handler, workOrders, transactionRunner, stockLedger } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
@@ -163,14 +161,13 @@ describe('ReturnPartsHandler', () => {
     expect(transactionRunner.runCalls).toBe(1);
     const updated = workOrders.workOrders[0];
     expect(updated.partItems[0].withdrawnQuantity).toBe(0);
-    expect(commandBus.execute).toHaveBeenCalledTimes(1);
-    const dispatched = commandBus.execute.mock.calls[0][0] as RestoreStockBatchCommand;
-    expect(dispatched).toBeInstanceOf(RestoreStockBatchCommand);
-    expect(dispatched.lines).toEqual([
-      { inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 },
+    expect(stockLedger.restored).toEqual([
+      {
+        workOrderId: updated.id.value,
+        lines: [{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }],
+        actorUserId: MECHANIC_ID,
+      },
     ]);
-    expect(dispatched.workOrderId).toBe(updated.id.value);
-    expect(dispatched.actorUserId).toBe(MECHANIC_ID);
   });
 
   it('publishes the recorded events after the transaction', async () => {
@@ -189,8 +186,8 @@ describe('ReturnPartsHandler', () => {
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler(() =>
-      Promise.reject(new Error('no pending consumption covers this return')),
+    const { handler, workOrders } = makeHandler(
+      new Error('no pending consumption covers this return'),
     );
     await workOrders.save(restoreInExecution());
 

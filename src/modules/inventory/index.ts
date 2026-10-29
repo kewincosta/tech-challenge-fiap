@@ -1,3 +1,11 @@
+export { ConsumeStockBatchCommand } from './application/commands/consume-stock-batch/consume-stock-batch.command';
+export { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
+export { RestoreStockBatchCommand } from './application/commands/restore-stock-batch/restore-stock-batch.command';
+export { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
+export { SettleStockMovementsCommand } from './application/commands/settle-stock-movements/settle-stock-movements.command';
+export { SettleStockMovementsHandler } from './application/commands/settle-stock-movements/settle-stock-movements.handler';
+export { WriteOffStockMovementsCommand } from './application/commands/write-off-stock-movements/write-off-stock-movements.command';
+export { WriteOffStockMovementsHandler } from './application/commands/write-off-stock-movements/write-off-stock-movements.handler';
 export { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
 export { GetInventoryItemQuery } from './application/queries/get-inventory-item/get-inventory-item.query';
 export type { InventoryItemSummaryDto } from './application/ports/inventory-query.port';

@@ -1,12 +1,12 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
-import { WriteOffStockMovementsCommand } from '../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { STOCK_LEDGER, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { CancellationAuthorizer } from '../../services/cancellation.authorizer';
 import { CancelWorkOrderCommand } from './cancel-work-order.command';
@@ -14,10 +14,10 @@ import { CancelWorkOrderCommand } from './cancel-work-order.command';
 /**
  * Owns the write that spans two modules (AD-008), `DeliverVehicleHandler`'s shape, with the
  * authorizer running between the load and the aggregate call (`CompleteWorkOrderHandler`'s
- * shape). Always dispatches `WriteOffStockMovementsCommand`, even when the aggregate carries no
- * outstanding withdrawal - deciding whether there is anything to write off is the inventory
- * side's own job, not this handler's (spec.md's edge case: a work order that withdrew nothing
- * cancels cleanly, and the dispatched command simply writes off nothing).
+ * shape). Always asks the ledger to write off, even when the aggregate carries no outstanding
+ * withdrawal - deciding whether there is anything to write off is the inventory side's own job,
+ * not this handler's (spec.md's edge case: a work order that withdrew nothing cancels cleanly,
+ * and the ledger simply writes off nothing).
  */
 @CommandHandler(CancelWorkOrderCommand)
 export class CancelWorkOrderHandler implements ICommandHandler<CancelWorkOrderCommand, void> {
@@ -26,7 +26,7 @@ export class CancelWorkOrderHandler implements ICommandHandler<CancelWorkOrderCo
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
     private readonly authorizer: CancellationAuthorizer,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly commandBus: CommandBus,
+    @Inject(STOCK_LEDGER) private readonly stockLedger: StockLedger,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -48,9 +48,7 @@ export class CancelWorkOrderHandler implements ICommandHandler<CancelWorkOrderCo
 
     await this.transactionRunner.run(async () => {
       await this.workOrders.save(workOrder);
-      await this.commandBus.execute(
-        new WriteOffStockMovementsCommand(workOrder.id.value, command.actorUserId),
-      );
+      await this.stockLedger.writeOff(workOrder.id.value, command.actorUserId);
     });
     this.eventBus.publishAll(workOrder.pullDomainEvents());
   }

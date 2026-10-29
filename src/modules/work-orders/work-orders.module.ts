@@ -28,6 +28,7 @@ import {
   CUSTOMER_DIRECTORY,
   PART_CATALOG,
   SERVICE_CATALOG,
+  STOCK_LEDGER,
   VEHICLE_DIRECTORY,
   WORK_ORDER_METRICS_QUERY_PORT,
   WORK_ORDER_NUMBER_GENERATOR,
@@ -50,6 +51,7 @@ import { WorkOrderCompletionAuthorizer } from './application/services/work-order
 import { CustomerDirectoryGateway } from './infrastructure/gateways/customer-directory.gateway';
 import { PartCatalogGateway } from './infrastructure/gateways/part-catalog.gateway';
 import { ServiceCatalogGateway } from './infrastructure/gateways/service-catalog.gateway';
+import { StockLedgerGateway } from './infrastructure/gateways/stock-ledger.gateway';
 import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
@@ -140,6 +142,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: VEHICLE_DIRECTORY, useClass: VehicleDirectoryGateway },
     { provide: SERVICE_CATALOG, useClass: ServiceCatalogGateway },
     { provide: PART_CATALOG, useClass: PartCatalogGateway },
+    { provide: STOCK_LEDGER, useClass: StockLedgerGateway },
   ],
 })
 export class WorkOrdersModule {}

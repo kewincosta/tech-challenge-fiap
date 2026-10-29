@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus, stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { ConsumeStockBatchCommand } from '../../../../inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
-import { InsufficientStockError } from '../../../../inventory/domain/errors/insufficient-stock.error';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
@@ -81,26 +80,25 @@ function restoreInExecution(status: WorkOrderStatus = WorkOrderStatus.InExecutio
   });
 }
 
-function makeHandler(commandBusExecute?: (command: unknown) => Promise<unknown>) {
+/** Stands for the refusal inventory raises when stock falls short, which work orders never import. */
+class StockRefusal extends Error {}
+
+function makeHandler(refusal?: Error) {
   const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const commandBus = stubCommandBus();
-  if (commandBusExecute) {
-    commandBus.execute.mockImplementation(commandBusExecute);
-  } else {
-    commandBus.execute.mockResolvedValue([
-      { inventoryItemId: APPROVED_INVENTORY_ITEM_ID, movementId: 'm1' },
-    ]);
+  const stockLedger = new FakeStockLedger();
+  if (refusal) {
+    stockLedger.refuseWith(refusal);
   }
   const eventBus = stubEventBus();
   const handler = new WithdrawPartsHandler(
     workOrders,
     transactionRunner,
     new FakeClock(),
-    commandBus.bus,
+    stockLedger,
     eventBus.bus,
   );
-  return { handler, workOrders, transactionRunner, commandBus, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
 }
 
 describe('WithdrawPartsHandler', () => {
@@ -148,8 +146,8 @@ describe('WithdrawPartsHandler', () => {
     expect(transactionRunner.runCalls).toBe(0);
   });
 
-  it('opens exactly one transaction, saves the work order, then dispatches ConsumeStockBatchCommand', async () => {
-    const { handler, workOrders, transactionRunner, commandBus } = makeHandler();
+  it('opens exactly one transaction, saves the work order, then consumes the stock through the ledger', async () => {
+    const { handler, workOrders, transactionRunner, stockLedger } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
@@ -163,14 +161,13 @@ describe('WithdrawPartsHandler', () => {
     expect(transactionRunner.runCalls).toBe(1);
     const updated = workOrders.workOrders[0];
     expect(updated.partItems[0].withdrawnQuantity).toBe(2);
-    expect(commandBus.execute).toHaveBeenCalledTimes(1);
-    const dispatched = commandBus.execute.mock.calls[0][0] as ConsumeStockBatchCommand;
-    expect(dispatched).toBeInstanceOf(ConsumeStockBatchCommand);
-    expect(dispatched.lines).toEqual([
-      { inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 },
+    expect(stockLedger.consumed).toEqual([
+      {
+        workOrderId: updated.id.value,
+        lines: [{ inventoryItemId: APPROVED_INVENTORY_ITEM_ID, quantity: 2 }],
+        actorUserId: MECHANIC_ID,
+      },
     ]);
-    expect(dispatched.workOrderId).toBe(updated.id.value);
-    expect(dispatched.actorUserId).toBe(MECHANIC_ID);
   });
 
   it('publishes the recorded events after the transaction', async () => {
@@ -188,8 +185,9 @@ describe('WithdrawPartsHandler', () => {
     expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
   });
 
-  it('lets InsufficientStockError raised by the inventory side travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler(() => Promise.reject(new InsufficientStockError()));
+  it('lets the refusal raised by the stock side travel out untouched', async () => {
+    const refusal = new StockRefusal('not enough stock');
+    const { handler, workOrders } = makeHandler(refusal);
     await workOrders.save(restoreInExecution());
 
     await expect(
@@ -200,6 +198,6 @@ describe('WithdrawPartsHandler', () => {
           MECHANIC_ID,
         ),
       ),
-    ).rejects.toThrow(InsufficientStockError);
+    ).rejects.toBe(refusal);
   });
 });

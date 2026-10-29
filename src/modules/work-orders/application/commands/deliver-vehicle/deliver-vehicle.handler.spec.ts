@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus, stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { SettleStockMovementsCommand } from '../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
@@ -18,6 +18,7 @@ const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const VEHICLE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
 const MECHANIC_ID = '55555555-5555-4555-8555-555555555555';
+const ACTOR_ID = '66666666-6666-4666-8666-666666666666';
 const NUMBER = 'A1B090-2026';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 
@@ -50,20 +51,22 @@ function restoreAt(status: WorkOrderStatus): WorkOrder {
   });
 }
 
-function makeHandler(commandBusExecute?: (command: unknown) => Promise<unknown>) {
+function makeHandler(refusal?: Error) {
   const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const commandBus = stubCommandBus();
-  commandBus.execute.mockImplementation(commandBusExecute ?? (() => Promise.resolve(undefined)));
+  const stockLedger = new FakeStockLedger();
+  if (refusal) {
+    stockLedger.refuseWith(refusal);
+  }
   const eventBus = stubEventBus();
   const handler = new DeliverVehicleHandler(
     workOrders,
     transactionRunner,
     new FakeClock(NOW),
-    commandBus.bus,
+    stockLedger,
     eventBus.bus,
   );
-  return { handler, workOrders, transactionRunner, commandBus, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
 }
 
 describe('DeliverVehicleHandler', () => {
@@ -96,17 +99,15 @@ describe('DeliverVehicleHandler', () => {
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Delivered);
   });
 
-  it('dispatches SettleStockMovementsCommand with the work order id and the actor', async () => {
-    const { handler, workOrders, commandBus } = makeHandler();
+  it('settles the stock of the work order through the ledger, for the actor', async () => {
+    const { handler, workOrders, stockLedger } = makeHandler();
     await workOrders.save(restoreAt(WorkOrderStatus.Completed));
 
-    await handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID));
+    await handler.execute(new DeliverVehicleCommand(NUMBER, ACTOR_ID));
 
-    expect(commandBus.execute).toHaveBeenCalledTimes(1);
-    const dispatched = commandBus.execute.mock.calls[0][0] as SettleStockMovementsCommand;
-    expect(dispatched).toBeInstanceOf(SettleStockMovementsCommand);
-    expect(dispatched.workOrderId).toBe(workOrders.workOrders[0].id.value);
-    expect(dispatched.actorUserId).toBe(CREATOR_ID);
+    expect(stockLedger.settled).toEqual([
+      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+    ]);
   });
 
   it('publishes the recorded events after the transaction', async () => {
@@ -119,7 +120,7 @@ describe('DeliverVehicleHandler', () => {
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler(() => Promise.reject(new Error('boom')));
+    const { handler, workOrders } = makeHandler(new Error('boom'));
     await workOrders.save(restoreAt(WorkOrderStatus.Completed));
 
     await expect(handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
