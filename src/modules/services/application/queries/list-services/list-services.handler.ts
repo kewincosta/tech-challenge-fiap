@@ -1,15 +1,8 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import {
-  SERVICE_QUERY_PORT,
-  ServiceQueryPort,
-  ServiceSummaryDto,
-} from '../../ports/service-query.port';
+import { ServiceQueryPort, ServiceSummaryDto } from '../../ports/service-query.port';
 import { ListServicesQuery } from './list-services.query';
 
-@QueryHandler(ListServicesQuery)
-export class ListServicesHandler implements IQueryHandler<ListServicesQuery, ServiceSummaryDto[]> {
-  constructor(@Inject(SERVICE_QUERY_PORT) private readonly serviceQuery: ServiceQueryPort) {}
+export class ListServicesHandler {
+  constructor(private readonly serviceQuery: ServiceQueryPort) {}
 
   async execute(_query: ListServicesQuery): Promise<ServiceSummaryDto[]> {
     return this.serviceQuery.listActive();

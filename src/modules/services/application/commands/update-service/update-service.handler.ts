@@ -1,25 +1,19 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
 import { ServiceNotFoundError } from '../../../domain/errors/service-not-found.error';
-import {
-  SERVICE_REPOSITORY,
-  ServiceRepository,
-} from '../../../domain/repositories/service.repository';
 import { ServiceDuration } from '../../../domain/value-objects/service-duration';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
+import { ServiceRepository } from '../../ports/service.repository';
 import { UpdateServiceCommand } from './update-service.command';
 
-@CommandHandler(UpdateServiceCommand)
-export class UpdateServiceHandler implements ICommandHandler<UpdateServiceCommand, void> {
+export class UpdateServiceHandler {
   constructor(
-    @Inject(SERVICE_REPOSITORY) private readonly services: ServiceRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly services: ServiceRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: UpdateServiceCommand): Promise<void> {
@@ -48,6 +42,6 @@ export class UpdateServiceHandler implements ICommandHandler<UpdateServiceComman
       this.clock.now(),
     );
     await this.services.save(service);
-    this.eventBus.publishAll(service.pullDomainEvents());
+    this.events.publish(service.pullDomainEvents());
   }
 }

@@ -1,5 +1,5 @@
 import { Service } from '../../../src/modules/services/domain/entities/service';
-import { ServiceRepository } from '../../../src/modules/services/domain/repositories/service.repository';
+import { ServiceRepository } from '../../../src/modules/services/application/ports/service.repository';
 import { ServiceStatus } from '../../../src/modules/services/domain/service-status';
 import { ServiceId } from '../../../src/modules/services/domain/value-objects/service-id';
 import { ServiceName } from '../../../src/modules/services/domain/value-objects/service-name';

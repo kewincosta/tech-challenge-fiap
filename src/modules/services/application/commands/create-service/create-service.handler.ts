@@ -1,30 +1,21 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { Service } from '../../../domain/entities/service';
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
-import {
-  SERVICE_REPOSITORY,
-  ServiceRepository,
-} from '../../../domain/repositories/service.repository';
 import { ServiceDuration } from '../../../domain/value-objects/service-duration';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
+import { ServiceRepository } from '../../ports/service.repository';
 import { CreatedServiceDto, CreateServiceCommand } from './create-service.command';
 
-@CommandHandler(CreateServiceCommand)
-export class CreateServiceHandler implements ICommandHandler<
-  CreateServiceCommand,
-  CreatedServiceDto
-> {
+export class CreateServiceHandler {
   constructor(
-    @Inject(SERVICE_REPOSITORY) private readonly services: ServiceRepository,
-    @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly services: ServiceRepository,
+    private readonly idGenerator: IdGenerator,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: CreateServiceCommand): Promise<CreatedServiceDto> {
@@ -49,7 +40,7 @@ export class CreateServiceHandler implements ICommandHandler<
       now: this.clock.now(),
     });
     await this.services.save(service);
-    this.eventBus.publishAll(service.pullDomainEvents());
+    this.events.publish(service.pullDomainEvents());
 
     return { id: service.id.value };
   }

@@ -1,6 +1,6 @@
-import { Service } from '../entities/service';
-import { ServiceId } from '../value-objects/service-id';
-import { ServiceName } from '../value-objects/service-name';
+import { Service } from '../../domain/entities/service';
+import { ServiceId } from '../../domain/value-objects/service-id';
+import { ServiceName } from '../../domain/value-objects/service-name';
 
 export interface ServiceRepository {
   findById(id: ServiceId): Promise<Service | null>;
@@ -8,5 +8,3 @@ export interface ServiceRepository {
   existsActiveByName(name: ServiceName, excludingId?: ServiceId): Promise<boolean>;
   save(service: Service): Promise<void>;
 }
-
-export const SERVICE_REPOSITORY = Symbol('ServiceRepository');

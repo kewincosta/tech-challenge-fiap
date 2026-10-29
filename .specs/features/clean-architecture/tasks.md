@@ -1282,12 +1282,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The tokens live in `src/modules/services/services.tokens.ts`, the repository contract in `services/application/ports`, and no file under `services/domain` or `services/application` declares a `Symbol`
-- [ ] Specs use fakes and assert outcomes; the get use case's spec covers `ServiceNotFoundError`
-- [ ] The controller's `getServiceOrThrow` is gone and the `SERVICE_NOT_FOUND` e2e case from T5 passes
-- [ ] `services` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `services` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The tokens live in `src/modules/services/services.tokens.ts`, the repository contract in `services/application/ports`, and no file under `services/domain` or `services/application` declares a `Symbol`
+- [x] Specs use fakes and assert outcomes; the get use case's spec covers `ServiceNotFoundError`
+- [x] The controller's `getServiceOrThrow` is gone and the `SERVICE_NOT_FOUND` e2e case from T5 passes
+- [x] `services` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `services` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build

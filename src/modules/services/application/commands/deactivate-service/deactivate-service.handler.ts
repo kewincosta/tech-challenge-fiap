@@ -1,21 +1,15 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { ServiceNotFoundError } from '../../../domain/errors/service-not-found.error';
-import {
-  SERVICE_REPOSITORY,
-  ServiceRepository,
-} from '../../../domain/repositories/service.repository';
 import { ServiceId } from '../../../domain/value-objects/service-id';
+import { ServiceRepository } from '../../ports/service.repository';
 import { DeactivateServiceCommand } from './deactivate-service.command';
 
-@CommandHandler(DeactivateServiceCommand)
-export class DeactivateServiceHandler implements ICommandHandler<DeactivateServiceCommand, void> {
+export class DeactivateServiceHandler {
   constructor(
-    @Inject(SERVICE_REPOSITORY) private readonly services: ServiceRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly services: ServiceRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: DeactivateServiceCommand): Promise<void> {
@@ -25,6 +19,6 @@ export class DeactivateServiceHandler implements ICommandHandler<DeactivateServi
     }
     service.deactivate(this.clock.now());
     await this.services.save(service);
-    this.eventBus.publishAll(service.pullDomainEvents());
+    this.events.publish(service.pullDomainEvents());
   }
 }

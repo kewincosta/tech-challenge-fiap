@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryServiceRepository } from '../../../../../../test/support/fakes/in-memory-service.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { Service } from '../../../domain/entities/service';
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
 import { ServiceNotFoundError } from '../../../domain/errors/service-not-found.error';
+import { ServiceUpdated } from '../../../domain/events/service-updated.event';
 import { ServiceDuration } from '../../../domain/value-objects/service-duration';
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
@@ -17,12 +18,15 @@ const OTHER_ID = ServiceId.create('22222222-2222-4222-8222-222222222222');
 
 function makeHandler() {
   const services = new InMemoryServiceRepository();
-  const handler = new UpdateServiceHandler(services, new FakeClock(), stubEventBus().bus);
-  return { handler, services };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new UpdateServiceHandler(services, clock, events);
+  return { handler, services, events, clock };
 }
 
+// A stored service has no pending events, like one the repository loaded.
 function buildService(id: ServiceId, name: string): Service {
-  return Service.create({
+  const service = Service.create({
     id,
     name: ServiceName.create(name),
     description: 'Inclui filtro',
@@ -30,11 +34,13 @@ function buildService(id: ServiceId, name: string): Service {
     duration: ServiceDuration.fromMinutes(60),
     now: new Date('2026-08-31T12:00:00.000Z'),
   });
+  service.pullDomainEvents();
+  return service;
 }
 
 describe('UpdateServiceHandler', () => {
   it('should replace only the supplied fields', async () => {
-    const { handler, services } = makeHandler();
+    const { handler, services, events, clock } = makeHandler();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
 
     await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, undefined, 17500));
@@ -44,6 +50,7 @@ describe('UpdateServiceHandler', () => {
     expect(updated.name.value).toBe('Troca de oleo');
     expect(updated.description).toBe('Inclui filtro');
     expect(updated.duration.minutes).toBe(60);
+    expect(events.published).toEqual([new ServiceUpdated(SERVICE_ID.value, clock.now())]);
   });
 
   it('should refuse a name another active service already holds', async () => {

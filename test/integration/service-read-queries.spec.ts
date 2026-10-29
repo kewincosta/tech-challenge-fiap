@@ -7,6 +7,7 @@ import { GetServiceQuery } from '../../src/modules/services/application/queries/
 import { ListServicesHandler } from '../../src/modules/services/application/queries/list-services/list-services.handler';
 import { ListServicesQuery } from '../../src/modules/services/application/queries/list-services/list-services.query';
 import { Service } from '../../src/modules/services/domain/entities/service';
+import { ServiceNotFoundError } from '../../src/modules/services/domain/errors/service-not-found.error';
 import { ServiceDuration } from '../../src/modules/services/domain/value-objects/service-duration';
 import { ServiceId } from '../../src/modules/services/domain/value-objects/service-id';
 import { ServiceName } from '../../src/modules/services/domain/value-objects/service-name';
@@ -56,7 +57,7 @@ describe('Service read queries', () => {
     expect(found?.priceCents).toBe(15099);
   });
 
-  it('should return a deactivated service with its status, not null', async () => {
+  it('should return a deactivated service with its status, not the not-found error', async () => {
     const service = await saveService();
     service.deactivate(new Date());
     await repository.save(service);
@@ -66,12 +67,16 @@ describe('Service read queries', () => {
     expect(found?.status).toBe('INACTIVE');
   });
 
-  it('should return null for an id that does not exist', async () => {
-    expect(await getServiceHandler.execute(new GetServiceQuery(randomUUID()))).toBeNull();
+  it('should refuse an id that does not exist with the service not-found error', async () => {
+    await expect(getServiceHandler.execute(new GetServiceQuery(randomUUID()))).rejects.toThrow(
+      ServiceNotFoundError,
+    );
   });
 
-  it('should return null for a malformed id, not throw', async () => {
-    expect(await getServiceHandler.execute(new GetServiceQuery('not-a-uuid'))).toBeNull();
+  it('should refuse a malformed id with the service not-found error, not a database error', async () => {
+    await expect(getServiceHandler.execute(new GetServiceQuery('not-a-uuid'))).rejects.toThrow(
+      ServiceNotFoundError,
+    );
   });
 
   it('should list active services only', async () => {
