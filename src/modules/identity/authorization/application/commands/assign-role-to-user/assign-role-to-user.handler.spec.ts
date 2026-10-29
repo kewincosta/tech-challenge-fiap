@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeAccessCache } from '../../../../../../../test/support/fakes/fake-access-cache';
 import { FakeAssignmentRepository } from '../../../../../../../test/support/fakes/fake-assignment.repository';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { FakeEffectiveAccessReader } from '../../../../../../../test/support/fakes/fake-effective-access-reader';
 import { InMemoryRoleRepository } from '../../../../../../../test/support/fakes/in-memory-role.repository';
 import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
 import { Role } from '../../../domain/entities/role';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
@@ -35,16 +35,17 @@ async function makeHandler(options: { targetExists?: boolean } = {}) {
     await users.save(buildUser({ id: USER_ID }));
   }
   const access = new FakeEffectiveAccessReader();
-  const eventBus = stubEventBus();
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
   const handler = new AssignRoleToUserHandler(
     roles,
     assignments,
-    new FakeClock(),
+    clock,
     new GetUserEffectiveAccessHandler(new EffectiveAccessService(new FakeAccessCache(), access)),
     new GetUserByIdHandler(users),
-    eventBus.bus,
+    events,
   );
-  return { handler, roles, assignments, access, eventBus };
+  return { handler, roles, assignments, access, events, clock };
 }
 
 function roleFor(name: SystemRole): Role {
@@ -63,14 +64,16 @@ function customerRole(): Role {
 
 describe('AssignRoleToUserHandler', () => {
   it('should assign a role referenced by name', async () => {
-    const { handler, roles, assignments, eventBus } = await makeHandler();
+    const { handler, roles, assignments, events, clock } = await makeHandler();
     const role = customerRole();
     await roles.save(role);
 
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Customer }));
 
     expect(assignments.userRoles.has(`${USER_ID}:${role.id.value}`)).toBe(true);
-    expect(eventBus.publish).toHaveBeenCalledWith(expect.any(RoleAssignedToUser));
+    expect(events.published).toEqual([
+      new RoleAssignedToUser(USER_ID, role.id.value, SystemRole.Customer, clock.now()),
+    ]);
   });
 
   it('should assign a role referenced by id', async () => {

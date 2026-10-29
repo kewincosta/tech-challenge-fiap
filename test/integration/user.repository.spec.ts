@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { CommandBus } from '@nestjs/cqrs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import { AssignRoleToUserHandler } from '../../src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler';
 import { RegisterUserCommand } from '../../src/modules/identity/users/application/commands/register-user/register-user.command';
 import { RegisterUserHandler } from '../../src/modules/identity/users/application/commands/register-user/register-user.handler';
 import { DocumentAlreadyInUseError } from '../../src/modules/identity/users/domain/errors/document-already-in-use.error';
@@ -63,16 +63,16 @@ describe('TypeOrmUserRepository', () => {
   it('should roll back the user insert when the role assignment fails', async () => {
     const transactionRunner = new TypeOrmTransactionRunner(dataSource);
     const assignmentFailure = new Error('role assignment failed');
-    const failingCommandBus = {
+    const failingAssignRole = {
       execute: () => Promise.reject(assignmentFailure),
-    } as unknown as CommandBus;
+    } as unknown as AssignRoleToUserHandler;
     const handler = new RegisterUserHandler(
       repository,
       new FakePasswordHasher(),
       new FakeIdGenerator(),
       new FakeClock(),
       transactionRunner,
-      failingCommandBus,
+      failingAssignRole,
       stubEventBus().bus,
     );
     const email = uniqueEmail();

@@ -11,8 +11,15 @@ import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR, TRANSACTION_RUNNER } from 
     { provide: CLOCK, useClass: SystemClock },
     { provide: ID_GENERATOR, useClass: CryptoIdGenerator },
     { provide: TRANSACTION_RUNNER, useClass: TypeOrmTransactionRunner },
-    { provide: DOMAIN_EVENT_PUBLISHER, useClass: InMemoryDomainEventDispatcher },
+    InMemoryDomainEventDispatcher,
+    { provide: DOMAIN_EVENT_PUBLISHER, useExisting: InMemoryDomainEventDispatcher },
   ],
-  exports: [CLOCK, ID_GENERATOR, TRANSACTION_RUNNER, DOMAIN_EVENT_PUBLISHER],
+  exports: [
+    CLOCK,
+    ID_GENERATOR,
+    TRANSACTION_RUNNER,
+    DOMAIN_EVENT_PUBLISHER,
+    InMemoryDomainEventDispatcher,
+  ],
 })
 export class SharedModule {}

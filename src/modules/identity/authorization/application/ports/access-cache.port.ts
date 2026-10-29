@@ -5,5 +5,3 @@ export interface AccessCache {
   set(userId: string, access: EffectiveAccessDto): Promise<void>;
   invalidate(userId: string): Promise<void>;
 }
-
-export const ACCESS_CACHE = Symbol('AccessCache');

@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { authConfig } from '../../config/auth.config';
+import { Clock } from '../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
+import { IdGenerator } from '../../shared/application/ports/id-generator.port';
+import { InMemoryDomainEventDispatcher } from '../../shared/infrastructure/events/in-memory-domain-event-dispatcher';
 import { RedisModule } from '../../shared/infrastructure/redis/redis.module';
+import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { AuthenticateUserHandler } from './authentication/application/commands/authenticate-user/authenticate-user.handler';
 import { LogoutAllSessionsHandler } from './authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { RefreshSessionHandler } from './authentication/application/commands/refresh-session/refresh-session.handler';
@@ -31,13 +36,12 @@ import { DeleteRoleHandler } from './authorization/application/commands/delete-r
 import { RevokeRoleFromUserHandler } from './authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler';
 import { SetRolePermissionsHandler } from './authorization/application/commands/set-role-permissions/set-role-permissions.handler';
 import { UpdateRoleHandler } from './authorization/application/commands/update-role/update-role.handler';
-import { ACCESS_CACHE, AccessCache } from './authorization/application/ports/access-cache.port';
-import { ASSIGNMENT_REPOSITORY } from './authorization/application/ports/assignment.repository';
-import {
-  EFFECTIVE_ACCESS_READER,
-  EffectiveAccessReader,
-} from './authorization/application/ports/effective-access-reader.port';
-import { RBAC_QUERY_PORT, RbacQueryPort } from './authorization/application/ports/rbac-query.port';
+import { AccessCache } from './authorization/application/ports/access-cache.port';
+import { AssignmentRepository } from './authorization/application/ports/assignment.repository';
+import { EffectiveAccessReader } from './authorization/application/ports/effective-access-reader.port';
+import { PermissionRepository } from './authorization/application/ports/permission.repository';
+import { RbacQueryPort } from './authorization/application/ports/rbac-query.port';
+import { RoleRepository } from './authorization/application/ports/role.repository';
 import { GetRoleHandler } from './authorization/application/queries/get-role/get-role.handler';
 import { GetUserAccessHandler } from './authorization/application/queries/get-user-access/get-user-access.handler';
 import { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
@@ -46,11 +50,8 @@ import { ListRolesHandler } from './authorization/application/queries/list-roles
 import { EffectiveAccessService } from './authorization/application/services/effective-access.service';
 import { PermissionCatalogService } from './authorization/application/services/permission-catalog.service';
 import { AccessCacheInvalidationSubscriber } from './authorization/application/subscribers/access-cache-invalidation.subscriber';
-import {
-  PERMISSION_REPOSITORY,
-  PermissionRepository,
-} from './authorization/domain/repositories/permission.repository';
-import { ROLE_REPOSITORY } from './authorization/domain/repositories/role.repository';
+import { RoleAssignedToUser } from './authorization/domain/events/role-assigned-to-user.event';
+import { RoleRevokedFromUser } from './authorization/domain/events/role-revoked-from-user.event';
 import { RedisAccessCache } from './authorization/infrastructure/cache/redis-access-cache';
 import { PermissionOrmEntity } from './authorization/infrastructure/persistence/permission.orm-entity';
 import { RolePermissionOrmEntity } from './authorization/infrastructure/persistence/role-permission.orm-entity';
@@ -83,6 +84,14 @@ import { UserOrmEntity } from './users/infrastructure/persistence/user.orm-entit
 import { UserKeyResolver } from './users/infrastructure/persistence/user-key-resolver';
 import { Argon2PasswordHasher } from './users/infrastructure/security/argon2-password-hasher';
 import { UsersController } from './users/presentation/controllers/users.controller';
+import {
+  ACCESS_CACHE,
+  ASSIGNMENT_REPOSITORY,
+  EFFECTIVE_ACCESS_READER,
+  PERMISSION_REPOSITORY,
+  RBAC_QUERY_PORT,
+  ROLE_REPOSITORY,
+} from './identity.tokens';
 
 @Module({
   imports: [
@@ -128,12 +137,68 @@ import { UsersController } from './users/presentation/controllers/users.controll
     RefreshTokenReuseSubscriber,
     JwtAuthGuard,
     PendingPasswordGuard,
-    CreateRoleHandler,
-    UpdateRoleHandler,
-    DeleteRoleHandler,
-    SetRolePermissionsHandler,
-    AssignRoleToUserHandler,
-    RevokeRoleFromUserHandler,
+    {
+      provide: CreateRoleHandler,
+      useFactory: (
+        roles: RoleRepository,
+        permissionCatalog: PermissionCatalogService,
+        idGenerator: IdGenerator,
+        clock: Clock,
+      ) => new CreateRoleHandler(roles, permissionCatalog, idGenerator, clock),
+      inject: [ROLE_REPOSITORY, PermissionCatalogService, ID_GENERATOR, CLOCK],
+    },
+    {
+      provide: UpdateRoleHandler,
+      useFactory: (roles: RoleRepository, clock: Clock) => new UpdateRoleHandler(roles, clock),
+      inject: [ROLE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: DeleteRoleHandler,
+      useFactory: (roles: RoleRepository) => new DeleteRoleHandler(roles),
+      inject: [ROLE_REPOSITORY],
+    },
+    {
+      provide: SetRolePermissionsHandler,
+      useFactory: (
+        roles: RoleRepository,
+        permissionCatalog: PermissionCatalogService,
+        clock: Clock,
+      ) => new SetRolePermissionsHandler(roles, permissionCatalog, clock),
+      inject: [ROLE_REPOSITORY, PermissionCatalogService, CLOCK],
+    },
+    {
+      provide: AssignRoleToUserHandler,
+      useFactory: (
+        roles: RoleRepository,
+        assignments: AssignmentRepository,
+        clock: Clock,
+        getUserEffectiveAccess: GetUserEffectiveAccessHandler,
+        getUserById: GetUserByIdHandler,
+        events: DomainEventPublisher,
+      ) =>
+        new AssignRoleToUserHandler(
+          roles,
+          assignments,
+          clock,
+          getUserEffectiveAccess,
+          getUserById,
+          events,
+        ),
+      inject: [
+        ROLE_REPOSITORY,
+        ASSIGNMENT_REPOSITORY,
+        CLOCK,
+        GetUserEffectiveAccessHandler,
+        GetUserByIdHandler,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: RevokeRoleFromUserHandler,
+      useFactory: (assignments: AssignmentRepository, clock: Clock, events: DomainEventPublisher) =>
+        new RevokeRoleFromUserHandler(assignments, clock, events),
+      inject: [ASSIGNMENT_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
     {
       provide: ListRolesHandler,
       useFactory: (rbacQuery: RbacQueryPort) => new ListRolesHandler(rbacQuery),
@@ -172,7 +237,12 @@ import { UsersController } from './users/presentation/controllers/users.controll
       useFactory: (permissions: PermissionRepository) => new PermissionCatalogService(permissions),
       inject: [PERMISSION_REPOSITORY],
     },
-    AccessCacheInvalidationSubscriber,
+    {
+      provide: AccessCacheInvalidationSubscriber,
+      useFactory: (effectiveAccess: EffectiveAccessService) =>
+        new AccessCacheInvalidationSubscriber(effectiveAccess),
+      inject: [EffectiveAccessService],
+    },
     PermissionsGuard,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
@@ -206,4 +276,14 @@ import { UsersController } from './users/presentation/controllers/users.controll
     FindUsersUseCase,
   ],
 })
-export class IdentityModule {}
+export class IdentityModule implements OnModuleInit {
+  constructor(
+    private readonly dispatcher: InMemoryDomainEventDispatcher,
+    private readonly accessCacheInvalidation: AccessCacheInvalidationSubscriber,
+  ) {}
+
+  onModuleInit(): void {
+    this.dispatcher.subscribe(RoleAssignedToUser, this.accessCacheInvalidation);
+    this.dispatcher.subscribe(RoleRevokedFromUser, this.accessCacheInvalidation);
+  }
+}

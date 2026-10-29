@@ -1479,13 +1479,13 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The authorization tokens live in `src/modules/identity/identity.tokens.ts`, the role and permission repository contracts in `authorization/application/ports`, and no file under `authorization/domain` or `authorization/application` declares a `Symbol`
-- [ ] Specs use fakes and the recording publisher and assert outcomes; the escalation rule keeps its cases
-- [ ] `SharedModule` provides `InMemoryDomainEventDispatcher` and binds `DOMAIN_EVENT_PUBLISHER` to the same instance with `useExisting`, exporting both; the identity root injects the class and subscribes on module init
-- [ ] A role assigned or revoked through the API is visible in the next effective access read (e2e)
-- [ ] `role-escalation.e2e.spec.ts` passes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The authorization tokens live in `src/modules/identity/identity.tokens.ts`, the role and permission repository contracts in `authorization/application/ports`, and no file under `authorization/domain` or `authorization/application` declares a `Symbol`
+- [x] Specs use fakes and the recording publisher and assert outcomes; the escalation rule keeps its cases
+- [x] `SharedModule` provides `InMemoryDomainEventDispatcher` and binds `DOMAIN_EVENT_PUBLISHER` to the same instance with `useExisting`, exporting both; the identity root injects the class and subscribes on module init
+- [x] A role assigned or revoked through the API is visible in the next effective access read (e2e)
+- [x] `role-escalation.e2e.spec.ts` passes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

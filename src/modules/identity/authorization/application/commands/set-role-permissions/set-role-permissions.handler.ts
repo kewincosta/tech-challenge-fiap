@@ -1,19 +1,15 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
-import { ROLE_REPOSITORY, RoleRepository } from '../../../domain/repositories/role.repository';
 import { RoleId } from '../../../domain/value-objects/role-id';
+import { RoleRepository } from '../../ports/role.repository';
 import { PermissionCatalogService } from '../../services/permission-catalog.service';
 import { SetRolePermissionsCommand } from './set-role-permissions.command';
 
-@CommandHandler(SetRolePermissionsCommand)
-export class SetRolePermissionsHandler implements ICommandHandler<SetRolePermissionsCommand, void> {
+export class SetRolePermissionsHandler {
   constructor(
-    @Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
+    private readonly roles: RoleRepository,
     private readonly permissionCatalog: PermissionCatalogService,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly clock: Clock,
   ) {}
 
   async execute(command: SetRolePermissionsCommand): Promise<void> {

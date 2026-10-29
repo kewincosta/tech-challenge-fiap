@@ -11,7 +11,6 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -24,13 +23,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
-import {
-  CreatedRoleDto,
-  CreateRoleCommand,
-} from '../../application/commands/create-role/create-role.command';
+import { CreateRoleCommand } from '../../application/commands/create-role/create-role.command';
+import { CreateRoleHandler } from '../../application/commands/create-role/create-role.handler';
 import { DeleteRoleCommand } from '../../application/commands/delete-role/delete-role.command';
+import { DeleteRoleHandler } from '../../application/commands/delete-role/delete-role.handler';
 import { SetRolePermissionsCommand } from '../../application/commands/set-role-permissions/set-role-permissions.command';
+import { SetRolePermissionsHandler } from '../../application/commands/set-role-permissions/set-role-permissions.handler';
 import { UpdateRoleCommand } from '../../application/commands/update-role/update-role.command';
+import { UpdateRoleHandler } from '../../application/commands/update-role/update-role.handler';
 import { AppPermission } from '../../application/contracts/app-permissions';
 import { GetRoleHandler } from '../../application/queries/get-role/get-role.handler';
 import { GetRoleQuery } from '../../application/queries/get-role/get-role.query';
@@ -50,7 +50,10 @@ import {
 @Controller('roles')
 export class RolesController {
   constructor(
-    private readonly commandBus: CommandBus,
+    private readonly createRole: CreateRoleHandler,
+    private readonly updateRole: UpdateRoleHandler,
+    private readonly deleteRole: DeleteRoleHandler,
+    private readonly setRolePermissions: SetRolePermissionsHandler,
     private readonly listRoles: ListRolesHandler,
     private readonly getRole: GetRoleHandler,
   ) {}
@@ -72,7 +75,7 @@ export class RolesController {
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async create(@Body() body: CreateRoleRequestDto): Promise<RoleResponseDto> {
-    const created = await this.commandBus.execute<CreateRoleCommand, CreatedRoleDto>(
+    const created = await this.createRole.execute(
       new CreateRoleCommand(body.name, body.description ?? null, body.permissions ?? []),
     );
     return this.getRole.execute(new GetRoleQuery(created.id));
@@ -98,9 +101,7 @@ export class RolesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateRoleRequestDto,
   ): Promise<RoleResponseDto> {
-    await this.commandBus.execute<UpdateRoleCommand, void>(
-      new UpdateRoleCommand(id, body.name, body.description),
-    );
+    await this.updateRole.execute(new UpdateRoleCommand(id, body.name, body.description));
     return this.getRole.execute(new GetRoleQuery(id));
   }
 
@@ -112,7 +113,7 @@ export class RolesController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.commandBus.execute<DeleteRoleCommand, void>(new DeleteRoleCommand(id));
+    await this.deleteRole.execute(new DeleteRoleCommand(id));
   }
 
   @Put(':id/permissions')
@@ -125,9 +126,7 @@ export class RolesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: SetRolePermissionsRequestDto,
   ): Promise<RoleResponseDto> {
-    await this.commandBus.execute<SetRolePermissionsCommand, void>(
-      new SetRolePermissionsCommand(id, body.permissions),
-    );
+    await this.setRolePermissions.execute(new SetRolePermissionsCommand(id, body.permissions));
     return this.getRole.execute(new GetRoleQuery(id));
   }
 }

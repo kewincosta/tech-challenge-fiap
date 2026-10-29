@@ -1,6 +1,6 @@
 import { PermissionNotFoundError } from '../../domain/errors/permission-not-found.error';
-import { PermissionRepository } from '../../domain/repositories/permission.repository';
 import { PermissionCode } from '../../domain/value-objects/permission-code';
+import { PermissionRepository } from '../ports/permission.repository';
 
 export class PermissionCatalogService {
   constructor(private readonly permissions: PermissionRepository) {}

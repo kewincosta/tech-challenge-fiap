@@ -27,5 +27,3 @@ export interface RbacQueryPort {
   listPermissions(): Promise<PermissionDto[]>;
   getUserAccess(userId: string): Promise<UserAccessDto>;
 }
-
-export const RBAC_QUERY_PORT = Symbol('RbacQueryPort');

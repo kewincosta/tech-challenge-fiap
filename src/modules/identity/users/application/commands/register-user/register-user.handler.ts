@@ -1,10 +1,11 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, ID_GENERATOR, TRANSACTION_RUNNER } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../../shared/application/ports/id-generator.port';
 import { TransactionRunner } from '../../../../../../shared/application/ports/transaction-runner.port';
 import { AssignRoleToUserCommand } from '../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command';
+import { AssignRoleToUserHandler } from '../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.handler';
 import { SystemRole } from '../../../../authorization/application/contracts/system-roles';
 import { User } from '../../../domain/entities/user';
 import { DocumentAlreadyInUseError } from '../../../domain/errors/document-already-in-use.error';
@@ -29,7 +30,7 @@ export class RegisterUserHandler implements ICommandHandler<
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
-    private readonly commandBus: CommandBus,
+    private readonly assignRoleToUser: AssignRoleToUserHandler,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -57,12 +58,12 @@ export class RegisterUserHandler implements ICommandHandler<
       now: this.clock.now(),
       temporary: command.issuedByStaff,
     });
-    // The insert and the role assignment it dispatches through the CommandBus must commit or
-    // roll back together (see design.md's Risks & Concerns) - otherwise a failure between the two
-    // leaves an account with no role, which can authenticate but resolves an empty permission set.
+    // The insert and the role assignment it requests must commit or roll back together (see
+    // design.md's Risks & Concerns). A failure between the two would leave an account with no
+    // role, which can authenticate but resolves an empty permission set.
     return this.transactionRunner.run(async () => {
       await this.users.save(user);
-      await this.commandBus.execute(
+      await this.assignRoleToUser.execute(
         new AssignRoleToUserCommand(user.id.value, { name: SystemRole.Customer }),
       );
       this.eventBus.publishAll(user.pullDomainEvents());

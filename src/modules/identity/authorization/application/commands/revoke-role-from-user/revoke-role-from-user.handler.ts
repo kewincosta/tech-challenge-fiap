@@ -1,27 +1,24 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { RoleRevokedFromUser } from '../../../domain/events/role-revoked-from-user.event';
 import { RoleId } from '../../../domain/value-objects/role-id';
-import { ASSIGNMENT_REPOSITORY, AssignmentRepository } from '../../ports/assignment.repository';
+import { AssignmentRepository } from '../../ports/assignment.repository';
 import { RevokeRoleFromUserCommand } from './revoke-role-from-user.command';
 
-@CommandHandler(RevokeRoleFromUserCommand)
-export class RevokeRoleFromUserHandler implements ICommandHandler<RevokeRoleFromUserCommand, void> {
+export class RevokeRoleFromUserHandler {
   constructor(
-    @Inject(ASSIGNMENT_REPOSITORY) private readonly assignments: AssignmentRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly assignments: AssignmentRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: RevokeRoleFromUserCommand): Promise<void> {
     const roleId = RoleId.create(command.roleId);
     const removed = await this.assignments.removeRoleFromUser(command.userId, roleId.value);
     if (removed) {
-      this.eventBus.publish(
+      this.events.publish([
         new RoleRevokedFromUser(command.userId, roleId.value, this.clock.now()),
-      );
+      ]);
     }
   }
 }

@@ -1,7 +1,5 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { Role } from '../../../domain/entities/role';
@@ -10,24 +8,23 @@ import { RoleEscalationForbiddenError } from '../../../domain/errors/role-escala
 import { RoleNotAssignableError } from '../../../domain/errors/role-not-assignable.error';
 import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
 import { RoleAssignedToUser } from '../../../domain/events/role-assigned-to-user.event';
-import { ROLE_REPOSITORY, RoleRepository } from '../../../domain/repositories/role.repository';
 import { RoleId } from '../../../domain/value-objects/role-id';
 import { RoleName } from '../../../domain/value-objects/role-name';
-import { ASSIGNMENT_REPOSITORY, AssignmentRepository } from '../../ports/assignment.repository';
 import { SystemRole } from '../../contracts/system-roles';
+import { AssignmentRepository } from '../../ports/assignment.repository';
+import { RoleRepository } from '../../ports/role.repository';
 import { GetUserEffectiveAccessHandler } from '../../queries/get-user-effective-access/get-user-effective-access.handler';
 import { GetUserEffectiveAccessQuery } from '../../queries/get-user-effective-access/get-user-effective-access.query';
 import { AssignRoleToUserCommand, RoleReference } from './assign-role-to-user.command';
 
-@CommandHandler(AssignRoleToUserCommand)
-export class AssignRoleToUserHandler implements ICommandHandler<AssignRoleToUserCommand, void> {
+export class AssignRoleToUserHandler {
   constructor(
-    @Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
-    @Inject(ASSIGNMENT_REPOSITORY) private readonly assignments: AssignmentRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly roles: RoleRepository,
+    private readonly assignments: AssignmentRepository,
+    private readonly clock: Clock,
     private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
     private readonly getUserById: GetUserByIdHandler,
-    private readonly eventBus: EventBus,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: AssignRoleToUserCommand): Promise<void> {
@@ -35,9 +32,9 @@ export class AssignRoleToUserHandler implements ICommandHandler<AssignRoleToUser
     await this.ensureAssignable(role, command.actorUserId);
     await this.ensureUserExists(command.userId);
     await this.assignments.assignRoleToUser(command.userId, role.id.value);
-    this.eventBus.publish(
+    this.events.publish([
       new RoleAssignedToUser(command.userId, role.id.value, role.name.value, this.clock.now()),
-    );
+    ]);
   }
 
   private async ensureAssignable(role: Role, actorUserId?: string): Promise<void> {

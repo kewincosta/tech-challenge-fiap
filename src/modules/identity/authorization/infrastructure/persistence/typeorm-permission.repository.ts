@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { PermissionRepository } from '../../application/ports/permission.repository';
 import { Permission } from '../../domain/entities/permission';
-import { PermissionRepository } from '../../domain/repositories/permission.repository';
 import { PermissionCode } from '../../domain/value-objects/permission-code';
 import { PermissionId } from '../../domain/value-objects/permission-id';
 import { PermissionOrmEntity } from './permission.orm-entity';

@@ -8,7 +8,6 @@ import {
   ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -22,7 +21,9 @@ import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
 import { Principal } from '../../../authentication/presentation/principal';
 import { AssignRoleToUserCommand } from '../../application/commands/assign-role-to-user/assign-role-to-user.command';
+import { AssignRoleToUserHandler } from '../../application/commands/assign-role-to-user/assign-role-to-user.handler';
 import { RevokeRoleFromUserCommand } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.command';
+import { RevokeRoleFromUserHandler } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.handler';
 import { AppPermission } from '../../application/contracts/app-permissions';
 import { GetUserAccessHandler } from '../../application/queries/get-user-access/get-user-access.handler';
 import { GetUserAccessQuery } from '../../application/queries/get-user-access/get-user-access.query';
@@ -35,7 +36,8 @@ import { UserAccessResponseDto } from '../dtos/user-access.dtos';
 @Controller('users')
 export class UserAccessController {
   constructor(
-    private readonly commandBus: CommandBus,
+    private readonly assignRoleToUser: AssignRoleToUserHandler,
+    private readonly revokeRoleFromUser: RevokeRoleFromUserHandler,
     private readonly getAccess: GetUserAccessHandler,
   ) {}
 
@@ -63,7 +65,7 @@ export class UserAccessController {
     @Param('roleId', ParseUUIDPipe) roleId: string,
     @CurrentUser() principal: Principal,
   ): Promise<void> {
-    await this.commandBus.execute<AssignRoleToUserCommand, void>(
+    await this.assignRoleToUser.execute(
       new AssignRoleToUserCommand(userId, { id: roleId }, principal.userId),
     );
   }
@@ -78,8 +80,6 @@ export class UserAccessController {
     @Param('userId', ParseUUIDPipe) userId: string,
     @Param('roleId', ParseUUIDPipe) roleId: string,
   ): Promise<void> {
-    await this.commandBus.execute<RevokeRoleFromUserCommand, void>(
-      new RevokeRoleFromUserCommand(userId, roleId),
-    );
+    await this.revokeRoleFromUser.execute(new RevokeRoleFromUserCommand(userId, roleId));
   }
 }
