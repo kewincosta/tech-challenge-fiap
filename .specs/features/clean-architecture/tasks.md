@@ -56,7 +56,7 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 
 ## Confirmed lessons applied to this breakdown
 
-- **L-002** (every spec Edge Case needs an owning task): the Edge Case Ownership table assigns each of the spec's 17 edge cases to the tasks that prove it and the layer of each proof.
+- **L-002** (every spec Edge Case needs an owning task): the Edge Case Ownership table assigns each of the spec's 22 edge cases to the tasks that prove it and the layer of each proof.
 - **L-003** (a sibling's test does not stand in for a call site's own): every route that answers a not-found gets its own e2e assertion in phase 1, before the not-found moves into its use case, and each query use case that throws gets its own unit case when it migrates.
 
 ## Edge Case Ownership
