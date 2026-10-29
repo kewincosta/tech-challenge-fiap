@@ -1142,10 +1142,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The repository's SQL names only `customers`, and its entries leave the known table findings
-- [ ] `customer.repository.spec.ts` passes; `POST /customers` creating a new user links the customer inside the same transaction (e2e)
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] The repository's SQL names only `customers`, and its entries leave the known table findings
+- [x] `customer.repository.spec.ts` passes; `POST /customers` creating a new user links the customer inside the same transaction (e2e)
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

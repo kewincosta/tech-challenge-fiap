@@ -7,6 +7,7 @@ import { CustomerId } from '../../src/modules/customers/domain/value-objects/cus
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerQueryAdapter } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
+import { UserKeyResolver } from '../../src/modules/identity';
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
@@ -24,7 +25,7 @@ beforeAll(async () => {
   queryAdapter = new TypeOrmCustomerQueryAdapter(dataSource);
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
-    dataSource,
+    new UserKeyResolver(dataSource),
   );
   userRepository = new TypeOrmUserRepository(dataSource.getRepository(UserOrmEntity));
 });

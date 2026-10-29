@@ -5,11 +5,6 @@
     "table": "users"
   },
   {
-    "file": "src/modules/customers/infrastructure/persistence/typeorm-customer.repository.ts",
-    "kind": "foreign-table",
-    "table": "users"
-  },
-  {
     "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter.ts",
     "kind": "foreign-table",
     "table": "customers"

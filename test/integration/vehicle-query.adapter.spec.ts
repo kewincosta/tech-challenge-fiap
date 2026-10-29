@@ -12,6 +12,7 @@ import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/veh
 import { TypeOrmVehicleQueryAdapter } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter';
 import { TypeOrmVehicleRepository } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
+import { UserKeyResolver } from '../../src/modules/identity';
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
@@ -35,7 +36,7 @@ beforeAll(async () => {
   );
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
-    dataSource,
+    new UserKeyResolver(dataSource),
   );
   userRepository = new TypeOrmUserRepository(dataSource.getRepository(UserOrmEntity));
 });

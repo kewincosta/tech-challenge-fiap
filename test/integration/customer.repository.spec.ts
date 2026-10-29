@@ -8,8 +8,10 @@ import { CustomerId } from '../../src/modules/customers/domain/value-objects/cus
 import { PhoneNumber } from '../../src/modules/customers/domain/value-objects/phone-number';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
+import { UserKeyResolver } from '../../src/modules/identity';
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
+import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { buildUser } from '../support/factories/user.factory';
 import { createTestDataSource } from '../support/db';
@@ -23,7 +25,7 @@ beforeAll(async () => {
   await dataSource.initialize();
   repository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
-    dataSource,
+    new UserKeyResolver(dataSource),
   );
   userRepository = new TypeOrmUserRepository(dataSource.getRepository(UserOrmEntity));
 });
@@ -111,5 +113,56 @@ describe('TypeOrmCustomerRepository', () => {
   it('should return null/false for an unknown id and userId', async () => {
     expect(await repository.findById(CustomerId.create(randomUUID()))).toBeNull();
     expect(await repository.existsByUserId(randomUUID())).toBe(false);
+  });
+
+  it('should say a user that exists but has no customer record has no customer', async () => {
+    const userId = await registerUser();
+
+    expect(await repository.existsByUserId(userId)).toBe(false);
+  });
+
+  it('should say a user whose customer was deactivated still has a customer record', async () => {
+    const userId = await registerUser();
+    const customer = Customer.register({
+      id: CustomerId.create(randomUUID()),
+      userId,
+      now: new Date(),
+    });
+    await repository.save(customer);
+    customer.deactivate(new Date());
+    await repository.save(customer);
+
+    expect(await repository.existsByUserId(userId)).toBe(true);
+  });
+
+  // The user is saved and the customer is linked to it inside one transaction that is rolled back
+  // at the end: a repository that resolves the user on its own connection cannot see the
+  // uncommitted row, and nothing is left behind for a later test.
+  it('should link a customer to a user saved earlier in the same open transaction', async () => {
+    const runner = new TypeOrmTransactionRunner(dataSource);
+    const rollback = new Error('discard the fixture');
+    const user = buildUser({ email: `${randomUUID()}@example.com`, document: uniqueValidCpf() });
+    const customer = Customer.register({
+      id: CustomerId.create(randomUUID()),
+      userId: user.id.value,
+      now: new Date(),
+    });
+    let inside!: { exists: boolean; linkedTo: string | undefined };
+
+    await expect(
+      runner.run(async () => {
+        await userRepository.save(user);
+        await repository.save(customer);
+        inside = {
+          exists: await repository.existsByUserId(user.id.value),
+          linkedTo: (await repository.findById(customer.id))?.userId,
+        };
+        throw rollback;
+      }),
+    ).rejects.toThrow(rollback);
+
+    expect(inside).toEqual({ exists: true, linkedTo: user.id.value });
+    expect(await repository.findById(customer.id)).toBeNull();
+    expect(await repository.existsByUserId(user.id.value)).toBe(false);
   });
 });
