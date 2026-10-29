@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GetServiceHandler,
+  GetServiceUseCase,
   GetServiceQuery,
   ServiceNotFoundError,
   ServiceSummaryDto,
@@ -18,7 +18,7 @@ const ACTIVE_SERVICE: ServiceSummaryDto = {
   status: 'ACTIVE',
 };
 
-// The gateway uses only `execute` of the services module's handler. The stand-in answers for the
+// The gateway uses only `execute` of the services module's use case. The stand-in answers for the
 // one id it is asked about, so a gateway that sends the wrong identifier gets `null`.
 function gatewayOver(result: ServiceSummaryDto | null | Error): ServiceCatalogGateway {
   const getService = {
@@ -28,7 +28,7 @@ function gatewayOver(result: ServiceSummaryDto | null | Error): ServiceCatalogGa
       }
       return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
     },
-  } as unknown as GetServiceHandler;
+  } as unknown as GetServiceUseCase;
   return new ServiceCatalogGateway(getService);
 }
 

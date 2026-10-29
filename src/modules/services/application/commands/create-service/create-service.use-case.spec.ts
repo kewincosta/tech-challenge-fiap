@@ -9,21 +9,21 @@ import { InvalidServiceDurationError } from '../../../domain/errors/invalid-serv
 import { ServiceNameAlreadyInUseError } from '../../../domain/errors/service-name-already-in-use.error';
 import { ServiceCreated } from '../../../domain/events/service-created.event';
 import { CreateServiceCommand } from './create-service.command';
-import { CreateServiceHandler } from './create-service.handler';
+import { CreateServiceUseCase } from './create-service.use-case';
 
-function makeHandler() {
+function makeUseCase() {
   const services = new InMemoryServiceRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new CreateServiceHandler(services, new FakeIdGenerator(), clock, events);
-  return { handler, services, events, clock };
+  const useCase = new CreateServiceUseCase(services, new FakeIdGenerator(), clock, events);
+  return { useCase, services, events, clock };
 }
 
-describe('CreateServiceHandler', () => {
+describe('CreateServiceUseCase', () => {
   it('should create an active service and return its id', async () => {
-    const { handler, services, events, clock } = makeHandler();
+    const { useCase, services, events, clock } = makeUseCase();
 
-    const result = await handler.execute(
+    const result = await useCase.execute(
       new CreateServiceCommand('Troca de oleo', 15099, 60, 'Inclui filtro'),
     );
 
@@ -36,29 +36,29 @@ describe('CreateServiceHandler', () => {
   });
 
   it('should refuse a negative price through the shared kernel Money', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
 
     await expect(
-      handler.execute(new CreateServiceCommand('Troca de oleo', -1, 60)),
+      useCase.execute(new CreateServiceCommand('Troca de oleo', -1, 60)),
     ).rejects.toThrow(InvalidMoneyAmountError);
     expect(services.services).toHaveLength(0);
   });
 
   it('should refuse a zero duration', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
 
     await expect(
-      handler.execute(new CreateServiceCommand('Troca de oleo', 15099, 0)),
+      useCase.execute(new CreateServiceCommand('Troca de oleo', 15099, 0)),
     ).rejects.toThrow(InvalidServiceDurationError);
     expect(services.services).toHaveLength(0);
   });
 
   it('should refuse a name an active service already holds, case-insensitively', async () => {
-    const { handler, services } = makeHandler();
-    await handler.execute(new CreateServiceCommand('Troca de oleo', 15099, 60));
+    const { useCase, services } = makeUseCase();
+    await useCase.execute(new CreateServiceCommand('Troca de oleo', 15099, 60));
 
     await expect(
-      handler.execute(new CreateServiceCommand('TROCA DE OLEO', 20000, 90)),
+      useCase.execute(new CreateServiceCommand('TROCA DE OLEO', 20000, 90)),
     ).rejects.toThrow(ServiceNameAlreadyInUseError);
     expect(services.services).toHaveLength(1);
   });
@@ -66,27 +66,27 @@ describe('CreateServiceHandler', () => {
   it('should refuse a name differing from an active one only by whitespace', async () => {
     // ServiceName normalises before any comparison, so this can never reach existsActiveByName
     // un-normalised - proven here as a path, not only as VO behaviour (validation.md's Fix 2).
-    const { handler, services } = makeHandler();
-    await handler.execute(new CreateServiceCommand('Troca de oleo', 15099, 60));
+    const { useCase, services } = makeUseCase();
+    await useCase.execute(new CreateServiceCommand('Troca de oleo', 15099, 60));
 
     await expect(
-      handler.execute(new CreateServiceCommand('  Troca   de oleo  ', 20000, 90)),
+      useCase.execute(new CreateServiceCommand('  Troca   de oleo  ', 20000, 90)),
     ).rejects.toThrow(ServiceNameAlreadyInUseError);
     expect(services.services).toHaveLength(1);
   });
 
   it('should accept a creation with no description', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
 
-    await handler.execute(new CreateServiceCommand('Alinhamento', 8000, 30));
+    await useCase.execute(new CreateServiceCommand('Alinhamento', 8000, 30));
 
     expect(services.services[0].description).toBeNull();
   });
 
   it('should accept a price of zero', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
 
-    await handler.execute(new CreateServiceCommand('Revisao de cortesia', 0, 30));
+    await useCase.execute(new CreateServiceCommand('Revisao de cortesia', 0, 30));
 
     expect(services.services[0].price.cents).toBe(0);
   });

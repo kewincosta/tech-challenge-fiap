@@ -1,7 +1,7 @@
 import { ServiceQueryPort, ServiceSummaryDto } from '../../ports/service-query.port';
 import { ListServicesQuery } from './list-services.query';
 
-export class ListServicesHandler {
+export class ListServicesUseCase {
   constructor(private readonly serviceQuery: ServiceQueryPort) {}
 
   async execute(_query: ListServicesQuery): Promise<ServiceSummaryDto[]> {

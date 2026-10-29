@@ -11,16 +11,16 @@ import { ServiceDuration } from '../../../domain/value-objects/service-duration'
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
 import { DeactivateServiceCommand } from './deactivate-service.command';
-import { DeactivateServiceHandler } from './deactivate-service.handler';
+import { DeactivateServiceUseCase } from './deactivate-service.use-case';
 
 const SERVICE_ID = ServiceId.create('11111111-1111-4111-8111-111111111111');
 
-function makeHandler() {
+function makeUseCase() {
   const services = new InMemoryServiceRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new DeactivateServiceHandler(services, clock, events);
-  return { handler, services, events, clock };
+  const useCase = new DeactivateServiceUseCase(services, clock, events);
+  return { useCase, services, events, clock };
 }
 
 // A stored service has no pending events, like one the repository loaded.
@@ -36,12 +36,12 @@ function buildService(): Service {
   return service;
 }
 
-describe('DeactivateServiceHandler', () => {
+describe('DeactivateServiceUseCase', () => {
   it('should flip the status to INACTIVE and keep the record', async () => {
-    const { handler, services, events, clock } = makeHandler();
+    const { useCase, services, events, clock } = makeUseCase();
     await services.save(buildService());
 
-    await handler.execute(new DeactivateServiceCommand(SERVICE_ID.value));
+    await useCase.execute(new DeactivateServiceCommand(SERVICE_ID.value));
 
     expect(services.services).toHaveLength(1);
     expect(services.services[0].status).toBe(ServiceStatus.Inactive);
@@ -49,22 +49,22 @@ describe('DeactivateServiceHandler', () => {
   });
 
   it('should be idempotent when deactivated twice', async () => {
-    const { handler, services, events } = makeHandler();
+    const { useCase, services, events } = makeUseCase();
     await services.save(buildService());
-    await handler.execute(new DeactivateServiceCommand(SERVICE_ID.value));
+    await useCase.execute(new DeactivateServiceCommand(SERVICE_ID.value));
 
     await expect(
-      handler.execute(new DeactivateServiceCommand(SERVICE_ID.value)),
+      useCase.execute(new DeactivateServiceCommand(SERVICE_ID.value)),
     ).resolves.not.toThrow();
     expect(services.services[0].status).toBe(ServiceStatus.Inactive);
     expect(events.published).toHaveLength(1);
   });
 
   it('should refuse an unknown service', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new DeactivateServiceCommand('00000000-0000-4000-8000-000000000001')),
+      useCase.execute(new DeactivateServiceCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(ServiceNotFoundError);
   });
 });

@@ -9,7 +9,7 @@ import { ServiceName } from '../../../domain/value-objects/service-name';
 import { ServiceRepository } from '../../ports/service.repository';
 import { UpdateServiceCommand } from './update-service.command';
 
-export class UpdateServiceHandler {
+export class UpdateServiceUseCase {
   constructor(
     private readonly services: ServiceRepository,
     private readonly clock: Clock,

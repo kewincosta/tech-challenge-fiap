@@ -8,7 +8,7 @@ import { GetServiceQuery } from './get-service.query';
  * "does not exist" (the not-found error) stays distinct from "exists but deactivated" (status)
  * and rule 18 can be refused precisely.
  */
-export class GetServiceHandler {
+export class GetServiceUseCase {
   constructor(private readonly serviceQuery: ServiceQueryPort) {}
 
   async execute(query: GetServiceQuery): Promise<ServiceSummaryDto> {

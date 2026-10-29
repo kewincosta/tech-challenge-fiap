@@ -10,7 +10,7 @@ import { ServiceName } from '../../../domain/value-objects/service-name';
 import { ServiceRepository } from '../../ports/service.repository';
 import { CreatedServiceDto, CreateServiceCommand } from './create-service.command';
 
-export class CreateServiceHandler {
+export class CreateServiceUseCase {
   constructor(
     private readonly services: ServiceRepository,
     private readonly idGenerator: IdGenerator,

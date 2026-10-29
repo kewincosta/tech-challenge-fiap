@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetServiceHandler, GetServiceQuery, ServiceNotFoundError } from '../../../services';
+import { GetServiceUseCase, GetServiceQuery, ServiceNotFoundError } from '../../../services';
 import { ServiceCatalog, ServiceRef } from '../../application/ports/service-catalog.port';
 
 const ACTIVE_STATUS = 'ACTIVE';
@@ -10,7 +10,7 @@ const ACTIVE_STATUS = 'ACTIVE';
  */
 @Injectable()
 export class ServiceCatalogGateway implements ServiceCatalog {
-  constructor(private readonly getService: GetServiceHandler) {}
+  constructor(private readonly getService: GetServiceUseCase) {}
 
   async findById(serviceId: string): Promise<ServiceRef | null> {
     try {

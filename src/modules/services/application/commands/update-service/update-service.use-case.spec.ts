@@ -11,17 +11,17 @@ import { ServiceDuration } from '../../../domain/value-objects/service-duration'
 import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceName } from '../../../domain/value-objects/service-name';
 import { UpdateServiceCommand } from './update-service.command';
-import { UpdateServiceHandler } from './update-service.handler';
+import { UpdateServiceUseCase } from './update-service.use-case';
 
 const SERVICE_ID = ServiceId.create('11111111-1111-4111-8111-111111111111');
 const OTHER_ID = ServiceId.create('22222222-2222-4222-8222-222222222222');
 
-function makeHandler() {
+function makeUseCase() {
   const services = new InMemoryServiceRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new UpdateServiceHandler(services, clock, events);
-  return { handler, services, events, clock };
+  const useCase = new UpdateServiceUseCase(services, clock, events);
+  return { useCase, services, events, clock };
 }
 
 // A stored service has no pending events, like one the repository loaded.
@@ -38,12 +38,12 @@ function buildService(id: ServiceId, name: string): Service {
   return service;
 }
 
-describe('UpdateServiceHandler', () => {
+describe('UpdateServiceUseCase', () => {
   it('should replace only the supplied fields', async () => {
-    const { handler, services, events, clock } = makeHandler();
+    const { useCase, services, events, clock } = makeUseCase();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
 
-    await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, undefined, 17500));
+    await useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, undefined, 17500));
 
     const updated = services.services[0];
     expect(updated.price.cents).toBe(17500);
@@ -54,62 +54,62 @@ describe('UpdateServiceHandler', () => {
   });
 
   it('should refuse a name another active service already holds', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
     await services.save(buildService(OTHER_ID, 'Alinhamento'));
 
     await expect(
-      handler.execute(new UpdateServiceCommand(SERVICE_ID.value, 'ALINHAMENTO')),
+      useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, 'ALINHAMENTO')),
     ).rejects.toThrow(ServiceNameAlreadyInUseError);
   });
 
   it('should accept renaming a service to the name it already holds', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
 
     await expect(
-      handler.execute(new UpdateServiceCommand(SERVICE_ID.value, 'Troca de oleo')),
+      useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, 'Troca de oleo')),
     ).resolves.not.toThrow();
   });
 
   it('should accept renaming onto a name only a deactivated service holds', async () => {
     // Same existsActiveByName call the create path uses, but exercised through update
     // (validation.md's Fix 3).
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
     const retired = buildService(OTHER_ID, 'Alinhamento');
     retired.deactivate(new Date());
     await services.save(retired);
 
-    await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, 'Alinhamento'));
+    await useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, 'Alinhamento'));
 
     expect(services.services.find((s) => s.id.equals(SERVICE_ID))?.name.value).toBe('Alinhamento');
   });
 
   it('should refuse an unknown service', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new UpdateServiceCommand('00000000-0000-4000-8000-000000000001', 'X')),
+      useCase.execute(new UpdateServiceCommand('00000000-0000-4000-8000-000000000001', 'X')),
     ).rejects.toThrow(ServiceNotFoundError);
   });
 
   it('should update a deactivated service, since status is orthogonal', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
     const service = buildService(SERVICE_ID, 'Troca de oleo');
     service.deactivate(new Date());
     await services.save(service);
 
-    await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, undefined, 20000));
+    await useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, undefined, 20000));
 
     expect(services.services[0].price.cents).toBe(20000);
   });
 
   it('should clear the description when explicitly given null', async () => {
-    const { handler, services } = makeHandler();
+    const { useCase, services } = makeUseCase();
     await services.save(buildService(SERVICE_ID, 'Troca de oleo'));
 
-    await handler.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, null));
+    await useCase.execute(new UpdateServiceCommand(SERVICE_ID.value, undefined, null));
 
     expect(services.services[0].description).toBeNull();
   });

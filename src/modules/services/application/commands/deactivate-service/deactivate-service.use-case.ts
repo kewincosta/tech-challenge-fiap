@@ -5,7 +5,7 @@ import { ServiceId } from '../../../domain/value-objects/service-id';
 import { ServiceRepository } from '../../ports/service.repository';
 import { DeactivateServiceCommand } from './deactivate-service.command';
 
-export class DeactivateServiceHandler {
+export class DeactivateServiceUseCase {
   constructor(
     private readonly services: ServiceRepository,
     private readonly clock: Clock,

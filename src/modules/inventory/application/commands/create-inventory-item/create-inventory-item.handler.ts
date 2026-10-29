@@ -37,7 +37,7 @@ export class CreateInventoryItemHandler implements ICommandHandler<
     const unitPrice = Money.fromCents(command.unitPriceCents);
 
     // Application-layer pre-check for the friendly 409, with the unique index as the race
-    // backstop - the same two-layer shape CreateServiceHandler uses.
+    // backstop - the same two-layer shape CreateServiceUseCase uses.
     if (await this.items.existsActiveBySku(sku)) {
       throw new SkuAlreadyInUseError();
     }

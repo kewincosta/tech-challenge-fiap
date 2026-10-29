@@ -14,7 +14,7 @@ import { INVENTORY_QUERY_PORT, InventoryQueryPort } from '../../ports/inventory-
 import { DeactivateInventoryItemCommand } from './deactivate-inventory-item.command';
 
 /**
- * The soft delete of the catalog, in the shape `DeactivateServiceHandler` established. The one
+ * The soft delete of the catalog, in the shape `DeactivateServiceUseCase` established. The one
  * addition is the in-use guard: an item still planned on a work order that has not been delivered
  * or canceled cannot leave the catalog, because the work order would then hold a line nobody can
  * price or withdraw again.

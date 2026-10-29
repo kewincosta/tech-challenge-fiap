@@ -20,7 +20,7 @@ export class GetInventoryItemHandler implements IQueryHandler<
       InventoryItemId.create(query.itemId);
     } catch {
       // A malformed id matches nothing by construction, and a uuid column would throw on it -
-      // same guard GetServiceHandler/GetCustomerHandler use.
+      // same guard GetServiceUseCase/GetCustomerHandler use.
       return null;
     }
     return this.inventoryQuery.getById(query.itemId);

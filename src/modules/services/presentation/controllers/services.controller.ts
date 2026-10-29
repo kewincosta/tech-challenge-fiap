@@ -25,15 +25,15 @@ import {
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission, RequirePermissions } from '../../../identity';
 import { CreateServiceCommand } from '../../application/commands/create-service/create-service.command';
-import { CreateServiceHandler } from '../../application/commands/create-service/create-service.handler';
+import { CreateServiceUseCase } from '../../application/commands/create-service/create-service.use-case';
 import { DeactivateServiceCommand } from '../../application/commands/deactivate-service/deactivate-service.command';
-import { DeactivateServiceHandler } from '../../application/commands/deactivate-service/deactivate-service.handler';
+import { DeactivateServiceUseCase } from '../../application/commands/deactivate-service/deactivate-service.use-case';
 import { UpdateServiceCommand } from '../../application/commands/update-service/update-service.command';
-import { UpdateServiceHandler } from '../../application/commands/update-service/update-service.handler';
+import { UpdateServiceUseCase } from '../../application/commands/update-service/update-service.use-case';
 import { ServiceSummaryDto } from '../../application/ports/service-query.port';
-import { GetServiceHandler } from '../../application/queries/get-service/get-service.handler';
+import { GetServiceUseCase } from '../../application/queries/get-service/get-service.use-case';
 import { GetServiceQuery } from '../../application/queries/get-service/get-service.query';
-import { ListServicesHandler } from '../../application/queries/list-services/list-services.handler';
+import { ListServicesUseCase } from '../../application/queries/list-services/list-services.use-case';
 import { ListServicesQuery } from '../../application/queries/list-services/list-services.query';
 import { CreateServiceRequestDto } from '../dtos/create-service.request.dto';
 import { UpdateServiceRequestDto } from '../dtos/update-service.request.dto';
@@ -43,11 +43,11 @@ import { CreatedServiceResponseDto, ServiceResponseDto } from '../dtos/service.r
 @Controller('services')
 export class ServicesController {
   constructor(
-    private readonly createService: CreateServiceHandler,
-    private readonly updateService: UpdateServiceHandler,
-    private readonly deactivateService: DeactivateServiceHandler,
-    private readonly getService: GetServiceHandler,
-    private readonly listServices: ListServicesHandler,
+    private readonly createService: CreateServiceUseCase,
+    private readonly updateService: UpdateServiceUseCase,
+    private readonly deactivateService: DeactivateServiceUseCase,
+    private readonly getService: GetServiceUseCase,
+    private readonly listServices: ListServicesUseCase,
   ) {}
 
   @Post()
