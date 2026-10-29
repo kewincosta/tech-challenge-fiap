@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 (T26 to T31) dispatched.
-- **Completed**: T1 to T25 and T61. Totals after batch 4: unit 1012, integration 310, e2e 243 (baseline 955, 239, 203). Baselines: 343 dependency violations, 11 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 (T32 to T38) dispatched.
+- **Completed**: T1 to T31 and T61. Totals after batch 5: unit 1055, integration 310, e2e 243 (baseline 955, 239, 203). Baselines: 186 dependency violations (core-no-frameworks 165, through-public-api 19, core-stays-in-module 1, no-circular 1), 11 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 5's compact summary, then dispatch batch 6 (T32 to T38).
+- **Next step**: read batch 6's compact summary, then dispatch batch 7 (T39 to T41).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -253,6 +253,17 @@ entry. They apply to every feature.
 - `SELECT_OPEN_WORK_ORDERS_USING_ITEM` became an `EXISTS` query in T23, so the ordering case fails without `ORDER BY`. The strict shortage comparison (`outstanding > quantity_on_hand`) lives in the inventory adapter.
 - Nothing defines the row order of `GET /inventory-items/shortages`. It was unordered before T24 and stays unordered.
 - `InventoryModule` imports `IdentityModule` for `UserKeyResolver`, and `identity/index.ts` exports `IdentityModule`.
+
+**Facts from batch 5 that later tasks build on**:
+
+- No cross-module call goes through the bus any more. Each consumer calls a port it declares, and the gateway calls the provider's handler classes through the provider's `index.ts`. When a provider handler becomes a use case (phases 10 to 15), its gateways follow, and a gateway maps the provider's not-found error to `null`.
+- `identity/index.ts` exports `AppPermission`, `SystemRole`, the effective-access and get-user-by-id handlers and queries, their DTO types, `RegisterUserCommand`, `RegisteredUserDto` and `RegisterUserHandler`; `IdentityModule` exports the three handlers.
+- `CustomerAccounts.open` returns `OpenedAccount` (`userId` and an optional `temporaryPassword`); design C3 now says so.
+- `customers.tokens.ts` holds only `CUSTOMER_ACCOUNTS` and `vehicles.tokens.ts` only `VEHICLE_OWNERS`. T47 and T49 move the other tokens in.
+- The 19 `through-public-api` entries left are controllers importing identity or module internals (customers, inventory, vehicles and work-orders 4 each, services 2) and the list-customers handler. Each module's migration task clears its own.
+- `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
+- T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
+- `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
 
 **Plan change after batch 4**: 78 `core-stays-in-module` entries are left, and phase 8 removes all of them except `list-customers.handler.ts` importing identity's `PersonDocument`, which T33 removes. T31's bullet now names that exception, and T33 checks that no `application` file imports another module.
 
