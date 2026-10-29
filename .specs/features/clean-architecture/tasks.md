@@ -1268,7 +1268,7 @@ T58 → T59 → T60
 
 #### T37: services use cases
 
-**What**: The five services handlers become framework-free use cases built by factory; tokens and the repository contract leave the core; the get use case throws `SERVICE_NOT_FOUND`; the controller calls the use cases; `services` joins the migrated modules.
+**What**: The five services handlers become framework-free use cases built by factory; the tokens leave the core and the repository contract moves to `application/ports`; the get use case throws `SERVICE_NOT_FOUND`; the controller calls the use cases; `services` joins the migrated modules.
 **Where**: `src/modules/services/` (application, composition root, controller)
 **Depends on**: T36
 **Reuses**: The handlers' rules unchanged
@@ -1281,6 +1281,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The tokens live in `src/modules/services/services.tokens.ts`, the repository contract in `services/application/ports`, and no file under `services/domain` or `services/application` declares a `Symbol`
 - [ ] Specs use fakes and assert outcomes; the get use case's spec covers `ServiceNotFoundError`
 - [ ] The controller's `getServiceOrThrow` is gone and the `SERVICE_NOT_FOUND` e2e case from T5 passes
 - [ ] `services` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `services` entry left in the baseline
@@ -1324,7 +1325,7 @@ T58 → T59 → T60
 
 #### T39: Inventory catalog use cases
 
-**What**: Create, update, deactivate, get, list, shortage and movement history become framework-free use cases; get and history throw `INVENTORY_ITEM_NOT_FOUND`; the controller calls them; tokens and the repository contract leave the core.
+**What**: Create, update, deactivate, get, list, shortage and movement history become framework-free use cases; get and history throw `INVENTORY_ITEM_NOT_FOUND`; the controller calls them; the tokens leave the core and the repository contract moves to `application/ports`.
 **Where**: `src/modules/inventory/application/` (catalog use cases)
 **Depends on**: T38
 **Reuses**: The handlers' rules; the in-use refusal through the query port
@@ -1337,6 +1338,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The tokens live in `src/modules/inventory/inventory.tokens.ts`, the repository contract in `inventory/application/ports`, and no file under `inventory/domain` or `inventory/application` declares a `Symbol`
 - [ ] Specs use fakes and assert outcomes; get and history each cover `InventoryItemNotFoundError`; deactivation covers `InventoryItemInUseError`
 - [ ] The controller's `getItemOrThrow` is gone; the not-found, in-use and history e2e cases pass
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
@@ -1435,7 +1437,7 @@ T58 → T59 → T60
 
 #### T43: Authorization commands and the access cache subscriber
 
-**What**: Assign, revoke, create, update, delete and set-permissions become framework-free use cases publishing through the `DomainEventPublisher`; the access cache subscriber is registered on the dispatcher by the identity composition root.
+**What**: Assign, revoke, create, update, delete and set-permissions become framework-free use cases publishing through the `DomainEventPublisher`; the access cache subscriber is registered on the dispatcher by the identity composition root; the authorization tokens leave the core.
 **Where**: `src/modules/identity/authorization/application/` (commands and subscriber), `src/shared/shared.module.ts` (the dispatcher binding)
 **Depends on**: T42
 **Reuses**: `AccessCacheInvalidationSubscriber`'s logic unchanged
@@ -1448,6 +1450,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The authorization tokens live in `src/modules/identity/identity.tokens.ts`, the role and permission repository contracts in `authorization/application/ports`, and no file under `authorization/domain` or `authorization/application` declares a `Symbol`
 - [ ] Specs use fakes and the recording publisher and assert outcomes; the escalation rule keeps its cases
 - [ ] `SharedModule` provides `InMemoryDomainEventDispatcher` and binds `DOMAIN_EVENT_PUBLISHER` to the same instance with `useExisting`, exporting both; the identity root injects the class and subscribes on module init
 - [ ] A role assigned or revoked through the API is visible in the next effective access read (e2e)
@@ -1464,7 +1467,7 @@ T58 → T59 → T60
 
 #### T44: Authentication use cases, settings and reuse log
 
-**What**: Authenticate, logout all, refresh, revoke and list sessions become framework-free use cases reading `AuthSettings`; the refresh-token-reuse subscriber moves to infrastructure and is registered on the dispatcher.
+**What**: Authenticate, logout all, refresh, revoke and list sessions become framework-free use cases reading `AuthSettings`; the refresh-token-reuse subscriber moves to infrastructure and is registered on the dispatcher; the authentication tokens leave the core.
 **Where**: `src/modules/identity/authentication/application/` (use cases and `auth-settings.ts`), `src/modules/identity/authentication/infrastructure/persistence/` (the session and refresh token ORM entities)
 **Depends on**: T43
 **Reuses**: `authConfig` for building the settings in `identity.module.ts`
@@ -1477,6 +1480,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The authentication tokens live in `src/modules/identity/identity.tokens.ts`, the session repository contract in `authentication/application/ports`, and no file under `authentication/domain` or `authentication/application` declares a `Symbol`
 - [ ] No file in `identity/authentication/application` imports `@nestjs/config` or Nest's `Logger`
 - [ ] `session.orm-entity.ts` and `refresh-token.orm-entity.ts` no longer import each other, sessions and refresh tokens persist as before (the authentication integration and e2e specs pass unchanged), and the regenerated dependency baseline has no `no-circular` entry
 - [ ] An e2e case boots a dedicated app with `REFRESH_TOKEN_TTL_SECONDS=600`, logs in, asserts `refreshTokenExpiresAt` 600 seconds after the login, and restores the environment
@@ -1494,7 +1498,7 @@ T58 → T59 → T60
 
 #### T45: Users use cases
 
-**What**: Register, update, deactivate, change password, find by document, get by id, list and verify credentials become framework-free use cases; calls to the authentication and authorization areas become direct; get by id throws `USER_NOT_FOUND`; `identity` joins the migrated modules.
+**What**: Register, update, deactivate, change password, find by document, get by id, list and verify credentials become framework-free use cases; calls to the authentication and authorization areas become direct; get by id throws `USER_NOT_FOUND`; the users tokens leave the core; `identity` joins the migrated modules.
 **Where**: `src/modules/identity/users/application/`
 **Depends on**: T44
 **Reuses**: Registration's shared transaction (AD-008), unchanged
@@ -1507,6 +1511,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The users tokens live in `src/modules/identity/identity.tokens.ts`, the user repository contract in `users/application/ports`, and no file under any `identity` `domain` or `application` folder declares a `Symbol`
 - [ ] Specs use fakes and assert outcomes; get by id covers `UserNotFoundError`
 - [ ] The users controller's `getUserOrThrow` is gone; the users, staff, password and pending-password e2e specs pass
 - [ ] `identity` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `identity` entry left in the baseline
@@ -1550,7 +1555,7 @@ T58 → T59 → T60
 
 #### T47: customers use cases
 
-**What**: Register, update, deactivate, get, get by user and list become framework-free use cases; get and get by user throw `CUSTOMER_NOT_FOUND`, get still returning deactivated customers; `customers` joins the migrated modules.
+**What**: Register, update, deactivate, get, get by user and list become framework-free use cases; get and get by user throw `CUSTOMER_NOT_FOUND`, get still returning deactivated customers; the tokens leave the core and the repository contract moves to `application/ports`; `customers` joins the migrated modules.
 **Where**: `src/modules/customers/`
 **Depends on**: T46
 **Reuses**: The handlers' rules; the gateways' not-found mapping from phase 8
@@ -1563,6 +1568,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The tokens live in `src/modules/customers/customers.tokens.ts`, the repository contract in `customers/application/ports`, and no file under `customers/domain` or `customers/application` declares a `Symbol`
 - [ ] Specs use fakes and assert outcomes; get and get by user each cover `CustomerNotFoundError`
 - [ ] The controller's `get*OrThrow` helpers are gone; the customer e2e cases, including `me` without a record, pass
 - [ ] `customers` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `customers` entry left in the baseline
@@ -1606,7 +1612,7 @@ T58 → T59 → T60
 
 #### T49: vehicles use cases
 
-**What**: Register, update, remove, get, the caller's vehicles and list by customer become framework-free use cases; get throws `VEHICLE_NOT_FOUND`; `vehicles` joins the migrated modules.
+**What**: Register, update, remove, get, the caller's vehicles and list by customer become framework-free use cases; get throws `VEHICLE_NOT_FOUND`; the tokens leave the core and the repository contract moves to `application/ports`; `vehicles` joins the migrated modules.
 **Where**: `src/modules/vehicles/`
 **Depends on**: T48
 **Reuses**: The handlers' rules; `VehicleOwners` from T31
@@ -1619,6 +1625,7 @@ T58 → T59 → T60
 
 **Done when**:
 
+- [ ] The tokens live in `src/modules/vehicles/vehicles.tokens.ts`, the repository contract in `vehicles/application/ports`, and no file under `vehicles/domain` or `vehicles/application` declares a `Symbol`
 - [ ] Specs use fakes and assert outcomes; get covers `VehicleNotFoundError`
 - [ ] The controller's `getVehicleOrThrow` is gone; the vehicle e2e cases pass
 - [ ] `vehicles` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `vehicles` entry left in the baseline
