@@ -517,11 +517,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `lint:architecture` runs the check after the table check, and the check passes on the real tree with no known list (the module graph has no cycle today)
-- [ ] `test/architecture/module-cycles.spec.ts` proves a two-module cycle that closes between modules and not file by file, a three-module cycle, and the pass on an acyclic fixture; each failure names the files on every step of the cycle
-- [ ] Files outside `src/modules` and `src/shared`, such as `app.module.ts` and `src/config`, stay out of the module graph
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total grows by the check's cases
+- [x] `lint:architecture` runs the check after the table check, and the check passes on the real tree with no known list (the module graph has no cycle today)
+- [x] `test/architecture/module-cycles.spec.ts` proves a two-module cycle that closes between modules and not file by file, a three-module cycle, and the pass on an acyclic fixture; each failure names the files on every step of the cycle
+- [x] Files outside `src/modules` and `src/shared`, such as `app.module.ts` and `src/config`, stay out of the module graph
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total grows by the check's cases
 
 **Tests**: unit
 **Gate**: build
