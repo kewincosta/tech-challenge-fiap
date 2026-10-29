@@ -8,6 +8,7 @@ import { GetCustomerByUserIdHandler } from './application/queries/get-customer-b
 import { GetCustomerHandler } from './application/queries/get-customer/get-customer.handler';
 import { ListCustomersHandler } from './application/queries/list-customers/list-customers.handler';
 import { CUSTOMER_REPOSITORY } from './domain/repositories/customer.repository';
+import { CustomerKeyResolver } from './infrastructure/persistence/customer-key-resolver';
 import { CustomerOrmEntity } from './infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerQueryAdapter } from './infrastructure/persistence/typeorm-customer-query.adapter';
 import { TypeOrmCustomerRepository } from './infrastructure/persistence/typeorm-customer.repository';
@@ -25,6 +26,8 @@ import { CustomersController } from './presentation/controllers/customers.contro
     ListCustomersHandler,
     { provide: CUSTOMER_REPOSITORY, useClass: TypeOrmCustomerRepository },
     { provide: CUSTOMER_QUERY_PORT, useClass: TypeOrmCustomerQueryAdapter },
+    CustomerKeyResolver,
   ],
+  exports: [CustomerKeyResolver],
 })
 export class CustomersModule {}
