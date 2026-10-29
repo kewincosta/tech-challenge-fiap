@@ -15,6 +15,7 @@ import { GetItemMovementHistoryHandler } from './application/queries/get-item-mo
 import { ListInventoryItemsHandler } from './application/queries/list-inventory-items/list-inventory-items.handler';
 import { ListStockShortagesHandler } from './application/queries/list-stock-shortages/list-stock-shortages.handler';
 import { INVENTORY_ITEM_REPOSITORY } from './domain/repositories/inventory-item.repository';
+import { InventoryItemKeyResolver } from './infrastructure/persistence/inventory-item-key-resolver';
 import { InventoryItemOrmEntity } from './infrastructure/persistence/inventory-item.orm-entity';
 import { StockMovementOrmEntity } from './infrastructure/persistence/stock-movement.orm-entity';
 import { TypeOrmInventoryItemRepository } from './infrastructure/persistence/typeorm-inventory-item.repository';
@@ -40,6 +41,8 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     WriteOffStockMovementsHandler,
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },
+    InventoryItemKeyResolver,
   ],
+  exports: [InventoryItemKeyResolver],
 })
 export class InventoryModule {}
