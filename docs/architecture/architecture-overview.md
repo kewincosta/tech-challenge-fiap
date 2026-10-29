@@ -46,9 +46,9 @@ Each maps to a seeded role: `CUSTOMER`, `SERVICE_ADVISOR`, `MECHANIC`, `ADMIN`. 
 | Inventory           | What the workshop holds in stock, how much is left, and the traceable history of every unit that moved.                                           |
 | Workshop Operations | The life of a work order, from reception to delivery or cancellation, including the budget, the approval, what is charged, and who did each step. |
 
-Contexts are not modules one for one. Identity & Access spans three modules and Customer
-Management spans two; the other three map to one each. Which modules belong to which context is in
-[the high level design](high-level-design.md).
+Contexts are not modules one for one. Identity & Access is the `identity` module, which holds
+three areas, and Customer Management spans two modules; the other three map to one each. Which
+modules belong to which context is in [the high level design](high-level-design.md).
 
 Vehicles live with customers rather than in a context of their own, because a vehicle exists in
 this system only as something a customer brings in.

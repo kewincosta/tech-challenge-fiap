@@ -1,6 +1,8 @@
 %% C4 level 3, components - Inventory
-%% One module, inventory. Drawn because the four commands arriving from work-orders are the
-%% boundary crossing this context is defined by, and they run inside the caller's transaction.
+%% One module, inventory. Drawn because of the two arrows between it and work-orders: the four stock
+%% use cases that work-orders calls inside its own transaction, and the WorkOrderReads interface
+%% that inventory declares and work-orders implements. Every import between the two points from
+%% work-orders to inventory.
 %% Detail: docs/architecture/low-level-design/inventory.md
 
 C4Component
@@ -10,35 +12,48 @@ C4Component
 
   Container_Boundary(app, "NestJS application") {
 
-    Component_Boundary(inventory, "inventory") {
+    Boundary(inventory, "inventory") {
       Component(invCtl, "InventoryItemsController", "Controller", "Items, replenishments, adjustments, shortages, movement history")
-      Component(createItem, "CreateInventoryItemHandler", "Command handler", "Adds an item")
-      Component(replenish, "ReplenishStockHandler", "Command handler", "Appends an INBOUND movement")
-      Component(adjust, "AdjustStockHandler", "Command handler", "Appends an ADJUSTMENT, note required")
-      Component(consume, "ConsumeStockBatchHandler", "Command handler", "Appends PENDING consumptions")
-      Component(restore, "RestoreStockBatchHandler", "Command handler", "Draws down consumptions, appends RETURNs")
-      Component(settle, "SettleStockMovementsHandler", "Command handler", "PENDING to SETTLED")
-      Component(writeOff, "WriteOffStockMovementsHandler", "Command handler", "PENDING to WRITTEN_OFF")
+      Component(createItem, "CreateInventoryItemUseCase", "Use case", "Adds an item")
+      Component(deactivateItem, "DeactivateInventoryItemUseCase", "Use case", "Refuses while an open work order plans the item")
+      Component(replenish, "ReplenishStockUseCase", "Use case", "Appends an INBOUND movement")
+      Component(adjust, "AdjustStockUseCase", "Use case", "Appends an ADJUSTMENT, note required")
+      Component(consume, "ConsumeStockBatchUseCase", "Use case", "Appends PENDING consumptions")
+      Component(restore, "RestoreStockBatchUseCase", "Use case", "Draws down consumptions, appends RETURNs")
+      Component(settle, "SettleStockMovementsUseCase", "Use case", "PENDING to SETTLED")
+      Component(writeOff, "WriteOffStockMovementsUseCase", "Use case", "PENDING to WRITTEN_OFF")
+      Component(queries, "Query use cases", "Use cases", "Items, shortages, movement history; InventoryItemNotFoundError for an unknown item")
       Component(itemAgg, "InventoryItem", "Aggregate", "Sku, StockQuantity, quantity never below zero")
       Component(movementAgg, "StockMovement", "Aggregate", "Append only, status only on a consumption")
       Component(invRepo, "TypeOrmInventoryItemRepository", "Repository", "Ambient transaction, row lock on the item")
       Component(invQuery, "TypeOrmInventoryQueryAdapter", "Query port", "Items, movement history, shortages")
+      Component(itemKeys, "InventoryItemKeyResolver", "Key resolver", "Item UUID to internal key and back, for other modules")
+      Component(readsPort, "WorkOrderReads", "Interface", "Work order key, outstanding demand, open work orders using an item")
     }
   }
 
-  Component_Ext(workOrders, "work-orders", "Module", "Withdraws, returns, delivers and cancels")
+  Component_Ext(workOrders, "work-orders", "Module", "Withdraws, returns, delivers and cancels, and implements WorkOrderReads")
+  Component_Ext(identity, "identity", "Module", "Turns the actor's UUID into a key")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "inventory_items, stock_movements, stock_movement_transitions")
 
   Rel(admin, invCtl, "Administers stock and reads the ledger", "HTTPS")
-  Rel(invCtl, createItem, "CommandBus")
-  Rel(invCtl, replenish, "CommandBus")
-  Rel(invCtl, adjust, "CommandBus")
-  Rel(invCtl, invQuery, "QueryBus: items, shortages, history")
+  Rel(invCtl, createItem, "Calls")
+  Rel(invCtl, deactivateItem, "Calls")
+  Rel(invCtl, replenish, "Calls")
+  Rel(invCtl, adjust, "Calls")
+  Rel(invCtl, queries, "Calls: items, shortages, history")
+  Rel(queries, invQuery, "Reads")
+  Rel(deactivateItem, invQuery, "Asks which open work orders plan the item")
 
-  Rel(workOrders, consume, "CommandBus: withdrawal, in the caller's transaction", "cross-module")
-  Rel(workOrders, restore, "CommandBus: return, in the caller's transaction", "cross-module")
-  Rel(workOrders, settle, "CommandBus: delivery, in the caller's transaction", "cross-module")
-  Rel(workOrders, writeOff, "CommandBus: cancellation, in the caller's transaction", "cross-module")
+  Rel(workOrders, consume, "Calls through index.ts: withdrawal, in the caller's transaction", "cross-module")
+  Rel(workOrders, restore, "Calls through index.ts: return, in the caller's transaction", "cross-module")
+  Rel(workOrders, settle, "Calls through index.ts: delivery, in the caller's transaction", "cross-module")
+  Rel(workOrders, writeOff, "Calls through index.ts: cancellation, in the caller's transaction", "cross-module")
+  Rel(workOrders, itemKeys, "Calls through index.ts: item UUID to key", "cross-module")
+  Rel(workOrders, readsPort, "Implements it with TypeOrmWorkOrderReads, bound by WorkOrderReadsModule", "cross-module")
+  Rel(invQuery, readsPort, "Reads outstanding demand and open work orders")
+  Rel(invRepo, readsPort, "Reads the key of a work order")
+  Rel(invRepo, identity, "Calls through index.ts: actor UUID to key", "cross-module")
 
   Rel(consume, itemAgg, "Decrements under a row lock")
   Rel(consume, movementAgg, "Appends")

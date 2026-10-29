@@ -1,7 +1,8 @@
 %% C4 level 3, components - Customer Management
 %% Two modules in one bounded context: customers, vehicles.
-%% Arrows leaving a module boundary are bus dispatches (ADR 0008), never direct calls.
-%% Detail per module: docs/architecture/low-level-design/{customers,vehicles}.md
+%% A module reaches another through a port it declares and a gateway that calls the other module's
+%% use cases, exported from its index.ts.
+%% Detail: docs/architecture/low-level-design/{customers,vehicles}.md
 
 C4Component
   title Components - Customer Management
@@ -11,27 +12,33 @@ C4Component
 
   Container_Boundary(app, "NestJS application") {
 
-    Component_Boundary(customers, "customers") {
+    Boundary(customers, "customers") {
       Component(custCtl, "CustomersController", "Controller", "Registration, own record, administration")
-      Component(registerCust, "RegisterCustomerHandler", "Command handler", "Creates over an existing identity, or person and customer together, in one transaction")
-      Component(updateCust, "UpdateCustomerHandler", "Command handler", "Address and phone")
-      Component(custByUser, "GetCustomerByUserIdHandler", "Query handler", "Resolves the customer behind a token")
+      Component(registerCust, "RegisterCustomerUseCase", "Use case", "Creates over an existing identity, or person and customer together, in one transaction")
+      Component(updateCust, "UpdateCustomerUseCase", "Use case", "Address and phone")
+      Component(getCust, "GetCustomerUseCase", "Use case", "One customer, whatever its status; CustomerNotFoundError when there is none")
+      Component(custByUser, "GetCustomerByUserIdUseCase", "Use case", "Resolves the customer behind a token")
       Component(custAgg, "Customer", "Aggregate", "Address, PhoneNumber, one identity per customer")
       Component(custRepo, "TypeOrmCustomerRepository", "Repository", "Honours an ambient transaction")
-      Component(custQuery, "TypeOrmCustomerQueryAdapter", "Query port", "CustomerQueryPort")
+      Component(custQuery, "TypeOrmCustomerQueryAdapter", "Query port", "CustomerQueryPort, composes the listing with the users from identity")
+      Component(accountsGw, "CustomerAccountsGateway", "Gateway", "Implements CustomerAccounts by calling identity")
+      Component(custKeys, "CustomerKeyResolver", "Key resolver", "Customer UUID to internal key and back, for other modules")
     }
 
-    Component_Boundary(vehicles, "vehicles") {
+    Boundary(vehicles, "vehicles") {
       Component(vehCtl, "VehiclesController", "Controller", "Registration, own vehicles, administration")
-      Component(registerVeh, "RegisterVehicleHandler", "Command handler", "Refuses an inactive owner")
-      Component(myVehicles, "GetMyVehiclesHandler", "Query handler", "Resolves the customer from the token, empty list when there is none")
+      Component(registerVeh, "RegisterVehicleUseCase", "Use case", "Refuses an inactive owner")
+      Component(myVehicles, "GetMyVehiclesUseCase", "Use case", "Resolves the customer from the token, empty list when there is none")
+      Component(getVeh, "GetVehicleUseCase", "Use case", "One vehicle, VehicleNotFoundError when there is none")
       Component(vehAgg, "Vehicle", "Aggregate", "LicensePlate, VehicleYear, plate unique while not removed")
       Component(vehRepo, "TypeOrmVehicleRepository", "Repository", "")
       Component(vehQuery, "TypeOrmVehicleQueryAdapter", "Query port", "VehicleQueryPort")
+      Component(ownersGw, "VehicleOwnersGateway", "Gateway", "Implements VehicleOwners by calling customers")
+      Component(vehKeys, "VehicleKeyResolver", "Key resolver", "Vehicle UUID to internal key and back, for other modules")
     }
   }
 
-  Component_Ext(users, "users", "Module", "Owns the identity, the name, the email and the document")
+  Component_Ext(identity, "identity", "Module", "Owns the account, the name, the email and the document")
   Component_Ext(workOrders, "work-orders", "Module", "Opens work orders against a customer and a vehicle")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "customers, vehicles")
 
@@ -40,24 +47,33 @@ C4Component
   Rel(customer, custCtl, "Reads and updates their own record", "HTTPS")
   Rel(customer, vehCtl, "Lists their own vehicles", "HTTPS")
 
-  Rel(custCtl, registerCust, "CommandBus")
-  Rel(custCtl, updateCust, "CommandBus")
-  Rel(custCtl, custByUser, "QueryBus")
+  Rel(custCtl, registerCust, "Calls")
+  Rel(custCtl, updateCust, "Calls")
+  Rel(custCtl, custByUser, "Calls")
   Rel(registerCust, custAgg, "Creates")
   Rel(registerCust, custRepo, "Saves")
+  Rel(registerCust, accountsGw, "Opens or checks the account through the CustomerAccounts port")
+  Rel(getCust, custQuery, "Reads")
   Rel(custByUser, custQuery, "Reads")
-  Rel(vehCtl, registerVeh, "CommandBus")
-  Rel(vehCtl, myVehicles, "QueryBus")
+  Rel(vehCtl, registerVeh, "Calls")
+  Rel(vehCtl, myVehicles, "Calls")
   Rel(registerVeh, vehAgg, "Creates")
   Rel(registerVeh, vehRepo, "Saves")
+  Rel(registerVeh, ownersGw, "Resolves the owner through the VehicleOwners port")
+  Rel(myVehicles, ownersGw, "Resolves the customer through the VehicleOwners port")
   Rel(myVehicles, vehQuery, "Reads")
+  Rel(getVeh, vehQuery, "Reads")
 
-  Rel(registerCust, users, "CommandBus: registers the person when one is not supplied", "cross-module")
-  Rel(registerCust, users, "QueryBus: finds a person by CPF or CNPJ", "cross-module")
-  Rel(registerVeh, custQuery, "QueryBus: resolves the owning customer", "cross-module")
-  Rel(myVehicles, custByUser, "QueryBus: token to customer", "cross-module")
-  Rel(workOrders, custQuery, "QueryBus: customer of a work order", "cross-module")
-  Rel(workOrders, vehQuery, "QueryBus: vehicle of a work order", "cross-module")
+  Rel(accountsGw, identity, "Calls through index.ts: registers the person, reads the user and its roles", "cross-module")
+  Rel(custQuery, identity, "Calls through index.ts: name, email and document of each customer", "cross-module")
+  Rel(custRepo, identity, "Calls through index.ts: user UUID to key", "cross-module")
+  Rel(ownersGw, getCust, "Calls through index.ts: the owning customer", "cross-module")
+  Rel(ownersGw, custByUser, "Calls through index.ts: token to customer", "cross-module")
+  Rel(vehRepo, custKeys, "Calls through index.ts: customer UUID to key", "cross-module")
+  Rel(workOrders, getCust, "Calls through index.ts: customer of a work order", "cross-module")
+  Rel(workOrders, getVeh, "Calls through index.ts: vehicle of a work order", "cross-module")
+  Rel(workOrders, custKeys, "Calls through index.ts: customer UUID to key", "cross-module")
+  Rel(workOrders, vehKeys, "Calls through index.ts: vehicle UUID to key", "cross-module")
 
   Rel(custRepo, pg, "Reads and writes", "TCP")
   Rel(vehRepo, pg, "Reads and writes", "TCP")

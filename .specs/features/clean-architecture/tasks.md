@@ -1959,10 +1959,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The identity diagram no longer says every cross-module arrow is a bus dispatch
-- [ ] The status table of `docs/adr/README.md` defines `Amended by NNNN` as "In force, except the part NNNN replaces. The record stays as it was decided.", the index lists 0001 as `Amended by 0026`, and the Status line of ADR 0001 reads `Amended by 0026` with its body unchanged
-- [ ] `grep -rnE "CommandBus|QueryBus|@nestjs/cqrs|Handler\b|modules/(users|authentication|authorization)" README.md docs/architecture` finds nothing
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] The identity diagram no longer says every cross-module arrow is a bus dispatch
+- [x] The status table of `docs/adr/README.md` defines `Amended by NNNN` as "In force, except the part NNNN replaces. The record stays as it was decided.", the index lists 0001 as `Amended by 0026`, and the Status line of ADR 0001 reads `Amended by 0026` with its body unchanged
+- [x] `grep -rnE "CommandBus|QueryBus|@nestjs/cqrs|Handler\b|modules/(users|authentication|authorization)" README.md docs/architecture` finds nothing
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs
