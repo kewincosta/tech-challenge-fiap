@@ -977,10 +977,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Gateway specs prove mapping, `active`, and `null` on the provider's `null` or thrown not-found
-- [ ] The two handlers inject the ports and no bus; their specs use the fakes and assert outcomes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] Gateway specs prove mapping, `active`, and `null` on the provider's `null` or thrown not-found
+- [x] The two handlers inject the ports and no bus; their specs use the fakes and assert outcomes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full

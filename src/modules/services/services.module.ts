@@ -26,6 +26,6 @@ import { ServicesController } from './presentation/controllers/services.controll
     { provide: SERVICE_QUERY_PORT, useClass: TypeOrmServiceQueryAdapter },
     ServiceKeyResolver,
   ],
-  exports: [ServiceKeyResolver],
+  exports: [GetServiceHandler, ServiceKeyResolver],
 })
 export class ServicesModule {}

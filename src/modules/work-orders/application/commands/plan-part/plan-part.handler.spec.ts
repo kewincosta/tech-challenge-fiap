@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakePartCatalog } from '../../../../../../test/support/fakes/fake-part-catalog';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
-import { InventoryItemSummaryDto } from '../../../../inventory/application/ports/inventory-query.port';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { InvalidPlannedQuantityError } from '../../../domain/errors/invalid-planned-quantity.error';
@@ -13,6 +13,7 @@ import { WorkOrderStateError } from '../../../domain/errors/work-order-state.err
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
+import { PartRef } from '../../ports/part-catalog.port';
 import { PlanPartCommand } from './plan-part.command';
 import { PlanPartHandler } from './plan-part.handler';
 
@@ -23,18 +24,15 @@ const ITEM_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 
-const ACTIVE_ITEM: InventoryItemSummaryDto = {
+const ACTIVE_ITEM: PartRef = {
   id: ITEM_ID,
   sku: 'FLT-001',
   name: 'Filtro de oleo',
-  description: null,
-  kind: 'PART',
   unitPriceCents: 2500,
-  quantityOnHand: 10,
-  status: 'ACTIVE',
+  active: true,
 };
 
-const INACTIVE_ITEM: InventoryItemSummaryDto = { ...ACTIVE_ITEM, status: 'INACTIVE' };
+const INACTIVE_ITEM: PartRef = { ...ACTIVE_ITEM, active: false };
 
 function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
   if (status === WorkOrderStatus.Received) {
@@ -78,19 +76,21 @@ function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
   });
 }
 
-function makeHandler(inventoryItem: InventoryItemSummaryDto | null) {
+function makeHandler(inventoryItem: PartRef | null) {
   const workOrders = new InMemoryWorkOrderRepository();
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockResolvedValueOnce(inventoryItem);
+  const partCatalog = new FakePartCatalog();
+  if (inventoryItem) {
+    partCatalog.add(inventoryItem);
+  }
   const eventBus = stubEventBus();
   const handler = new PlanPartHandler(
     workOrders,
     new FakeIdGenerator(),
     new FakeClock(),
-    queryBus.bus,
+    partCatalog,
     eventBus.bus,
   );
-  return { handler, workOrders, queryBus };
+  return { handler, workOrders, partCatalog };
 }
 
 describe('PlanPartHandler', () => {
@@ -118,14 +118,15 @@ describe('PlanPartHandler', () => {
     expect(updated.partItems[0].plannedQuantity.units).toBe(2);
   });
 
-  it('should leave the inventory item quantity on hand untouched, no command reaching inventory', async () => {
-    const { handler, workOrders, queryBus } = makeHandler(ACTIVE_ITEM);
+  it('should plan the part without withdrawing it, the single catalog read being all that reaches inventory', async () => {
+    const { handler, workOrders, partCatalog } = makeHandler(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
 
     await handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID));
 
-    // This handler has no CommandBus at all - only the single read above touched inventory.
-    expect(queryBus.execute).toHaveBeenCalledTimes(1);
+    // The handler holds a read-only catalog and no stock ledger, so the stock cannot be touched.
+    expect(workOrders.workOrders[0].partItems[0].withdrawnQuantity).toBe(0);
+    expect(partCatalog.lookups).toEqual([ITEM_ID]);
   });
 
   it('should refuse a part planned on a work order in RECEIVED with WorkOrderStateError (L-003, second layer)', async () => {
@@ -148,7 +149,7 @@ describe('PlanPartHandler', () => {
     expect(workOrders.workOrders[0].partItems).toHaveLength(0);
   });
 
-  it('should refuse an inventory item the query answers null for, with ReferencedInventoryItemNotFoundError', async () => {
+  it('should refuse an inventory item the catalog does not know, with ReferencedInventoryItemNotFoundError', async () => {
     const { handler, workOrders } = makeHandler(null);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
 

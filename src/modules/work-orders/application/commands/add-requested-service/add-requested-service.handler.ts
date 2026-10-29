@@ -1,21 +1,18 @@
 import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { ServiceSummaryDto } from '../../../../services/application/ports/service-query.port';
-import { GetServiceQuery } from '../../../../services/application/queries/get-service/get-service.query';
 import { ReferencedServiceNotFoundError } from '../../../domain/errors/referenced-service-not-found.error';
 import { ServiceInactiveError } from '../../../domain/errors/service-inactive.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { ServiceCatalog } from '../../ports/service-catalog.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { SERVICE_CATALOG, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { AddRequestedServiceCommand } from './add-requested-service.command';
-
-const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(AddRequestedServiceCommand)
 export class AddRequestedServiceHandler implements ICommandHandler<
@@ -26,7 +23,7 @@ export class AddRequestedServiceHandler implements ICommandHandler<
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly queryBus: QueryBus,
+    @Inject(SERVICE_CATALOG) private readonly serviceCatalog: ServiceCatalog,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -38,13 +35,11 @@ export class AddRequestedServiceHandler implements ICommandHandler<
       throw new WorkOrderNotFoundError();
     }
 
-    const service = await this.queryBus.execute<GetServiceQuery, ServiceSummaryDto | null>(
-      new GetServiceQuery(command.serviceId),
-    );
+    const service = await this.serviceCatalog.findById(command.serviceId);
     if (!service) {
       throw new ReferencedServiceNotFoundError();
     }
-    if (service.status !== ACTIVE_STATUS) {
+    if (!service.active) {
       throw new ServiceInactiveError();
     }
 

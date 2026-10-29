@@ -2577,48 +2577,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.spec.ts",
-    "to": "src/modules/services/application/ports/service-query.port.ts",
-    "unresolvedTo": "../../../../services/application/ports/service-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "src/modules/services/application/ports/service-query.port.ts",
-    "unresolvedTo": "../../../../services/application/ports/service-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "src/modules/services/application/queries/get-service/get-service.query.ts",
-    "unresolvedTo": "../../../../services/application/queries/get-service/get-service.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
@@ -2888,48 +2846,6 @@
     "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.ts",
     "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
     "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.spec.ts",
-    "to": "src/modules/inventory/application/ports/inventory-query.port.ts",
-    "unresolvedTo": "../../../../inventory/application/ports/inventory-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "src/modules/inventory/application/ports/inventory-query.port.ts",
-    "unresolvedTo": "../../../../inventory/application/ports/inventory-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.query.ts",
-    "unresolvedTo": "../../../../inventory/application/queries/get-inventory-item/get-inventory-item.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3895,48 +3811,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.spec.ts",
-    "to": "src/modules/services/application/ports/service-query.port.ts",
-    "unresolvedTo": "../../../../services/application/ports/service-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "src/modules/services/application/ports/service-query.port.ts",
-    "unresolvedTo": "../../../../services/application/ports/service-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "src/modules/services/application/queries/get-service/get-service.query.ts",
-    "unresolvedTo": "../../../../services/application/queries/get-service/get-service.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
@@ -4206,48 +4080,6 @@
     "from": "src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.handler.ts",
     "to": "src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command.ts",
     "unresolvedTo": "../../../../inventory/application/commands/settle-stock-movements/settle-stock-movements.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.spec.ts",
-    "to": "src/modules/inventory/application/ports/inventory-query.port.ts",
-    "unresolvedTo": "../../../../inventory/application/ports/inventory-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "src/modules/inventory/application/ports/inventory-query.port.ts",
-    "unresolvedTo": "../../../../inventory/application/ports/inventory-query.port",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.query.ts",
-    "unresolvedTo": "../../../../inventory/application/queries/get-inventory-item/get-inventory-item.query",
     "dependencyTypes": [
       "local",
       "import"

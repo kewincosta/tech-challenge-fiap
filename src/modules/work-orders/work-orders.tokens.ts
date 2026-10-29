@@ -4,3 +4,5 @@ export const WORK_ORDER_METRICS_QUERY_PORT = Symbol('WorkOrderMetricsQueryPort')
 export const WORK_ORDER_NUMBER_GENERATOR = Symbol('WorkOrderNumberGenerator');
 export const CUSTOMER_DIRECTORY = Symbol('CustomerDirectory');
 export const VEHICLE_DIRECTORY = Symbol('VehicleDirectory');
+export const SERVICE_CATALOG = Symbol('ServiceCatalog');
+export const PART_CATALOG = Symbol('PartCatalog');

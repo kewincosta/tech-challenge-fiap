@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakeServiceCatalog } from '../../../../../../test/support/fakes/fake-service-catalog';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
-import { ServiceSummaryDto } from '../../../../services/application/ports/service-query.port';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { ReferencedServiceNotFoundError } from '../../../domain/errors/referenced-service-not-found.error';
 import { ServiceInactiveError } from '../../../domain/errors/service-inactive.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
+import { ServiceRef } from '../../ports/service-catalog.port';
 import { AddRequestedServiceCommand } from './add-requested-service.command';
 import { AddRequestedServiceHandler } from './add-requested-service.handler';
 
@@ -19,13 +20,11 @@ const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
 const SERVICE_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
 
-const ACTIVE_SERVICE: ServiceSummaryDto = {
+const ACTIVE_SERVICE: ServiceRef = {
   id: SERVICE_ID,
   name: 'Troca de oleo',
-  description: 'Inclui filtro',
   priceCents: 15099,
-  estimatedDurationMinutes: 60,
-  status: 'ACTIVE',
+  active: true,
 };
 
 function buildReceivedWorkOrder(): WorkOrder {
@@ -44,16 +43,18 @@ function buildReceivedWorkOrder(): WorkOrder {
   });
 }
 
-function makeHandler(service: ServiceSummaryDto | null) {
+function makeHandler(service: ServiceRef | null) {
   const workOrders = new InMemoryWorkOrderRepository();
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockResolvedValueOnce(service);
+  const serviceCatalog = new FakeServiceCatalog();
+  if (service) {
+    serviceCatalog.add(service);
+  }
   const eventBus = stubEventBus();
   const handler = new AddRequestedServiceHandler(
     workOrders,
     new FakeIdGenerator(),
     new FakeClock(),
-    queryBus.bus,
+    serviceCatalog,
     eventBus.bus,
   );
   return { handler, workOrders };
@@ -73,7 +74,7 @@ describe('AddRequestedServiceHandler', () => {
   });
 
   it('should refuse a deactivated service with ServiceInactiveError (L-003)', async () => {
-    const { handler, workOrders } = makeHandler({ ...ACTIVE_SERVICE, status: 'INACTIVE' });
+    const { handler, workOrders } = makeHandler({ ...ACTIVE_SERVICE, active: false });
     await workOrders.save(buildReceivedWorkOrder());
 
     await expect(
@@ -82,7 +83,7 @@ describe('AddRequestedServiceHandler', () => {
     expect(workOrders.workOrders[0].serviceItems).toHaveLength(0);
   });
 
-  it('should refuse a service the query answers null for, with ReferencedServiceNotFoundError', async () => {
+  it('should refuse a service the catalog does not know, with ReferencedServiceNotFoundError', async () => {
     const { handler, workOrders } = makeHandler(null);
     await workOrders.save(buildReceivedWorkOrder());
 

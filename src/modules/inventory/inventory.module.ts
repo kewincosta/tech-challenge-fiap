@@ -47,6 +47,6 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },
     InventoryItemKeyResolver,
   ],
-  exports: [InventoryItemKeyResolver],
+  exports: [GetInventoryItemHandler, InventoryItemKeyResolver],
 })
 export class InventoryModule {}

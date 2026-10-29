@@ -5,6 +5,8 @@ import { DomainEventPublisher } from '../../shared/application/ports/domain-even
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { CustomersModule } from '../customers';
+import { InventoryModule } from '../inventory';
+import { ServicesModule } from '../services';
 import { VehiclesModule } from '../vehicles';
 import { AddRequestedServiceHandler } from './application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountHandler } from './application/commands/apply-discount/apply-discount.handler';
@@ -24,6 +26,8 @@ import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-
 import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
 import {
   CUSTOMER_DIRECTORY,
+  PART_CATALOG,
+  SERVICE_CATALOG,
   VEHICLE_DIRECTORY,
   WORK_ORDER_METRICS_QUERY_PORT,
   WORK_ORDER_NUMBER_GENERATOR,
@@ -44,6 +48,8 @@ import { BudgetDecisionAuthorizer } from './application/services/budget-decision
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
 import { CustomerDirectoryGateway } from './infrastructure/gateways/customer-directory.gateway';
+import { PartCatalogGateway } from './infrastructure/gateways/part-catalog.gateway';
+import { ServiceCatalogGateway } from './infrastructure/gateways/service-catalog.gateway';
 import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
@@ -67,6 +73,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     ]),
     CustomersModule,
     VehiclesModule,
+    ServicesModule,
+    InventoryModule,
   ],
   controllers: [WorkOrdersController],
   providers: [
@@ -130,6 +138,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: WORK_ORDER_NUMBER_GENERATOR, useClass: RandomWorkOrderNumberGenerator },
     { provide: CUSTOMER_DIRECTORY, useClass: CustomerDirectoryGateway },
     { provide: VEHICLE_DIRECTORY, useClass: VehicleDirectoryGateway },
+    { provide: SERVICE_CATALOG, useClass: ServiceCatalogGateway },
+    { provide: PART_CATALOG, useClass: PartCatalogGateway },
   ],
 })
 export class WorkOrdersModule {}

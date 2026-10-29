@@ -1,22 +1,19 @@
 import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { InventoryItemSummaryDto } from '../../../../inventory/application/ports/inventory-query.port';
-import { GetInventoryItemQuery } from '../../../../inventory/application/queries/get-inventory-item/get-inventory-item.query';
 import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { PartCatalog } from '../../ports/part-catalog.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
+import { PART_CATALOG, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { PlanPartCommand } from './plan-part.command';
-
-const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(PlanPartCommand)
 export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
@@ -24,7 +21,7 @@ export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
     @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly queryBus: QueryBus,
+    @Inject(PART_CATALOG) private readonly partCatalog: PartCatalog,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -39,17 +36,14 @@ export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
     // Validated before the read: a malformed quantity needs no round trip to find out.
     const plannedQuantity = PlannedQuantity.create(command.quantity);
 
-    const inventoryItem = await this.queryBus.execute<
-      GetInventoryItemQuery,
-      InventoryItemSummaryDto | null
-    >(new GetInventoryItemQuery(command.inventoryItemId));
+    const inventoryItem = await this.partCatalog.findById(command.inventoryItemId);
     if (!inventoryItem) {
       throw new ReferencedInventoryItemNotFoundError();
     }
     // Same gate AddRequestedServiceHandler applies to a deactivated service: an item off the
     // catalog does not enter a new work order, while the parts already planned on open work
     // orders stay valid - which is also what DeactivateInventoryItemHandler refuses on.
-    if (inventoryItem.status !== ACTIVE_STATUS) {
+    if (!inventoryItem.active) {
       throw new InventoryItemInactiveError();
     }
 
