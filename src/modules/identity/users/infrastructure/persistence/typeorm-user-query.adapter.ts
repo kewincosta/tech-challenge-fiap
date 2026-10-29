@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, IsNull, Repository } from 'typeorm';
 import {
+  FindUsersFilter,
   ListUsersFilter,
   UserQueryPort,
   UserSummaryDto,
@@ -58,6 +59,27 @@ export class TypeOrmUserQueryAdapter implements UserQueryPort {
           )
         ORDER BY u.created_at DESC`,
       [filter.document ?? null, filter.role ?? null],
+    );
+    return rows.map((row) => ({
+      id: row.external_id,
+      email: row.email,
+      name: row.name,
+      document: row.document,
+      status: row.status,
+    }));
+  }
+
+  // Unlike listActive, this returns deactivated users too: the customer listing shows the name,
+  // e-mail and document of a customer whose user account was deactivated since. An empty `ids`
+  // list matches nobody, and the name filter keeps the ILIKE the customer listing uses today.
+  async find(filter: FindUsersFilter): Promise<UserSummaryDto[]> {
+    const rows: UserListRow[] = await this.dataSource.query(
+      `SELECT u.external_id, u.email, u.name, u.document, u.status
+         FROM users u
+        WHERE ($1::uuid[] IS NULL OR u.external_id = ANY($1::uuid[]))
+          AND ($2::varchar IS NULL OR u.name ILIKE '%' || $2 || '%')
+          AND ($3::varchar IS NULL OR u.document = $3)`,
+      [filter.ids ?? null, filter.nameContains ?? null, filter.document ?? null],
     );
     return rows.map((row) => ({
       id: row.external_id,

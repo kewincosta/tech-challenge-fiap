@@ -64,8 +64,9 @@ import { DeactivateUserHandler } from './users/application/commands/deactivate-u
 import { RegisterUserHandler } from './users/application/commands/register-user/register-user.handler';
 import { UpdateUserHandler } from './users/application/commands/update-user/update-user.handler';
 import { PASSWORD_HASHER } from './users/application/ports/password-hasher.port';
-import { USER_QUERY_PORT } from './users/application/ports/user-query.port';
+import { USER_QUERY_PORT, UserQueryPort } from './users/application/ports/user-query.port';
 import { FindUserByDocumentHandler } from './users/application/queries/find-user-by-document/find-user-by-document.handler';
+import { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
 import { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { ListUsersHandler } from './users/application/queries/list-users/list-users.handler';
 import { VerifyCredentialsHandler } from './users/application/queries/verify-credentials/verify-credentials.handler';
@@ -151,7 +152,18 @@ import { UsersController } from './users/presentation/controllers/users.controll
     { provide: ACCESS_CACHE, useClass: RedisAccessCache },
     { provide: RBAC_QUERY_PORT, useClass: TypeOrmRbacQueryAdapter },
     UserKeyResolver,
+    {
+      provide: FindUsersUseCase,
+      useFactory: (userQuery: UserQueryPort) => new FindUsersUseCase(userQuery),
+      inject: [USER_QUERY_PORT],
+    },
   ],
-  exports: [JwtAuthGuard, PendingPasswordGuard, PermissionsGuard, UserKeyResolver],
+  exports: [
+    JwtAuthGuard,
+    PendingPasswordGuard,
+    PermissionsGuard,
+    UserKeyResolver,
+    FindUsersUseCase,
+  ],
 })
 export class IdentityModule {}

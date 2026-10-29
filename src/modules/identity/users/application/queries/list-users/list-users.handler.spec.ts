@@ -7,6 +7,7 @@ function fakePort(result: UserSummaryDto[] = []): UserQueryPort {
   return {
     findActiveByDocument: vi.fn(),
     listActive: vi.fn().mockResolvedValue(result),
+    find: vi.fn(),
   };
 }
 

@@ -772,11 +772,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Unit spec: a malformed document returns `[]` without reaching the port; a valid one is normalized before the port
-- [ ] Integration spec: `ids` returns those users whatever their status; `nameContains` matches any letter case and any position; `document` matches exactly
-- [ ] The use case carries no decorator and no framework import
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit and integration totals grow by the new cases
+- [x] Unit spec: a malformed document returns `[]` without reaching the port; a valid one is normalized before the port
+- [x] Integration spec: `ids` returns those users whatever their status; `nameContains` matches any letter case and any position; `document` matches exactly
+- [x] The use case carries no decorator and no framework import
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit and integration totals grow by the new cases
 
 **Tests**: integration
 **Gate**: full
