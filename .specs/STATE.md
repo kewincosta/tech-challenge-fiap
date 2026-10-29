@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 done (T51 `55b1b4e`, T52 `4122a7f`, T53 `2592644`, T54 `f4cda90`, T55 `c8bde6b`). Batch 11 (T56 to T60) dispatched; the Verifier runs after it.
-- **Completed**: T1 to T55, T61 and T62. Totals after batch 10: unit 1111, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: no dependency violation (the file is `[]`), 0 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 done (T51 `55b1b4e`, T52 `4122a7f`, T53 `2592644`, T54 `f4cda90`, T55 `c8bde6b`). Batch 11 done (T56 `7bd7c20`, T57 `7c5aaab`, T58 `dc86dce`, T59 `1c02df5`, T60 `ccd3861`). Every task of `tasks.md` is done. The Verifier is dispatched.
+- **Completed**: T1 to T62. Totals after batch 11: unit 1114, integration 342, e2e 244 (baseline 955, 239, 203). Baselines: no dependency violation, no table finding (both files are `[]`), no module cycle. Diff range of the feature: `51a3a8a..ccd3861`.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 11's compact summary, then dispatch the Verifier (default model) and run `validate_state.py`.
+- **Next step**: read the Verifier's verdict and `validation.md`; on FAIL, route the ranked gaps to a Sonnet worker as fix tasks and re-verify (at most 3 rounds); on PASS, run `validate_state.py`.
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -264,6 +264,14 @@ entry. They apply to every feature.
 - `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
+
+**Facts from batch 11**:
+
+- `scripts/seed.ts` exports `runSeed()` and calls the five use cases; `test/integration/seed.script.spec.ts` runs it twice. `workshop_test` now holds the seed's demo rows for good: `admin@workshop.local` as SUPER_ADMIN, the four `@oficina.local` accounts, 4 services, 5 items with inbound movements, 1 customer and 2 vehicles. No integration or e2e case uses those values.
+- Mutating the seed needs a scratch database, because a mutated seed writes bad rows into the never-truncated `workshop_test`: a detached worktree with `node_modules` symlinked, its `.env.test` set to `DATABASE_NAME=workshop_mut_test` and `REDIS_DB=13`, the database created (the global setup migrates it) and dropped per mutant.
+- T57 added three unit tests: the purity list covers every module folder on disk, and the two baseline files are empty. `npm uninstall @nestjs/cqrs` changed only its root dependency line and its lock entry.
+- The five C4 component diagrams used `Component_Boundary`, which Mermaid does not parse; T60 switched them to `Boundary(`, and all seven `.mmd` files and the README's three Mermaid blocks parse with Mermaid 11.17.2.
+- Bus or CQRS mentions outside the CA-09 grep scope, left as they are: `docs/roteiro-video.md:95-100` and `:361`, `security/scripts/deliverable.ts:255`. Follow-up candidates.
 
 **Facts from batch 10 that later tasks build on**:
 
