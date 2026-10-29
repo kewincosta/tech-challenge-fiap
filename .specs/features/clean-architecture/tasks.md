@@ -1875,13 +1875,13 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `grep -rnE "CommandBus|QueryBus|@nestjs/cqrs" src test scripts` finds nothing, and `package.json` has no `@nestjs/cqrs`
-- [ ] `test/support/fakes/bus.stubs.ts` is deleted
-- [ ] The strict ESLint blocks and the purity test cover `src/**`; `.dependency-cruiser-known-violations.json` and the known table findings are empty
-- [ ] A throwaway `@nestjs/common` import in an `application` file makes `npm run lint` fail naming the file (checked by hand, removed)
-- [ ] `npm run test:coverage` passes every threshold
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: all three totals at least the Baseline section's, plus the tests this feature added
+- [x] `grep -rnE "CommandBus|QueryBus|@nestjs/cqrs" src test scripts` finds nothing, and `package.json` has no `@nestjs/cqrs`
+- [x] `test/support/fakes/bus.stubs.ts` is deleted
+- [x] The strict ESLint blocks and the purity test cover `src/**`; `.dependency-cruiser-known-violations.json` and the known table findings are empty
+- [x] A throwaway `@nestjs/common` import in an `application` file makes `npm run lint` fail naming the file (checked by hand, removed)
+- [x] `npm run test:coverage` passes every threshold
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: all three totals at least the Baseline section's, plus the tests this feature added
 
 **Tests**: unit
 **Gate**: build

@@ -19,8 +19,9 @@ const CORE_BANNED_IMPORTS = [
   'rxjs/*',
 ];
 
-// A module listed in this file has finished moving to the clean core. Its domain and application
-// code, specs included, takes the full set of bans below. The list grows until it covers src/**.
+// A module listed in this file takes the full set of bans below on its domain and application code,
+// specs included. Every module is listed, so the bans cover src/**, and core-purity.spec.ts fails
+// when a module under src/modules is missing from the list.
 const migratedModules = JSON.parse(
   readFileSync(join(import.meta.dirname, 'scripts/architecture/migrated-modules.json'), 'utf8'),
 );

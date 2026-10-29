@@ -182,6 +182,17 @@ describe('core purity', () => {
     ).toEqual([]);
   });
 
+  it('lists every module under src/modules, and shared', () => {
+    const onDisk = [
+      'shared',
+      ...readdirSync(join(ROOT, 'src/modules'), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name),
+    ];
+
+    expect(onDisk.filter((module) => !migratedModules.includes(module))).toEqual([]);
+  });
+
   it('keeps the domain and application code of every listed module pure', () => {
     expect(scanCore(ROOT, migratedModules)).toEqual([]);
   });

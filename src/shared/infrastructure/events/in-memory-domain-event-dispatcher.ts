@@ -8,9 +8,9 @@ import { DomainEvent } from '../../domain/domain-event';
 type DomainEventType<E extends DomainEvent> = new (...args: never[]) => E;
 
 /**
- * Hands each event to the subscribers of its class and never waits for them, as the EventBus of
- * @nestjs/cqrs 11.0.3 did. A subscriber starts during `publish`. One that throws or rejects is
- * logged at error level, under the same `EventBus` context, and never reaches the caller.
+ * Hands each event to the subscribers of its class and never waits for them. A subscriber starts
+ * during `publish`. One that throws or rejects is logged at error level, under the `EventBus`
+ * context, and never reaches the caller.
  */
 @Injectable()
 export class InMemoryDomainEventDispatcher implements DomainEventPublisher {
@@ -42,8 +42,8 @@ export class InMemoryDomainEventDispatcher implements DomainEventPublisher {
     }
   }
 
-  // The wording and the context are the cqrs 11.0.3 ones. That line prints "InstanceWrapper" where
-  // this one prints the class name of the subscriber.
+  // The wording and the context stay as logged before, so a search over old logs still matches.
+  // The old line printed "InstanceWrapper" where this one prints the subscriber's class name.
   private report(subscriber: DomainEventSubscriber, error: unknown): void {
     this.logger.error(`"${subscriber.constructor.name}" has thrown an unhandled exception.`, error);
   }

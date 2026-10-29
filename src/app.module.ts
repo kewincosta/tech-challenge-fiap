@@ -3,7 +3,6 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
-import { CqrsModule } from '@nestjs/cqrs';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
@@ -66,7 +65,6 @@ import { SharedModule } from './shared/shared.module';
     SharedModule,
     DatabaseModule,
     RedisModule,
-    CqrsModule.forRoot(),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],
       inject: [rateLimitConfig.KEY, REDIS_CLIENT],
