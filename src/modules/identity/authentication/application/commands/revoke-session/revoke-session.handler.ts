@@ -1,11 +1,11 @@
 import { Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { authConfig } from '../../../../../../config/auth.config';
 import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { AppPermission } from '../../../../authorization/application/contracts/app-permissions';
-import { EffectiveAccessDto } from '../../../../authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessHandler } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
 import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { SessionNotFoundError } from '../../../domain/errors/session-not-found.error';
 import {
@@ -24,7 +24,7 @@ export class RevokeSessionHandler implements ICommandHandler<RevokeSessionComman
     @Inject(REVOKED_SESSION_STORE) private readonly revokedSessions: RevokedSessionStore,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(authConfig.KEY) private readonly config: ConfigType<typeof authConfig>,
-    private readonly queryBus: QueryBus,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -35,7 +35,7 @@ export class RevokeSessionHandler implements ICommandHandler<RevokeSessionComman
     }
     const isOwner = session.userId === command.actorUserId;
     if (!isOwner) {
-      const access = await this.queryBus.execute<GetUserEffectiveAccessQuery, EffectiveAccessDto>(
+      const access = await this.getUserEffectiveAccess.execute(
         new GetUserEffectiveAccessQuery(command.actorUserId),
       );
       if (!access.permissions.includes(AppPermission.SessionsRevokeAny)) {

@@ -31,10 +31,13 @@ import { DeleteRoleHandler } from './authorization/application/commands/delete-r
 import { RevokeRoleFromUserHandler } from './authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler';
 import { SetRolePermissionsHandler } from './authorization/application/commands/set-role-permissions/set-role-permissions.handler';
 import { UpdateRoleHandler } from './authorization/application/commands/update-role/update-role.handler';
-import { ACCESS_CACHE } from './authorization/application/ports/access-cache.port';
+import { ACCESS_CACHE, AccessCache } from './authorization/application/ports/access-cache.port';
 import { ASSIGNMENT_REPOSITORY } from './authorization/application/ports/assignment.repository';
-import { EFFECTIVE_ACCESS_READER } from './authorization/application/ports/effective-access-reader.port';
-import { RBAC_QUERY_PORT } from './authorization/application/ports/rbac-query.port';
+import {
+  EFFECTIVE_ACCESS_READER,
+  EffectiveAccessReader,
+} from './authorization/application/ports/effective-access-reader.port';
+import { RBAC_QUERY_PORT, RbacQueryPort } from './authorization/application/ports/rbac-query.port';
 import { GetRoleHandler } from './authorization/application/queries/get-role/get-role.handler';
 import { GetUserAccessHandler } from './authorization/application/queries/get-user-access/get-user-access.handler';
 import { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
@@ -43,7 +46,10 @@ import { ListRolesHandler } from './authorization/application/queries/list-roles
 import { EffectiveAccessService } from './authorization/application/services/effective-access.service';
 import { PermissionCatalogService } from './authorization/application/services/permission-catalog.service';
 import { AccessCacheInvalidationSubscriber } from './authorization/application/subscribers/access-cache-invalidation.subscriber';
-import { PERMISSION_REPOSITORY } from './authorization/domain/repositories/permission.repository';
+import {
+  PERMISSION_REPOSITORY,
+  PermissionRepository,
+} from './authorization/domain/repositories/permission.repository';
 import { ROLE_REPOSITORY } from './authorization/domain/repositories/role.repository';
 import { RedisAccessCache } from './authorization/infrastructure/cache/redis-access-cache';
 import { PermissionOrmEntity } from './authorization/infrastructure/persistence/permission.orm-entity';
@@ -128,13 +134,44 @@ import { UsersController } from './users/presentation/controllers/users.controll
     SetRolePermissionsHandler,
     AssignRoleToUserHandler,
     RevokeRoleFromUserHandler,
-    ListRolesHandler,
-    GetRoleHandler,
-    ListPermissionsHandler,
-    GetUserAccessHandler,
-    GetUserEffectiveAccessHandler,
-    EffectiveAccessService,
-    PermissionCatalogService,
+    {
+      provide: ListRolesHandler,
+      useFactory: (rbacQuery: RbacQueryPort) => new ListRolesHandler(rbacQuery),
+      inject: [RBAC_QUERY_PORT],
+    },
+    {
+      provide: GetRoleHandler,
+      useFactory: (rbacQuery: RbacQueryPort) => new GetRoleHandler(rbacQuery),
+      inject: [RBAC_QUERY_PORT],
+    },
+    {
+      provide: ListPermissionsHandler,
+      useFactory: (rbacQuery: RbacQueryPort) => new ListPermissionsHandler(rbacQuery),
+      inject: [RBAC_QUERY_PORT],
+    },
+    {
+      provide: GetUserAccessHandler,
+      useFactory: (rbacQuery: RbacQueryPort, getUserById: GetUserByIdHandler) =>
+        new GetUserAccessHandler(rbacQuery, getUserById),
+      inject: [RBAC_QUERY_PORT, GetUserByIdHandler],
+    },
+    {
+      provide: GetUserEffectiveAccessHandler,
+      useFactory: (effectiveAccess: EffectiveAccessService) =>
+        new GetUserEffectiveAccessHandler(effectiveAccess),
+      inject: [EffectiveAccessService],
+    },
+    {
+      provide: EffectiveAccessService,
+      useFactory: (cache: AccessCache, reader: EffectiveAccessReader) =>
+        new EffectiveAccessService(cache, reader),
+      inject: [ACCESS_CACHE, EFFECTIVE_ACCESS_READER],
+    },
+    {
+      provide: PermissionCatalogService,
+      useFactory: (permissions: PermissionRepository) => new PermissionCatalogService(permissions),
+      inject: [PERMISSION_REPOSITORY],
+    },
     AccessCacheInvalidationSubscriber,
     PermissionsGuard,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },

@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
+import { FakeAccessCache } from '../../../../../../../test/support/fakes/fake-access-cache';
 import { FakeAssignmentRepository } from '../../../../../../../test/support/fakes/fake-assignment.repository';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
+import { FakeEffectiveAccessReader } from '../../../../../../../test/support/fakes/fake-effective-access-reader';
 import { InMemoryRoleRepository } from '../../../../../../../test/support/fakes/in-memory-role.repository';
+import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
+import { buildUser } from '../../../../../../../test/support/factories/user.factory';
 import { Role } from '../../../domain/entities/role';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
 import { RoleEscalationForbiddenError } from '../../../domain/errors/role-escalation-forbidden.error';
@@ -12,28 +16,35 @@ import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
 import { RoleAssignedToUser } from '../../../domain/events/role-assigned-to-user.event';
 import { RoleId } from '../../../domain/value-objects/role-id';
 import { RoleName } from '../../../domain/value-objects/role-name';
-import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
-import { GetUserEffectiveAccessQuery } from '../../queries/get-user-effective-access/get-user-effective-access.query';
+import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { SystemRole } from '../../contracts/system-roles';
+import { GetUserEffectiveAccessHandler } from '../../queries/get-user-effective-access/get-user-effective-access.handler';
+import { EffectiveAccessService } from '../../services/effective-access.service';
 import { AssignRoleToUserCommand } from './assign-role-to-user.command';
 import { AssignRoleToUserHandler } from './assign-role-to-user.handler';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+// The target user exists unless a case says otherwise. The actor holds the roles a case grants it.
+async function makeHandler(options: { targetExists?: boolean } = {}) {
   const roles = new InMemoryRoleRepository();
   const assignments = new FakeAssignmentRepository();
-  const queryBus = stubQueryBus();
+  const users = new InMemoryUserRepository();
+  if (options.targetExists ?? true) {
+    await users.save(buildUser({ id: USER_ID }));
+  }
+  const access = new FakeEffectiveAccessReader();
   const eventBus = stubEventBus();
   const handler = new AssignRoleToUserHandler(
     roles,
     assignments,
     new FakeClock(),
-    queryBus.bus,
+    new GetUserEffectiveAccessHandler(new EffectiveAccessService(new FakeAccessCache(), access)),
+    new GetUserByIdHandler(users),
     eventBus.bus,
   );
-  return { handler, roles, assignments, queryBus, eventBus };
+  return { handler, roles, assignments, access, eventBus };
 }
 
 function roleFor(name: SystemRole): Role {
@@ -50,27 +61,11 @@ function customerRole(): Role {
   return roleFor(SystemRole.Customer);
 }
 
-// Makes the stub QueryBus answer GetUserByIdQuery (target exists) and
-// GetUserEffectiveAccessQuery (the actor's roles) differently, since the escalation rule needs
-// both in the same test.
-function respondToQueries(actorRoles: string[]) {
-  return (query: unknown) => {
-    if (query instanceof GetUserByIdQuery) {
-      return Promise.resolve({ id: USER_ID });
-    }
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve({ roles: actorRoles, permissions: [] });
-    }
-    return Promise.resolve(null);
-  };
-}
-
 describe('AssignRoleToUserHandler', () => {
   it('should assign a role referenced by name', async () => {
-    const { handler, roles, assignments, queryBus, eventBus } = makeHandler();
+    const { handler, roles, assignments, eventBus } = await makeHandler();
     const role = customerRole();
     await roles.save(role);
-    queryBus.execute.mockResolvedValue({ id: USER_ID });
 
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Customer }));
 
@@ -79,10 +74,9 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should assign a role referenced by id', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments } = await makeHandler();
     const role = customerRole();
     await roles.save(role);
-    queryBus.execute.mockResolvedValue({ id: USER_ID });
 
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { id: role.id.value }));
 
@@ -90,10 +84,9 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should be idempotent when the role is assigned twice', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments } = await makeHandler();
     const role = customerRole();
     await roles.save(role);
-    queryBus.execute.mockResolvedValue({ id: USER_ID });
 
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { id: role.id.value }));
     await handler.execute(new AssignRoleToUserCommand(USER_ID, { id: role.id.value }));
@@ -102,9 +95,8 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should not assign a role to an unknown user', async () => {
-    const { handler, roles, queryBus } = makeHandler();
+    const { handler, roles } = await makeHandler({ targetExists: false });
     await roles.save(customerRole());
-    queryBus.execute.mockResolvedValue(null);
 
     await expect(
       handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Customer })),
@@ -112,8 +104,7 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should not assign an unknown role', async () => {
-    const { handler, queryBus } = makeHandler();
-    queryBus.execute.mockResolvedValue({ id: USER_ID });
+    const { handler } = await makeHandler();
 
     await expect(
       handler.execute(new AssignRoleToUserCommand(USER_ID, { name: 'GHOST' })),
@@ -121,9 +112,9 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should refuse assigning SUPER_ADMIN, even from a super administrator actor', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments, access } = await makeHandler();
     await roles.save(roleFor(SystemRole.SuperAdmin));
-    queryBus.execute.mockImplementation(respondToQueries([SystemRole.SuperAdmin]));
+    access.withAccess(ACTOR_ID, { roles: [SystemRole.SuperAdmin] });
 
     await expect(
       handler.execute(
@@ -134,9 +125,8 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should refuse assigning ADMIN when no actor is supplied', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments } = await makeHandler();
     await roles.save(roleFor(SystemRole.Admin));
-    queryBus.execute.mockImplementation(respondToQueries([]));
 
     await expect(
       handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Admin })),
@@ -145,9 +135,9 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should refuse assigning ADMIN when the actor lacks SUPER_ADMIN', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments, access } = await makeHandler();
     await roles.save(roleFor(SystemRole.Admin));
-    queryBus.execute.mockImplementation(respondToQueries([SystemRole.Admin]));
+    access.withAccess(ACTOR_ID, { roles: [SystemRole.Admin] });
 
     await expect(
       handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Admin }, ACTOR_ID)),
@@ -156,10 +146,10 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should assign ADMIN when the actor holds SUPER_ADMIN', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments, access } = await makeHandler();
     const role = roleFor(SystemRole.Admin);
     await roles.save(role);
-    queryBus.execute.mockImplementation(respondToQueries([SystemRole.SuperAdmin]));
+    access.withAccess(ACTOR_ID, { roles: [SystemRole.SuperAdmin] });
 
     await handler.execute(
       new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Admin }, ACTOR_ID),
@@ -169,12 +159,11 @@ describe('AssignRoleToUserHandler', () => {
   });
 
   it('should assign SERVICE_ADVISOR and MECHANIC without requiring a super administrator actor', async () => {
-    const { handler, roles, assignments, queryBus } = makeHandler();
+    const { handler, roles, assignments } = await makeHandler();
     const serviceAdvisor = roleFor(SystemRole.ServiceAdvisor);
     const mechanic = roleFor(SystemRole.Mechanic);
     await roles.save(serviceAdvisor);
     await roles.save(mechanic);
-    queryBus.execute.mockImplementation(respondToQueries([]));
 
     await handler.execute(
       new AssignRoleToUserCommand(USER_ID, { name: SystemRole.ServiceAdvisor }),

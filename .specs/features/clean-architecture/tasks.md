@@ -1451,11 +1451,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs use fakes and assert outcomes; get role covers `RoleNotFoundError`
-- [ ] The roles controller's `getRoleOrFail` is gone; the role and access e2e specs from T2 and T3 pass
-- [ ] The identity gateways in other modules call the use cases
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs use fakes and assert outcomes; get role covers `RoleNotFoundError`
+- [x] The roles controller's `getRoleOrFail` is gone; the role and access e2e specs from T2 and T3 pass
+- [x] The identity gateways in other modules call the use cases
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

@@ -8,7 +8,7 @@ import {
   ParseUUIDPipe,
   Put,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -24,7 +24,7 @@ import { Principal } from '../../../authentication/presentation/principal';
 import { AssignRoleToUserCommand } from '../../application/commands/assign-role-to-user/assign-role-to-user.command';
 import { RevokeRoleFromUserCommand } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.command';
 import { AppPermission } from '../../application/contracts/app-permissions';
-import { UserAccessDto } from '../../application/ports/rbac-query.port';
+import { GetUserAccessHandler } from '../../application/queries/get-user-access/get-user-access.handler';
 import { GetUserAccessQuery } from '../../application/queries/get-user-access/get-user-access.query';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
 import { UserAccessResponseDto } from '../dtos/user-access.dtos';
@@ -36,7 +36,7 @@ import { UserAccessResponseDto } from '../dtos/user-access.dtos';
 export class UserAccessController {
   constructor(
     private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly getAccess: GetUserAccessHandler,
   ) {}
 
   @Get(':userId/access')
@@ -48,7 +48,7 @@ export class UserAccessController {
   async getUserAccess(
     @Param('userId', ParseUUIDPipe) userId: string,
   ): Promise<UserAccessResponseDto> {
-    return this.queryBus.execute<GetUserAccessQuery, UserAccessDto>(new GetUserAccessQuery(userId));
+    return this.getAccess.execute(new GetUserAccessQuery(userId));
   }
 
   @Put(':userId/roles/:roleId')

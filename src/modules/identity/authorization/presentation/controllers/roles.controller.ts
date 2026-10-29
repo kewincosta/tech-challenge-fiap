@@ -11,7 +11,7 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -32,10 +32,10 @@ import { DeleteRoleCommand } from '../../application/commands/delete-role/delete
 import { SetRolePermissionsCommand } from '../../application/commands/set-role-permissions/set-role-permissions.command';
 import { UpdateRoleCommand } from '../../application/commands/update-role/update-role.command';
 import { AppPermission } from '../../application/contracts/app-permissions';
-import { RoleDto } from '../../application/ports/rbac-query.port';
+import { GetRoleHandler } from '../../application/queries/get-role/get-role.handler';
 import { GetRoleQuery } from '../../application/queries/get-role/get-role.query';
+import { ListRolesHandler } from '../../application/queries/list-roles/list-roles.handler';
 import { ListRolesQuery } from '../../application/queries/list-roles/list-roles.query';
-import { RoleNotFoundError } from '../../domain/errors/role-not-found.error';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
 import {
   CreateRoleRequestDto,
@@ -51,7 +51,8 @@ import {
 export class RolesController {
   constructor(
     private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly listRoles: ListRolesHandler,
+    private readonly getRole: GetRoleHandler,
   ) {}
 
   @Get()
@@ -60,7 +61,7 @@ export class RolesController {
   @ApiOkResponse({ type: [RoleResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(): Promise<RoleResponseDto[]> {
-    return this.queryBus.execute<ListRolesQuery, RoleDto[]>(new ListRolesQuery());
+    return this.listRoles.execute(new ListRolesQuery());
   }
 
   @Post()
@@ -74,7 +75,7 @@ export class RolesController {
     const created = await this.commandBus.execute<CreateRoleCommand, CreatedRoleDto>(
       new CreateRoleCommand(body.name, body.description ?? null, body.permissions ?? []),
     );
-    return this.getRoleOrFail(created.id);
+    return this.getRole.execute(new GetRoleQuery(created.id));
   }
 
   @Get(':id')
@@ -84,7 +85,7 @@ export class RolesController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(@Param('id', ParseUUIDPipe) id: string): Promise<RoleResponseDto> {
-    return this.getRoleOrFail(id);
+    return this.getRole.execute(new GetRoleQuery(id));
   }
 
   @Patch(':id')
@@ -100,7 +101,7 @@ export class RolesController {
     await this.commandBus.execute<UpdateRoleCommand, void>(
       new UpdateRoleCommand(id, body.name, body.description),
     );
-    return this.getRoleOrFail(id);
+    return this.getRole.execute(new GetRoleQuery(id));
   }
 
   @Delete(':id')
@@ -127,14 +128,6 @@ export class RolesController {
     await this.commandBus.execute<SetRolePermissionsCommand, void>(
       new SetRolePermissionsCommand(id, body.permissions),
     );
-    return this.getRoleOrFail(id);
-  }
-
-  private async getRoleOrFail(id: string): Promise<RoleResponseDto> {
-    const role = await this.queryBus.execute<GetRoleQuery, RoleDto | null>(new GetRoleQuery(id));
-    if (!role) {
-      throw new RoleNotFoundError();
-    }
-    return role;
+    return this.getRole.execute(new GetRoleQuery(id));
   }
 }

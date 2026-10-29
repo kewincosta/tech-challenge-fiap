@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
+import { FakeAccessCache } from '../../../../../../../test/support/fakes/fake-access-cache';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
+import { FakeEffectiveAccessReader } from '../../../../../../../test/support/fakes/fake-effective-access-reader';
 import { FakeRevokedSessionStore } from '../../../../../../../test/support/fakes/fake-revoked-session-store';
 import { InMemorySessionRepository } from '../../../../../../../test/support/fakes/in-memory-session.repository';
 import { buildSession } from '../../../../../../../test/support/factories/session.factory';
 import { AppPermission } from '../../../../authorization/application/contracts/app-permissions';
+import { GetUserEffectiveAccessHandler } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
+import { EffectiveAccessService } from '../../../../authorization/application/services/effective-access.service';
 import { SessionNotFoundError } from '../../../domain/errors/session-not-found.error';
 import { SessionRevocationReason } from '../../../domain/session-revocation-reason';
 import { SessionStatus } from '../../../domain/session-status';
@@ -24,36 +28,36 @@ const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 function makeHandler() {
   const sessions = new InMemorySessionRepository();
   const revokedSessions = new FakeRevokedSessionStore();
-  const queryBus = stubQueryBus();
+  const access = new FakeEffectiveAccessReader();
   const eventBus = stubEventBus();
   const handler = new RevokeSessionHandler(
     sessions,
     revokedSessions,
     new FakeClock(),
     AUTH_CONFIG,
-    queryBus.bus,
+    new GetUserEffectiveAccessHandler(new EffectiveAccessService(new FakeAccessCache(), access)),
     eventBus.bus,
   );
-  return { handler, sessions, revokedSessions, queryBus };
+  return { handler, sessions, revokedSessions, access };
 }
 
 describe('RevokeSessionHandler', () => {
   it('should revoke a session owned by the actor', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
+    const { handler, sessions, access } = makeHandler();
     const session = buildSession({ userId: OWNER_ID });
     await sessions.save(session);
 
     await handler.execute(new RevokeSessionCommand(session.id.value, OWNER_ID));
 
     expect(session.status).toBe(SessionStatus.Revoked);
-    expect(queryBus.execute).not.toHaveBeenCalled();
+    expect(access.reads).toEqual([]);
   });
 
   it('should revoke a foreign session when the actor can revoke any session', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
+    const { handler, sessions, access } = makeHandler();
     const session = buildSession({ userId: OWNER_ID });
     await sessions.save(session);
-    queryBus.execute.mockResolvedValue({
+    access.withAccess(OTHER_ID, {
       roles: ['ADMIN'],
       permissions: [AppPermission.SessionsRevokeAny],
     });
@@ -65,10 +69,10 @@ describe('RevokeSessionHandler', () => {
   });
 
   it('should not reveal a foreign session to an actor without permission', async () => {
-    const { handler, sessions, queryBus } = makeHandler();
+    const { handler, sessions, access } = makeHandler();
     const session = buildSession({ userId: OWNER_ID });
     await sessions.save(session);
-    queryBus.execute.mockResolvedValue({ roles: ['CUSTOMER'], permissions: [] });
+    access.withAccess(OTHER_ID, { roles: ['CUSTOMER'] });
 
     await expect(
       handler.execute(new RevokeSessionCommand(session.id.value, OTHER_ID)),

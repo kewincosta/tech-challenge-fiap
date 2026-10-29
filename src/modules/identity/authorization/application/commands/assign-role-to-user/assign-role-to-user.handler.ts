@@ -1,8 +1,8 @@
 import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
-import { UserDto } from '../../../../users/application/dtos/user.dto';
+import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { Role } from '../../../domain/entities/role';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
@@ -15,7 +15,7 @@ import { RoleId } from '../../../domain/value-objects/role-id';
 import { RoleName } from '../../../domain/value-objects/role-name';
 import { ASSIGNMENT_REPOSITORY, AssignmentRepository } from '../../ports/assignment.repository';
 import { SystemRole } from '../../contracts/system-roles';
-import { EffectiveAccessDto } from '../../dtos/effective-access.dto';
+import { GetUserEffectiveAccessHandler } from '../../queries/get-user-effective-access/get-user-effective-access.handler';
 import { GetUserEffectiveAccessQuery } from '../../queries/get-user-effective-access/get-user-effective-access.query';
 import { AssignRoleToUserCommand, RoleReference } from './assign-role-to-user.command';
 
@@ -25,7 +25,8 @@ export class AssignRoleToUserHandler implements ICommandHandler<AssignRoleToUser
     @Inject(ROLE_REPOSITORY) private readonly roles: RoleRepository,
     @Inject(ASSIGNMENT_REPOSITORY) private readonly assignments: AssignmentRepository,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly queryBus: QueryBus,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
+    private readonly getUserById: GetUserByIdHandler,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -53,7 +54,7 @@ export class AssignRoleToUserHandler implements ICommandHandler<AssignRoleToUser
     if (!actorUserId) {
       throw new RoleEscalationForbiddenError();
     }
-    const access = await this.queryBus.execute<GetUserEffectiveAccessQuery, EffectiveAccessDto>(
+    const access = await this.getUserEffectiveAccess.execute(
       new GetUserEffectiveAccessQuery(actorUserId),
     );
     if (!access.roles.includes(SystemRole.SuperAdmin)) {
@@ -62,9 +63,7 @@ export class AssignRoleToUserHandler implements ICommandHandler<AssignRoleToUser
   }
 
   private async ensureUserExists(userId: string): Promise<void> {
-    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
-      new GetUserByIdQuery(userId),
-    );
+    const user = await this.getUserById.execute(new GetUserByIdQuery(userId));
     if (!user) {
       throw new AssignedUserNotFoundError();
     }

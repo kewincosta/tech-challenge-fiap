@@ -30,8 +30,8 @@ import { Throttle } from '@nestjs/throttler';
 import { authThrottle } from '../../../../../config/rate-limit.config';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
+import { GetUserEffectiveAccessHandler } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
 import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
 import { AllowsPendingPassword } from '../../../authentication/presentation/decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
 import { Public } from '../../../authentication/presentation/decorators/public.decorator';
@@ -67,6 +67,7 @@ export class UsersController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
   ) {}
 
   @Public()
@@ -112,7 +113,7 @@ export class UsersController {
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async me(@CurrentUser() principal: Principal): Promise<CurrentUserResponseDto> {
     const user = await this.getUserOrThrow(principal.userId);
-    const access = await this.queryBus.execute<GetUserEffectiveAccessQuery, EffectiveAccessDto>(
+    const access = await this.getUserEffectiveAccess.execute(
       new GetUserEffectiveAccessQuery(principal.userId),
     );
     return { ...user, roles: access.roles, permissions: access.permissions };

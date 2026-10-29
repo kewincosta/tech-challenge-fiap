@@ -1,13 +1,15 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { RBAC_QUERY_PORT, RbacQueryPort, RoleDto } from '../../ports/rbac-query.port';
+import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
+import { RbacQueryPort, RoleDto } from '../../ports/rbac-query.port';
 import { GetRoleQuery } from './get-role.query';
 
-@QueryHandler(GetRoleQuery)
-export class GetRoleHandler implements IQueryHandler<GetRoleQuery, RoleDto | null> {
-  constructor(@Inject(RBAC_QUERY_PORT) private readonly rbacQuery: RbacQueryPort) {}
+export class GetRoleHandler {
+  constructor(private readonly rbacQuery: RbacQueryPort) {}
 
-  async execute(query: GetRoleQuery): Promise<RoleDto | null> {
-    return this.rbacQuery.getRoleById(query.roleId);
+  async execute(query: GetRoleQuery): Promise<RoleDto> {
+    const role = await this.rbacQuery.getRoleById(query.roleId);
+    if (!role) {
+      throw new RoleNotFoundError();
+    }
+    return role;
   }
 }

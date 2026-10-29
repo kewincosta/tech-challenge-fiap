@@ -1,23 +1,17 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { QueryBus } from '@nestjs/cqrs';
-import { UserDto } from '../../../../users/application/dtos/user.dto';
+import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
-import { RBAC_QUERY_PORT, RbacQueryPort, UserAccessDto } from '../../ports/rbac-query.port';
+import { RbacQueryPort, UserAccessDto } from '../../ports/rbac-query.port';
 import { GetUserAccessQuery } from './get-user-access.query';
 
-@QueryHandler(GetUserAccessQuery)
-export class GetUserAccessHandler implements IQueryHandler<GetUserAccessQuery, UserAccessDto> {
+export class GetUserAccessHandler {
   constructor(
-    @Inject(RBAC_QUERY_PORT) private readonly rbacQuery: RbacQueryPort,
-    private readonly queryBus: QueryBus,
+    private readonly rbacQuery: RbacQueryPort,
+    private readonly getUserById: GetUserByIdHandler,
   ) {}
 
   async execute(query: GetUserAccessQuery): Promise<UserAccessDto> {
-    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
-      new GetUserByIdQuery(query.userId),
-    );
+    const user = await this.getUserById.execute(new GetUserByIdQuery(query.userId));
     if (!user) {
       throw new AssignedUserNotFoundError();
     }
