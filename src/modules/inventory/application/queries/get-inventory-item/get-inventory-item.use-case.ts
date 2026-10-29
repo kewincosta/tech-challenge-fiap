@@ -8,7 +8,7 @@ import { GetInventoryItemQuery } from './get-inventory-item.query';
  * apart from "exists but deactivated" (status), which planning a part on a work order refuses
  * precisely.
  */
-export class GetInventoryItemHandler {
+export class GetInventoryItemUseCase {
   constructor(private readonly inventoryQuery: InventoryQueryPort) {}
 
   async execute(query: GetInventoryItemQuery): Promise<InventoryItemSummaryDto> {

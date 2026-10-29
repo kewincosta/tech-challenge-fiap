@@ -10,16 +10,16 @@ import { InventoryItemKind } from '../../../domain/inventory-item-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { UpdateInventoryItemCommand } from './update-inventory-item.command';
-import { UpdateInventoryItemHandler } from './update-inventory-item.handler';
+import { UpdateInventoryItemUseCase } from './update-inventory-item.use-case';
 
 const ITEM_ID = InventoryItemId.create('11111111-1111-4111-8111-111111111111');
 
-function makeHandler() {
+function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new UpdateInventoryItemHandler(items, clock, events);
-  return { handler, items, events, clock };
+  const useCase = new UpdateInventoryItemUseCase(items, clock, events);
+  return { useCase, items, events, clock };
 }
 
 // A stored item has no pending events, like one the repository loaded.
@@ -37,12 +37,12 @@ function buildItem(sku = 'FLT-001'): InventoryItem {
   return item;
 }
 
-describe('UpdateInventoryItemHandler', () => {
+describe('UpdateInventoryItemUseCase', () => {
   it('should replace only the supplied fields, leaving the others untouched', async () => {
-    const { handler, items, events, clock } = makeHandler();
+    const { useCase, items, events, clock } = makeUseCase();
     await items.save(buildItem());
 
-    await handler.execute(
+    await useCase.execute(
       new UpdateInventoryItemCommand(ITEM_ID.value, undefined, undefined, 3000),
     );
 
@@ -54,28 +54,28 @@ describe('UpdateInventoryItemHandler', () => {
   });
 
   it('should refuse an unknown item and persist nothing', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
 
     await expect(
-      handler.execute(new UpdateInventoryItemCommand('00000000-0000-4000-8000-000000000001', 'X')),
+      useCase.execute(new UpdateInventoryItemCommand('00000000-0000-4000-8000-000000000001', 'X')),
     ).rejects.toThrow(InventoryItemNotFoundError);
     expect(items.items).toHaveLength(0);
   });
 
   it('should never let update touch the SKU', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItem('FLT-001'));
 
-    await handler.execute(new UpdateInventoryItemCommand(ITEM_ID.value, 'Novo nome'));
+    await useCase.execute(new UpdateInventoryItemCommand(ITEM_ID.value, 'Novo nome'));
 
     expect(items.items[0].sku.value).toBe('FLT-001');
   });
 
   it('should clear the description when explicitly given null', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItem());
 
-    await handler.execute(new UpdateInventoryItemCommand(ITEM_ID.value, undefined, null));
+    await useCase.execute(new UpdateInventoryItemCommand(ITEM_ID.value, undefined, null));
 
     expect(items.items[0].description).toBeNull();
   });

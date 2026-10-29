@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InventoryQueryPort, StockShortageDto } from '../../ports/inventory-query.port';
-import { ListStockShortagesHandler } from './list-stock-shortages.handler';
+import { ListStockShortagesUseCase } from './list-stock-shortages.use-case';
 import { ListStockShortagesQuery } from './list-stock-shortages.query';
 
 function fakePort(result: StockShortageDto[]): InventoryQueryPort {
@@ -13,7 +13,7 @@ function fakePort(result: StockShortageDto[]): InventoryQueryPort {
   };
 }
 
-describe('ListStockShortagesHandler', () => {
+describe('ListStockShortagesUseCase', () => {
   it('returns what the port answers, unchanged', async () => {
     const shortages: StockShortageDto[] = [
       {
@@ -26,27 +26,27 @@ describe('ListStockShortagesHandler', () => {
       },
     ];
     const inventoryQuery = fakePort(shortages);
-    const handler = new ListStockShortagesHandler(inventoryQuery);
+    const useCase = new ListStockShortagesUseCase(inventoryQuery);
 
-    const result = await handler.execute(new ListStockShortagesQuery());
+    const result = await useCase.execute(new ListStockShortagesQuery());
 
     expect(result).toEqual(shortages);
   });
 
   it('returns an empty list when nothing is short, never an error', async () => {
     const inventoryQuery = fakePort([]);
-    const handler = new ListStockShortagesHandler(inventoryQuery);
+    const useCase = new ListStockShortagesUseCase(inventoryQuery);
 
-    const result = await handler.execute(new ListStockShortagesQuery());
+    const result = await useCase.execute(new ListStockShortagesQuery());
 
     expect(result).toEqual([]);
   });
 
   it('calls the port exactly once, with no arguments of its own', async () => {
     const inventoryQuery = fakePort([]);
-    const handler = new ListStockShortagesHandler(inventoryQuery);
+    const useCase = new ListStockShortagesUseCase(inventoryQuery);
 
-    await handler.execute(new ListStockShortagesQuery());
+    await useCase.execute(new ListStockShortagesQuery());
 
     expect(inventoryQuery.listStockShortages).toHaveBeenCalledTimes(1);
     expect(inventoryQuery.listStockShortages).toHaveBeenCalledWith();

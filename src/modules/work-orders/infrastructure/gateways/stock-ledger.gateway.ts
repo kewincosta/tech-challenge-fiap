@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
   ConsumeStockBatchCommand,
-  ConsumeStockBatchHandler,
+  ConsumeStockBatchUseCase,
   RestoreStockBatchCommand,
-  RestoreStockBatchHandler,
+  RestoreStockBatchUseCase,
   SettleStockMovementsCommand,
-  SettleStockMovementsHandler,
+  SettleStockMovementsUseCase,
   WriteOffStockMovementsCommand,
-  WriteOffStockMovementsHandler,
+  WriteOffStockMovementsUseCase,
 } from '../../../inventory';
 import { StockLedger, StockLine } from '../../application/ports/stock-ledger.port';
 
@@ -19,10 +19,10 @@ import { StockLedger, StockLine } from '../../application/ports/stock-ledger.por
 @Injectable()
 export class StockLedgerGateway implements StockLedger {
   constructor(
-    private readonly consumeStock: ConsumeStockBatchHandler,
-    private readonly restoreStock: RestoreStockBatchHandler,
-    private readonly settleMovements: SettleStockMovementsHandler,
-    private readonly writeOffMovements: WriteOffStockMovementsHandler,
+    private readonly consumeStock: ConsumeStockBatchUseCase,
+    private readonly restoreStock: RestoreStockBatchUseCase,
+    private readonly settleMovements: SettleStockMovementsUseCase,
+    private readonly writeOffMovements: WriteOffStockMovementsUseCase,
   ) {}
 
   async consume(workOrderId: string, lines: StockLine[], actorUserId: string): Promise<void> {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
-  GetInventoryItemHandler,
+  GetInventoryItemUseCase,
   GetInventoryItemQuery,
   InventoryItemNotFoundError,
 } from '../../../inventory';
@@ -14,7 +14,7 @@ const ACTIVE_STATUS = 'ACTIVE';
  */
 @Injectable()
 export class PartCatalogGateway implements PartCatalog {
-  constructor(private readonly getInventoryItem: GetInventoryItemHandler) {}
+  constructor(private readonly getInventoryItem: GetInventoryItemUseCase) {}
 
   async findById(inventoryItemId: string): Promise<PartRef | null> {
     try {

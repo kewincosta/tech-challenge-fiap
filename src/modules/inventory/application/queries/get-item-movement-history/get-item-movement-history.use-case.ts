@@ -6,7 +6,7 @@ import { GetItemMovementHistoryQuery } from './get-item-movement-history.query';
  * An unknown item is refused with the not-found error (INV-04 AC5). An item with no movements yet
  * answers an empty list, never an error (spec.md's Edge Cases).
  */
-export class GetItemMovementHistoryHandler {
+export class GetItemMovementHistoryUseCase {
   constructor(private readonly inventoryQuery: InventoryQueryPort) {}
 
   async execute(query: GetItemMovementHistoryQuery): Promise<StockMovementSummaryDto[]> {

@@ -29,27 +29,27 @@ import {
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AdjustStockCommand } from '../../application/commands/adjust-stock/adjust-stock.command';
-import { AdjustStockHandler } from '../../application/commands/adjust-stock/adjust-stock.handler';
+import { AdjustStockUseCase } from '../../application/commands/adjust-stock/adjust-stock.use-case';
 import { CreateInventoryItemCommand } from '../../application/commands/create-inventory-item/create-inventory-item.command';
-import { CreateInventoryItemHandler } from '../../application/commands/create-inventory-item/create-inventory-item.handler';
+import { CreateInventoryItemUseCase } from '../../application/commands/create-inventory-item/create-inventory-item.use-case';
 import { DeactivateInventoryItemCommand } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.command';
-import { DeactivateInventoryItemHandler } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.handler';
+import { DeactivateInventoryItemUseCase } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.use-case';
 import { ReplenishStockCommand } from '../../application/commands/replenish-stock/replenish-stock.command';
-import { ReplenishStockHandler } from '../../application/commands/replenish-stock/replenish-stock.handler';
+import { ReplenishStockUseCase } from '../../application/commands/replenish-stock/replenish-stock.use-case';
 import { UpdateInventoryItemCommand } from '../../application/commands/update-inventory-item/update-inventory-item.command';
-import { UpdateInventoryItemHandler } from '../../application/commands/update-inventory-item/update-inventory-item.handler';
+import { UpdateInventoryItemUseCase } from '../../application/commands/update-inventory-item/update-inventory-item.use-case';
 import {
   InventoryItemSummaryDto,
   StockMovementSummaryDto,
   StockShortageDto,
 } from '../../application/ports/inventory-query.port';
-import { GetInventoryItemHandler } from '../../application/queries/get-inventory-item/get-inventory-item.handler';
+import { GetInventoryItemUseCase } from '../../application/queries/get-inventory-item/get-inventory-item.use-case';
 import { GetInventoryItemQuery } from '../../application/queries/get-inventory-item/get-inventory-item.query';
-import { GetItemMovementHistoryHandler } from '../../application/queries/get-item-movement-history/get-item-movement-history.handler';
+import { GetItemMovementHistoryUseCase } from '../../application/queries/get-item-movement-history/get-item-movement-history.use-case';
 import { GetItemMovementHistoryQuery } from '../../application/queries/get-item-movement-history/get-item-movement-history.query';
-import { ListInventoryItemsHandler } from '../../application/queries/list-inventory-items/list-inventory-items.handler';
+import { ListInventoryItemsUseCase } from '../../application/queries/list-inventory-items/list-inventory-items.use-case';
 import { ListInventoryItemsQuery } from '../../application/queries/list-inventory-items/list-inventory-items.query';
-import { ListStockShortagesHandler } from '../../application/queries/list-stock-shortages/list-stock-shortages.handler';
+import { ListStockShortagesUseCase } from '../../application/queries/list-stock-shortages/list-stock-shortages.use-case';
 import { ListStockShortagesQuery } from '../../application/queries/list-stock-shortages/list-stock-shortages.query';
 import { AdjustStockRequestDto } from '../dtos/adjust-stock.request.dto';
 import { CreateInventoryItemRequestDto } from '../dtos/create-inventory-item.request.dto';
@@ -66,15 +66,15 @@ import { UpdateInventoryItemRequestDto } from '../dtos/update-inventory-item.req
 @Controller('inventory-items')
 export class InventoryItemsController {
   constructor(
-    private readonly createItem: CreateInventoryItemHandler,
-    private readonly updateItem: UpdateInventoryItemHandler,
-    private readonly deactivateItem: DeactivateInventoryItemHandler,
-    private readonly replenishStock: ReplenishStockHandler,
-    private readonly adjustStock: AdjustStockHandler,
-    private readonly getItem: GetInventoryItemHandler,
-    private readonly listItems: ListInventoryItemsHandler,
-    private readonly listShortages: ListStockShortagesHandler,
-    private readonly getMovementHistory: GetItemMovementHistoryHandler,
+    private readonly createItem: CreateInventoryItemUseCase,
+    private readonly updateItem: UpdateInventoryItemUseCase,
+    private readonly deactivateItem: DeactivateInventoryItemUseCase,
+    private readonly replenishStock: ReplenishStockUseCase,
+    private readonly adjustStock: AdjustStockUseCase,
+    private readonly getItem: GetInventoryItemUseCase,
+    private readonly listItems: ListInventoryItemsUseCase,
+    private readonly listShortages: ListStockShortagesUseCase,
+    private readonly getMovementHistory: GetItemMovementHistoryUseCase,
   ) {}
 
   @Post()

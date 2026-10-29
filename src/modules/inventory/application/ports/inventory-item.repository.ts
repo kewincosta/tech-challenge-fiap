@@ -37,7 +37,7 @@ export interface InventoryItemRepository {
    * The `CONSUMPTION` movements a return draws from, newest first (spec.md's Assumptions: "the
    * work order's pending consumptions for that item, drawn newest first"). Work-orders has no way
    * to know a movement id - that data lives only in `stock_movements`, inventory's own ledger, so
-   * `RestoreStockBatchHandler` resolves it itself rather than the caller supplying it.
+   * `RestoreStockBatchUseCase` resolves it itself rather than the caller supplying it.
    */
   findPendingConsumptions(
     inventoryItemId: InventoryItemId,

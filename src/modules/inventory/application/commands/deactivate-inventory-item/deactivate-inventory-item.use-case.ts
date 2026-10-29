@@ -14,7 +14,7 @@ import { DeactivateInventoryItemCommand } from './deactivate-inventory-item.comm
  * or canceled cannot leave the catalog, because the work order would then hold a line nobody can
  * price or withdraw again.
  */
-export class DeactivateInventoryItemHandler {
+export class DeactivateInventoryItemUseCase {
   constructor(
     private readonly items: InventoryItemRepository,
     private readonly inventoryQuery: InventoryQueryPort,

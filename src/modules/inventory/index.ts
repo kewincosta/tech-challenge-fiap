@@ -1,12 +1,12 @@
 export { ConsumeStockBatchCommand } from './application/commands/consume-stock-batch/consume-stock-batch.command';
-export { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
+export { ConsumeStockBatchUseCase } from './application/commands/consume-stock-batch/consume-stock-batch.use-case';
 export { RestoreStockBatchCommand } from './application/commands/restore-stock-batch/restore-stock-batch.command';
-export { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
+export { RestoreStockBatchUseCase } from './application/commands/restore-stock-batch/restore-stock-batch.use-case';
 export { SettleStockMovementsCommand } from './application/commands/settle-stock-movements/settle-stock-movements.command';
-export { SettleStockMovementsHandler } from './application/commands/settle-stock-movements/settle-stock-movements.handler';
+export { SettleStockMovementsUseCase } from './application/commands/settle-stock-movements/settle-stock-movements.use-case';
 export { WriteOffStockMovementsCommand } from './application/commands/write-off-stock-movements/write-off-stock-movements.command';
-export { WriteOffStockMovementsHandler } from './application/commands/write-off-stock-movements/write-off-stock-movements.handler';
-export { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
+export { WriteOffStockMovementsUseCase } from './application/commands/write-off-stock-movements/write-off-stock-movements.use-case';
+export { GetInventoryItemUseCase } from './application/queries/get-inventory-item/get-inventory-item.use-case';
 export { GetInventoryItemQuery } from './application/queries/get-inventory-item/get-inventory-item.query';
 export type { InventoryItemSummaryDto } from './application/ports/inventory-query.port';
 export { InventoryItemNotFoundError } from './domain/errors/inventory-item-not-found.error';

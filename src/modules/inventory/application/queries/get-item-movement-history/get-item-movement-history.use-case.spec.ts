@@ -5,7 +5,7 @@ import {
   InventoryQueryPort,
   StockMovementSummaryDto,
 } from '../../ports/inventory-query.port';
-import { GetItemMovementHistoryHandler } from './get-item-movement-history.handler';
+import { GetItemMovementHistoryUseCase } from './get-item-movement-history.use-case';
 import { GetItemMovementHistoryQuery } from './get-item-movement-history.query';
 
 const ITEM_ID = '11111111-1111-4111-8111-111111111111';
@@ -63,27 +63,27 @@ function portHolding(
   };
 }
 
-describe('GetItemMovementHistoryHandler', () => {
+describe('GetItemMovementHistoryUseCase', () => {
   it('lists the movements of an item that has them, in the order the port gives them', async () => {
-    const handler = new GetItemMovementHistoryHandler(portHolding(ITEM, [INBOUND, CONSUMPTION]));
+    const useCase = new GetItemMovementHistoryUseCase(portHolding(ITEM, [INBOUND, CONSUMPTION]));
 
-    const result = await handler.execute(new GetItemMovementHistoryQuery(ITEM_ID));
+    const result = await useCase.execute(new GetItemMovementHistoryQuery(ITEM_ID));
 
     expect(result).toEqual([INBOUND, CONSUMPTION]);
   });
 
   it('answers an empty list for an item that exists and has no movement yet', async () => {
-    const handler = new GetItemMovementHistoryHandler(portHolding(ITEM, []));
+    const useCase = new GetItemMovementHistoryUseCase(portHolding(ITEM, []));
 
-    const result = await handler.execute(new GetItemMovementHistoryQuery(ITEM_ID));
+    const result = await useCase.execute(new GetItemMovementHistoryQuery(ITEM_ID));
 
     expect(result).toEqual([]);
   });
 
   it('refuses an item the port holds nothing for with the inventory item not-found error', async () => {
-    const handler = new GetItemMovementHistoryHandler(portHolding(null, []));
+    const useCase = new GetItemMovementHistoryUseCase(portHolding(null, []));
 
-    await expect(handler.execute(new GetItemMovementHistoryQuery(ITEM_ID))).rejects.toThrow(
+    await expect(useCase.execute(new GetItemMovementHistoryQuery(ITEM_ID))).rejects.toThrow(
       InventoryItemNotFoundError,
     );
   });

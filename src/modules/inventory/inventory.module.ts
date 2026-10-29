@@ -5,21 +5,21 @@ import { DomainEventPublisher } from '../../shared/application/ports/domain-even
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { IdentityModule } from '../identity';
-import { AdjustStockHandler } from './application/commands/adjust-stock/adjust-stock.handler';
-import { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
-import { CreateInventoryItemHandler } from './application/commands/create-inventory-item/create-inventory-item.handler';
-import { DeactivateInventoryItemHandler } from './application/commands/deactivate-inventory-item/deactivate-inventory-item.handler';
-import { ReplenishStockHandler } from './application/commands/replenish-stock/replenish-stock.handler';
-import { RestoreStockBatchHandler } from './application/commands/restore-stock-batch/restore-stock-batch.handler';
-import { SettleStockMovementsHandler } from './application/commands/settle-stock-movements/settle-stock-movements.handler';
-import { UpdateInventoryItemHandler } from './application/commands/update-inventory-item/update-inventory-item.handler';
-import { WriteOffStockMovementsHandler } from './application/commands/write-off-stock-movements/write-off-stock-movements.handler';
+import { AdjustStockUseCase } from './application/commands/adjust-stock/adjust-stock.use-case';
+import { ConsumeStockBatchUseCase } from './application/commands/consume-stock-batch/consume-stock-batch.use-case';
+import { CreateInventoryItemUseCase } from './application/commands/create-inventory-item/create-inventory-item.use-case';
+import { DeactivateInventoryItemUseCase } from './application/commands/deactivate-inventory-item/deactivate-inventory-item.use-case';
+import { ReplenishStockUseCase } from './application/commands/replenish-stock/replenish-stock.use-case';
+import { RestoreStockBatchUseCase } from './application/commands/restore-stock-batch/restore-stock-batch.use-case';
+import { SettleStockMovementsUseCase } from './application/commands/settle-stock-movements/settle-stock-movements.use-case';
+import { UpdateInventoryItemUseCase } from './application/commands/update-inventory-item/update-inventory-item.use-case';
+import { WriteOffStockMovementsUseCase } from './application/commands/write-off-stock-movements/write-off-stock-movements.use-case';
 import { InventoryItemRepository } from './application/ports/inventory-item.repository';
 import { InventoryQueryPort } from './application/ports/inventory-query.port';
-import { GetInventoryItemHandler } from './application/queries/get-inventory-item/get-inventory-item.handler';
-import { GetItemMovementHistoryHandler } from './application/queries/get-item-movement-history/get-item-movement-history.handler';
-import { ListInventoryItemsHandler } from './application/queries/list-inventory-items/list-inventory-items.handler';
-import { ListStockShortagesHandler } from './application/queries/list-stock-shortages/list-stock-shortages.handler';
+import { GetInventoryItemUseCase } from './application/queries/get-inventory-item/get-inventory-item.use-case';
+import { GetItemMovementHistoryUseCase } from './application/queries/get-item-movement-history/get-item-movement-history.use-case';
+import { ListInventoryItemsUseCase } from './application/queries/list-inventory-items/list-inventory-items.use-case';
+import { ListStockShortagesUseCase } from './application/queries/list-stock-shortages/list-stock-shortages.use-case';
 import { InventoryItemKeyResolver } from './infrastructure/persistence/inventory-item-key-resolver';
 import { InventoryItemOrmEntity } from './infrastructure/persistence/inventory-item.orm-entity';
 import { StockMovementOrmEntity } from './infrastructure/persistence/stock-movement.orm-entity';
@@ -36,105 +36,105 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
   controllers: [InventoryItemsController],
   providers: [
     {
-      provide: CreateInventoryItemHandler,
+      provide: CreateInventoryItemUseCase,
       useFactory: (
         items: InventoryItemRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new CreateInventoryItemHandler(items, idGenerator, clock, events),
+      ) => new CreateInventoryItemUseCase(items, idGenerator, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: UpdateInventoryItemHandler,
+      provide: UpdateInventoryItemUseCase,
       useFactory: (items: InventoryItemRepository, clock: Clock, events: DomainEventPublisher) =>
-        new UpdateInventoryItemHandler(items, clock, events),
+        new UpdateInventoryItemUseCase(items, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: DeactivateInventoryItemHandler,
+      provide: DeactivateInventoryItemUseCase,
       useFactory: (
         items: InventoryItemRepository,
         inventoryQuery: InventoryQueryPort,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new DeactivateInventoryItemHandler(items, inventoryQuery, clock, events),
+      ) => new DeactivateInventoryItemUseCase(items, inventoryQuery, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, INVENTORY_QUERY_PORT, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: GetInventoryItemHandler,
+      provide: GetInventoryItemUseCase,
       useFactory: (inventoryQuery: InventoryQueryPort) =>
-        new GetInventoryItemHandler(inventoryQuery),
+        new GetInventoryItemUseCase(inventoryQuery),
       inject: [INVENTORY_QUERY_PORT],
     },
     {
-      provide: ListInventoryItemsHandler,
+      provide: ListInventoryItemsUseCase,
       useFactory: (inventoryQuery: InventoryQueryPort) =>
-        new ListInventoryItemsHandler(inventoryQuery),
+        new ListInventoryItemsUseCase(inventoryQuery),
       inject: [INVENTORY_QUERY_PORT],
     },
     {
-      provide: GetItemMovementHistoryHandler,
+      provide: GetItemMovementHistoryUseCase,
       useFactory: (inventoryQuery: InventoryQueryPort) =>
-        new GetItemMovementHistoryHandler(inventoryQuery),
+        new GetItemMovementHistoryUseCase(inventoryQuery),
       inject: [INVENTORY_QUERY_PORT],
     },
     {
-      provide: ListStockShortagesHandler,
+      provide: ListStockShortagesUseCase,
       useFactory: (inventoryQuery: InventoryQueryPort) =>
-        new ListStockShortagesHandler(inventoryQuery),
+        new ListStockShortagesUseCase(inventoryQuery),
       inject: [INVENTORY_QUERY_PORT],
     },
     {
-      provide: ReplenishStockHandler,
+      provide: ReplenishStockUseCase,
       useFactory: (
         items: InventoryItemRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new ReplenishStockHandler(items, idGenerator, clock, events),
+      ) => new ReplenishStockUseCase(items, idGenerator, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: AdjustStockHandler,
+      provide: AdjustStockUseCase,
       useFactory: (
         items: InventoryItemRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new AdjustStockHandler(items, idGenerator, clock, events),
+      ) => new AdjustStockUseCase(items, idGenerator, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: ConsumeStockBatchHandler,
+      provide: ConsumeStockBatchUseCase,
       useFactory: (
         items: InventoryItemRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new ConsumeStockBatchHandler(items, idGenerator, clock, events),
+      ) => new ConsumeStockBatchUseCase(items, idGenerator, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: RestoreStockBatchHandler,
+      provide: RestoreStockBatchUseCase,
       useFactory: (
         items: InventoryItemRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new RestoreStockBatchHandler(items, idGenerator, clock, events),
+      ) => new RestoreStockBatchUseCase(items, idGenerator, clock, events),
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: SettleStockMovementsHandler,
+      provide: SettleStockMovementsUseCase,
       useFactory: (items: InventoryItemRepository, clock: Clock) =>
-        new SettleStockMovementsHandler(items, clock),
+        new SettleStockMovementsUseCase(items, clock),
       inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
     },
     {
-      provide: WriteOffStockMovementsHandler,
+      provide: WriteOffStockMovementsUseCase,
       useFactory: (items: InventoryItemRepository, clock: Clock) =>
-        new WriteOffStockMovementsHandler(items, clock),
+        new WriteOffStockMovementsUseCase(items, clock),
       inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
     },
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
@@ -142,11 +142,11 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     InventoryItemKeyResolver,
   ],
   exports: [
-    GetInventoryItemHandler,
-    ConsumeStockBatchHandler,
-    RestoreStockBatchHandler,
-    SettleStockMovementsHandler,
-    WriteOffStockMovementsHandler,
+    GetInventoryItemUseCase,
+    ConsumeStockBatchUseCase,
+    RestoreStockBatchUseCase,
+    SettleStockMovementsUseCase,
+    WriteOffStockMovementsUseCase,
     InventoryItemKeyResolver,
   ],
 })

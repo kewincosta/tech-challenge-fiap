@@ -9,7 +9,7 @@ import { WriteOffStockMovementsCommand } from './write-off-stock-movements.comma
  * not throw - cancelling a work order that withdrew no part, or that had every withdrawal already
  * returned, is ordinary, not an error (spec.md's edge cases).
  */
-export class WriteOffStockMovementsHandler {
+export class WriteOffStockMovementsUseCase {
   constructor(
     private readonly items: InventoryItemRepository,
     private readonly clock: Clock,

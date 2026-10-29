@@ -16,17 +16,17 @@ import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
 import { AdjustStockCommand } from './adjust-stock.command';
-import { AdjustStockHandler } from './adjust-stock.handler';
+import { AdjustStockUseCase } from './adjust-stock.use-case';
 
 const ITEM_ID = InventoryItemId.create('11111111-1111-4111-8111-111111111111');
 const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new AdjustStockHandler(items, new FakeIdGenerator(), clock, events);
-  return { handler, items, events, clock };
+  const useCase = new AdjustStockUseCase(items, new FakeIdGenerator(), clock, events);
+  return { useCase, items, events, clock };
 }
 
 // A stored item has no pending events, like one the repository loaded.
@@ -50,12 +50,12 @@ function buildItemWithStock(units = 10): InventoryItem {
   return item;
 }
 
-describe('AdjustStockHandler', () => {
+describe('AdjustStockUseCase', () => {
   it('should lower the count and append exactly one ADJUSTMENT movement', async () => {
-    const { handler, items, events, clock } = makeHandler();
+    const { useCase, items, events, clock } = makeUseCase();
     await items.save(buildItemWithStock(10));
 
-    await handler.execute(
+    await useCase.execute(
       new AdjustStockCommand(ITEM_ID.value, 3, ACTOR_ID, 'Contagem divergente'),
     );
 
@@ -69,34 +69,34 @@ describe('AdjustStockHandler', () => {
   });
 
   it('should refuse an adjustment with no note', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItemWithStock(10));
 
     await expect(
-      handler.execute(new AdjustStockCommand(ITEM_ID.value, 3, ACTOR_ID, '')),
+      useCase.execute(new AdjustStockCommand(ITEM_ID.value, 3, ACTOR_ID, '')),
     ).rejects.toThrow(AdjustmentNoteRequiredError);
     expect(items.items[0].quantityOnHand.units).toBe(10);
   });
 
   it('should refuse a zero or negative quantity', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItemWithStock(10));
 
     await expect(
-      handler.execute(new AdjustStockCommand(ITEM_ID.value, 0, ACTOR_ID, 'nota')),
+      useCase.execute(new AdjustStockCommand(ITEM_ID.value, 0, ACTOR_ID, 'nota')),
     ).rejects.toThrow(InvalidMovementQuantityError);
     await expect(
-      handler.execute(new AdjustStockCommand(ITEM_ID.value, -1, ACTOR_ID, 'nota')),
+      useCase.execute(new AdjustStockCommand(ITEM_ID.value, -1, ACTOR_ID, 'nota')),
     ).rejects.toThrow(InvalidMovementQuantityError);
     expect(items.items[0].quantityOnHand.units).toBe(10);
   });
 
   it('should refuse an adjustment below zero with InsufficientStockError and persist nothing', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItemWithStock(5));
 
     await expect(
-      handler.execute(new AdjustStockCommand(ITEM_ID.value, 6, ACTOR_ID, 'nota')),
+      useCase.execute(new AdjustStockCommand(ITEM_ID.value, 6, ACTOR_ID, 'nota')),
     ).rejects.toThrow(InsufficientStockError);
     expect(items.items[0].quantityOnHand.units).toBe(5);
     expect(
@@ -105,10 +105,10 @@ describe('AdjustStockHandler', () => {
   });
 
   it('should refuse an unknown item and write nothing', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new AdjustStockCommand('00000000-0000-4000-8000-000000000001', 1, ACTOR_ID, 'nota'),
       ),
     ).rejects.toThrow(InventoryItemNotFoundError);

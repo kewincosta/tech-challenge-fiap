@@ -214,7 +214,7 @@ export class InventoryItem extends AggregateRoot {
 
   /**
    * Raises the count for a part returned unused. `undoesMovementId` arrives already resolved -
-   * `RestoreStockBatchHandler` looks it up from the ledger via `findPendingConsumptions` before
+   * `RestoreStockBatchUseCase` looks it up from the ledger via `findPendingConsumptions` before
    * calling this (the T12 correction in tasks.md: work-orders has no durable place to remember a
    * movement id across requests, so this aggregate still never loads prior movements itself).
    */

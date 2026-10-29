@@ -13,7 +13,7 @@ import {
   CreateInventoryItemCommand,
 } from './create-inventory-item.command';
 
-export class CreateInventoryItemHandler {
+export class CreateInventoryItemUseCase {
   constructor(
     private readonly items: InventoryItemRepository,
     private readonly idGenerator: IdGenerator,

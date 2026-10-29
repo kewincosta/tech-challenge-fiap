@@ -12,7 +12,7 @@ import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
 import { ConsumeStockBatchCommand } from './consume-stock-batch.command';
-import { ConsumeStockBatchHandler } from './consume-stock-batch.handler';
+import { ConsumeStockBatchUseCase } from './consume-stock-batch.use-case';
 
 const ITEM_A_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_B_ID = '22222222-2222-4222-8222-222222222222';
@@ -39,24 +39,24 @@ function buildStockedItem(id: string, quantity: number, priceCents = 2500): Inve
   return item;
 }
 
-function makeHandler() {
+function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
-  const handler = new ConsumeStockBatchHandler(
+  const useCase = new ConsumeStockBatchUseCase(
     items,
     new FakeIdGenerator(),
     new FakeClock(),
     new RecordingDomainEventPublisher(),
   );
-  return { handler, items };
+  return { useCase, items };
 }
 
-describe('ConsumeStockBatchHandler', () => {
+describe('ConsumeStockBatchUseCase', () => {
   it('applies one consumption per line and returns one minted movement id per line', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildStockedItem(ITEM_A_ID, 5));
     await items.save(buildStockedItem(ITEM_B_ID, 5));
 
-    const results = await handler.execute(
+    const results = await useCase.execute(
       new ConsumeStockBatchCommand(
         [
           { inventoryItemId: ITEM_A_ID, quantity: 2 },
@@ -77,10 +77,10 @@ describe('ConsumeStockBatchHandler', () => {
   });
 
   it("writes the item's own catalog price on the movement, not anything the command supplies", async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildStockedItem(ITEM_A_ID, 5, 4321));
 
-    await handler.execute(
+    await useCase.execute(
       new ConsumeStockBatchCommand(
         [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
         WORK_ORDER_ID,
@@ -94,12 +94,12 @@ describe('ConsumeStockBatchHandler', () => {
   });
 
   it('refuses the whole command with InsufficientStockError when any line exceeds its count on hand', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildStockedItem(ITEM_A_ID, 5));
     await items.save(buildStockedItem(ITEM_B_ID, 1));
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new ConsumeStockBatchCommand(
           [
             { inventoryItemId: ITEM_A_ID, quantity: 2 },
@@ -113,11 +113,11 @@ describe('ConsumeStockBatchHandler', () => {
   });
 
   it('refuses with InventoryItemNotFoundError when an addressed id matches no item', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildStockedItem(ITEM_A_ID, 5));
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new ConsumeStockBatchCommand(
           [{ inventoryItemId: ITEM_B_ID, quantity: 1 }],
           WORK_ORDER_ID,
@@ -128,12 +128,12 @@ describe('ConsumeStockBatchHandler', () => {
   });
 
   it('saves nothing when a later line in the batch is refused', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildStockedItem(ITEM_A_ID, 5));
     await items.save(buildStockedItem(ITEM_B_ID, 1));
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new ConsumeStockBatchCommand(
           [
             { inventoryItemId: ITEM_A_ID, quantity: 2 },

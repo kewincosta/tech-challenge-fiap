@@ -7,8 +7,8 @@ import { InventoryItemKind } from '../../../domain/inventory-item-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
-import { WriteOffStockMovementsCommand } from './write-off-stock-movements.command';
-import { WriteOffStockMovementsHandler } from './write-off-stock-movements.handler';
+import { SettleStockMovementsCommand } from './settle-stock-movements.command';
+import { SettleStockMovementsUseCase } from './settle-stock-movements.use-case';
 
 const WORK_ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_WORK_ORDER_ID = '33333333-3333-4333-8333-333333333333';
@@ -52,31 +52,31 @@ async function seedConsumptions(items: InMemoryInventoryItemRepository): Promise
   await items.save(item);
 }
 
-describe('WriteOffStockMovementsHandler', () => {
-  it("writes off the work order's outstanding consumptions and no other work order's, with the actor and the clock's moment", async () => {
+describe('SettleStockMovementsUseCase', () => {
+  it("settles the work order's pending consumptions and no other work order's, with the actor and the clock's moment", async () => {
     const items = new InMemoryInventoryItemRepository();
     await seedConsumptions(items);
-    const handler = new WriteOffStockMovementsHandler(items, new FakeClock(NOW));
+    const useCase = new SettleStockMovementsUseCase(items, new FakeClock(NOW));
 
-    await handler.execute(new WriteOffStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID));
+    await useCase.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID));
 
     expect(await items.findPendingConsumptions(ITEM_ID, WORK_ORDER_ID)).toEqual([]);
     expect(await items.findPendingConsumptions(ITEM_ID, OTHER_WORK_ORDER_ID)).toEqual([
       { movementId: OTHER_CONSUMPTION_ID, quantity: 2 },
     ]);
-    expect(items.writeOffs).toEqual([
+    expect(items.settlements).toEqual([
       { workOrderId: WORK_ORDER_ID, actorUserId: ACTOR_ID, now: NOW },
     ]);
   });
 
-  it('writes off nothing and does not throw for a work order with no outstanding consumption', async () => {
+  it('settles nothing and does not throw for a work order with no pending consumption', async () => {
     const items = new InMemoryInventoryItemRepository();
     await seedConsumptions(items);
-    const handler = new WriteOffStockMovementsHandler(items, new FakeClock(NOW));
+    const useCase = new SettleStockMovementsUseCase(items, new FakeClock(NOW));
 
     await expect(
-      handler.execute(
-        new WriteOffStockMovementsCommand('88888888-8888-4888-8888-888888888888', ACTOR_ID),
+      useCase.execute(
+        new SettleStockMovementsCommand('88888888-8888-4888-8888-888888888888', ACTOR_ID),
       ),
     ).resolves.not.toThrow();
 
@@ -86,14 +86,14 @@ describe('WriteOffStockMovementsHandler', () => {
 
   it('lets an error from the repository travel out untouched', async () => {
     class FailingItems extends InMemoryInventoryItemRepository {
-      override writeOffWorkOrderConsumptions(): Promise<number> {
+      override settleWorkOrderConsumptions(): Promise<number> {
         return Promise.reject(new Error('boom'));
       }
     }
-    const handler = new WriteOffStockMovementsHandler(new FailingItems(), new FakeClock());
+    const useCase = new SettleStockMovementsUseCase(new FailingItems(), new FakeClock());
 
     await expect(
-      handler.execute(new WriteOffStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)),
+      useCase.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)),
     ).rejects.toThrow('boom');
   });
 });

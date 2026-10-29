@@ -6,7 +6,7 @@ import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id
 import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { UpdateInventoryItemCommand } from './update-inventory-item.command';
 
-export class UpdateInventoryItemHandler {
+export class UpdateInventoryItemUseCase {
   constructor(
     private readonly items: InventoryItemRepository,
     private readonly clock: Clock,

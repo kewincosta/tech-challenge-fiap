@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
-import { GetInventoryItemHandler } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.handler';
+import { GetInventoryItemUseCase } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.use-case';
 import { GetInventoryItemQuery } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.query';
-import { GetItemMovementHistoryHandler } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.handler';
+import { GetItemMovementHistoryUseCase } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.use-case';
 import { GetItemMovementHistoryQuery } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.query';
-import { ListInventoryItemsHandler } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.handler';
+import { ListInventoryItemsUseCase } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.use-case';
 import { ListInventoryItemsQuery } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.query';
 import { InventoryItem } from '../../src/modules/inventory/domain/entities/inventory-item';
 import { InventoryItemNotFoundError } from '../../src/modules/inventory/domain/errors/inventory-item-not-found.error';
@@ -24,9 +24,9 @@ import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
 let repository: TypeOrmInventoryItemRepository;
-let getItemHandler: GetInventoryItemHandler;
-let listItemsHandler: ListInventoryItemsHandler;
-let getHistoryHandler: GetItemMovementHistoryHandler;
+let getItem: GetInventoryItemUseCase;
+let listItems: ListInventoryItemsUseCase;
+let getHistory: GetItemMovementHistoryUseCase;
 let actorExternalId: string;
 
 beforeAll(async () => {
@@ -43,9 +43,9 @@ beforeAll(async () => {
     new TypeOrmWorkOrderReads(dataSource),
     new UserKeyResolver(dataSource),
   );
-  getItemHandler = new GetInventoryItemHandler(queryAdapter);
-  listItemsHandler = new ListInventoryItemsHandler(queryAdapter);
-  getHistoryHandler = new GetItemMovementHistoryHandler(queryAdapter);
+  getItem = new GetInventoryItemUseCase(queryAdapter);
+  listItems = new ListInventoryItemsUseCase(queryAdapter);
+  getHistory = new GetItemMovementHistoryUseCase(queryAdapter);
   actorExternalId = await insertUser();
 });
 
@@ -80,14 +80,14 @@ describe('Inventory read queries', () => {
   it('should get an item by its external id', async () => {
     const item = await saveItem();
 
-    const found = await getItemHandler.execute(new GetInventoryItemQuery(item.id.value));
+    const found = await getItem.execute(new GetInventoryItemQuery(item.id.value));
 
     expect(found?.id).toBe(item.id.value);
     expect(found?.sku).toBe(item.sku.value);
   });
 
   it('should refuse a malformed id with the inventory item not-found error, not a database error', async () => {
-    await expect(getItemHandler.execute(new GetInventoryItemQuery('not-a-uuid'))).rejects.toThrow(
+    await expect(getItem.execute(new GetInventoryItemQuery('not-a-uuid'))).rejects.toThrow(
       InventoryItemNotFoundError,
     );
   });
@@ -95,9 +95,7 @@ describe('Inventory read queries', () => {
   it('should list every active item', async () => {
     const item = await saveItem();
 
-    const ids = (await listItemsHandler.execute(new ListInventoryItemsQuery())).map(
-      (row) => row.id,
-    );
+    const ids = (await listItems.execute(new ListInventoryItemsQuery())).map((row) => row.id);
 
     expect(ids).toContain(item.id.value);
   });
@@ -106,9 +104,7 @@ describe('Inventory read queries', () => {
     const part = await saveItem({ kind: InventoryItemKind.Part });
     const supply = await saveItem({ kind: InventoryItemKind.Supply });
 
-    const ids = (await listItemsHandler.execute(new ListInventoryItemsQuery('PART'))).map(
-      (row) => row.id,
-    );
+    const ids = (await listItems.execute(new ListInventoryItemsQuery('PART'))).map((row) => row.id);
 
     expect(ids).toContain(part.id.value);
     expect(ids).not.toContain(supply.id.value);
@@ -135,7 +131,7 @@ describe('Inventory read queries', () => {
     });
     await repository.save(loaded2!);
 
-    const history = await getHistoryHandler.execute(new GetItemMovementHistoryQuery(item.id.value));
+    const history = await getHistory.execute(new GetItemMovementHistoryQuery(item.id.value));
 
     expect(history).toHaveLength(2);
     expect(history[0].kind).toBe('INBOUND');
@@ -145,7 +141,7 @@ describe('Inventory read queries', () => {
   it('should return an empty history for a freshly created item', async () => {
     const item = await saveItem();
 
-    const history = await getHistoryHandler.execute(new GetItemMovementHistoryQuery(item.id.value));
+    const history = await getHistory.execute(new GetItemMovementHistoryQuery(item.id.value));
 
     expect(history).toEqual([]);
   });

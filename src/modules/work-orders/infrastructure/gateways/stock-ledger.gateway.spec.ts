@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   ConsumeStockBatchCommand,
-  ConsumeStockBatchHandler,
+  ConsumeStockBatchUseCase,
   RestoreStockBatchCommand,
-  RestoreStockBatchHandler,
+  RestoreStockBatchUseCase,
   SettleStockMovementsCommand,
-  SettleStockMovementsHandler,
+  SettleStockMovementsUseCase,
   WriteOffStockMovementsCommand,
-  WriteOffStockMovementsHandler,
+  WriteOffStockMovementsUseCase,
 } from '../../../inventory';
 import { StockLedgerGateway } from './stock-ledger.gateway';
 
@@ -23,8 +23,8 @@ interface Received {
   writeOff: unknown[];
 }
 
-// The gateway uses only `execute` of the inventory module's four stock handlers. Each stand-in
-// keeps what it was handed, so a gateway that sends a command to the wrong handler shows up as
+// The gateway uses only `execute` of the inventory module's four stock use cases. Each stand-in
+// keeps what it was handed, so a gateway that sends a command to the wrong use case shows up as
 // state, and `failure` makes every one of them reject like inventory does when stock falls short.
 function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: Received } {
   const received: Received = { consume: [], restore: [], settle: [], writeOff: [] };
@@ -35,16 +35,16 @@ function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: 
     },
   });
   const gateway = new StockLedgerGateway(
-    standIn(received.consume) as unknown as ConsumeStockBatchHandler,
-    standIn(received.restore) as unknown as RestoreStockBatchHandler,
-    standIn(received.settle) as unknown as SettleStockMovementsHandler,
-    standIn(received.writeOff) as unknown as WriteOffStockMovementsHandler,
+    standIn(received.consume) as unknown as ConsumeStockBatchUseCase,
+    standIn(received.restore) as unknown as RestoreStockBatchUseCase,
+    standIn(received.settle) as unknown as SettleStockMovementsUseCase,
+    standIn(received.writeOff) as unknown as WriteOffStockMovementsUseCase,
   );
   return { gateway, received };
 }
 
 describe('StockLedgerGateway', () => {
-  it('should hand the lines, the work order and the actor of a withdrawal to the consume handler alone', async () => {
+  it('should hand the lines, the work order and the actor of a withdrawal to the consume use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
     await gateway.consume(WORK_ORDER_ID, LINES, ACTOR_ID);
@@ -57,7 +57,7 @@ describe('StockLedgerGateway', () => {
     });
   });
 
-  it('should hand the lines, the work order and the actor of a return to the restore handler alone', async () => {
+  it('should hand the lines, the work order and the actor of a return to the restore use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
     await gateway.restore(WORK_ORDER_ID, LINES, ACTOR_ID);
@@ -70,7 +70,7 @@ describe('StockLedgerGateway', () => {
     });
   });
 
-  it('should hand the work order and the actor of a delivery to the settle handler alone', async () => {
+  it('should hand the work order and the actor of a delivery to the settle use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
     await gateway.settle(WORK_ORDER_ID, ACTOR_ID);
@@ -83,7 +83,7 @@ describe('StockLedgerGateway', () => {
     });
   });
 
-  it('should hand the work order and the actor of a cancellation to the write-off handler alone', async () => {
+  it('should hand the work order and the actor of a cancellation to the write-off use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
     await gateway.writeOff(WORK_ORDER_ID, ACTOR_ID);

@@ -12,17 +12,17 @@ import { InventoryItemKind } from '../../../domain/inventory-item-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { ReplenishStockCommand } from './replenish-stock.command';
-import { ReplenishStockHandler } from './replenish-stock.handler';
+import { ReplenishStockUseCase } from './replenish-stock.use-case';
 
 const ITEM_ID = InventoryItemId.create('11111111-1111-4111-8111-111111111111');
 const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
   const events = new RecordingDomainEventPublisher();
   const clock = new FakeClock();
-  const handler = new ReplenishStockHandler(items, new FakeIdGenerator(), clock, events);
-  return { handler, items, events, clock };
+  const useCase = new ReplenishStockUseCase(items, new FakeIdGenerator(), clock, events);
+  return { useCase, items, events, clock };
 }
 
 // A stored item has no pending events, like one the repository loaded.
@@ -39,12 +39,12 @@ function buildItem(): InventoryItem {
   return item;
 }
 
-describe('ReplenishStockHandler', () => {
+describe('ReplenishStockUseCase', () => {
   it('should raise the count and append exactly one INBOUND movement carrying the acting user', async () => {
-    const { handler, items, events, clock } = makeHandler();
+    const { useCase, items, events, clock } = makeUseCase();
     await items.save(buildItem());
 
-    await handler.execute(
+    await useCase.execute(
       new ReplenishStockCommand(ITEM_ID.value, 10, 2500, ACTOR_ID, 'Reposicao'),
     );
 
@@ -58,39 +58,39 @@ describe('ReplenishStockHandler', () => {
   });
 
   it('should accept a replenishment with no note', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItem());
 
-    await handler.execute(new ReplenishStockCommand(ITEM_ID.value, 5, 2500, ACTOR_ID));
+    await useCase.execute(new ReplenishStockCommand(ITEM_ID.value, 5, 2500, ACTOR_ID));
 
     expect(items.items[0].newMovements[0].note).toBeNull();
   });
 
   it('should refuse a zero quantity', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItem());
 
     await expect(
-      handler.execute(new ReplenishStockCommand(ITEM_ID.value, 0, 2500, ACTOR_ID)),
+      useCase.execute(new ReplenishStockCommand(ITEM_ID.value, 0, 2500, ACTOR_ID)),
     ).rejects.toThrow(InvalidMovementQuantityError);
     expect(items.items[0].quantityOnHand.units).toBe(0);
   });
 
   it('should refuse a negative quantity', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await items.save(buildItem());
 
     await expect(
-      handler.execute(new ReplenishStockCommand(ITEM_ID.value, -1, 2500, ACTOR_ID)),
+      useCase.execute(new ReplenishStockCommand(ITEM_ID.value, -1, 2500, ACTOR_ID)),
     ).rejects.toThrow(InvalidMovementQuantityError);
     expect(items.items[0].quantityOnHand.units).toBe(0);
   });
 
   it('should refuse an unknown item and write nothing', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new ReplenishStockCommand('00000000-0000-4000-8000-000000000001', 10, 2500, ACTOR_ID),
       ),
     ).rejects.toThrow(InventoryItemNotFoundError);

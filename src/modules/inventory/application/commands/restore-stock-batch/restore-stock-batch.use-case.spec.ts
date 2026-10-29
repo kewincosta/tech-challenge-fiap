@@ -12,7 +12,7 @@ import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
 import { RestoreStockBatchCommand } from './restore-stock-batch.command';
-import { RestoreStockBatchHandler } from './restore-stock-batch.handler';
+import { RestoreStockBatchUseCase } from './restore-stock-batch.use-case';
 
 const ITEM_A_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_B_ID = '22222222-2222-4222-8222-222222222222';
@@ -30,15 +30,15 @@ function buildItem(id: string): InventoryItem {
   });
 }
 
-function makeHandler() {
+function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
-  const handler = new RestoreStockBatchHandler(
+  const useCase = new RestoreStockBatchUseCase(
     items,
     new FakeIdGenerator(),
     new FakeClock(),
     new RecordingDomainEventPublisher(),
   );
-  return { handler, items };
+  return { useCase, items };
 }
 
 async function replenishAndConsume(
@@ -71,12 +71,12 @@ async function replenishAndConsume(
   }
 }
 
-describe('RestoreStockBatchHandler', () => {
+describe('RestoreStockBatchUseCase', () => {
   it('draws from the single pending consumption when one covers the whole return', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await replenishAndConsume(items, ITEM_A_ID, [2]);
 
-    await handler.execute(
+    await useCase.execute(
       new RestoreStockBatchCommand(
         [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
         WORK_ORDER_ID,
@@ -93,11 +93,11 @@ describe('RestoreStockBatchHandler', () => {
   });
 
   it('splits one return across two consumptions, drawing the newest one first', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     // Two separate withdrawals of the same item, on the same work order: 2 units, then 3 units.
     await replenishAndConsume(items, ITEM_A_ID, [2, 3]);
 
-    await handler.execute(
+    await useCase.execute(
       new RestoreStockBatchCommand(
         [{ inventoryItemId: ITEM_A_ID, quantity: 4 }],
         WORK_ORDER_ID,
@@ -123,13 +123,13 @@ describe('RestoreStockBatchHandler', () => {
   });
 
   it('never edits the original consumption, and marks it fully drained after a full return', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await replenishAndConsume(items, ITEM_A_ID, [2]);
     const consumptionId = items.items
       .find((item) => item.id.value === ITEM_A_ID)
       ?.newMovements.find((movement) => movement.kind === StockMovementKind.Consumption)?.id.value;
 
-    await handler.execute(
+    await useCase.execute(
       new RestoreStockBatchCommand(
         [{ inventoryItemId: ITEM_A_ID, quantity: 2 }],
         WORK_ORDER_ID,
@@ -145,11 +145,11 @@ describe('RestoreStockBatchHandler', () => {
   });
 
   it('refuses with InventoryItemNotFoundError when an addressed id matches no item', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await replenishAndConsume(items, ITEM_A_ID, [2]);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RestoreStockBatchCommand(
           [{ inventoryItemId: ITEM_B_ID, quantity: 1 }],
           WORK_ORDER_ID,
@@ -160,11 +160,11 @@ describe('RestoreStockBatchHandler', () => {
   });
 
   it('saves nothing when a later line in the batch is refused', async () => {
-    const { handler, items } = makeHandler();
+    const { useCase, items } = makeUseCase();
     await replenishAndConsume(items, ITEM_A_ID, [2]);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RestoreStockBatchCommand(
           [
             { inventoryItemId: ITEM_A_ID, quantity: 1 },

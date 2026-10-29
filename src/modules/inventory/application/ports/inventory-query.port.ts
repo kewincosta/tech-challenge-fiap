@@ -44,7 +44,7 @@ export interface InventoryQueryPort {
   listStockShortages(): Promise<StockShortageDto[]>;
   /**
    * The numbers of the work orders that planned this item and have not reached a terminal state.
-   * What `DeactivateInventoryItemHandler` refuses on. Empty list when the item is free, never an
+   * What `DeactivateInventoryItemUseCase` refuses on. Empty list when the item is free, never an
    * error, and empty for an unknown id too - existence is the repository's answer, not this one's.
    */
   listOpenWorkOrderNumbersUsing(externalId: string): Promise<string[]>;

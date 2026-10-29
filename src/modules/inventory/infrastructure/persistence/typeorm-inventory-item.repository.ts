@@ -72,8 +72,8 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   /**
    * The deadlock fix lives here, not in any caller: every batch, whatever order the client sent
    * its lines in, locks the same items in internal-id order in one query (design.md's Risks &
-   * Concerns). Meant to run inside the caller's own open transaction - `ConsumeStockBatchHandler`
-   * and `RestoreStockBatchHandler` are always reached from inside `WithdrawPartsHandler`'s or
+   * Concerns). Meant to run inside the caller's own open transaction - `ConsumeStockBatchUseCase`
+   * and `RestoreStockBatchUseCase` are always reached from inside `WithdrawPartsHandler`'s or
    * `ReturnPartsHandler`'s `transactionRunner.run`, so the lock this takes is held for that whole
    * transaction, not released when this query alone finishes.
    */

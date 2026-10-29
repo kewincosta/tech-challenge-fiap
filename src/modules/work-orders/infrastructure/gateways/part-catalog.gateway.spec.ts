@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GetInventoryItemHandler,
+  GetInventoryItemUseCase,
   GetInventoryItemQuery,
   InventoryItemNotFoundError,
   InventoryItemSummaryDto,
@@ -20,7 +20,7 @@ const ACTIVE_ITEM: InventoryItemSummaryDto = {
   status: 'ACTIVE',
 };
 
-// The gateway uses only `execute` of the inventory module's handler. The stand-in answers for the
+// The gateway uses only `execute` of the inventory module's use case. The stand-in answers for the
 // one id it is asked about, so a gateway that sends the wrong identifier gets `null`.
 function gatewayOver(result: InventoryItemSummaryDto | null | Error): PartCatalogGateway {
   const getInventoryItem = {
@@ -30,7 +30,7 @@ function gatewayOver(result: InventoryItemSummaryDto | null | Error): PartCatalo
       }
       return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
     },
-  } as unknown as GetInventoryItemHandler;
+  } as unknown as GetInventoryItemUseCase;
   return new PartCatalogGateway(getInventoryItem);
 }
 

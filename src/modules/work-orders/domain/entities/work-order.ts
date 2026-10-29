@@ -670,7 +670,7 @@ export class WorkOrder extends AggregateRoot {
   /**
    * Only records who took the handover and when - `chargedTotal` was already frozen by
    * `complete` and is untouched here. Settling the pending consumptions is
-   * `SettleStockMovementsHandler`'s job, inside the same transaction (T12, T17).
+   * `SettleStockMovementsUseCase`'s job, inside the same transaction (T12, T17).
    */
   deliver(input: CloseActionInput): void {
     this.assertStateAllows([WorkOrderStatus.Completed]);

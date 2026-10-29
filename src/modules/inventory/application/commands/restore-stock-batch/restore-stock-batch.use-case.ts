@@ -8,17 +8,17 @@ import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { RestoreStockBatchCommand } from './restore-stock-batch.command';
 
 /**
- * The inventory side of a return. Same shape as `ConsumeStockBatchHandler`: reached only from
+ * The inventory side of a return. Same shape as `ConsumeStockBatchUseCase`: reached only from
  * inside `ReturnPartsHandler`'s `transactionRunner.run` (AD-008), validates every line before
  * saving any of them.
  *
  * Work-orders has no way to know which movement a return undoes - that data lives only in this
- * module's own `stock_movements` ledger, so this handler resolves it itself: for each line, it
+ * module's own `stock_movements` ledger, so this use case resolves it itself: for each line, it
  * draws from the item's pending consumptions on that work order, newest first, splitting the
  * requested quantity across as many as it takes and appending one `RETURN` per consumption drawn
  * from (spec.md's Assumptions).
  */
-export class RestoreStockBatchHandler {
+export class RestoreStockBatchUseCase {
   constructor(
     private readonly items: InventoryItemRepository,
     private readonly idGenerator: IdGenerator,

@@ -42,7 +42,7 @@ export class PlanPartHandler implements ICommandHandler<PlanPartCommand, void> {
     }
     // Same gate AddRequestedServiceHandler applies to a deactivated service: an item off the
     // catalog does not enter a new work order, while the parts already planned on open work
-    // orders stay valid - which is also what DeactivateInventoryItemHandler refuses on.
+    // orders stay valid - which is also what DeactivateInventoryItemUseCase refuses on.
     if (!inventoryItem.active) {
       throw new InventoryItemInactiveError();
     }
