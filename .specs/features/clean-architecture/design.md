@@ -247,7 +247,7 @@ export class CreateWorkOrderUseCase {
 ### C10. Not-found decided in the query use case
 
 - **Purpose**: Keep the not-found rule in the core, so any entry point inherits it.
-- **Location**: the query use cases behind a read by identifier: get work order, get own work order, get service, get inventory item, get vehicle, get customer, get customer by user, get user by id, get role
+- **Location**: the query use cases behind a read by identifier: get work order, get own work order, work order trail, get service, get inventory item, inventory movement history, get vehicle, get customer, get customer by user, get user by id, get role
 - **Interfaces**: each throws its module's existing error (`WORK_ORDER_NOT_FOUND`, `SERVICE_NOT_FOUND`, `INVENTORY_ITEM_NOT_FOUND`, `VEHICLE_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `USER_NOT_FOUND`, `ROLE_NOT_FOUND`) and the controllers' `get*OrThrow` helpers disappear
 - **Dependencies**: none new
 - **Reuses**: the gateways in C3 catch the provider's not-found class and return `null`, so each consumer keeps raising its own error, such as `ReferencedCustomerNotFoundError`. Get customer keeps returning deactivated customers, which is what separates 404 from 422 for vehicle registration (`src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter.ts:44-50`)

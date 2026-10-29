@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 (T51 to T55) dispatched.
-- **Completed**: T1 to T50, T61 and T62. Totals after batch 9: unit 1100, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: 50 dependency violations, all in work-orders (core-no-frameworks 46, through-public-api 4), 0 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 done (T51 `55b1b4e`, T52 `4122a7f`, T53 `2592644`, T54 `f4cda90`, T55 `c8bde6b`). Batch 11 (T56 to T60) dispatched; the Verifier runs after it.
+- **Completed**: T1 to T55, T61 and T62. Totals after batch 10: unit 1111, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: no dependency violation (the file is `[]`), 0 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 10's compact summary, then dispatch batch 11 (T56 to T60), then the Verifier.
+- **Next step**: read batch 11's compact summary, then dispatch the Verifier (default model) and run `validate_state.py`.
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -265,6 +265,15 @@ entry. They apply to every feature.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
 
+**Facts from batch 10 that later tasks build on**:
+
+- Every module is migrated and listed in `migrated-modules.json`. No module file imports `@nestjs/cqrs`; what is left for T56 and T57 is `app.module.ts`, the comment at `in-memory-domain-event-dispatcher.ts:12`, `scripts/seed.ts` and `test/support/fakes/bus.stubs.ts`, which no spec imports any more.
+- The work order trail and the inventory movement history decide their not-found in the use case, like get and get own; design C10 now lists them.
+- The `@ApiOperation` descriptions at `work-orders.controller.ts:434` and `:458` say "the handler enforces it". They are part of the pinned OpenAPI document, so they stay (CA-02).
+- Left on purpose: comments that mean Nest route handlers (`inventory-items.controller.ts:118`, `authentication.e2e.spec.ts:267`), two comments in `vitest.config.ts` (lines 57 and 74 to 75), and the local names `makeHandler` and `handler` in 25 spec files. CA-08 covers class and file names only.
+- Hand mutants no test kills, on logic the feature did not change: `RemoveWorkOrderItemUseCase` without `save` survives every layer (DELETE answers 204 and no e2e reads the work order afterwards); the quantity check before the catalog read in `PlanPartUseCase` is asserted nowhere. Candidates for fix tasks if the Verifier flags them.
+- `FakeStockLedger` and `InMemoryWorkOrderRepository` take an optional "inside the transaction" probe, and the withdraw, return, deliver and cancel specs assert that the save and the ledger entries ran inside the transaction.
+
 **Facts from batch 9 that later tasks build on**:
 
 - `customers` and `vehicles` are migrated end to end. Get customer still returns deactivated customers. The `null` branches of `CustomerDirectory`, `VehicleDirectory` and `VehicleOwners` are unreachable with the real providers, and their specs still pin them, as with the catalogs.
@@ -277,7 +286,7 @@ entry. They apply to every feature.
 
 - `identity` is migrated end to end and listed in `migrated-modules.json`. `IdentityModule` implements `OnModuleInit` and subscribes the access cache and refresh-token-reuse subscribers on the dispatcher; nothing subscribes through `@nestjs/cqrs` any more. `@nestjs/cqrs` is still imported by customers (7 files), vehicles (7), work-orders (22) and `app.module.ts`.
 - Get-user-by-id throws `UserNotFoundError` (C10). Inside identity the callers keep their old answers by catching it: login answers `InvalidCredentialsError`, assign role and user access answer `AssignedUserNotFoundError`, refresh lets it through. `AssignedUserNotFoundError` now duplicates `UserNotFoundError` (same code, kind and message); removing it would change two assertions, so it stays. `identity/index.ts` exports `UserNotFoundError` for the gateways.
-- `FindUserByDocumentUseCase` is still wired in `identity.module.ts`, and no route, gateway or script calls it since T33. T57 removes use cases that nothing calls.
+- `FindUserByDocumentUseCase` is still wired in `identity.module.ts`, and no route, gateway or script calls it since T33. It stays: removing it would delete its pre-existing specs, no AC asks for it, and T57 counts every test. It is a follow-up candidate.
 - `customer.repository.spec.ts` ("should link a customer to a user saved earlier in the same open transaction") failed once on the untouched tree at `84af554`, with no detail recorded, and passed 25 isolated runs and every full run after. Cause unknown; investigate if it fails again.
 - The TTL e2e case pins `REFRESH_TOKEN_TTL_SECONDS` and `SESSION_ABSOLUTE_TTL_SECONDS` in one dedicated app and restores both in `finally`.
 - Docs that still name the old identity classes: `docs/architecture/c4-components-identity-and-access.mmd`, `low-level-design/authorization.md`, `low-level-design/users.md` (T59, T60). `security/reports/raw/semgrep.json` is a generated scan and stays untouched.
