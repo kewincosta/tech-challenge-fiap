@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
@@ -310,6 +311,15 @@ describe('Vehicles', () => {
       .get(`/api/v1/vehicles/${vehicleId}`)
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(404);
+  });
+
+  it('should answer 404 VEHICLE_NOT_FOUND for a vehicle id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/vehicles/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'VEHICLE_NOT_FOUND' });
   });
 
   it('should refuse a duplicate active plate', async () => {

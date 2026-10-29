@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
@@ -171,5 +172,14 @@ describe('User administration', () => {
       .expect(403);
 
     expect(response.body).toMatchObject({ code: 'AUTH_FORBIDDEN' });
+  });
+
+  it('should answer 404 USER_NOT_FOUND for a user id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/users/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'USER_NOT_FOUND' });
   });
 });

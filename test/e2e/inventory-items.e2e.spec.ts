@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
@@ -211,6 +212,24 @@ describe('Inventory items', () => {
       .get('/api/v1/inventory-items/00000000-0000-4000-8000-000000000001/movements')
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(404);
+  });
+
+  it('should answer 404 INVENTORY_ITEM_NOT_FOUND for an item id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/inventory-items/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
+  });
+
+  it('should answer 404 INVENTORY_ITEM_NOT_FOUND for the movements of an item that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/inventory-items/${randomUUID()}/movements`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'INVENTORY_ITEM_NOT_FOUND' });
   });
 
   it('should refuse a duplicate active SKU with 409', async () => {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
@@ -214,5 +215,14 @@ describe('Services', () => {
       .get('/api/v1/services/00000000-0000-4000-8000-000000000001')
       .set('Authorization', `Bearer ${admin.accessToken}`)
       .expect(404);
+  });
+
+  it('should answer 404 SERVICE_NOT_FOUND for a service id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/services/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'SERVICE_NOT_FOUND' });
   });
 });

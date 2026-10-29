@@ -345,9 +345,9 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `SERVICE_NOT_FOUND`, `INVENTORY_ITEM_NOT_FOUND` (item and movements), `VEHICLE_NOT_FOUND`, `CUSTOMER_NOT_FOUND` (by id and `me` without a record) and `USER_NOT_FOUND` are each asserted on their route with status 404
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by the cases added
+- [x] `SERVICE_NOT_FOUND`, `INVENTORY_ITEM_NOT_FOUND` (item and movements), `VEHICLE_NOT_FOUND`, `CUSTOMER_NOT_FOUND` (by id and `me` without a record) and `USER_NOT_FOUND` are each asserted on their route with status 404
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by the cases added
 
 **Tests**: e2e
 **Gate**: full

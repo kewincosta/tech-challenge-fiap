@@ -203,6 +203,26 @@ describe('Customers', () => {
       .expect(404);
   });
 
+  it('should answer 404 CUSTOMER_NOT_FOUND for a customer id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/customers/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'CUSTOMER_NOT_FOUND' });
+  });
+
+  it('should answer 404 CUSTOMER_NOT_FOUND on /customers/me for a user without a customer record', async () => {
+    const person = await registerAndLogin(app);
+
+    const response = await api(app)
+      .get('/api/v1/customers/me')
+      .set('Authorization', `Bearer ${person.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'CUSTOMER_NOT_FOUND' });
+  });
+
   it('should return 404 when registering a customer over a user that does not exist', async () => {
     // Every current account-creation path (public sign-up, POST /users/staff) unconditionally
     // assigns CUSTOMER, so there is no HTTP fixture for "a real user missing the CUSTOMER role" -
