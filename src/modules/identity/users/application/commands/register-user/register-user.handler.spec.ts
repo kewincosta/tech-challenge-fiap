@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeAccessCache } from '../../../../../../../test/support/fakes/fake-access-cache';
 import { FakeAssignmentRepository } from '../../../../../../../test/support/fakes/fake-assignment.repository';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
@@ -20,12 +19,14 @@ import { DocumentAlreadyInUseError } from '../../../domain/errors/document-alrea
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error';
 import { InvalidPersonDocumentError } from '../../../domain/errors/invalid-person-document.error';
 import { WeakPasswordError } from '../../../domain/errors/weak-password.error';
+import { UserRegistered } from '../../../domain/events/user-registered.event';
 import { GetUserByIdHandler } from '../../queries/get-user-by-id/get-user-by-id.handler';
 import { RegisterUserCommand } from './register-user.command';
 import { RegisterUserHandler } from './register-user.handler';
 
 // The role assignment is the real use case over fakes: the CUSTOMER role exists, and
-// `assignments` shows which roles the users ended up with.
+// `assignments` shows which roles the users ended up with. `events` holds what registration
+// published.
 async function makeHandler(assignments = new FakeAssignmentRepository()) {
   const users = new InMemoryUserRepository();
   const roles = new InMemoryRoleRepository();
@@ -42,7 +43,7 @@ async function makeHandler(assignments = new FakeAssignmentRepository()) {
     new GetUserByIdHandler(users),
     new RecordingDomainEventPublisher(),
   );
-  const eventBus = stubEventBus();
+  const events = new RecordingDomainEventPublisher();
   const transactionRunner = new FakeTransactionRunner();
   const handler = new RegisterUserHandler(
     users,
@@ -51,14 +52,14 @@ async function makeHandler(assignments = new FakeAssignmentRepository()) {
     clock,
     transactionRunner,
     assignRoleToUser,
-    eventBus.bus,
+    events,
   );
-  return { handler, users, assignments, customerRole, eventBus, transactionRunner };
+  return { handler, users, assignments, customerRole, events, clock, transactionRunner };
 }
 
 describe('RegisterUserHandler', () => {
   it('should create a user with a hashed password and a document and assign the default customer role', async () => {
-    const { handler, users, assignments, customerRole } = await makeHandler();
+    const { handler, users, assignments, customerRole, events, clock } = await makeHandler();
 
     const result = await handler.execute(
       new RegisterUserCommand('jane@example.com', 'Jane Doe', 'Str0ngPassword', '11144477735'),
@@ -70,6 +71,9 @@ describe('RegisterUserHandler', () => {
     expect(saved.passwordHash.value).toBe('hashed:Str0ngPassword');
     expect(saved.document.value).toBe('11144477735');
     expect([...assignments.userRoles]).toEqual([`${saved.id.value}:${customerRole.id.value}`]);
+    expect(events.published).toEqual([
+      new UserRegistered(saved.id.value, 'jane@example.com', clock.now()),
+    ]);
   });
 
   it('should generate a temporary password for a staff-created account and flag it pending', async () => {
@@ -154,7 +158,7 @@ describe('RegisterUserHandler', () => {
         return Promise.reject(assignmentFailure);
       }
     }
-    const { handler, transactionRunner } = await makeHandler(new FailingAssignments());
+    const { handler, transactionRunner, events } = await makeHandler(new FailingAssignments());
 
     await expect(
       handler.execute(
@@ -162,5 +166,6 @@ describe('RegisterUserHandler', () => {
       ),
     ).rejects.toThrow(assignmentFailure);
     expect(transactionRunner.runCalls).toBe(1);
+    expect(events.published).toEqual([]);
   });
 });

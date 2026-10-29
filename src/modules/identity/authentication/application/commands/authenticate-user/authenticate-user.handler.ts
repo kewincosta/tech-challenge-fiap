@@ -1,10 +1,12 @@
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../../../../../shared/application/ports/id-generator.port';
+import { UserDto } from '../../../../users/application/dtos/user.dto';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { VerifyCredentialsHandler } from '../../../../users/application/queries/verify-credentials/verify-credentials.handler';
 import { VerifyCredentialsQuery } from '../../../../users/application/queries/verify-credentials/verify-credentials.query';
+import { UserNotFoundError } from '../../../../users/domain/errors/user-not-found.error';
 import { Session } from '../../../domain/entities/session';
 import { InvalidCredentialsError } from '../../../domain/errors/invalid-credentials.error';
 import { RefreshTokenHash } from '../../../domain/value-objects/refresh-token-hash';
@@ -40,9 +42,16 @@ export class AuthenticateUserHandler {
     // Re-fetched by id rather than carried on VerifiedCredentialsDto, so both this handler and
     // RefreshSessionHandler read the pending-password flag through the same general-purpose
     // query instead of two different shapes of the same fact.
-    const user = await this.getUserById.execute(new GetUserByIdQuery(credentials.userId));
-    if (!user) {
-      throw new InvalidCredentialsError();
+    let user: UserDto;
+    try {
+      user = await this.getUserById.execute(new GetUserByIdQuery(credentials.userId));
+    } catch (error) {
+      // The account went away between the credential check and this read, which a login answers
+      // as it answers any other failure.
+      if (error instanceof UserNotFoundError) {
+        throw new InvalidCredentialsError();
+      }
+      throw error;
     }
     const now = this.clock.now();
     const rawRefreshToken = this.idGenerator.generate();

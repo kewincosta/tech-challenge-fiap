@@ -9,6 +9,7 @@ import {
   RegisterUserCommand,
   RegisterUserHandler,
   UserDto,
+  UserNotFoundError,
 } from '../../../identity';
 import { CustomerAccountsGateway } from './customer-accounts.gateway';
 
@@ -28,18 +29,28 @@ const USER: UserDto = {
 interface Setup {
   access?: EffectiveAccessDto;
   registered?: RegisteredUserDto | Error;
+  /** What the user lookup throws for the user it knows, in place of answering. */
+  lookupFailure?: Error;
 }
 
 // The gateway uses only `execute` of the identity module's three handlers. The first two answer
-// for the one user they know and, like identity, answer nothing for any other: no user, and empty
-// roles and permissions. The register handler keeps the commands it receives.
+// for the one user they know and, like identity, refuse any other: the lookup with its not-found
+// error, the effective access with empty roles and permissions. The register handler keeps the
+// commands it receives.
 function gatewayFor(setup: Setup = {}): {
   gateway: CustomerAccountsGateway;
   registerCommands: RegisterUserCommand[];
 } {
   const registerCommands: RegisterUserCommand[] = [];
   const getUserById = {
-    execute: (query: GetUserByIdQuery) => Promise.resolve(query.userId === USER_ID ? USER : null),
+    execute: (query: GetUserByIdQuery) => {
+      if (setup.lookupFailure) {
+        return Promise.reject(setup.lookupFailure);
+      }
+      return query.userId === USER_ID
+        ? Promise.resolve(USER)
+        : Promise.reject(new UserNotFoundError());
+    },
   } as unknown as GetUserByIdHandler;
   const getUserEffectiveAccess = {
     execute: (query: GetUserEffectiveAccessQuery) =>
@@ -74,6 +85,13 @@ describe('CustomerAccountsGateway', () => {
       const { gateway } = gatewayFor();
 
       expect(await gateway.findUser(UNKNOWN_USER_ID)).toBeNull();
+    });
+
+    it('should let any other error from the identity module through', async () => {
+      const failure = new Error('database is down');
+      const { gateway } = gatewayFor({ lookupFailure: failure });
+
+      await expect(gateway.findUser(USER_ID)).rejects.toBe(failure);
     });
   });
 

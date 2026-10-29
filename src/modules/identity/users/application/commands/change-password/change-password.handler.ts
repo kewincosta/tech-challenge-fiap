@@ -1,24 +1,20 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { LogoutAllSessionsCommand } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command';
 import { LogoutAllSessionsHandler } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { InvalidCredentialsError } from '../../../../authentication/domain/errors/invalid-credentials.error';
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error';
-import { USER_REPOSITORY, UserRepository } from '../../../domain/repositories/user.repository';
 import { Password } from '../../../domain/value-objects/password';
 import { PasswordHash } from '../../../domain/value-objects/password-hash';
 import { UserId } from '../../../domain/value-objects/user-id';
-import { PASSWORD_HASHER, PasswordHasher } from '../../ports/password-hasher.port';
+import { PasswordHasher } from '../../ports/password-hasher.port';
+import { UserRepository } from '../../ports/user.repository';
 import { ChangePasswordCommand } from './change-password.command';
 
-@CommandHandler(ChangePasswordCommand)
-export class ChangePasswordHandler implements ICommandHandler<ChangePasswordCommand, void> {
+export class ChangePasswordHandler {
   constructor(
-    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly users: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
+    private readonly clock: Clock,
     private readonly logoutAllSessions: LogoutAllSessionsHandler,
   ) {}
 

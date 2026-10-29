@@ -1,7 +1,7 @@
-import { User } from '../entities/user';
-import { Email } from '../value-objects/email';
-import { PersonDocument } from '../value-objects/person-document';
-import { UserId } from '../value-objects/user-id';
+import { User } from '../../domain/entities/user';
+import { Email } from '../../domain/value-objects/email';
+import { PersonDocument } from '../../domain/value-objects/person-document';
+import { UserId } from '../../domain/value-objects/user-id';
 
 export interface UserRepository {
   findById(id: UserId): Promise<User | null>;
@@ -11,5 +11,3 @@ export interface UserRepository {
   existsByDocument(document: PersonDocument): Promise<boolean>;
   save(user: User): Promise<void>;
 }
-
-export const USER_REPOSITORY = Symbol('UserRepository');

@@ -11,7 +11,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -38,17 +37,17 @@ import { Public } from '../../../authentication/presentation/decorators/public.d
 import { Principal } from '../../../authentication/presentation/principal';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
 import { ChangePasswordCommand } from '../../application/commands/change-password/change-password.command';
+import { ChangePasswordHandler } from '../../application/commands/change-password/change-password.handler';
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
-import {
-  RegisteredUserDto,
-  RegisterUserCommand,
-} from '../../application/commands/register-user/register-user.command';
+import { DeactivateUserHandler } from '../../application/commands/deactivate-user/deactivate-user.handler';
+import { RegisterUserCommand } from '../../application/commands/register-user/register-user.command';
+import { RegisterUserHandler } from '../../application/commands/register-user/register-user.handler';
 import { UpdateUserCommand } from '../../application/commands/update-user/update-user.command';
-import { UserDto } from '../../application/dtos/user.dto';
+import { UpdateUserHandler } from '../../application/commands/update-user/update-user.handler';
+import { GetUserByIdHandler } from '../../application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id/get-user-by-id.query';
+import { ListUsersHandler } from '../../application/queries/list-users/list-users.handler';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
-import { UserSummaryDto } from '../../application/ports/user-query.port';
-import { UserNotFoundError } from '../../domain/errors/user-not-found.error';
 import { ChangePasswordRequestDto } from '../dtos/change-password.request.dto';
 import { CreateStaffAccountRequestDto } from '../dtos/create-staff-account.request.dto';
 import { RegisterUserRequestDto } from '../dtos/register-user.request.dto';
@@ -65,8 +64,12 @@ import {
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly registerUser: RegisterUserHandler,
+    private readonly updateUser: UpdateUserHandler,
+    private readonly deactivateUser: DeactivateUserHandler,
+    private readonly changeUserPassword: ChangePasswordHandler,
+    private readonly listUsers: ListUsersHandler,
+    private readonly getUser: GetUserByIdHandler,
     private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
   ) {}
 
@@ -79,7 +82,7 @@ export class UsersController {
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiTooManyRequestsResponse({ type: ErrorResponseDto })
   async register(@Body() body: RegisterUserRequestDto): Promise<RegisteredUserResponseDto> {
-    return this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
+    return this.registerUser.execute(
       new RegisterUserCommand(body.email, body.name, body.password, body.document),
     );
   }
@@ -100,7 +103,7 @@ export class UsersController {
   async createStaffAccount(
     @Body() body: CreateStaffAccountRequestDto,
   ): Promise<StaffAccountResponseDto> {
-    const result = await this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
+    const result = await this.registerUser.execute(
       new RegisterUserCommand(body.email, body.name, undefined, body.document, true),
     );
     return { id: result.id, temporaryPassword: result.temporaryPassword! };
@@ -112,7 +115,7 @@ export class UsersController {
   @ApiOkResponse({ type: CurrentUserResponseDto })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async me(@CurrentUser() principal: Principal): Promise<CurrentUserResponseDto> {
-    const user = await this.getUserOrThrow(principal.userId);
+    const user = await this.getUser.execute(new GetUserByIdQuery(principal.userId));
     const access = await this.getUserEffectiveAccess.execute(
       new GetUserEffectiveAccessQuery(principal.userId),
     );
@@ -129,10 +132,10 @@ export class UsersController {
     @CurrentUser() principal: Principal,
     @Body() body: UpdateUserRequestDto,
   ): Promise<UserResponseDto> {
-    await this.commandBus.execute<UpdateUserCommand, void>(
+    await this.updateUser.execute(
       new UpdateUserCommand(principal.userId, body.name, body.email, body.document),
     );
-    return this.getUserOrThrow(principal.userId);
+    return this.getUser.execute(new GetUserByIdQuery(principal.userId));
   }
 
   @Post('me/password')
@@ -146,7 +149,7 @@ export class UsersController {
     @CurrentUser() principal: Principal,
     @Body() body: ChangePasswordRequestDto,
   ): Promise<void> {
-    await this.commandBus.execute<ChangePasswordCommand, void>(
+    await this.changeUserPassword.execute(
       new ChangePasswordCommand(principal.userId, body.currentPassword, body.newPassword),
     );
   }
@@ -164,9 +167,7 @@ export class UsersController {
     @Query('role') role?: string,
     @Query('document') document?: string,
   ): Promise<UserSummaryResponseDto[]> {
-    return this.queryBus.execute<ListUsersQuery, UserSummaryDto[]>(
-      new ListUsersQuery(role, document),
-    );
+    return this.listUsers.execute(new ListUsersQuery(role, document));
   }
 
   @Get(':externalId')
@@ -177,7 +178,7 @@ export class UsersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getById(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<UserResponseDto> {
-    return this.getUserOrThrow(externalId);
+    return this.getUser.execute(new GetUserByIdQuery(externalId));
   }
 
   @Patch(':externalId')
@@ -192,10 +193,10 @@ export class UsersController {
     @Param('externalId', ParseUUIDPipe) externalId: string,
     @Body() body: UpdateUserRequestDto,
   ): Promise<UserResponseDto> {
-    await this.commandBus.execute<UpdateUserCommand, void>(
+    await this.updateUser.execute(
       new UpdateUserCommand(externalId, body.name, body.email, body.document),
     );
-    return this.getUserOrThrow(externalId);
+    return this.getUser.execute(new GetUserByIdQuery(externalId));
   }
 
   @Delete(':externalId')
@@ -207,18 +208,6 @@ export class UsersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async deactivate(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
-    await this.commandBus.execute<DeactivateUserCommand, void>(
-      new DeactivateUserCommand(externalId),
-    );
-  }
-
-  private async getUserOrThrow(userId: string): Promise<UserResponseDto> {
-    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
-      new GetUserByIdQuery(userId),
-    );
-    if (!user) {
-      throw new UserNotFoundError();
-    }
-    return user;
+    await this.deactivateUser.execute(new DeactivateUserCommand(externalId));
   }
 }

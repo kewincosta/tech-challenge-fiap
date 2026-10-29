@@ -2,6 +2,7 @@ import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
+import { UserNotFoundError } from '../../../../users/domain/errors/user-not-found.error';
 import { Role } from '../../../domain/entities/role';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
 import { RoleEscalationForbiddenError } from '../../../domain/errors/role-escalation-forbidden.error';
@@ -60,9 +61,13 @@ export class AssignRoleToUserHandler {
   }
 
   private async ensureUserExists(userId: string): Promise<void> {
-    const user = await this.getUserById.execute(new GetUserByIdQuery(userId));
-    if (!user) {
-      throw new AssignedUserNotFoundError();
+    try {
+      await this.getUserById.execute(new GetUserByIdQuery(userId));
+    } catch (error) {
+      if (error instanceof UserNotFoundError) {
+        throw new AssignedUserNotFoundError();
+      }
+      throw error;
     }
   }
 

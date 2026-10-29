@@ -23,5 +23,3 @@ export interface UserQueryPort {
   /** Users of any status, deactivated ones included. A filter left out matches every user. */
   find(filter: FindUsersFilter): Promise<UserSummaryDto[]>;
 }
-
-export const USER_QUERY_PORT = Symbol('UserQueryPort');

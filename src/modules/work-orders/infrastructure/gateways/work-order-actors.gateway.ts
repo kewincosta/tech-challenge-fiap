@@ -6,6 +6,7 @@ import {
   GetUserEffectiveAccessHandler,
   GetUserEffectiveAccessQuery,
   SystemRole,
+  UserNotFoundError,
 } from '../../../identity';
 import { ActorCapabilities, WorkOrderActors } from '../../application/ports/work-order-actors.port';
 
@@ -34,9 +35,13 @@ export class WorkOrderActorsGateway implements WorkOrderActors {
   // The existence read comes first: the effective access of a user that does not exist is empty,
   // the same as for a user without roles, so it cannot tell the two apart.
   async findMechanicCandidate(userId: string): Promise<{ isMechanic: boolean } | null> {
-    const user = await this.getUserById.execute(new GetUserByIdQuery(userId));
-    if (!user) {
-      return null;
+    try {
+      await this.getUserById.execute(new GetUserByIdQuery(userId));
+    } catch (error) {
+      if (error instanceof UserNotFoundError) {
+        return null;
+      }
+      throw error;
     }
     const access = await this.getUserEffectiveAccess.execute(
       new GetUserEffectiveAccessQuery(userId),

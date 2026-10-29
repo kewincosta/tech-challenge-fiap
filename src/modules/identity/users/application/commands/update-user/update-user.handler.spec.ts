@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
 import { DocumentAlreadyInUseError } from '../../../domain/errors/document-already-in-use.error';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error';
@@ -12,9 +12,12 @@ import { UpdateUserHandler } from './update-user.handler';
 
 function makeHandler() {
   const users = new InMemoryUserRepository();
-  const eventBus = stubEventBus();
-  const handler = new UpdateUserHandler(users, new FakeClock(), eventBus.bus);
-  return { handler, users, eventBus };
+  const handler = new UpdateUserHandler(
+    users,
+    new FakeClock(),
+    new RecordingDomainEventPublisher(),
+  );
+  return { handler, users };
 }
 
 describe('UpdateUserHandler', () => {

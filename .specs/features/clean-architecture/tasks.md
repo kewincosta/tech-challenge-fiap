@@ -1540,12 +1540,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The users tokens live in `src/modules/identity/identity.tokens.ts`, the user repository contract in `users/application/ports`, and no file under any `identity` `domain` or `application` folder declares a `Symbol`
-- [ ] Specs use fakes and assert outcomes; get by id covers `UserNotFoundError`
-- [ ] The users controller's `getUserOrThrow` is gone; the users, staff, password and pending-password e2e specs pass
-- [ ] `identity` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `identity` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The users tokens live in `src/modules/identity/identity.tokens.ts`, the user repository contract in `users/application/ports`, and no file under any `identity` `domain` or `application` folder declares a `Symbol`
+- [x] Specs use fakes and assert outcomes; get by id covers `UserNotFoundError`
+- [x] The users controller's `getUserOrThrow` is gone; the users, staff, password and pending-password e2e specs pass
+- [x] `identity` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `identity` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build

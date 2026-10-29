@@ -1,22 +1,19 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../../shared/application/ports/domain-event-publisher.port';
 import { DocumentAlreadyInUseError } from '../../../domain/errors/document-already-in-use.error';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error';
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error';
-import { USER_REPOSITORY, UserRepository } from '../../../domain/repositories/user.repository';
 import { Email } from '../../../domain/value-objects/email';
 import { PersonDocument } from '../../../domain/value-objects/person-document';
 import { UserId } from '../../../domain/value-objects/user-id';
+import { UserRepository } from '../../ports/user.repository';
 import { UpdateUserCommand } from './update-user.command';
 
-@CommandHandler(UpdateUserCommand)
-export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand, void> {
+export class UpdateUserHandler {
   constructor(
-    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly users: UserRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: UpdateUserCommand): Promise<void> {
@@ -45,6 +42,6 @@ export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand, voi
 
     user.updateProfile({ name: command.name, email, document }, this.clock.now());
     await this.users.save(user);
-    this.eventBus.publishAll(user.pullDomainEvents());
+    this.events.publish(user.pullDomainEvents());
   }
 }

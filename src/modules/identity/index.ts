@@ -15,5 +15,6 @@ export { FindUsersUseCase } from './users/application/queries/find-users/find-us
 export { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
 export { GetUserByIdQuery } from './users/application/queries/get-user-by-id/get-user-by-id.query';
 export type { UserSummaryDto } from './users/application/ports/user-query.port';
+export { UserNotFoundError } from './users/domain/errors/user-not-found.error';
 export { UserKeyResolver } from './users/infrastructure/persistence/user-key-resolver';
 export { IdentityModule } from './identity.module';

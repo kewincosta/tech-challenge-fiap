@@ -7,6 +7,7 @@ import {
   RegisterUserCommand,
   RegisterUserHandler,
   SystemRole,
+  UserNotFoundError,
 } from '../../../identity';
 import { CustomerAccounts, OpenedAccount } from '../../application/ports/customer-accounts.port';
 
@@ -23,8 +24,15 @@ export class CustomerAccountsGateway implements CustomerAccounts {
   ) {}
 
   async findUser(userId: string): Promise<{ id: string } | null> {
-    const user = await this.getUserById.execute(new GetUserByIdQuery(userId));
-    return user ? { id: user.id } : null;
+    try {
+      const user = await this.getUserById.execute(new GetUserByIdQuery(userId));
+      return { id: user.id };
+    } catch (error) {
+      if (error instanceof UserNotFoundError) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async hasCustomerRole(userId: string): Promise<boolean> {

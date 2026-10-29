@@ -10,6 +10,7 @@ import { RecordingDomainEventPublisher } from '../../../../../../../test/support
 import { buildSession } from '../../../../../../../test/support/factories/session.factory';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
+import { UserNotFoundError } from '../../../../users/domain/errors/user-not-found.error';
 import { InvalidRefreshTokenError } from '../../../domain/errors/invalid-refresh-token.error';
 import { RefreshTokenReuseError } from '../../../domain/errors/refresh-token-reuse.error';
 import { RefreshTokenReuseDetected } from '../../../domain/events/refresh-token-reuse-detected.event';
@@ -30,12 +31,14 @@ const SETTINGS: AuthSettings = {
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
 // The user is the real lookup over the in-memory users, pending a password change when a case
-// says so.
+// says so, and missing when a case says the account is gone.
 async function makeHandler(
-  options: { mustChangePassword?: boolean; settings?: AuthSettings } = {},
+  options: { mustChangePassword?: boolean; settings?: AuthSettings; userExists?: boolean } = {},
 ) {
   const users = new InMemoryUserRepository();
-  await users.save(buildUser({ id: USER_ID, temporary: options.mustChangePassword }));
+  if (options.userExists ?? true) {
+    await users.save(buildUser({ id: USER_ID, temporary: options.mustChangePassword }));
+  }
   const sessions = new InMemorySessionRepository();
   const revokedSessions = new FakeRevokedSessionStore();
   const clock = new FakeClock();
@@ -110,6 +113,16 @@ describe('RefreshSessionHandler', () => {
 
     expect(result.refreshTokenExpiresAt).toBe(
       new Date(clock.now().getTime() + 600 * 1000).toISOString(),
+    );
+  });
+
+  it('should refuse the refresh of a session whose account no longer exists with the user not-found error', async () => {
+    const { handler, sessions, clock } = await makeHandler({ userExists: false });
+    await sessions.save(storedSession());
+    clock.advanceSeconds(600);
+
+    await expect(handler.execute(new RefreshSessionCommand('refresh-1'))).rejects.toThrow(
+      UserNotFoundError,
     );
   });
 

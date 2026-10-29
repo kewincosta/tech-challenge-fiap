@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { FailingUserRepository } from '../../../../../../../test/support/fakes/failing-user.repository';
 import { FakeAccessCache } from '../../../../../../../test/support/fakes/fake-access-cache';
 import { FakeAssignmentRepository } from '../../../../../../../test/support/fakes/fake-assignment.repository';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
@@ -7,6 +7,7 @@ import { FakeEffectiveAccessReader } from '../../../../../../../test/support/fak
 import { InMemoryRoleRepository } from '../../../../../../../test/support/fakes/in-memory-role.repository';
 import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { buildRole } from '../../../../../../../test/support/factories/role.factory';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
 import { Role } from '../../../domain/entities/role';
 import { AssignedUserNotFoundError } from '../../../domain/errors/assigned-user-not-found.error';
@@ -14,8 +15,6 @@ import { RoleEscalationForbiddenError } from '../../../domain/errors/role-escala
 import { RoleNotAssignableError } from '../../../domain/errors/role-not-assignable.error';
 import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
 import { RoleAssignedToUser } from '../../../domain/events/role-assigned-to-user.event';
-import { RoleId } from '../../../domain/value-objects/role-id';
-import { RoleName } from '../../../domain/value-objects/role-name';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { SystemRole } from '../../contracts/system-roles';
 import { GetUserEffectiveAccessHandler } from '../../queries/get-user-effective-access/get-user-effective-access.handler';
@@ -27,10 +26,12 @@ const USER_ID = '11111111-1111-4111-8111-111111111111';
 const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 
 // The target user exists unless a case says otherwise. The actor holds the roles a case grants it.
-async function makeHandler(options: { targetExists?: boolean } = {}) {
+async function makeHandler(options: { targetExists?: boolean; lookupFailure?: Error } = {}) {
   const roles = new InMemoryRoleRepository();
   const assignments = new FakeAssignmentRepository();
-  const users = new InMemoryUserRepository();
+  const users = options.lookupFailure
+    ? new FailingUserRepository(options.lookupFailure)
+    : new InMemoryUserRepository();
   if (options.targetExists ?? true) {
     await users.save(buildUser({ id: USER_ID }));
   }
@@ -49,13 +50,7 @@ async function makeHandler(options: { targetExists?: boolean } = {}) {
 }
 
 function roleFor(name: SystemRole): Role {
-  return Role.create({
-    id: RoleId.create(randomUUID()),
-    name: RoleName.create(name),
-    description: null,
-    permissionIds: [],
-    now: new Date('2026-08-26T12:00:00.000Z'),
-  });
+  return buildRole({ name });
 }
 
 function customerRole(): Role {
@@ -104,6 +99,17 @@ describe('AssignRoleToUserHandler', () => {
     await expect(
       handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Customer })),
     ).rejects.toThrow(AssignedUserNotFoundError);
+  });
+
+  it('should not report a failure of the user lookup as an unknown user', async () => {
+    const failure = new Error('database is down');
+    const { handler, roles, assignments } = await makeHandler({ lookupFailure: failure });
+    await roles.save(customerRole());
+
+    await expect(
+      handler.execute(new AssignRoleToUserCommand(USER_ID, { name: SystemRole.Customer })),
+    ).rejects.toBe(failure);
+    expect(assignments.userRoles.size).toBe(0);
   });
 
   it('should not assign an unknown role', async () => {

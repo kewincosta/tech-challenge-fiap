@@ -6,6 +6,7 @@ import {
   GetUserEffectiveAccessHandler,
   GetUserEffectiveAccessQuery,
   UserDto,
+  UserNotFoundError,
 } from '../../../identity';
 import { WorkOrderActorsGateway } from './work-order-actors.gateway';
 
@@ -22,11 +23,19 @@ const USER: UserDto = {
 };
 
 // The gateway uses only `execute` of the identity module's two handlers. Each stand-in answers for
-// the one user it knows, and like identity itself it answers a user it does not know with nothing:
-// no user for the lookup, and empty roles and permissions for the effective access.
-function gatewayFor(access: EffectiveAccessDto): WorkOrderActorsGateway {
+// the one user it knows, and like identity itself it refuses a user it does not know: the lookup
+// with its not-found error, the effective access with empty roles and permissions. A lookup
+// failure, when given, is what the lookup throws for the user it knows.
+function gatewayFor(access: EffectiveAccessDto, lookupFailure?: Error): WorkOrderActorsGateway {
   const getUserById = {
-    execute: (query: GetUserByIdQuery) => Promise.resolve(query.userId === USER_ID ? USER : null),
+    execute: (query: GetUserByIdQuery) => {
+      if (lookupFailure) {
+        return Promise.reject(lookupFailure);
+      }
+      return query.userId === USER_ID
+        ? Promise.resolve(USER)
+        : Promise.reject(new UserNotFoundError());
+    },
   } as unknown as GetUserByIdHandler;
   const getUserEffectiveAccess = {
     execute: (query: GetUserEffectiveAccessQuery) =>
@@ -116,6 +125,13 @@ describe('WorkOrderActorsGateway', () => {
       const actors = gatewayFor({ roles: ['MECHANIC'], permissions: [] });
 
       expect(await actors.findMechanicCandidate(UNKNOWN_USER_ID)).toBeNull();
+    });
+
+    it('should let any other error from the identity module through', async () => {
+      const failure = new Error('database is down');
+      const actors = gatewayFor({ roles: ['MECHANIC'], permissions: [] }, failure);
+
+      await expect(actors.findMechanicCandidate(USER_ID)).rejects.toBe(failure);
     });
   });
 });

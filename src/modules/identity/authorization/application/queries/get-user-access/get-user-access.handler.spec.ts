@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FailingUserRepository } from '../../../../../../../test/support/fakes/failing-user.repository';
 import { FakeRbacQuery } from '../../../../../../../test/support/fakes/fake-rbac-query';
 import { InMemoryUserRepository } from '../../../../../../../test/support/fakes/in-memory-user.repository';
 import { buildUser } from '../../../../../../../test/support/factories/user.factory';
@@ -17,8 +18,10 @@ const ACCESS: UserAccessDto = {
   ],
 };
 
-async function makeHandler() {
-  const users = new InMemoryUserRepository();
+async function makeHandler(lookupFailure?: Error) {
+  const users = lookupFailure
+    ? new FailingUserRepository(lookupFailure)
+    : new InMemoryUserRepository();
   await users.save(buildUser({ id: USER_ID }));
   // The port holds an access for the unknown id too, so only the user check can refuse it.
   const rbacQuery = new FakeRbacQuery()
@@ -42,5 +45,12 @@ describe('GetUserAccessHandler', () => {
     await expect(handler.execute(new GetUserAccessQuery(UNKNOWN_ID))).rejects.toThrow(
       AssignedUserNotFoundError,
     );
+  });
+
+  it('does not report a failure of the user lookup as an unknown user', async () => {
+    const failure = new Error('database is down');
+    const handler = await makeHandler(failure);
+
+    await expect(handler.execute(new GetUserAccessQuery(USER_ID))).rejects.toBe(failure);
   });
 });

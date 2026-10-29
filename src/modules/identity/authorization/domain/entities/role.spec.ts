@@ -1,16 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { SystemRoleImmutableError } from '../errors/system-role-immutable.error';
 import { RoleId } from '../value-objects/role-id';
 import { RoleName } from '../value-objects/role-name';
 import { Role } from './role';
 
+const ids = new FakeIdGenerator();
 const NOW = new Date('2026-08-26T12:00:00.000Z');
 const LATER = new Date('2026-08-26T13:00:00.000Z');
 
 function buildRole(permissionIds: string[] = []): Role {
   return Role.create({
-    id: RoleId.create(randomUUID()),
+    id: RoleId.create(ids.generate()),
     name: RoleName.create('WORKSHOP_MANAGER'),
     description: null,
     permissionIds,
@@ -20,7 +21,7 @@ function buildRole(permissionIds: string[] = []): Role {
 
 function buildSystemRole(): Role {
   return Role.restore({
-    id: RoleId.create(randomUUID()),
+    id: RoleId.create(ids.generate()),
     name: RoleName.create('ADMIN'),
     description: null,
     isSystem: true,
@@ -39,15 +40,15 @@ describe('Role', () => {
   });
 
   it('should deduplicate the assigned permissions', () => {
-    const permissionId = randomUUID();
+    const permissionId = ids.generate();
     const role = buildRole([permissionId, permissionId]);
 
     expect(role.permissionIds).toEqual([permissionId]);
   });
 
   it('should replace its permissions', () => {
-    const role = buildRole([randomUUID()]);
-    const replacement = randomUUID();
+    const role = buildRole([ids.generate()]);
+    const replacement = ids.generate();
 
     role.setPermissions([replacement], LATER);
 
@@ -56,7 +57,7 @@ describe('Role', () => {
   });
 
   it('should not expose a mutable permission collection', () => {
-    const role = buildRole([randomUUID()]);
+    const role = buildRole([ids.generate()]);
 
     const snapshot = role.permissionIds as string[];
     snapshot.push('injected');

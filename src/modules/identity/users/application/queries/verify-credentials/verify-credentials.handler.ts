@@ -1,20 +1,14 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { USER_REPOSITORY, UserRepository } from '../../../domain/repositories/user.repository';
 import { Email } from '../../../domain/value-objects/email';
-import { PASSWORD_HASHER, PasswordHasher } from '../../ports/password-hasher.port';
+import { PasswordHasher } from '../../ports/password-hasher.port';
+import { UserRepository } from '../../ports/user.repository';
 import { VerifiedCredentialsDto, VerifyCredentialsQuery } from './verify-credentials.query';
 
-@QueryHandler(VerifyCredentialsQuery)
-export class VerifyCredentialsHandler implements IQueryHandler<
-  VerifyCredentialsQuery,
-  VerifiedCredentialsDto | null
-> {
+export class VerifyCredentialsHandler {
   private dummyHash: string | null = null;
 
   constructor(
-    @Inject(USER_REPOSITORY) private readonly users: UserRepository,
-    @Inject(PASSWORD_HASHER) private readonly passwordHasher: PasswordHasher,
+    private readonly users: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
   ) {}
 
   async execute(query: VerifyCredentialsQuery): Promise<VerifiedCredentialsDto | null> {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
 import { FakeRevokedSessionStore } from '../../../../../../../test/support/fakes/fake-revoked-session-store';
 import { InMemorySessionRepository } from '../../../../../../../test/support/fakes/in-memory-session.repository';
@@ -19,7 +18,6 @@ function makeHandler() {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
   const revokedSessions = new FakeRevokedSessionStore();
-  const eventBus = stubEventBus();
   const clock = new FakeClock();
   const logoutAllSessions = new LogoutAllSessionsHandler(
     sessions,
@@ -32,8 +30,13 @@ function makeHandler() {
     },
     new RecordingDomainEventPublisher(),
   );
-  const handler = new DeactivateUserHandler(users, clock, eventBus.bus, logoutAllSessions);
-  return { handler, users, sessions, revokedSessions, eventBus, clock };
+  const handler = new DeactivateUserHandler(
+    users,
+    clock,
+    new RecordingDomainEventPublisher(),
+    logoutAllSessions,
+  );
+  return { handler, users, sessions, revokedSessions, clock };
 }
 
 describe('DeactivateUserHandler', () => {

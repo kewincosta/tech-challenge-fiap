@@ -1,15 +1,9 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { PersonDocument } from '../../../domain/value-objects/person-document';
-import { USER_QUERY_PORT, UserQueryPort, UserSummaryDto } from '../../ports/user-query.port';
+import { UserQueryPort, UserSummaryDto } from '../../ports/user-query.port';
 import { FindUserByDocumentQuery } from './find-user-by-document.query';
 
-@QueryHandler(FindUserByDocumentQuery)
-export class FindUserByDocumentHandler implements IQueryHandler<
-  FindUserByDocumentQuery,
-  UserSummaryDto | null
-> {
-  constructor(@Inject(USER_QUERY_PORT) private readonly userQuery: UserQueryPort) {}
+export class FindUserByDocumentHandler {
+  constructor(private readonly userQuery: UserQueryPort) {}
 
   async execute(query: FindUserByDocumentQuery): Promise<UserSummaryDto | null> {
     let document: PersonDocument;

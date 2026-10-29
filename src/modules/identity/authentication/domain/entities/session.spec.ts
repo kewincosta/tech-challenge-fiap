@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import {
   buildSession,
   SESSION_NOW,
@@ -15,6 +15,8 @@ import { SessionRevocationReason } from '../session-revocation-reason';
 import { SessionStatus } from '../session-status';
 import { RefreshTokenHash } from '../value-objects/refresh-token-hash';
 import { RefreshTokenId } from '../value-objects/refresh-token-id';
+
+const ids = new FakeIdGenerator();
 
 function minutesAfter(base: Date, minutes: number): Date {
   return new Date(base.getTime() + minutes * 60000);
@@ -38,7 +40,7 @@ describe('Session', () => {
   it('should rotate the refresh token keeping the chain', () => {
     const session = buildSession();
     const previousToken = session.activeToken;
-    const newTokenId = RefreshTokenId.create(randomUUID());
+    const newTokenId = RefreshTokenId.create(ids.generate());
 
     session.rotateRefreshToken({
       presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
@@ -61,7 +63,7 @@ describe('Session', () => {
     const session = buildSession();
     session.rotateRefreshToken({
       presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
-      newTokenId: RefreshTokenId.create(randomUUID()),
+      newTokenId: RefreshTokenId.create(ids.generate()),
       newTokenHash: RefreshTokenHash.create('hash(refresh-2)'),
       refreshTokenTtlSeconds: 604800,
       now: minutesAfter(SESSION_NOW, 10),
@@ -70,7 +72,7 @@ describe('Session', () => {
     expect(() =>
       session.rotateRefreshToken({
         presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
-        newTokenId: RefreshTokenId.create(randomUUID()),
+        newTokenId: RefreshTokenId.create(ids.generate()),
         newTokenHash: RefreshTokenHash.create('hash(refresh-3)'),
         refreshTokenTtlSeconds: 604800,
         now: minutesAfter(SESSION_NOW, 20),
@@ -90,7 +92,7 @@ describe('Session', () => {
     expect(() =>
       session.rotateRefreshToken({
         presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
-        newTokenId: RefreshTokenId.create(randomUUID()),
+        newTokenId: RefreshTokenId.create(ids.generate()),
         newTokenHash: RefreshTokenHash.create('hash(refresh-2)'),
         refreshTokenTtlSeconds: 60,
         now: minutesAfter(SESSION_NOW, 10),
@@ -106,7 +108,7 @@ describe('Session', () => {
     expect(() =>
       session.rotateRefreshToken({
         presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
-        newTokenId: RefreshTokenId.create(randomUUID()),
+        newTokenId: RefreshTokenId.create(ids.generate()),
         newTokenHash: RefreshTokenHash.create('hash(refresh-2)'),
         refreshTokenTtlSeconds: 604800,
         now: minutesAfter(SESSION_NOW, 10),
@@ -120,7 +122,7 @@ describe('Session', () => {
     expect(() =>
       session.rotateRefreshToken({
         presentedTokenHash: RefreshTokenHash.create('hash(refresh-1)'),
-        newTokenId: RefreshTokenId.create(randomUUID()),
+        newTokenId: RefreshTokenId.create(ids.generate()),
         newTokenHash: RefreshTokenHash.create('hash(refresh-2)'),
         refreshTokenTtlSeconds: 604800,
         now: minutesAfter(SESSION_NOW, 10),

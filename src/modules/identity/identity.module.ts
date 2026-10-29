@@ -8,7 +8,13 @@ import { DomainEventPublisher } from '../../shared/application/ports/domain-even
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { InMemoryDomainEventDispatcher } from '../../shared/infrastructure/events/in-memory-domain-event-dispatcher';
 import { RedisModule } from '../../shared/infrastructure/redis/redis.module';
-import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
+import { TransactionRunner } from '../../shared/application/ports/transaction-runner.port';
+import {
+  CLOCK,
+  DOMAIN_EVENT_PUBLISHER,
+  ID_GENERATOR,
+  TRANSACTION_RUNNER,
+} from '../../shared/shared.tokens';
 import { AuthenticateUserHandler } from './authentication/application/commands/authenticate-user/authenticate-user.handler';
 import { LogoutAllSessionsHandler } from './authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
 import { RefreshSessionHandler } from './authentication/application/commands/refresh-session/refresh-session.handler';
@@ -72,14 +78,14 @@ import { ChangePasswordHandler } from './users/application/commands/change-passw
 import { DeactivateUserHandler } from './users/application/commands/deactivate-user/deactivate-user.handler';
 import { RegisterUserHandler } from './users/application/commands/register-user/register-user.handler';
 import { UpdateUserHandler } from './users/application/commands/update-user/update-user.handler';
-import { PASSWORD_HASHER } from './users/application/ports/password-hasher.port';
-import { USER_QUERY_PORT, UserQueryPort } from './users/application/ports/user-query.port';
+import { PasswordHasher } from './users/application/ports/password-hasher.port';
+import { UserQueryPort } from './users/application/ports/user-query.port';
+import { UserRepository } from './users/application/ports/user.repository';
 import { FindUserByDocumentHandler } from './users/application/queries/find-user-by-document/find-user-by-document.handler';
 import { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
 import { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { ListUsersHandler } from './users/application/queries/list-users/list-users.handler';
 import { VerifyCredentialsHandler } from './users/application/queries/verify-credentials/verify-credentials.handler';
-import { USER_REPOSITORY } from './users/domain/repositories/user.repository';
 import { TypeOrmUserQueryAdapter } from './users/infrastructure/persistence/typeorm-user-query.adapter';
 import { TypeOrmUserRepository } from './users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from './users/infrastructure/persistence/user.orm-entity';
@@ -92,6 +98,7 @@ import {
   ASSIGNMENT_REPOSITORY,
   AUTH_SETTINGS,
   EFFECTIVE_ACCESS_READER,
+  PASSWORD_HASHER,
   PERMISSION_REPOSITORY,
   RBAC_QUERY_PORT,
   REFRESH_TOKEN_HASHER,
@@ -99,6 +106,8 @@ import {
   ROLE_REPOSITORY,
   SESSION_QUERY_PORT,
   SESSION_REPOSITORY,
+  USER_QUERY_PORT,
+  USER_REPOSITORY,
 } from './identity.tokens';
 
 @Module({
@@ -129,14 +138,83 @@ import {
     UserAccessController,
   ],
   providers: [
-    RegisterUserHandler,
-    UpdateUserHandler,
-    DeactivateUserHandler,
-    ChangePasswordHandler,
-    GetUserByIdHandler,
-    VerifyCredentialsHandler,
-    FindUserByDocumentHandler,
-    ListUsersHandler,
+    {
+      provide: RegisterUserHandler,
+      useFactory: (
+        users: UserRepository,
+        passwordHasher: PasswordHasher,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        transactionRunner: TransactionRunner,
+        assignRoleToUser: AssignRoleToUserHandler,
+        events: DomainEventPublisher,
+      ) =>
+        new RegisterUserHandler(
+          users,
+          passwordHasher,
+          idGenerator,
+          clock,
+          transactionRunner,
+          assignRoleToUser,
+          events,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        PASSWORD_HASHER,
+        ID_GENERATOR,
+        CLOCK,
+        TRANSACTION_RUNNER,
+        AssignRoleToUserHandler,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: UpdateUserHandler,
+      useFactory: (users: UserRepository, clock: Clock, events: DomainEventPublisher) =>
+        new UpdateUserHandler(users, clock, events),
+      inject: [USER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: DeactivateUserHandler,
+      useFactory: (
+        users: UserRepository,
+        clock: Clock,
+        events: DomainEventPublisher,
+        logoutAllSessions: LogoutAllSessionsHandler,
+      ) => new DeactivateUserHandler(users, clock, events, logoutAllSessions),
+      inject: [USER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER, LogoutAllSessionsHandler],
+    },
+    {
+      provide: ChangePasswordHandler,
+      useFactory: (
+        users: UserRepository,
+        passwordHasher: PasswordHasher,
+        clock: Clock,
+        logoutAllSessions: LogoutAllSessionsHandler,
+      ) => new ChangePasswordHandler(users, passwordHasher, clock, logoutAllSessions),
+      inject: [USER_REPOSITORY, PASSWORD_HASHER, CLOCK, LogoutAllSessionsHandler],
+    },
+    {
+      provide: GetUserByIdHandler,
+      useFactory: (users: UserRepository) => new GetUserByIdHandler(users),
+      inject: [USER_REPOSITORY],
+    },
+    {
+      provide: VerifyCredentialsHandler,
+      useFactory: (users: UserRepository, passwordHasher: PasswordHasher) =>
+        new VerifyCredentialsHandler(users, passwordHasher),
+      inject: [USER_REPOSITORY, PASSWORD_HASHER],
+    },
+    {
+      provide: FindUserByDocumentHandler,
+      useFactory: (userQuery: UserQueryPort) => new FindUserByDocumentHandler(userQuery),
+      inject: [USER_QUERY_PORT],
+    },
+    {
+      provide: ListUsersHandler,
+      useFactory: (userQuery: UserQueryPort) => new ListUsersHandler(userQuery),
+      inject: [USER_QUERY_PORT],
+    },
     {
       provide: AUTH_SETTINGS,
       useFactory: (config: ConfigType<typeof authConfig>): AuthSettings => ({

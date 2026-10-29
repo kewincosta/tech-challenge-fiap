@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeAccessTokenService } from '../../../../../../../test/support/fakes/fake-access-token.service';
 import { FakeClock } from '../../../../../../../test/support/fakes/fake-clock';
+import { FailingUserRepository } from '../../../../../../../test/support/fakes/failing-user.repository';
 import { FakeIdGenerator } from '../../../../../../../test/support/fakes/fake-id-generator';
 import { FakePasswordHasher } from '../../../../../../../test/support/fakes/fake-password-hasher';
 import { FakeRefreshTokenHasher } from '../../../../../../../test/support/fakes/fake-refresh-token-hasher';
@@ -25,12 +26,31 @@ const SETTINGS: AuthSettings = {
   sessionAbsoluteTtlSeconds: 2592000,
 };
 
+// The account is found by e-mail but no longer by id, as when it is deactivated between the two
+// reads that a login makes.
+class VanishingUsers extends InMemoryUserRepository {
+  override async findById(): Promise<null> {
+    return Promise.resolve(null);
+  }
+}
+
 // The user and the credential check are the real use cases over the in-memory users: Jane signs in
 // with Str0ngPassword, and her account is pending a password change when a case says so.
 async function makeHandler(
-  options: { mustChangePassword?: boolean; settings?: AuthSettings } = {},
+  options: {
+    mustChangePassword?: boolean;
+    settings?: AuthSettings;
+    accountVanishes?: boolean;
+    lookupFailure?: Error;
+  } = {},
 ) {
-  const users = new InMemoryUserRepository();
+  let users = new InMemoryUserRepository();
+  if (options.accountVanishes) {
+    users = new VanishingUsers();
+  }
+  if (options.lookupFailure) {
+    users = new FailingUserRepository(options.lookupFailure);
+  }
   await users.save(
     buildUser({
       id: USER_ID,
@@ -106,6 +126,30 @@ describe('AuthenticateUserHandler', () => {
     ).rejects.toThrow(InvalidCredentialsError);
     expect(sessions.sessions).toHaveLength(0);
     expect(events.published).toEqual([]);
+  });
+
+  it('should answer an account that went away after the credential check as invalid credentials', async () => {
+    const { handler, sessions, events } = await makeHandler({ accountVanishes: true });
+
+    await expect(
+      handler.execute(
+        new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', null, null),
+      ),
+    ).rejects.toThrow(InvalidCredentialsError);
+    expect(sessions.sessions).toHaveLength(0);
+    expect(events.published).toEqual([]);
+  });
+
+  it('should not report a failure of the account lookup as invalid credentials', async () => {
+    const failure = new Error('database is down');
+    const { handler, sessions } = await makeHandler({ lookupFailure: failure });
+
+    await expect(
+      handler.execute(
+        new AuthenticateUserCommand('jane@example.com', 'Str0ngPassword', null, null),
+      ),
+    ).rejects.toBe(failure);
+    expect(sessions.sessions).toHaveLength(0);
   });
 
   it('should expire the refresh token and the session after the lifetimes of the settings', async () => {

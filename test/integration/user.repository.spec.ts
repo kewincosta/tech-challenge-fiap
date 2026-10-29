@@ -10,10 +10,10 @@ import { PersonDocument } from '../../src/modules/identity/users/domain/value-ob
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
-import { stubEventBus } from '../support/fakes/bus.stubs';
 import { FakeClock } from '../support/fakes/fake-clock';
 import { FakeIdGenerator } from '../support/fakes/fake-id-generator';
 import { FakePasswordHasher } from '../support/fakes/fake-password-hasher';
+import { RecordingDomainEventPublisher } from '../support/fakes/recording-domain-event-publisher';
 import { buildUser } from '../support/factories/user.factory';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestDataSource } from '../support/db';
@@ -73,7 +73,7 @@ describe('TypeOrmUserRepository', () => {
       new FakeClock(),
       transactionRunner,
       failingAssignRole,
-      stubEventBus().bus,
+      new RecordingDomainEventPublisher(),
     );
     const email = uniqueEmail();
     const document = uniqueValidCpf();

@@ -3,7 +3,6 @@ import { DomainEventPublisher } from '../../../../../../shared/application/ports
 import { IdGenerator } from '../../../../../../shared/application/ports/id-generator.port';
 import { GetUserByIdHandler } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.handler';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
-import { UserNotFoundError } from '../../../../users/domain/errors/user-not-found.error';
 import { InvalidRefreshTokenError } from '../../../domain/errors/invalid-refresh-token.error';
 import { RefreshTokenReuseError } from '../../../domain/errors/refresh-token-reuse.error';
 import { RefreshTokenHash } from '../../../domain/value-objects/refresh-token-hash';
@@ -59,9 +58,6 @@ export class RefreshSessionHandler {
     // Read fresh rather than carried on the session, so a password changed after the session
     // was created is reflected in the reissued token (see ChangePasswordHandler and T16's guard).
     const user = await this.getUserById.execute(new GetUserByIdQuery(session.userId));
-    if (!user) {
-      throw new UserNotFoundError();
-    }
     const access = await this.accessTokens.sign({
       userId: session.userId,
       sessionId: session.id.value,
