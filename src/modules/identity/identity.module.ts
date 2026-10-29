@@ -73,6 +73,7 @@ import { USER_REPOSITORY } from './users/domain/repositories/user.repository';
 import { TypeOrmUserQueryAdapter } from './users/infrastructure/persistence/typeorm-user-query.adapter';
 import { TypeOrmUserRepository } from './users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from './users/infrastructure/persistence/user.orm-entity';
+import { UserKeyResolver } from './users/infrastructure/persistence/user-key-resolver';
 import { Argon2PasswordHasher } from './users/infrastructure/security/argon2-password-hasher';
 import { UsersController } from './users/presentation/controllers/users.controller';
 
@@ -149,7 +150,8 @@ import { UsersController } from './users/presentation/controllers/users.controll
     { provide: EFFECTIVE_ACCESS_READER, useClass: TypeOrmEffectiveAccessReader },
     { provide: ACCESS_CACHE, useClass: RedisAccessCache },
     { provide: RBAC_QUERY_PORT, useClass: TypeOrmRbacQueryAdapter },
+    UserKeyResolver,
   ],
-  exports: [JwtAuthGuard, PendingPasswordGuard, PermissionsGuard],
+  exports: [JwtAuthGuard, PendingPasswordGuard, PermissionsGuard, UserKeyResolver],
 })
 export class IdentityModule {}

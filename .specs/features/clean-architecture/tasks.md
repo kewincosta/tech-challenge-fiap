@@ -637,10 +637,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `test/integration/user-key-resolver.spec.ts` proves both directions, both batch forms, `null` for an unknown key, and a user inserted earlier inside an open `TransactionRunner.run` resolving within it
-- [ ] The resolver is a provider of `IdentityModule`, exported by the Nest module and by `index.ts`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total grows by the resolver's cases
+- [x] `test/integration/user-key-resolver.spec.ts` proves both directions, both batch forms, `null` for an unknown key, and a user inserted earlier inside an open `TransactionRunner.run` resolving within it
+- [x] The resolver is a provider of `IdentityModule`, exported by the Nest module and by `index.ts`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total grows by the resolver's cases
 
 **Tests**: integration
 **Gate**: full
