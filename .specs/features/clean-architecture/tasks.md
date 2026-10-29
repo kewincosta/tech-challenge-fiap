@@ -263,11 +263,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Each of the six routes has a happy-path case asserting status and body shape
-- [ ] `GET /roles/:id` with an unknown id answers 404 with code `ROLE_NOT_FOUND`
-- [ ] Each route has a 403 case for an actor lacking its permission
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by the cases added; nothing else changes
+- [x] Each of the six routes has a happy-path case asserting status and body shape
+- [x] `GET /roles/:id` with an unknown id answers 404 with code `ROLE_NOT_FOUND`
+- [x] Each route has a 403 case for an actor lacking its permission
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by the cases added; nothing else changes
 
 **Tests**: e2e
 **Gate**: full
