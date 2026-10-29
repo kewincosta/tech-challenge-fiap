@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 17,
+  "next_id": 23,
   "lessons": [
     {
       "id": "L-002",
@@ -49,6 +49,114 @@
       ],
       "created": "2026-08-31T12:39:52Z",
       "last_seen": "2026-09-01T14:04:35Z"
+    },
+    {
+      "id": "L-017",
+      "key": "gate_fail::a test that needs an empty slice of a never truncated database must draw from a range its own runs cannot fill and bound its redraws or the suite turns into timeouts as the database grows",
+      "text": "A test that needs an empty slice of a never-truncated database must draw from a range its own runs cannot fill and bound its redraws, or the suite turns into timeouts as the database grows.",
+      "signal": "gate_fail",
+      "scope": "integration-tests",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "test/integration/work-order-metrics-query.adapter.spec.ts:142 (integration-tests)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-018",
+      "key": "surviving_mutant::run the spec of an idempotent script against a database the spec creates and drops because on a shared database every run after the first skips the work and asserts rows an older version wrote",
+      "text": "Run the spec of an idempotent script against a database the spec creates and drops, because on a shared database every run after the first skips the work and asserts rows an older version wrote.",
+      "signal": "surviving_mutant",
+      "scope": "integration-tests",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M12, W3b, W3c on a populated database; test/integration/seed.script.spec.ts:79 (integration-tests)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-019",
+      "key": "surviving_mutant::give each architecture rule a refusing fixture for every kind of path it must reject so a looser pattern fails its own test",
+      "text": "Give each architecture rule a refusing fixture for every kind of path it must reject, so a looser pattern fails its own test.",
+      "signal": "surviving_mutant",
+      "scope": "architecture-checks",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M07 .dependency-cruiser.cjs:71 (architecture-checks)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-020",
+      "key": "surviving_mutant::in memory repository fakes must store and return copies of the aggregate so a use case spec can tell a missing save from a saved change",
+      "text": "In-memory repository fakes must store and return copies of the aggregate, so a use case spec can tell a missing save from a saved change.",
+      "signal": "surviving_mutant",
+      "scope": "test-support",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "W1 src/modules/work-orders/application/commands/remove-work-order-item/remove-work-order-item.use-case.ts:31 (test-support)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-021",
+      "key": "surviving_mutant::when a use case checks its input before a port read on purpose pin that order with a case that fails both checks and asserts which error wins",
+      "text": "When a use case checks its input before a port read on purpose, pin that order with a case that fails both checks and asserts which error wins.",
+      "signal": "surviving_mutant",
+      "scope": "application-use-cases",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "W2 src/modules/work-orders/application/commands/plan-part/plan-part.use-case.ts:33 (application-use-cases)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-022",
+      "key": "ac_gap::when a task refines an existing ad nnn entry record the refinement in an adr in the same task so the entry and its adr state the same decision",
+      "text": "When a task refines an existing AD-NNN entry, record the refinement in an ADR in the same task, so the entry and its ADR state the same decision.",
+      "signal": "ac_gap",
+      "scope": "decisions",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "CA-07 AC1 .specs/STATE.md:70 (decisions)"
+      ],
+      "created": "2026-10-29T23:29:55Z",
+      "last_seen": "2026-10-29T23:29:55Z"
     }
   ]
 }

@@ -24,7 +24,41 @@ Corroborated across multiple features. Safe to apply as guidance.
 
 Seen once or not yet corroborated. Tracked, not trusted.
 
-_none_
+### L-017 - A test that needs an empty slice of a never-truncated database must draw from a range its own runs cannot fill and bound its redraws, or the suite turns into timeouts as the database grows.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: test/integration/work-order-metrics-query.adapter.spec.ts:142 (integration-tests)
+- last seen: 2026-10-29T23:29:55Z
+
+### L-018 - Run the spec of an idempotent script against a database the spec creates and drops, because on a shared database every run after the first skips the work and asserts rows an older version wrote.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: M12, W3b, W3c on a populated database; test/integration/seed.script.spec.ts:79 (integration-tests)
+- last seen: 2026-10-29T23:29:55Z
+
+### L-019 - Give each architecture rule a refusing fixture for every kind of path it must reject, so a looser pattern fails its own test.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `architecture-checks` · harmful: 0
+- features: clean-architecture
+- evidence: M07 .dependency-cruiser.cjs:71 (architecture-checks)
+- last seen: 2026-10-29T23:29:55Z
+
+### L-020 - In-memory repository fakes must store and return copies of the aggregate, so a use case spec can tell a missing save from a saved change.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `test-support` · harmful: 0
+- features: clean-architecture
+- evidence: W1 src/modules/work-orders/application/commands/remove-work-order-item/remove-work-order-item.use-case.ts:31 (test-support)
+- last seen: 2026-10-29T23:29:55Z
+
+### L-021 - When a use case checks its input before a port read on purpose, pin that order with a case that fails both checks and asserts which error wins.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `application-use-cases` · harmful: 0
+- features: clean-architecture
+- evidence: W2 src/modules/work-orders/application/commands/plan-part/plan-part.use-case.ts:33 (application-use-cases)
+- last seen: 2026-10-29T23:29:55Z
+
+### L-022 - When a task refines an existing AD-NNN entry, record the refinement in an ADR in the same task, so the entry and its ADR state the same decision.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `decisions` · harmful: 0
+- features: clean-architecture
+- evidence: CA-07 AC1 .specs/STATE.md:70 (decisions)
+- last seen: 2026-10-29T23:29:55Z
 
 ## Quarantined (failed when applied - ignore)
 
