@@ -1,7 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
-import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import {
+  currentEntityManager,
+  runInNewTransaction,
+} from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { UserKeyResolver } from '../../../identity';
 import { InventoryItem } from '../../domain/entities/inventory-item';
 import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
@@ -250,16 +253,16 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * A cross-module write (this feature's `ConsumeStockBatchCommand`/`RestoreStockBatchCommand`,
-   * dispatched from inside `WithdrawPartsHandler`'s `transactionRunner.run`) must land in the
-   * same Postgres transaction as the work order write it accompanies, or a failure on one side
-   * leaves the other committed (AD-008). Falls back to opening its own transaction when there is
-   * no ambient one, which is every call this repository has ever received before this feature -
-   * that fallback is the regression net the whole existing suite already proves.
+   * A withdrawal or a return saves the work order and then moves stock through the stock ledger
+   * port, all inside one `transactionRunner.run`, so this save has to join that transaction or a
+   * failure on one side leaves the other committed (AD-008). With no ambient transaction the save
+   * opens its own through `runInNewTransaction`, which publishes the manager as the ambient one:
+   * the user key resolver and the work order reads that `save` calls then join the transaction
+   * and hold no second pool connection.
    */
   private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     const ambient = currentEntityManager();
-    return ambient ? work(ambient) : this.dataSource.transaction(work);
+    return ambient ? work(ambient) : runInNewTransaction(this.dataSource, work);
   }
 
   private async actorInternalId(actorUserId: string): Promise<string> {

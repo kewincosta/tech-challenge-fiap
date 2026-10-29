@@ -975,11 +975,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Both repositories open their own transaction through one shared helper that publishes the manager as the ambient one, and no adapter opens a transaction any other way while it calls a resolver or another module inside it
-- [ ] `test/integration/repository-own-transaction.spec.ts` runs two concurrent inventory saves outside any transaction on a data source whose pool holds two connections and has a connection timeout, and both complete; the case fails without the helper (checked by hand in a scratch copy)
-- [ ] The comments in the changed files that still describe cross-module calls through the bus describe the ports
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total grows by the new cases
+- [x] Both repositories open their own transaction through one shared helper that publishes the manager as the ambient one, and no adapter opens a transaction any other way while it calls a resolver or another module inside it
+- [x] `test/integration/repository-own-transaction.spec.ts` runs two concurrent inventory saves outside any transaction on a data source whose pool holds two connections and has a connection timeout, and both complete; the case fails without the helper (checked by hand in a scratch copy)
+- [x] The comments in the changed files that still describe cross-module calls through the bus describe the ports
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total grows by the new cases
 
 **Tests**: integration
 **Gate**: full

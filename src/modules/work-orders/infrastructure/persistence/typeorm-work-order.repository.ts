@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { ConcurrentModificationError } from '../../../../shared/application/errors/concurrent-modification.error';
-import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import {
+  currentEntityManager,
+  runInNewTransaction,
+} from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { CustomerKeyResolver } from '../../../customers';
 import { UserKeyResolver } from '../../../identity';
 import { InventoryItemKeyResolver } from '../../../inventory';
@@ -121,9 +124,8 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     const trailEvents = workOrder.domainEvents.filter(
       (event): event is WorkOrderTrailEvent => event instanceof WorkOrderTrailEvent,
     );
-    // Read before the transaction opens: outside an ambient transaction a resolver reads on a
-    // connection of its own, so asking it from inside the repository's own transaction would hold
-    // two connections at once. Inside an ambient transaction it joins that transaction either way.
+    // Read before the transaction opens, so the transaction spans only the writes. Inside an
+    // ambient transaction the resolvers join it either way.
     const keys = await this.resolveInternalKeys(workOrder, trailEvents);
     const userKey = (userId: string): string => this.internalKey(keys.users, 'users', userId);
 
@@ -361,16 +363,15 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
   }
 
   /**
-   * `WithdrawPartsHandler` and `ReturnPartsHandler` save this aggregate and dispatch a cross-
-   * module inventory command inside one `transactionRunner.run` - both writes must land in the
-   * same Postgres transaction, or a failure on one side leaves the other committed (AD-008).
-   * Falls back to opening its own transaction when there is no ambient one, which is every call
-   * this repository received before this feature - the existing suite is that fallback's
-   * regression net.
+   * A withdrawal or a return saves this aggregate and moves stock through the stock ledger port,
+   * all inside one `transactionRunner.run`, so both writes must land in the same Postgres
+   * transaction or a failure on one side leaves the other committed (AD-008). With no ambient
+   * transaction the save opens its own through `runInNewTransaction`, which publishes the manager
+   * as the ambient one.
    */
   private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     const ambient = currentEntityManager();
-    return ambient ? work(ambient) : this.dataSource.transaction(work);
+    return ambient ? work(ambient) : runInNewTransaction(this.dataSource, work);
   }
 
   /** Every key a save writes, from one batch call per owner. */

@@ -17,7 +17,11 @@ import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastruc
 import { WorkOrderEventOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 
-export function createTestDataSource(): DataSource {
+/** `pool` narrows the connection pool, for a spec that needs to see a connection run out. */
+export function createTestDataSource(pool?: {
+  poolSize: number;
+  connectTimeoutMS: number;
+}): DataSource {
   return new DataSource({
     type: 'postgres',
     host: process.env.DATABASE_HOST,
@@ -25,6 +29,7 @@ export function createTestDataSource(): DataSource {
     username: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
+    ...pool,
     entities: [
       UserOrmEntity,
       SessionOrmEntity,
