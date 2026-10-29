@@ -1,10 +1,8 @@
 import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerQuery } from '../../../../customers/application/queries/get-customer/get-customer.query';
 import { Vehicle } from '../../../domain/entities/vehicle';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
@@ -15,9 +13,9 @@ import {
 import { LicensePlate } from '../../../domain/value-objects/license-plate';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
+import { VEHICLE_OWNERS } from '../../../vehicles.tokens';
+import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import { RegisteredVehicleDto, RegisterVehicleCommand } from './register-vehicle.command';
-
-const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(RegisterVehicleCommand)
 export class RegisterVehicleHandler implements ICommandHandler<
@@ -28,18 +26,16 @@ export class RegisterVehicleHandler implements ICommandHandler<
     @Inject(VEHICLE_REPOSITORY) private readonly vehicles: VehicleRepository,
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly queryBus: QueryBus,
+    @Inject(VEHICLE_OWNERS) private readonly owners: VehicleOwners,
     private readonly eventBus: EventBus,
   ) {}
 
   async execute(command: RegisterVehicleCommand): Promise<RegisteredVehicleDto> {
-    const customer = await this.queryBus.execute<GetCustomerQuery, CustomerSummaryDto | null>(
-      new GetCustomerQuery(command.customerId),
-    );
-    if (!customer) {
+    const owner = await this.owners.findById(command.customerId);
+    if (!owner) {
       throw new ReferencedCustomerNotFoundError();
     }
-    if (customer.status !== ACTIVE_STATUS) {
+    if (!owner.active) {
       throw new OwningCustomerInactiveError();
     }
 

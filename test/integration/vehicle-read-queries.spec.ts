@@ -11,12 +11,14 @@ import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/li
 import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
 import { GetCustomerByUserIdHandler } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.handler';
+import { GetCustomerHandler } from '../../src/modules/customers/application/queries/get-customer/get-customer.handler';
 import { GetMyVehiclesHandler } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.handler';
 import { GetMyVehiclesQuery } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.query';
 import { GetVehicleHandler } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.handler';
 import { GetVehicleQuery } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.query';
 import { ListVehiclesByCustomerHandler } from '../../src/modules/vehicles/application/queries/list-vehicles-by-customer/list-vehicles-by-customer.handler';
 import { ListVehiclesByCustomerQuery } from '../../src/modules/vehicles/application/queries/list-vehicles-by-customer/list-vehicles-by-customer.query';
+import { VehicleOwnersGateway } from '../../src/modules/vehicles/infrastructure/gateways/vehicle-owners.gateway';
 import { TypeOrmVehicleQueryAdapter } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter';
 import { TypeOrmVehicleRepository } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
@@ -43,13 +45,14 @@ beforeAll(async () => {
   getVehicleHandler = new GetVehicleHandler(vehicleQueryAdapter);
   listVehiclesByCustomerHandler = new ListVehiclesByCustomerHandler(vehicleQueryAdapter);
 
-  // GetMyVehiclesHandler dispatches GetCustomerByUserIdQuery through a real QueryBus wired to a
-  // single handler, proving the cross-module contract, not a stub standing in for it.
-  const getCustomerByUserIdHandler = new GetCustomerByUserIdHandler(customerQueryAdapter);
-  const queryBus = {
-    execute: (query: GetCustomerByUserIdQueryLike) => getCustomerByUserIdHandler.execute(query),
-  };
-  getMyVehiclesHandler = new GetMyVehiclesHandler(vehicleQueryAdapter, queryBus as never);
+  // GetMyVehiclesHandler reaches the customers module through the real gateway and the real
+  // customers handlers over the test database, proving the cross-module contract, not a stub
+  // standing in for it.
+  const vehicleOwners = new VehicleOwnersGateway(
+    new GetCustomerHandler(customerQueryAdapter),
+    new GetCustomerByUserIdHandler(customerQueryAdapter),
+  );
+  getMyVehiclesHandler = new GetMyVehiclesHandler(vehicleQueryAdapter, vehicleOwners);
 
   vehicleRepository = new TypeOrmVehicleRepository(
     dataSource.getRepository(VehicleOrmEntity),
@@ -65,8 +68,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await dataSource.destroy();
 });
-
-type GetCustomerByUserIdQueryLike = { userId: string };
 
 async function registerCustomer(): Promise<{ customerId: string; userId: string }> {
   const user = buildUser({ email: `${randomUUID()}@example.com`, document: uniqueValidCpf() });

@@ -1,7 +1,7 @@
 import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler, QueryBus } from '@nestjs/cqrs';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { VEHICLE_OWNERS } from '../../../vehicles.tokens';
+import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import {
   VEHICLE_QUERY_PORT,
   VehicleQueryPort,
@@ -16,18 +16,15 @@ export class GetMyVehiclesHandler implements IQueryHandler<
 > {
   constructor(
     @Inject(VEHICLE_QUERY_PORT) private readonly vehicleQuery: VehicleQueryPort,
-    private readonly queryBus: QueryBus,
+    @Inject(VEHICLE_OWNERS) private readonly owners: VehicleOwners,
   ) {}
 
   async execute(query: GetMyVehiclesQuery): Promise<VehicleSummaryDto[]> {
-    const customer = await this.queryBus.execute<
-      GetCustomerByUserIdQuery,
-      CustomerSummaryDto | null
-    >(new GetCustomerByUserIdQuery(query.userId));
+    const owner = await this.owners.findByUserId(query.userId);
     // No customer record for this user - empty list, not an error (CVR-04 AC4).
-    if (!customer) {
+    if (!owner) {
       return [];
     }
-    return this.vehicleQuery.listByCustomerId(customer.id);
+    return this.vehicleQuery.listByCustomerId(owner.id);
   }
 }

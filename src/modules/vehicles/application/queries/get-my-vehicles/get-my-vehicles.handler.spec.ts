@@ -1,7 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { FakeVehicleOwners } from '../../../../../../test/support/fakes/fake-vehicle-owners';
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { GetMyVehiclesHandler } from './get-my-vehicles.handler';
 import { GetMyVehiclesQuery } from './get-my-vehicles.query';
@@ -9,17 +7,13 @@ import { GetMyVehiclesQuery } from './get-my-vehicles.query';
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 
-function customer(): CustomerSummaryDto {
-  return {
-    id: CUSTOMER_ID,
-    userId: USER_ID,
-    name: 'Jane Doe',
-    email: 'jane@example.com',
-    document: '11144477735',
-    address: null,
-    phoneNumber: null,
-    status: 'ACTIVE',
-  };
+/** The user backs the customer `CUSTOMER_ID`, or backs none when `false`. */
+function ownersWhere(userIsCustomer: boolean): FakeVehicleOwners {
+  const owners = new FakeVehicleOwners();
+  if (userIsCustomer) {
+    owners.add({ id: CUSTOMER_ID, active: true }, USER_ID);
+  }
+  return owners;
 }
 
 function fakePort(result: VehicleSummaryDto[]): VehicleQueryPort {
@@ -30,23 +24,20 @@ function fakePort(result: VehicleSummaryDto[]): VehicleQueryPort {
 }
 
 describe('GetMyVehiclesHandler', () => {
-  it("resolves the customer over the QueryBus, never by importing the customers module's repository", async () => {
+  it("resolves the customer through the vehicle owners, by the caller's user id", async () => {
     const port = fakePort([]);
-    const queryBus = stubQueryBus();
-    queryBus.execute.mockResolvedValue(customer());
-    const handler = new GetMyVehiclesHandler(port, queryBus.bus);
+    const owners = ownersWhere(true);
+    const handler = new GetMyVehiclesHandler(port, owners);
 
     await handler.execute(new GetMyVehiclesQuery(USER_ID));
 
-    expect(queryBus.execute).toHaveBeenCalledWith(expect.any(GetCustomerByUserIdQuery));
+    expect(owners.userLookups).toEqual([USER_ID]);
     expect(port.listByCustomerId).toHaveBeenCalledWith(CUSTOMER_ID);
   });
 
   it('returns an empty list for a user backing no customer record, not an error', async () => {
     const port = fakePort([]);
-    const queryBus = stubQueryBus();
-    queryBus.execute.mockResolvedValue(null);
-    const handler = new GetMyVehiclesHandler(port, queryBus.bus);
+    const handler = new GetMyVehiclesHandler(port, ownersWhere(false));
 
     const result = await handler.execute(new GetMyVehiclesQuery(USER_ID));
 
@@ -57,9 +48,7 @@ describe('GetMyVehiclesHandler', () => {
   it('returns exactly what the port answers for the resolved customer', async () => {
     const rows = [{ id: '33333333-3333-4333-8333-333333333333' } as VehicleSummaryDto];
     const port = fakePort(rows);
-    const queryBus = stubQueryBus();
-    queryBus.execute.mockResolvedValue(customer());
-    const handler = new GetMyVehiclesHandler(port, queryBus.bus);
+    const handler = new GetMyVehiclesHandler(port, ownersWhere(true));
 
     await expect(handler.execute(new GetMyVehiclesQuery(USER_ID))).resolves.toBe(rows);
   });

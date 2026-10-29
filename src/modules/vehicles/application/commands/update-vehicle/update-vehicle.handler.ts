@@ -1,9 +1,7 @@
 import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerQuery } from '../../../../customers/application/queries/get-customer/get-customer.query';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
 import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
@@ -13,16 +11,16 @@ import {
 } from '../../../domain/repositories/vehicle.repository';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
+import { VEHICLE_OWNERS } from '../../../vehicles.tokens';
+import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import { UpdateVehicleCommand } from './update-vehicle.command';
-
-const ACTIVE_STATUS = 'ACTIVE';
 
 @CommandHandler(UpdateVehicleCommand)
 export class UpdateVehicleHandler implements ICommandHandler<UpdateVehicleCommand, void> {
   constructor(
     @Inject(VEHICLE_REPOSITORY) private readonly vehicles: VehicleRepository,
     @Inject(CLOCK) private readonly clock: Clock,
-    private readonly queryBus: QueryBus,
+    @Inject(VEHICLE_OWNERS) private readonly owners: VehicleOwners,
     private readonly eventBus: EventBus,
   ) {}
 
@@ -38,13 +36,11 @@ export class UpdateVehicleHandler implements ICommandHandler<UpdateVehicleComman
     vehicle.updateDetails({ brand: command.brand, model: command.model, year }, now);
 
     if (command.customerId !== undefined) {
-      const customer = await this.queryBus.execute<GetCustomerQuery, CustomerSummaryDto | null>(
-        new GetCustomerQuery(command.customerId),
-      );
-      if (!customer) {
+      const owner = await this.owners.findById(command.customerId);
+      if (!owner) {
         throw new ReferencedCustomerNotFoundError();
       }
-      if (customer.status !== ACTIVE_STATUS) {
+      if (!owner.active) {
         throw new OwningCustomerInactiveError();
       }
       vehicle.transferTo(command.customerId, now);

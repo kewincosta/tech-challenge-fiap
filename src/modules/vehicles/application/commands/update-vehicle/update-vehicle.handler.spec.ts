@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeVehicleOwners } from '../../../../../../test/support/fakes/fake-vehicle-owners';
 import { InMemoryVehicleRepository } from '../../../../../../test/support/fakes/in-memory-vehicle.repository';
 import { Vehicle } from '../../../domain/entities/vehicle';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
@@ -9,6 +10,7 @@ import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.e
 import { LicensePlate } from '../../../domain/value-objects/license-plate';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
+import { OwnerRef } from '../../ports/vehicle-owners.port';
 import { UpdateVehicleCommand } from './update-vehicle.command';
 import { UpdateVehicleHandler } from './update-vehicle.handler';
 
@@ -16,13 +18,15 @@ const VEHICLE_ID = VehicleId.create('11111111-1111-4111-8111-111111111111');
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const OTHER_CUSTOMER_ID = '33333333-3333-4333-8333-333333333333';
 
-function makeHandler() {
+/** `newOwner` seeds the customer the vehicle is transferred to; leaving it out, the customers module knows none. */
+function makeHandler(newOwner?: OwnerRef) {
   const vehicles = new InMemoryVehicleRepository();
-  const clock = new FakeClock();
-  const eventBus = stubEventBus();
-  const queryBus = stubQueryBus();
-  const handler = new UpdateVehicleHandler(vehicles, clock, queryBus.bus, eventBus.bus);
-  return { handler, vehicles, queryBus };
+  const owners = new FakeVehicleOwners();
+  if (newOwner) {
+    owners.add(newOwner);
+  }
+  const handler = new UpdateVehicleHandler(vehicles, new FakeClock(), owners, stubEventBus().bus);
+  return { handler, vehicles };
 }
 
 async function seedVehicle(vehicles: InMemoryVehicleRepository) {
@@ -53,9 +57,8 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should transfer ownership to a new active customer', async () => {
-    const { handler, vehicles, queryBus } = makeHandler();
+    const { handler, vehicles } = makeHandler({ id: OTHER_CUSTOMER_ID, active: true });
     await seedVehicle(vehicles);
-    queryBus.execute.mockResolvedValueOnce({ status: 'ACTIVE' });
 
     await handler.execute(
       new UpdateVehicleCommand(
@@ -71,9 +74,8 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should refuse transferring to a deactivated customer', async () => {
-    const { handler, vehicles, queryBus } = makeHandler();
+    const { handler, vehicles } = makeHandler({ id: OTHER_CUSTOMER_ID, active: false });
     await seedVehicle(vehicles);
-    queryBus.execute.mockResolvedValueOnce({ status: 'INACTIVE' });
 
     await expect(
       handler.execute(
@@ -86,12 +88,12 @@ describe('UpdateVehicleHandler', () => {
         ),
       ),
     ).rejects.toThrow(OwningCustomerInactiveError);
+    expect(vehicles.vehicles[0].customerId).toBe(CUSTOMER_ID);
   });
 
   it('should refuse transferring to a customer that does not exist', async () => {
-    const { handler, vehicles, queryBus } = makeHandler();
+    const { handler, vehicles } = makeHandler();
     await seedVehicle(vehicles);
-    queryBus.execute.mockResolvedValueOnce(null);
 
     await expect(
       handler.execute(
@@ -104,6 +106,7 @@ describe('UpdateVehicleHandler', () => {
         ),
       ),
     ).rejects.toThrow(ReferencedCustomerNotFoundError);
+    expect(vehicles.vehicles[0].customerId).toBe(CUSTOMER_ID);
   });
 
   it('should refuse when the vehicle does not exist', async () => {

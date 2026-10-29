@@ -1113,10 +1113,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The three handlers inject the port and no bus; a deactivated owner still answers 422, asserted in the spec and the e2e
-- [ ] No file in any module's `application` imports another module, apart from `customers/application/queries/list-customers/list-customers.handler.ts`, which imports `PersonDocument` until T33; the dependency baseline is regenerated without those entries
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] The three handlers inject the port and no bus; a deactivated owner still answers 422, asserted in the spec and the e2e
+- [x] No file in any module's `application` imports another module, apart from `customers/application/queries/list-customers/list-customers.handler.ts`, which imports `PersonDocument` until T33; the dependency baseline is regenerated without those entries
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full
