@@ -10,6 +10,7 @@ import { ListVehiclesByCustomerHandler } from './application/queries/list-vehicl
 import { VEHICLE_REPOSITORY } from './domain/repositories/vehicle.repository';
 import { TypeOrmVehicleQueryAdapter } from './infrastructure/persistence/typeorm-vehicle-query.adapter';
 import { TypeOrmVehicleRepository } from './infrastructure/persistence/typeorm-vehicle.repository';
+import { VehicleKeyResolver } from './infrastructure/persistence/vehicle-key-resolver';
 import { VehicleOrmEntity } from './infrastructure/persistence/vehicle.orm-entity';
 import { VehiclesController } from './presentation/controllers/vehicles.controller';
 
@@ -25,6 +26,8 @@ import { VehiclesController } from './presentation/controllers/vehicles.controll
     GetMyVehiclesHandler,
     { provide: VEHICLE_REPOSITORY, useClass: TypeOrmVehicleRepository },
     { provide: VEHICLE_QUERY_PORT, useClass: TypeOrmVehicleQueryAdapter },
+    VehicleKeyResolver,
   ],
+  exports: [VehicleKeyResolver],
 })
 export class VehiclesModule {}
