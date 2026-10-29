@@ -212,20 +212,15 @@ entry. They apply to every feature.
 
 ## Handoff
 
-- **Feature**: `.specs/features/architecture-documentation` - **done**
-- **Phase / Task**: Verified on the second Verifier pass. 32 tasks (T1-T32) plus three fix tasks (F1-F3) committed on `main`, commit range `4834607..HEAD`. Verifier report at `.specs/features/architecture-documentation/validation.md`, carrying both rounds.
-- **Completed**: all 5 requirements (ARCH-01 through ARCH-05, 38 numbered ACs, all 6 listed edge cases). The set is 44 new files: 25 decision records and their index, an architecture overview, a high level design, 7 mermaid C4 diagrams, 9 low-level-design pages and their index. Three documents were edited: the plan's section 7 became an index, the event storming's section 15 became a pointer, and its H2 answer was annotated as reversed. `README.md` gained the four entry points and is now Prettier-clean. 15 permission-gated routes gained the `@ApiForbiddenResponse` they were missing, and the two budget decision routes gained a description of the owner-or-permission rule their handler applies.
-- **In-progress** (file:line): none
-- **Next step**: none. Every plan phase (0 through 13) and its documentation tail are shipped and Verified. The roadmap has no further row.
+- **Feature**: `.specs/features/clean-architecture`
+- **Phase / Task**: Execute. Batch 1 of 11 (T1 to T7) dispatched to a worker sub-agent.
+- **Completed**: none
+- **In-progress** (file:line): none yet
+- **Next step**: read batch 1's compact summary, then dispatch batch 2 (T8 to T13).
 - **Blockers**: none
-- **Uncommitted files**: none - working tree clean on `main`
-- **Branch**: main
+- **Uncommitted files**: none
+- **Branch**: feat/tech-challenge-2
 
-**Notes from this feature's own implementation:**
+**Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
 
-1. **The first Verifier pass failed, and it failed on the one thing this feature could not check mechanically.** Round 1 returned three gaps, all in the ORM column tables: five columns migration `…007` adds to `work_orders` were missing, a `budget_round integer` column was documented on two tables where the real column is `budget_id bigint` referencing `work_order_budgets`, and `quantity` was missing from `stock_movement_transitions`. The cause was uniform: columns were gathered from the migration that created a table plus at best one that altered it, rather than from every migration touching it. The user had chosen full column fidelity over a pointer at design time, knowing nothing would detect drift; that choice was sound, and the first attempt at executing it was not careful enough.
-2. **The fix produced the check that should have existed from the start.** A parser derives the full column set for all 18 tables from all 9 migrations and greps each page for every name. Round 2 corroborated it with an independent implementation and widened it: all 18 documented table headings correspond to real tables, and all 53 index and constraint identifiers cited across `docs/architecture/` exist in the migrations.
-3. **Both Verifier rounds wrote a broken checker before writing a working one, and both caught it.** Round 1's link checker reported 100+ false failures from its own parsing; round 2's column parser reported 0/18 clean with 100+ bogus type mismatches from a greedy pattern reading `bigint NOT NULL` as a type. Neither conclusion was acted on. Worth remembering: on a documentation feature the checker is the instrument, and an instrument that reports failure is safer than one that reports success.
-4. **Two lessons recorded, both candidates**: `L-015`, derive a column list from every migration touching the table rather than only the one that created it; `L-016`, take a column's name and type from the migration or the ORM entity, never from a query adapter's SQL alias. Round 2 recorded nothing new.
-5. **One disclosed scope exception, judged justified by the Verifier.** T30 annotated H2 in the event storming, which sits outside the "sections 7 and 15 only" limit the spec's Out of Scope sets. The spec shipped two acceptance criteria in direct tension: ARCH-04 #4 unconditionally requires correcting a document the code contradicts, and ARCH-04 #5 confines DDD edits. H2 was both. The Verifier called the edit justified and the defect a spec-precision gap, in the spec rather than in the work.
-6. **`npm run format:check` still fails on ~148 pre-existing files** across `src`, `test` and `.claude`. This feature brought `README.md` and all of `docs/` to Prettier-clean and deliberately left the rest alone. A future maintenance pass could close it; running `npm run format` casually would produce a 148-file diff.
+**Environment**: Postgres and Redis run through `docker compose up -d postgres redis` on host ports 15432 and 16379.
