@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeCustomerDirectory } from '../../../../../../test/support/fakes/fake-customer-directory';
+import { InvalidWorkOrderNumberError } from '../../../domain/errors/invalid-work-order-number.error';
+import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
 import { GetMyWorkOrderHandler } from './get-my-work-order.handler';
 import { GetMyWorkOrderQuery } from './get-my-work-order.query';
@@ -22,7 +24,7 @@ function workOrder(customerId: string): WorkOrderSummaryDto {
   return { id: '44444444-4444-4444-8444-444444444444', customerId } as WorkOrderSummaryDto;
 }
 
-// Answers for `NUMBER` alone, so a handler that reads another number gets `null`.
+// Answers for `NUMBER` alone, so a use case that reads another number gets `null`.
 function fakePort(result: WorkOrderSummaryDto | null): WorkOrderQueryPort {
   return {
     getByNumber: vi.fn((number: string) => Promise.resolve(number === NUMBER ? result : null)),
@@ -30,6 +32,21 @@ function fakePort(result: WorkOrderSummaryDto | null): WorkOrderQueryPort {
     listByCustomerId: vi.fn(),
     listTrail: vi.fn(),
   };
+}
+
+/** The error the use case refuses with, whatever the cause. */
+async function refusalOf(
+  port: WorkOrderQueryPort,
+  customers: FakeCustomerDirectory,
+): Promise<unknown> {
+  try {
+    await new GetMyWorkOrderHandler(port, customers).execute(
+      new GetMyWorkOrderQuery(USER_ID, NUMBER),
+    );
+  } catch (error) {
+    return error;
+  }
+  throw new Error('The use case answered instead of refusing.');
 }
 
 describe('GetMyWorkOrderHandler', () => {
@@ -42,49 +59,52 @@ describe('GetMyWorkOrderHandler', () => {
     expect(result).toEqual(workOrder(CUSTOMER_ID));
   });
 
-  it('returns null when the work order belongs to another customer', async () => {
+  it('refuses a work order that belongs to another customer with WorkOrderNotFoundError', async () => {
     const port = fakePort(workOrder(OTHER_CUSTOMER_ID));
     const handler = new GetMyWorkOrderHandler(port, directoryOf(CUSTOMER_ID));
 
-    const result = await handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
-
-    expect(result).toBeNull();
+    await expect(handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER))).rejects.toThrow(
+      WorkOrderNotFoundError,
+    );
   });
 
-  it('returns null when the acting user backs no customer record', async () => {
+  it('refuses an acting user who backs no customer record with WorkOrderNotFoundError', async () => {
     const port = fakePort(workOrder(CUSTOMER_ID));
     const handler = new GetMyWorkOrderHandler(port, directoryOf(null));
 
-    const result = await handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
-
-    expect(result).toBeNull();
+    await expect(handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER))).rejects.toThrow(
+      WorkOrderNotFoundError,
+    );
   });
 
-  it('returns null when no work order carries the number', async () => {
+  it('refuses a number no work order carries with WorkOrderNotFoundError', async () => {
     const port = fakePort(null);
     const handler = new GetMyWorkOrderHandler(port, directoryOf(CUSTOMER_ID));
 
-    const result = await handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
-
-    expect(result).toBeNull();
+    await expect(handler.execute(new GetMyWorkOrderQuery(USER_ID, NUMBER))).rejects.toThrow(
+      WorkOrderNotFoundError,
+    );
   });
 
-  it('answers the identical value for all three refusal causes', async () => {
-    const ownedByOther = await new GetMyWorkOrderHandler(
+  it('answers the identical error for all three refusal causes', async () => {
+    const ownedByOther = await refusalOf(
       fakePort(workOrder(OTHER_CUSTOMER_ID)),
       directoryOf(CUSTOMER_ID),
-    ).execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
-    const noCustomer = await new GetMyWorkOrderHandler(
-      fakePort(workOrder(CUSTOMER_ID)),
-      directoryOf(null),
-    ).execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
-    const notFound = await new GetMyWorkOrderHandler(
-      fakePort(null),
-      directoryOf(CUSTOMER_ID),
-    ).execute(new GetMyWorkOrderQuery(USER_ID, NUMBER));
+    );
+    const noCustomer = await refusalOf(fakePort(workOrder(CUSTOMER_ID)), directoryOf(null));
+    const notFound = await refusalOf(fakePort(null), directoryOf(CUSTOMER_ID));
 
-    expect(ownedByOther).toBe(null);
-    expect(noCustomer).toBe(null);
-    expect(notFound).toBe(null);
+    expect(ownedByOther).toBeInstanceOf(WorkOrderNotFoundError);
+    expect(noCustomer).toEqual(ownedByOther);
+    expect(notFound).toEqual(ownedByOther);
+  });
+
+  it('refuses a malformed number with InvalidWorkOrderNumberError, not the not-found error', async () => {
+    const port = fakePort(workOrder(CUSTOMER_ID));
+    const handler = new GetMyWorkOrderHandler(port, directoryOf(CUSTOMER_ID));
+
+    await expect(handler.execute(new GetMyWorkOrderQuery(USER_ID, 'not-a-number'))).rejects.toThrow(
+      InvalidWorkOrderNumberError,
+    );
   });
 });

@@ -9,6 +9,7 @@ import { GetWorkOrderTrailQuery } from '../../src/modules/work-orders/applicatio
 import { ListWorkOrdersHandler } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.handler';
 import { ListWorkOrdersQuery } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.query';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
+import { WorkOrderNotFoundError } from '../../src/modules/work-orders/domain/errors/work-order-not-found.error';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
@@ -189,8 +190,10 @@ describe('Work order read queries', () => {
     expect(found?.id).toBe(workOrder.id.value);
   });
 
-  it('should return null from GetWorkOrderQuery for a well-formed number no work order carries, rather than throwing', async () => {
-    expect(await getHandler.execute(new GetWorkOrderQuery('ZZZZZZ-2026'))).toBeNull();
+  it('should refuse a well-formed number no work order carries with WorkOrderNotFoundError', async () => {
+    await expect(getHandler.execute(new GetWorkOrderQuery('ZZZZZZ-2026'))).rejects.toThrow(
+      WorkOrderNotFoundError,
+    );
   });
 
   it('should return the trail in chronological order via GetWorkOrderTrailQuery', async () => {

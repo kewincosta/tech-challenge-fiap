@@ -49,7 +49,9 @@ import { ServiceCatalog } from './application/ports/service-catalog.port';
 import { StockLedger } from './application/ports/stock-ledger.port';
 import { VehicleDirectory } from './application/ports/vehicle-directory.port';
 import { WorkOrderActors } from './application/ports/work-order-actors.port';
+import { WorkOrderMetricsQueryPort } from './application/ports/work-order-metrics-query.port';
 import { WorkOrderNumberGenerator } from './application/ports/work-order-number-generator.port';
+import { WorkOrderQueryPort } from './application/ports/work-order-query.port';
 import { WorkOrderRepository } from './application/ports/work-order.repository';
 import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
 import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
@@ -318,12 +320,40 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       useFactory: (actors: WorkOrderActors) => new CancellationAuthorizer(actors),
       inject: [WORK_ORDER_ACTORS],
     },
-    GetWorkOrderHandler,
-    ListWorkOrdersHandler,
-    GetWorkOrderTrailHandler,
-    GetMyWorkOrdersHandler,
-    GetMyWorkOrderHandler,
-    GetAverageExecutionTimeHandler,
+    {
+      provide: GetWorkOrderHandler,
+      useFactory: (workOrderQuery: WorkOrderQueryPort) => new GetWorkOrderHandler(workOrderQuery),
+      inject: [WORK_ORDER_QUERY_PORT],
+    },
+    {
+      provide: ListWorkOrdersHandler,
+      useFactory: (workOrderQuery: WorkOrderQueryPort) => new ListWorkOrdersHandler(workOrderQuery),
+      inject: [WORK_ORDER_QUERY_PORT],
+    },
+    {
+      provide: GetWorkOrderTrailHandler,
+      useFactory: (workOrderQuery: WorkOrderQueryPort) =>
+        new GetWorkOrderTrailHandler(workOrderQuery),
+      inject: [WORK_ORDER_QUERY_PORT],
+    },
+    {
+      provide: GetMyWorkOrdersHandler,
+      useFactory: (workOrderQuery: WorkOrderQueryPort, customers: CustomerDirectory) =>
+        new GetMyWorkOrdersHandler(workOrderQuery, customers),
+      inject: [WORK_ORDER_QUERY_PORT, CUSTOMER_DIRECTORY],
+    },
+    {
+      provide: GetMyWorkOrderHandler,
+      useFactory: (workOrderQuery: WorkOrderQueryPort, customers: CustomerDirectory) =>
+        new GetMyWorkOrderHandler(workOrderQuery, customers),
+      inject: [WORK_ORDER_QUERY_PORT, CUSTOMER_DIRECTORY],
+    },
+    {
+      provide: GetAverageExecutionTimeHandler,
+      useFactory: (metricsQuery: WorkOrderMetricsQueryPort) =>
+        new GetAverageExecutionTimeHandler(metricsQuery),
+      inject: [WORK_ORDER_METRICS_QUERY_PORT],
+    },
     { provide: WORK_ORDER_REPOSITORY, useClass: TypeOrmWorkOrderRepository },
     { provide: WORK_ORDER_QUERY_PORT, useClass: TypeOrmWorkOrderQueryAdapter },
     { provide: WORK_ORDER_METRICS_QUERY_PORT, useClass: TypeOrmWorkOrderMetricsQueryAdapter },

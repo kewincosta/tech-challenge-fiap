@@ -1,22 +1,21 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderQueryPort, WorkOrderTrailEntryDto } from '../../ports/work-order-query.port';
-import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetWorkOrderTrailQuery } from './get-work-order-trail.query';
 
 /**
- * Whether the work order itself exists is not this handler's concern - the 404 for an unknown
- * number is owned by the controller, alongside `GetWorkOrderQuery` (T19), the same split T10
- * established for the inventory movement history.
+ * A number no work order carries is refused with the not-found error, never answered with an
+ * empty trail, and a malformed number is refused with the number error before anything is read.
+ * Both rules sit here, so any entry point inherits them, as with the inventory movement history.
  */
-@QueryHandler(GetWorkOrderTrailQuery)
-export class GetWorkOrderTrailHandler implements IQueryHandler<
-  GetWorkOrderTrailQuery,
-  WorkOrderTrailEntryDto[]
-> {
-  constructor(@Inject(WORK_ORDER_QUERY_PORT) private readonly workOrderQuery: WorkOrderQueryPort) {}
+export class GetWorkOrderTrailHandler {
+  constructor(private readonly workOrderQuery: WorkOrderQueryPort) {}
 
   async execute(query: GetWorkOrderTrailQuery): Promise<WorkOrderTrailEntryDto[]> {
+    WorkOrderNumber.create(query.number);
+    if (!(await this.workOrderQuery.getByNumber(query.number))) {
+      throw new WorkOrderNotFoundError();
+    }
     return this.workOrderQuery.listTrail(query.number);
   }
 }

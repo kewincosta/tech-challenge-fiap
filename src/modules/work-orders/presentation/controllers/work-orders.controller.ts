@@ -11,7 +11,6 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -27,10 +26,7 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { CurrentUser } from '../../../identity/authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../identity/authentication/presentation/principal';
-import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
-import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
 import { AddRequestedServiceHandler } from '../../application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
@@ -67,14 +63,18 @@ import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
-import { AverageExecutionTimeDto } from '../../application/ports/work-order-metrics-query.port';
+import { GetAverageExecutionTimeHandler } from '../../application/queries/get-average-execution-time/get-average-execution-time.handler';
 import { GetAverageExecutionTimeQuery } from '../../application/queries/get-average-execution-time/get-average-execution-time.query';
+import { GetMyWorkOrderHandler } from '../../application/queries/get-my-work-order/get-my-work-order.handler';
 import { GetMyWorkOrderQuery } from '../../application/queries/get-my-work-order/get-my-work-order.query';
+import { GetMyWorkOrdersHandler } from '../../application/queries/get-my-work-orders/get-my-work-orders.handler';
 import { GetMyWorkOrdersQuery } from '../../application/queries/get-my-work-orders/get-my-work-orders.query';
+import { GetWorkOrderTrailHandler } from '../../application/queries/get-work-order-trail/get-work-order-trail.handler';
 import { GetWorkOrderTrailQuery } from '../../application/queries/get-work-order-trail/get-work-order-trail.query';
+import { GetWorkOrderHandler } from '../../application/queries/get-work-order/get-work-order.handler';
 import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-work-order.query';
+import { ListWorkOrdersHandler } from '../../application/queries/list-work-orders/list-work-orders.handler';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
-import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
@@ -110,7 +110,12 @@ export class WorkOrdersController {
     private readonly deliverVehicleUseCase: DeliverVehicleHandler,
     private readonly cancelWorkOrderUseCase: CancelWorkOrderHandler,
     private readonly applyDiscountUseCase: ApplyDiscountHandler,
-    private readonly queryBus: QueryBus,
+    private readonly getWorkOrderUseCase: GetWorkOrderHandler,
+    private readonly listWorkOrdersUseCase: ListWorkOrdersHandler,
+    private readonly getWorkOrderTrailUseCase: GetWorkOrderTrailHandler,
+    private readonly getMyWorkOrdersUseCase: GetMyWorkOrdersHandler,
+    private readonly getMyWorkOrderUseCase: GetMyWorkOrderHandler,
+    private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeHandler,
   ) {}
 
   @Post()
@@ -140,9 +145,7 @@ export class WorkOrdersController {
   @ApiOkResponse({ type: [WorkOrderResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(@Query('status') status?: string): Promise<WorkOrderResponseDto[]> {
-    const workOrders = await this.queryBus.execute<ListWorkOrdersQuery, WorkOrderSummaryDto[]>(
-      new ListWorkOrdersQuery(status),
-    );
+    const workOrders = await this.listWorkOrdersUseCase.execute(new ListWorkOrdersQuery(status));
     return workOrders.map((workOrder) => this.toResponseDto(workOrder));
   }
 
@@ -155,7 +158,7 @@ export class WorkOrdersController {
   @ApiOkResponse({ type: [WorkOrderResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async myWorkOrders(@CurrentUser() principal: Principal): Promise<WorkOrderResponseDto[]> {
-    const workOrders = await this.queryBus.execute<GetMyWorkOrdersQuery, WorkOrderSummaryDto[]>(
+    const workOrders = await this.getMyWorkOrdersUseCase.execute(
       new GetMyWorkOrdersQuery(principal.userId),
     );
     return workOrders.map((workOrder) => this.toResponseDto(workOrder));
@@ -174,15 +177,9 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    const workOrder = await this.queryBus.execute<GetMyWorkOrderQuery, WorkOrderSummaryDto | null>(
-      new GetMyWorkOrderQuery(principal.userId, number),
+    return this.toResponseDto(
+      await this.getMyWorkOrderUseCase.execute(new GetMyWorkOrderQuery(principal.userId, number)),
     );
-    // One null for "no customer record", "no work order" and "not yours" - the same 404 either
-    // way, so a stranger's number reads identically to one nobody carries (design.md).
-    if (!workOrder) {
-      throw new WorkOrderNotFoundError();
-    }
-    return this.toResponseDto(workOrder);
   }
 
   @Get('metrics/average-execution-time')
@@ -194,17 +191,13 @@ export class WorkOrdersController {
   async averageExecutionTime(
     @Query() query: AverageExecutionTimeQueryDto,
   ): Promise<AverageExecutionTimeResponseDto> {
-    const result = await this.queryBus.execute<
-      GetAverageExecutionTimeQuery,
-      AverageExecutionTimeDto
-    >(
+    return this.getAverageExecutionTimeUseCase.execute(
       new GetAverageExecutionTimeQuery(
         query.serviceId,
         query.completedFrom ? new Date(query.completedFrom) : undefined,
         query.completedTo ? new Date(query.completedTo) : undefined,
       ),
     );
-    return result;
   }
 
   @Get(':number')
@@ -216,7 +209,9 @@ export class WorkOrdersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getByNumber(@Param('number') number: string): Promise<WorkOrderResponseDto> {
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Get(':number/trail')
@@ -227,13 +222,7 @@ export class WorkOrdersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getTrail(@Param('number') number: string): Promise<WorkOrderTrailEntryResponseDto[]> {
-    // The 404 for an unknown number is owned here - GetWorkOrderTrailQuery never checks
-    // existence on its own (T18), the same split T10 established for inventory's movement
-    // history.
-    await this.getWorkOrderOrThrow(number);
-    const trail = await this.queryBus.execute<GetWorkOrderTrailQuery, WorkOrderTrailEntryDto[]>(
-      new GetWorkOrderTrailQuery(number),
-    );
+    const trail = await this.getWorkOrderTrailUseCase.execute(new GetWorkOrderTrailQuery(number));
     return trail.map((entry) => this.toTrailResponseDto(entry));
   }
 
@@ -254,7 +243,9 @@ export class WorkOrdersController {
     await this.addRequestedServiceUseCase.execute(
       new AddRequestedServiceCommand(number, body.serviceId, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/parts')
@@ -275,7 +266,9 @@ export class WorkOrdersController {
     await this.planPartUseCase.execute(
       new PlanPartCommand(number, body.inventoryItemId, body.quantity, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Delete(':number/items/:itemExternalId')
@@ -312,7 +305,9 @@ export class WorkOrdersController {
     await this.assignMechanicUseCase.execute(
       new AssignMechanicCommand(number, body.mechanicUserId, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/diagnosis')
@@ -329,7 +324,9 @@ export class WorkOrdersController {
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.startDiagnosisUseCase.execute(new StartDiagnosisCommand(number, principal.userId));
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/diagnosis/completion')
@@ -348,7 +345,9 @@ export class WorkOrdersController {
     await this.completeDiagnosisUseCase.execute(
       new CompleteDiagnosisCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/budget/supplementary')
@@ -369,7 +368,9 @@ export class WorkOrdersController {
     await this.submitSupplementaryBudgetUseCase.execute(
       new SubmitSupplementaryBudgetCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/withdrawals')
@@ -390,7 +391,9 @@ export class WorkOrdersController {
     await this.withdrawPartsUseCase.execute(
       new WithdrawPartsCommand(number, body.lines, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/returns')
@@ -411,7 +414,9 @@ export class WorkOrdersController {
     await this.returnPartsUseCase.execute(
       new ReturnPartsCommand(number, body.lines, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // No @RequirePermissions here: the rule is "the owning customer or a holder of
@@ -436,7 +441,9 @@ export class WorkOrdersController {
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.approveBudgetUseCase.execute(new ApproveBudgetCommand(number, principal.userId));
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // No @RequirePermissions here - see approveBudget above.
@@ -458,7 +465,9 @@ export class WorkOrdersController {
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.rejectBudgetUseCase.execute(new RejectBudgetCommand(number, principal.userId));
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // work-orders:read is the route-level gate - every actor able to reach it holds it, so the
@@ -481,7 +490,9 @@ export class WorkOrdersController {
     await this.completeWorkOrderUseCase.execute(
       new CompleteWorkOrderCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/delivery')
@@ -499,7 +510,9 @@ export class WorkOrdersController {
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.deliverVehicleUseCase.execute(new DeliverVehicleCommand(number, principal.userId));
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // work-orders:cancel is the route-level gate. CancellationAuthorizer additionally requires
@@ -525,7 +538,9 @@ export class WorkOrdersController {
     await this.cancelWorkOrderUseCase.execute(
       new CancelWorkOrderCommand(number, body.reason, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/discount')
@@ -547,17 +562,9 @@ export class WorkOrdersController {
     await this.applyDiscountUseCase.execute(
       new ApplyDiscountCommand(number, body.amountCents, body.note, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
-  }
-
-  private async getWorkOrderOrThrow(number: string): Promise<WorkOrderResponseDto> {
-    const workOrder = await this.queryBus.execute<GetWorkOrderQuery, WorkOrderSummaryDto | null>(
-      new GetWorkOrderQuery(number),
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    if (!workOrder) {
-      throw new WorkOrderNotFoundError();
-    }
-    return this.toResponseDto(workOrder);
   }
 
   private toResponseDto(workOrder: WorkOrderSummaryDto): WorkOrderResponseDto {

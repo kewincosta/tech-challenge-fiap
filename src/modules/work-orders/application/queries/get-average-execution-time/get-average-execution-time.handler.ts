@@ -1,10 +1,7 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import {
   AverageExecutionTimeDto,
   WorkOrderMetricsQueryPort,
 } from '../../ports/work-order-metrics-query.port';
-import { WORK_ORDER_METRICS_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetAverageExecutionTimeQuery } from './get-average-execution-time.query';
 
 /**
@@ -14,15 +11,8 @@ import { GetAverageExecutionTimeQuery } from './get-average-execution-time.query
  * figure is not a decomposition of the total (design.md's second risk). The handler never
  * computes the average itself.
  */
-@QueryHandler(GetAverageExecutionTimeQuery)
-export class GetAverageExecutionTimeHandler implements IQueryHandler<
-  GetAverageExecutionTimeQuery,
-  AverageExecutionTimeDto
-> {
-  constructor(
-    @Inject(WORK_ORDER_METRICS_QUERY_PORT)
-    private readonly metricsQuery: WorkOrderMetricsQueryPort,
-  ) {}
+export class GetAverageExecutionTimeHandler {
+  constructor(private readonly metricsQuery: WorkOrderMetricsQueryPort) {}
 
   async execute(query: GetAverageExecutionTimeQuery): Promise<AverageExecutionTimeDto> {
     const aggregate = await this.metricsQuery.averageExecutionTime({

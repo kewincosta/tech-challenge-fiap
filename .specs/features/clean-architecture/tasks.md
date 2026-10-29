@@ -1792,11 +1792,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs assert outcomes; get and get own each cover `WorkOrderNotFoundError`
-- [ ] The controller's `getWorkOrderOrThrow` is gone; the not-found e2e cases from T4 pass
-- [ ] `work-orders` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `work-orders` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs assert outcomes; get and get own each cover `WorkOrderNotFoundError`
+- [x] The controller's `getWorkOrderOrThrow` is gone; the not-found e2e cases from T4 pass
+- [x] `work-orders` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `work-orders` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build
