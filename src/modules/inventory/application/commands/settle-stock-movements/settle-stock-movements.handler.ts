@@ -1,8 +1,4 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
-import { INVENTORY_ITEM_REPOSITORY } from '../../../inventory.tokens';
 import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { SettleStockMovementsCommand } from './settle-stock-movements.command';
 
@@ -12,14 +8,10 @@ import { SettleStockMovementsCommand } from './settle-stock-movements.command';
  * delivery it accompanies. A work order with nothing pending settles nothing and does not throw -
  * delivering a work order that withdrew no part is ordinary, not an error.
  */
-@CommandHandler(SettleStockMovementsCommand)
-export class SettleStockMovementsHandler implements ICommandHandler<
-  SettleStockMovementsCommand,
-  void
-> {
+export class SettleStockMovementsHandler {
   constructor(
-    @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly items: InventoryItemRepository,
+    private readonly clock: Clock,
   ) {}
 
   async execute(command: SettleStockMovementsCommand): Promise<void> {

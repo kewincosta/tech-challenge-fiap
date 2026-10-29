@@ -1,23 +1,19 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
-import { INVENTORY_ITEM_REPOSITORY } from '../../../inventory.tokens';
-import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { ReplenishStockCommand } from './replenish-stock.command';
 
-@CommandHandler(ReplenishStockCommand)
-export class ReplenishStockHandler implements ICommandHandler<ReplenishStockCommand, void> {
+export class ReplenishStockHandler {
   constructor(
-    @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
-    @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly items: InventoryItemRepository,
+    private readonly idGenerator: IdGenerator,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: ReplenishStockCommand): Promise<void> {
@@ -37,6 +33,6 @@ export class ReplenishStockHandler implements ICommandHandler<ReplenishStockComm
       now: this.clock.now(),
     });
     await this.items.save(item);
-    this.eventBus.publishAll(item.pullDomainEvents());
+    this.events.publish(item.pullDomainEvents());
   }
 }

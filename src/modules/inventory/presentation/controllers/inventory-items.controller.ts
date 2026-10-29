@@ -11,7 +11,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -28,16 +27,15 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
-import { CurrentUser } from '../../../identity/authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../identity/authentication/presentation/principal';
-import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AdjustStockCommand } from '../../application/commands/adjust-stock/adjust-stock.command';
+import { AdjustStockHandler } from '../../application/commands/adjust-stock/adjust-stock.handler';
 import { CreateInventoryItemCommand } from '../../application/commands/create-inventory-item/create-inventory-item.command';
 import { CreateInventoryItemHandler } from '../../application/commands/create-inventory-item/create-inventory-item.handler';
 import { DeactivateInventoryItemCommand } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.command';
 import { DeactivateInventoryItemHandler } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.handler';
 import { ReplenishStockCommand } from '../../application/commands/replenish-stock/replenish-stock.command';
+import { ReplenishStockHandler } from '../../application/commands/replenish-stock/replenish-stock.handler';
 import { UpdateInventoryItemCommand } from '../../application/commands/update-inventory-item/update-inventory-item.command';
 import { UpdateInventoryItemHandler } from '../../application/commands/update-inventory-item/update-inventory-item.handler';
 import {
@@ -68,10 +66,11 @@ import { UpdateInventoryItemRequestDto } from '../dtos/update-inventory-item.req
 @Controller('inventory-items')
 export class InventoryItemsController {
   constructor(
-    private readonly commandBus: CommandBus,
     private readonly createItem: CreateInventoryItemHandler,
     private readonly updateItem: UpdateInventoryItemHandler,
     private readonly deactivateItem: DeactivateInventoryItemHandler,
+    private readonly replenishStock: ReplenishStockHandler,
+    private readonly adjustStock: AdjustStockHandler,
     private readonly getItem: GetInventoryItemHandler,
     private readonly listItems: ListInventoryItemsHandler,
     private readonly listShortages: ListStockShortagesHandler,
@@ -196,7 +195,7 @@ export class InventoryItemsController {
     @Body() body: ReplenishStockRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<InventoryItemResponseDto> {
-    await this.commandBus.execute<ReplenishStockCommand, void>(
+    await this.replenishStock.execute(
       new ReplenishStockCommand(
         externalId,
         body.quantity,
@@ -228,7 +227,7 @@ export class InventoryItemsController {
     // body.note defaults to '' rather than being left undefined: AdjustStockCommand carries a
     // plain string, and a blank one is exactly what the aggregate's own note-required check is
     // for (design.md's Error Handling - the rule lives in one place, not duplicated at this DTO).
-    await this.commandBus.execute<AdjustStockCommand, void>(
+    await this.adjustStock.execute(
       new AdjustStockCommand(externalId, body.quantity, principal.userId, body.note ?? ''),
     );
     return this.toItemResponseDto(

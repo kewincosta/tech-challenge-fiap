@@ -85,12 +85,58 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
         new ListStockShortagesHandler(inventoryQuery),
       inject: [INVENTORY_QUERY_PORT],
     },
-    ReplenishStockHandler,
-    AdjustStockHandler,
-    ConsumeStockBatchHandler,
-    RestoreStockBatchHandler,
-    SettleStockMovementsHandler,
-    WriteOffStockMovementsHandler,
+    {
+      provide: ReplenishStockHandler,
+      useFactory: (
+        items: InventoryItemRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new ReplenishStockHandler(items, idGenerator, clock, events),
+      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: AdjustStockHandler,
+      useFactory: (
+        items: InventoryItemRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new AdjustStockHandler(items, idGenerator, clock, events),
+      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: ConsumeStockBatchHandler,
+      useFactory: (
+        items: InventoryItemRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new ConsumeStockBatchHandler(items, idGenerator, clock, events),
+      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: RestoreStockBatchHandler,
+      useFactory: (
+        items: InventoryItemRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new RestoreStockBatchHandler(items, idGenerator, clock, events),
+      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: SettleStockMovementsHandler,
+      useFactory: (items: InventoryItemRepository, clock: Clock) =>
+        new SettleStockMovementsHandler(items, clock),
+      inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
+    },
+    {
+      provide: WriteOffStockMovementsHandler,
+      useFactory: (items: InventoryItemRepository, clock: Clock) =>
+        new WriteOffStockMovementsHandler(items, clock),
+      inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
+    },
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },
     InventoryItemKeyResolver,

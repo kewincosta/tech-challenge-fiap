@@ -1395,11 +1395,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs use fakes and assert outcomes
-- [ ] `cross-module-transaction.spec.ts` and the withdrawal and closing e2e specs pass
-- [ ] `inventory` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `inventory` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs use fakes and assert outcomes
+- [x] `cross-module-transaction.spec.ts` and the withdrawal and closing e2e specs pass
+- [x] `inventory` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `inventory` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build

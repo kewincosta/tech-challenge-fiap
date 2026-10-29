@@ -29,6 +29,9 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
    * the same role `stock_movements` plays for the real repository.
    */
   private ledger: LedgerEntry[] = [];
+  /** What each settlement and each write-off was asked to do, in call order. */
+  readonly settlements: MovementClosureInput[] = [];
+  readonly writeOffs: MovementClosureInput[] = [];
 
   async findById(id: InventoryItemId): Promise<InventoryItem | null> {
     return Promise.resolve(this.items.find((item) => item.id.equals(id)) ?? null);
@@ -121,6 +124,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
   /** Every ledger entry is mutated in place, matching what a real UPDATE does to the row it
    * represents - callers that captured a reference through `findPendingConsumptions` see this. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    this.settlements.push(input);
     const matches = this.ledger.filter(
       (entry) =>
         entry.workOrderId === input.workOrderId &&
@@ -134,6 +138,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
   }
 
   async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    this.writeOffs.push(input);
     const returnedByConsumption = new Map<string, number>();
     for (const entry of this.ledger) {
       if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {

@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { AdjustmentNoteRequiredError } from '../../../domain/errors/adjustment-note-required.error';
 import { InsufficientStockError } from '../../../domain/errors/insufficient-stock.error';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
 import { InvalidMovementQuantityError } from '../../../domain/errors/invalid-movement-quantity.error';
+import { StockAdjusted } from '../../../domain/events/stock-adjusted.event';
 import { InventoryItemKind } from '../../../domain/inventory-item-kind';
 import { StockMovementKind } from '../../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
@@ -22,15 +23,13 @@ const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 
 function makeHandler() {
   const items = new InMemoryInventoryItemRepository();
-  const handler = new AdjustStockHandler(
-    items,
-    new FakeIdGenerator(),
-    new FakeClock(),
-    stubEventBus().bus,
-  );
-  return { handler, items };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new AdjustStockHandler(items, new FakeIdGenerator(), clock, events);
+  return { handler, items, events, clock };
 }
 
+// A stored item has no pending events, like one the repository loaded.
 function buildItemWithStock(units = 10): InventoryItem {
   const item = InventoryItem.create({
     id: ITEM_ID,
@@ -47,12 +46,13 @@ function buildItemWithStock(units = 10): InventoryItem {
     movementId: StockMovementId.create('33333333-3333-4333-8333-333333333333'),
     now: new Date('2026-08-31T12:00:00.000Z'),
   });
+  item.pullDomainEvents();
   return item;
 }
 
 describe('AdjustStockHandler', () => {
   it('should lower the count and append exactly one ADJUSTMENT movement', async () => {
-    const { handler, items } = makeHandler();
+    const { handler, items, events, clock } = makeHandler();
     await items.save(buildItemWithStock(10));
 
     await handler.execute(
@@ -63,6 +63,9 @@ describe('AdjustStockHandler', () => {
     expect(updated.quantityOnHand.units).toBe(7);
     const adjustments = updated.newMovements.filter((m) => m.kind === StockMovementKind.Adjustment);
     expect(adjustments).toHaveLength(1);
+    expect(events.published).toEqual([
+      new StockAdjusted(ITEM_ID.value, adjustments[0].id.value, 3, clock.now()),
+    ]);
   });
 
   it('should refuse an adjustment with no note', async () => {

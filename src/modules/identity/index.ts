@@ -3,6 +3,8 @@ export { SystemRole } from './authorization/application/contracts/system-roles';
 export type { EffectiveAccessDto } from './authorization/application/dtos/effective-access.dto';
 export { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
 export { GetUserEffectiveAccessQuery } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+export { CurrentUser } from './authentication/presentation/decorators/current-user.decorator';
+export type { Principal } from './authentication/presentation/principal';
 export { RequirePermissions } from './authorization/presentation/decorators/require-permissions.decorator';
 export type { UserDto } from './users/application/dtos/user.dto';
 export { RegisterUserCommand } from './users/application/commands/register-user/register-user.command';

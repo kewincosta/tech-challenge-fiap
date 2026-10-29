@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
@@ -32,14 +32,13 @@ function buildItem(id: string): InventoryItem {
 
 function makeHandler() {
   const items = new InMemoryInventoryItemRepository();
-  const eventBus = stubEventBus();
   const handler = new RestoreStockBatchHandler(
     items,
     new FakeIdGenerator(),
     new FakeClock(),
-    eventBus.bus,
+    new RecordingDomainEventPublisher(),
   );
-  return { handler, items, eventBus };
+  return { handler, items };
 }
 
 async function replenishAndConsume(

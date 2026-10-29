@@ -1,13 +1,10 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
-import { INVENTORY_ITEM_REPOSITORY } from '../../../inventory.tokens';
-import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { ConsumedLineDto, ConsumeStockBatchCommand } from './consume-stock-batch.command';
 
 /**
@@ -16,16 +13,12 @@ import { ConsumedLineDto, ConsumeStockBatchCommand } from './consume-stock-batch
  * refuses to run with no open transaction, which is this handler's own guarantee that it never
  * commits on its own.
  */
-@CommandHandler(ConsumeStockBatchCommand)
-export class ConsumeStockBatchHandler implements ICommandHandler<
-  ConsumeStockBatchCommand,
-  ConsumedLineDto[]
-> {
+export class ConsumeStockBatchHandler {
   constructor(
-    @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
-    @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly items: InventoryItemRepository,
+    private readonly idGenerator: IdGenerator,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: ConsumeStockBatchCommand): Promise<ConsumedLineDto[]> {
@@ -54,7 +47,7 @@ export class ConsumeStockBatchHandler implements ICommandHandler<
 
     for (const item of loaded) {
       await this.items.save(item);
-      this.eventBus.publishAll(item.pullDomainEvents());
+      this.events.publish(item.pullDomainEvents());
     }
     return results;
   }
