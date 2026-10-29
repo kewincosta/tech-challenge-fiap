@@ -5,6 +5,7 @@ import { DomainEventPublisher } from '../../shared/application/ports/domain-even
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { CustomersModule } from '../customers';
+import { IdentityModule } from '../identity';
 import { InventoryModule } from '../inventory';
 import { ServicesModule } from '../services';
 import { VehiclesModule } from '../vehicles';
@@ -30,6 +31,7 @@ import {
   SERVICE_CATALOG,
   STOCK_LEDGER,
   VEHICLE_DIRECTORY,
+  WORK_ORDER_ACTORS,
   WORK_ORDER_METRICS_QUERY_PORT,
   WORK_ORDER_NUMBER_GENERATOR,
   WORK_ORDER_QUERY_PORT,
@@ -53,6 +55,7 @@ import { PartCatalogGateway } from './infrastructure/gateways/part-catalog.gatew
 import { ServiceCatalogGateway } from './infrastructure/gateways/service-catalog.gateway';
 import { StockLedgerGateway } from './infrastructure/gateways/stock-ledger.gateway';
 import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
+import { WorkOrderActorsGateway } from './infrastructure/gateways/work-order-actors.gateway';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
@@ -77,6 +80,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     VehiclesModule,
     ServicesModule,
     InventoryModule,
+    IdentityModule,
   ],
   controllers: [WorkOrdersController],
   providers: [
@@ -143,6 +147,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: SERVICE_CATALOG, useClass: ServiceCatalogGateway },
     { provide: PART_CATALOG, useClass: PartCatalogGateway },
     { provide: STOCK_LEDGER, useClass: StockLedgerGateway },
+    { provide: WORK_ORDER_ACTORS, useClass: WorkOrderActorsGateway },
   ],
 })
 export class WorkOrdersModule {}

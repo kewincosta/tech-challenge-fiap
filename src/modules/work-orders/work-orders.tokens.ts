@@ -7,3 +7,4 @@ export const VEHICLE_DIRECTORY = Symbol('VehicleDirectory');
 export const SERVICE_CATALOG = Symbol('ServiceCatalog');
 export const PART_CATALOG = Symbol('PartCatalog');
 export const STOCK_LEDGER = Symbol('StockLedger');
+export const WORK_ORDER_ACTORS = Symbol('WorkOrderActors');

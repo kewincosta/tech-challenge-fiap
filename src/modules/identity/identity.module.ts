@@ -162,6 +162,8 @@ import { UsersController } from './users/presentation/controllers/users.controll
     JwtAuthGuard,
     PendingPasswordGuard,
     PermissionsGuard,
+    GetUserEffectiveAccessHandler,
+    GetUserByIdHandler,
     UserKeyResolver,
     FindUsersUseCase,
   ],

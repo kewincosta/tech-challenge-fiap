@@ -1031,11 +1031,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] No file in `work-orders/application` imports the permission catalog or the role enum
-- [ ] Gateway spec proves each capability and the mechanic result, including an unknown user
-- [ ] Authorizer and assign-mechanic specs use the fakes and assert outcomes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] No file in `work-orders/application` imports the permission catalog or the role enum
+- [x] Gateway spec proves each capability and the mechanic result, including an unknown user
+- [x] Authorizer and assign-mechanic specs use the fakes and assert outcomes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full

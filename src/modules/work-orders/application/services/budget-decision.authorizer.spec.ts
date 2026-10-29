@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { stubQueryBus } from '../../../../../test/support/fakes/bus.stubs';
-import { EffectiveAccessDto } from '../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { CustomerSummaryDto } from '../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { FakeCustomerDirectory } from '../../../../../test/support/fakes/fake-customer-directory';
+import { FakeWorkOrderActors } from '../../../../../test/support/fakes/fake-work-order-actors';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
 import { WorkOrderId } from '../../domain/value-objects/work-order-id';
@@ -31,72 +28,43 @@ function workOrder(): WorkOrder {
   });
 }
 
-function customer(id: string): CustomerSummaryDto {
-  return {
-    id,
-    userId: ACTOR_ID,
-    name: 'Jane Doe',
-    email: 'jane@example.com',
-    document: '12345678900',
-    address: null,
-    phoneNumber: null,
-    status: 'ACTIVE',
-  };
-}
-
-/** Branches by query class - never assumes call order (T13's own rule). */
-function stubQueries(
-  access: EffectiveAccessDto,
-  customerDto: CustomerSummaryDto | null,
-): ReturnType<typeof stubQueryBus> {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    if (query instanceof GetCustomerByUserIdQuery) {
-      return Promise.resolve(customerDto);
-    }
-    return Promise.resolve(null);
-  });
-  return queryBus;
+function makeAuthorizer(
+  actors: FakeWorkOrderActors,
+  customerOfActor: string | null,
+): { authorizer: BudgetDecisionAuthorizer; customers: FakeCustomerDirectory } {
+  const customers = new FakeCustomerDirectory();
+  if (customerOfActor) {
+    customers.add({ id: customerOfActor, name: 'Jane Doe', active: true }, ACTOR_ID);
+  }
+  return { authorizer: new BudgetDecisionAuthorizer(actors, customers), customers };
 }
 
 describe('BudgetDecisionAuthorizer', () => {
-  it('admits an actor holding work-orders:decide, without ever reading their customer', async () => {
-    const queryBus = stubQueries(
-      { roles: ['SERVICE_ADVISOR'], permissions: ['work-orders:decide'] },
-      null,
-    );
-    const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
+  it('admits an actor who decides any budget, without ever reading their customer', async () => {
+    const actors = new FakeWorkOrderActors().withCapabilities(ACTOR_ID, { decidesAnyBudget: true });
+    const { authorizer, customers } = makeAuthorizer(actors, null);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).resolves.toBeUndefined();
-    expect(queryBus.execute).not.toHaveBeenCalledWith(expect.any(GetCustomerByUserIdQuery));
+    expect(customers.userLookups).toEqual([]);
   });
 
   it("admits the actor whose customer's external id equals the work order's customerId", async () => {
-    const queryBus = stubQueries({ roles: ['CUSTOMER'], permissions: [] }, customer(CUSTOMER_ID));
-    const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
+    const { authorizer } = makeAuthorizer(new FakeWorkOrderActors(), CUSTOMER_ID);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).resolves.toBeUndefined();
   });
 
   it('refuses a customer who owns a different work order with WorkOrderNotFoundError, not a forbidden error', async () => {
     const otherCustomerId = '66666666-6666-4666-8666-666666666666';
-    const queryBus = stubQueries(
-      { roles: ['CUSTOMER'], permissions: [] },
-      customer(otherCustomerId),
-    );
-    const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
+    const { authorizer } = makeAuthorizer(new FakeWorkOrderActors(), otherCustomerId);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).rejects.toThrow(
       WorkOrderNotFoundError,
     );
   });
 
-  it('refuses an actor holding neither the permission nor any customer record, the same way', async () => {
-    const queryBus = stubQueries({ roles: [], permissions: [] }, null);
-    const authorizer = new BudgetDecisionAuthorizer(queryBus.bus);
+  it('refuses an actor holding neither the capability nor any customer record, the same way', async () => {
+    const { authorizer } = makeAuthorizer(new FakeWorkOrderActors(), null);
 
     await expect(authorizer.assertMayDecide(workOrder(), ACTOR_ID)).rejects.toThrow(
       WorkOrderNotFoundError,

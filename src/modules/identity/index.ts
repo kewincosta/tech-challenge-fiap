@@ -1,5 +1,13 @@
+export { AppPermission } from './authorization/application/contracts/app-permissions';
+export { SystemRole } from './authorization/application/contracts/system-roles';
+export type { EffectiveAccessDto } from './authorization/application/dtos/effective-access.dto';
+export { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
+export { GetUserEffectiveAccessQuery } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+export type { UserDto } from './users/application/dtos/user.dto';
 export { FindUsersQuery } from './users/application/queries/find-users/find-users.query';
 export { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
+export { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
+export { GetUserByIdQuery } from './users/application/queries/get-user-by-id/get-user-by-id.query';
 export type { UserSummaryDto } from './users/application/ports/user-query.port';
 export { UserKeyResolver } from './users/infrastructure/persistence/user-key-resolver';
 export { IdentityModule } from './identity.module';

@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
-import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { UserDto } from '../../../../identity/users/application/dtos/user.dto';
-import { GetUserByIdQuery } from '../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { AssignedMechanicNotFoundError } from '../../../domain/errors/assigned-mechanic-not-found.error';
 import { AssignedUserNotMechanicError } from '../../../domain/errors/assigned-user-not-mechanic.error';
@@ -20,33 +17,6 @@ const VEHICLE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
 const MECHANIC_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
-
-const MECHANIC_USER: UserDto = {
-  id: MECHANIC_ID,
-  email: 'mechanic@example.com',
-  name: 'Bob Mechanic',
-  status: 'ACTIVE',
-  mustChangePassword: false,
-  createdAt: new Date().toISOString(),
-};
-
-/** Branches by query class, per design.md's Risks & Concerns - never assumes call order. */
-function stubQueries(
-  user: UserDto | null,
-  access: EffectiveAccessDto,
-): ReturnType<typeof stubQueryBus> {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserByIdQuery) {
-      return Promise.resolve(user);
-    }
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    return Promise.resolve(null);
-  });
-  return queryBus;
-}
 
 function buildWorkOrder(): WorkOrder {
   return WorkOrder.open({
@@ -64,25 +34,21 @@ function buildWorkOrder(): WorkOrder {
   });
 }
 
-function makeHandler(user: UserDto | null, access: EffectiveAccessDto) {
+/** `null` leaves the user out of the fake, so identity does not know them. */
+function makeHandler(candidate: { isMechanic: boolean } | null) {
   const workOrders = new InMemoryWorkOrderRepository();
-  const queryBus = stubQueries(user, access);
+  const actors = new FakeWorkOrderActors();
+  if (candidate) {
+    actors.withUser(MECHANIC_ID, candidate.isMechanic);
+  }
   const eventBus = stubEventBus();
-  const handler = new AssignMechanicHandler(
-    workOrders,
-    new FakeClock(),
-    queryBus.bus,
-    eventBus.bus,
-  );
+  const handler = new AssignMechanicHandler(workOrders, new FakeClock(), actors, eventBus.bus);
   return { handler, workOrders };
 }
 
 describe('AssignMechanicHandler', () => {
   it('should assign a user who holds MECHANIC and record the assignment', async () => {
-    const { handler, workOrders } = makeHandler(MECHANIC_USER, {
-      roles: ['MECHANIC'],
-      permissions: [],
-    });
+    const { handler, workOrders } = makeHandler({ isMechanic: true });
     await workOrders.save(buildWorkOrder());
 
     await handler.execute(new AssignMechanicCommand(NUMBER, MECHANIC_ID, CREATOR_ID));
@@ -91,10 +57,7 @@ describe('AssignMechanicHandler', () => {
   });
 
   it('should refuse a user who exists without the role, with AssignedUserNotMechanicError', async () => {
-    const { handler, workOrders } = makeHandler(MECHANIC_USER, {
-      roles: ['SERVICE_ADVISOR'],
-      permissions: [],
-    });
+    const { handler, workOrders } = makeHandler({ isMechanic: false });
     await workOrders.save(buildWorkOrder());
 
     await expect(
@@ -103,8 +66,8 @@ describe('AssignMechanicHandler', () => {
     expect(workOrders.workOrders[0].assignedMechanicUserId).toBeNull();
   });
 
-  it('should refuse a user that does not exist with AssignedMechanicNotFoundError, proving the existence read runs first', async () => {
-    const { handler, workOrders } = makeHandler(null, { roles: [], permissions: [] });
+  it('should refuse a user that does not exist with AssignedMechanicNotFoundError', async () => {
+    const { handler, workOrders } = makeHandler(null);
     await workOrders.save(buildWorkOrder());
 
     await expect(
@@ -114,10 +77,7 @@ describe('AssignMechanicHandler', () => {
   });
 
   it('should replace an existing assignee', async () => {
-    const { handler, workOrders } = makeHandler(MECHANIC_USER, {
-      roles: ['MECHANIC'],
-      permissions: [],
-    });
+    const { handler, workOrders } = makeHandler({ isMechanic: true });
     const workOrder = buildWorkOrder();
     workOrder.assignMechanic({
       mechanicUserId: '66666666-6666-4666-8666-666666666666',
@@ -132,7 +92,7 @@ describe('AssignMechanicHandler', () => {
   });
 
   it('should refuse an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler } = makeHandler(MECHANIC_USER, { roles: ['MECHANIC'], permissions: [] });
+    const { handler } = makeHandler({ isMechanic: true });
 
     await expect(
       handler.execute(new AssignMechanicCommand('ZZZZZZ-2026', MECHANIC_ID, CREATOR_ID)),

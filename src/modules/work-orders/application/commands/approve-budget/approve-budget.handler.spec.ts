@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeCustomerDirectory } from '../../../../../../test/support/fakes/fake-customer-directory';
+import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
@@ -18,6 +16,7 @@ import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
+import { ActorCapabilities } from '../../ports/work-order-actors.port';
 import { BudgetDecisionAuthorizer } from '../../services/budget-decision.authorizer';
 import { ApproveBudgetCommand } from './approve-budget.command';
 import { ApproveBudgetHandler } from './approve-budget.handler';
@@ -29,34 +28,17 @@ const CUSTOMER_ACTOR_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 
-function customer(id: string): CustomerSummaryDto {
-  return {
-    id,
-    userId: CUSTOMER_ACTOR_ID,
-    name: 'Jane Doe',
-    email: 'jane@example.com',
-    document: '12345678900',
-    address: null,
-    phoneNumber: null,
-    status: 'ACTIVE',
-  };
-}
-
-function stubAuthorizer(
-  access: EffectiveAccessDto,
-  customerDto: CustomerSummaryDto | null,
+/** The actor holds the capabilities listed and, when one is given, is a customer of `customerOfActor`. */
+function makeAuthorizer(
+  capabilities: Partial<ActorCapabilities>,
+  customerOfActor: string | null,
 ): BudgetDecisionAuthorizer {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    if (query instanceof GetCustomerByUserIdQuery) {
-      return Promise.resolve(customerDto);
-    }
-    return Promise.resolve(null);
-  });
-  return new BudgetDecisionAuthorizer(queryBus.bus);
+  const actors = new FakeWorkOrderActors().withCapabilities(CUSTOMER_ACTOR_ID, capabilities);
+  const customers = new FakeCustomerDirectory();
+  if (customerOfActor) {
+    customers.add({ id: customerOfActor, name: 'Jane Doe', active: true }, CUSTOMER_ACTOR_ID);
+  }
+  return new BudgetDecisionAuthorizer(actors, customers);
 }
 
 function restoreAwaitingApproval(): WorkOrder {
@@ -128,10 +110,7 @@ function makeHandler(authorizer: BudgetDecisionAuthorizer) {
 
 describe('ApproveBudgetHandler', () => {
   it('approves the pending round and publishes both recorded events when the authorizer admits the actor', async () => {
-    const authorizer = stubAuthorizer(
-      { roles: ['CUSTOMER'], permissions: [] },
-      customer(CUSTOMER_ID),
-    );
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval());
 
@@ -145,10 +124,7 @@ describe('ApproveBudgetHandler', () => {
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
     const otherCustomerId = '66666666-6666-4666-8666-666666666666';
-    const authorizer = stubAuthorizer(
-      { roles: ['CUSTOMER'], permissions: [] },
-      customer(otherCustomerId),
-    );
+    const authorizer = makeAuthorizer({}, otherCustomerId);
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval());
 
@@ -159,7 +135,7 @@ describe('ApproveBudgetHandler', () => {
   });
 
   it('refuses an unknown work order before the authorizer is consulted', async () => {
-    const authorizer = stubAuthorizer({ roles: [], permissions: [] }, null);
+    const authorizer = makeAuthorizer({}, null);
     const { handler, workOrders } = makeHandler(authorizer);
 
     await expect(
@@ -169,7 +145,7 @@ describe('ApproveBudgetHandler', () => {
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
-    const authorizer = stubAuthorizer({ roles: [], permissions: ['work-orders:decide'] }, null);
+    const authorizer = makeAuthorizer({ decidesAnyBudget: true }, null);
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(buildReceivedWorkOrder());
 

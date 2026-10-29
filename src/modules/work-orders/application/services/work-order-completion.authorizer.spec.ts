@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stubQueryBus } from '../../../../../test/support/fakes/bus.stubs';
-import { EffectiveAccessDto } from '../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { FakeWorkOrderActors } from '../../../../../test/support/fakes/fake-work-order-actors';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { CompletionForbiddenError } from '../../domain/errors/completion-forbidden.error';
 import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
@@ -39,30 +37,20 @@ function workOrder(assignedMechanicUserId: string | null): WorkOrder {
   return opened;
 }
 
-function stubAccess(access: EffectiveAccessDto): ReturnType<typeof stubQueryBus> {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    return Promise.resolve(null);
-  });
-  return queryBus;
-}
-
 describe('WorkOrderCompletionAuthorizer', () => {
-  it('admits a holder of work-orders:manage, whoever they are', async () => {
-    const queryBus = stubAccess({ roles: ['ADMIN'], permissions: ['work-orders:manage'] });
-    const authorizer = new WorkOrderCompletionAuthorizer(queryBus.bus);
+  it('admits an actor who manages work orders, whoever they are', async () => {
+    const actors = new FakeWorkOrderActors().withCapabilities(MECHANIC_ID, {
+      managesWorkOrders: true,
+    });
+    const authorizer = new WorkOrderCompletionAuthorizer(actors);
 
     await expect(
       authorizer.assertMayComplete(workOrder(OTHER_MECHANIC_ID), MECHANIC_ID),
     ).resolves.toBeUndefined();
   });
 
-  it('admits the assigned mechanic without work-orders:manage', async () => {
-    const queryBus = stubAccess({ roles: ['MECHANIC'], permissions: [] });
-    const authorizer = new WorkOrderCompletionAuthorizer(queryBus.bus);
+  it('admits the assigned mechanic without the management capability', async () => {
+    const authorizer = new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors());
 
     await expect(
       authorizer.assertMayComplete(workOrder(MECHANIC_ID), MECHANIC_ID),
@@ -70,17 +58,15 @@ describe('WorkOrderCompletionAuthorizer', () => {
   });
 
   it('refuses a mechanic who is not the assignee', async () => {
-    const queryBus = stubAccess({ roles: ['MECHANIC'], permissions: [] });
-    const authorizer = new WorkOrderCompletionAuthorizer(queryBus.bus);
+    const authorizer = new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors());
 
     await expect(
       authorizer.assertMayComplete(workOrder(OTHER_MECHANIC_ID), MECHANIC_ID),
     ).rejects.toThrow(CompletionForbiddenError);
   });
 
-  it('refuses anyone lacking work-orders:manage on a work order with no assigned mechanic', async () => {
-    const queryBus = stubAccess({ roles: ['MECHANIC'], permissions: [] });
-    const authorizer = new WorkOrderCompletionAuthorizer(queryBus.bus);
+  it('refuses anyone lacking the management capability on a work order with no assigned mechanic', async () => {
+    const authorizer = new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors());
 
     await expect(authorizer.assertMayComplete(workOrder(null), MECHANIC_ID)).rejects.toThrow(
       CompletionForbiddenError,
@@ -88,8 +74,7 @@ describe('WorkOrderCompletionAuthorizer', () => {
   });
 
   it('refuses with a forbidden error, never a not-found one, unlike BudgetDecisionAuthorizer', async () => {
-    const queryBus = stubAccess({ roles: ['MECHANIC'], permissions: [] });
-    const authorizer = new WorkOrderCompletionAuthorizer(queryBus.bus);
+    const authorizer = new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors());
 
     let thrown: unknown;
     try {

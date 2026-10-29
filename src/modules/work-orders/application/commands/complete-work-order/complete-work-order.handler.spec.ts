@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
+import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
@@ -29,15 +28,9 @@ const MECHANIC_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 
-function stubAuthorizer(access: EffectiveAccessDto): WorkOrderCompletionAuthorizer {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    return Promise.resolve(null);
-  });
-  return new WorkOrderCompletionAuthorizer(queryBus.bus);
+/** Nobody of these tests holds the management capability, so the assignment decides. */
+function makeAuthorizer(): WorkOrderCompletionAuthorizer {
+  return new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors());
 }
 
 function restoreInExecution(
@@ -101,7 +94,7 @@ function makeHandler(authorizer: WorkOrderCompletionAuthorizer) {
 
 describe('CompleteWorkOrderHandler', () => {
   it('completes the work order and publishes the recorded event when the authorizer admits the actor', async () => {
-    const authorizer = stubAuthorizer({ roles: ['MECHANIC'], permissions: [] });
+    const authorizer = makeAuthorizer();
     const { handler, workOrders, eventBus } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution());
 
@@ -113,7 +106,7 @@ describe('CompleteWorkOrderHandler', () => {
   });
 
   it('refuses an unknown work order before the authorizer is consulted', async () => {
-    const authorizer = stubAuthorizer({ roles: [], permissions: [] });
+    const authorizer = makeAuthorizer();
     const { handler, workOrders } = makeHandler(authorizer);
 
     await expect(
@@ -123,7 +116,7 @@ describe('CompleteWorkOrderHandler', () => {
   });
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
-    const authorizer = stubAuthorizer({ roles: ['MECHANIC'], permissions: [] });
+    const authorizer = makeAuthorizer();
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution());
     const otherMechanicId = '66666666-6666-4666-8666-666666666666';
@@ -135,7 +128,7 @@ describe('CompleteWorkOrderHandler', () => {
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
-    const authorizer = stubAuthorizer({ roles: ['MECHANIC'], permissions: [] });
+    const authorizer = makeAuthorizer();
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ status: WorkOrderStatus.AwaitingApproval }));
 
@@ -145,7 +138,7 @@ describe('CompleteWorkOrderHandler', () => {
   });
 
   it("lets the aggregate's discount-exceeds-total error travel out untouched", async () => {
-    const authorizer = stubAuthorizer({ roles: ['MECHANIC'], permissions: [] });
+    const authorizer = makeAuthorizer();
     const { handler, workOrders } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ discount: Money.fromCents(999999) }));
 
