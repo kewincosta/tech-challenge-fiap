@@ -15,7 +15,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "lint": "eslint . && npm run lint:architecture",
-    "lint:architecture": "depcruise src --ignore-known",
+    "lint:architecture": "depcruise src --ignore-known && ts-node scripts/architecture/check-table-ownership.ts",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

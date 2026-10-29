@@ -460,12 +460,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `scripts/architecture/table-owners.ts` maps the 19 tables to their modules, `identity` included
-- [ ] `scripts/architecture/known-table-findings.json` lists the nine adapters' current findings, and the check passes with them
-- [ ] `test/architecture/table-ownership.spec.ts` proves each failure kind on a fixture and the pass on a clean fixture
-- [ ] `lint:architecture` runs the check after dependency-cruiser
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total grows by the check's cases
+- [x] `scripts/architecture/table-owners.ts` maps the 19 tables to their modules, `identity` included
+- [x] `scripts/architecture/known-table-findings.json` lists the nine adapters' current findings, and the check passes with them
+- [x] `test/architecture/table-ownership.spec.ts` proves each failure kind on a fixture and the pass on a clean fixture
+- [x] `lint:architecture` runs the check after dependency-cruiser
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total grows by the check's cases
 
 **Tests**: unit
 **Gate**: build

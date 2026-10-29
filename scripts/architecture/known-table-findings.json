@@ -1,0 +1,87 @@
+[
+  {
+    "file": "src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "users"
+  },
+  {
+    "file": "src/modules/customers/infrastructure/persistence/typeorm-customer.repository.ts",
+    "kind": "foreign-table",
+    "table": "users"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts",
+    "kind": "foreign-table",
+    "table": "work_orders"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts",
+    "kind": "runtime-table",
+    "table": "${table}"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "users"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "work_order_budgets"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "work_order_parts"
+  },
+  {
+    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "work_orders"
+  },
+  {
+    "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "customers"
+  },
+  {
+    "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository.ts",
+    "kind": "foreign-table",
+    "table": "customers"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-metrics-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "services"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "customers"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "inventory_items"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "services"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "users"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
+    "kind": "foreign-table",
+    "table": "vehicles"
+  },
+  {
+    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository.ts",
+    "kind": "runtime-table",
+    "table": "${table}"
+  }
+]
