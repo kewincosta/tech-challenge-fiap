@@ -28,52 +28,52 @@ import {
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
-import { AddRequestedServiceHandler } from '../../application/commands/add-requested-service/add-requested-service.handler';
+import { AddRequestedServiceUseCase } from '../../application/commands/add-requested-service/add-requested-service.use-case';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
-import { ApplyDiscountHandler } from '../../application/commands/apply-discount/apply-discount.handler';
+import { ApplyDiscountUseCase } from '../../application/commands/apply-discount/apply-discount.use-case';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
-import { ApproveBudgetHandler } from '../../application/commands/approve-budget/approve-budget.handler';
+import { ApproveBudgetUseCase } from '../../application/commands/approve-budget/approve-budget.use-case';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
-import { AssignMechanicHandler } from '../../application/commands/assign-mechanic/assign-mechanic.handler';
+import { AssignMechanicUseCase } from '../../application/commands/assign-mechanic/assign-mechanic.use-case';
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
-import { CancelWorkOrderHandler } from '../../application/commands/cancel-work-order/cancel-work-order.handler';
+import { CancelWorkOrderUseCase } from '../../application/commands/cancel-work-order/cancel-work-order.use-case';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
-import { CompleteDiagnosisHandler } from '../../application/commands/complete-diagnosis/complete-diagnosis.handler';
+import { CompleteDiagnosisUseCase } from '../../application/commands/complete-diagnosis/complete-diagnosis.use-case';
 import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
-import { CompleteWorkOrderHandler } from '../../application/commands/complete-work-order/complete-work-order.handler';
+import { CompleteWorkOrderUseCase } from '../../application/commands/complete-work-order/complete-work-order.use-case';
 import { CreateWorkOrderCommand } from '../../application/commands/create-work-order/create-work-order.command';
 import { CreateWorkOrderUseCase } from '../../application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
-import { DeliverVehicleHandler } from '../../application/commands/deliver-vehicle/deliver-vehicle.handler';
+import { DeliverVehicleUseCase } from '../../application/commands/deliver-vehicle/deliver-vehicle.use-case';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
-import { PlanPartHandler } from '../../application/commands/plan-part/plan-part.handler';
+import { PlanPartUseCase } from '../../application/commands/plan-part/plan-part.use-case';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
-import { RejectBudgetHandler } from '../../application/commands/reject-budget/reject-budget.handler';
+import { RejectBudgetUseCase } from '../../application/commands/reject-budget/reject-budget.use-case';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
-import { RemoveWorkOrderItemHandler } from '../../application/commands/remove-work-order-item/remove-work-order-item.handler';
+import { RemoveWorkOrderItemUseCase } from '../../application/commands/remove-work-order-item/remove-work-order-item.use-case';
 import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
-import { ReturnPartsHandler } from '../../application/commands/return-parts/return-parts.handler';
+import { ReturnPartsUseCase } from '../../application/commands/return-parts/return-parts.use-case';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
-import { StartDiagnosisHandler } from '../../application/commands/start-diagnosis/start-diagnosis.handler';
+import { StartDiagnosisUseCase } from '../../application/commands/start-diagnosis/start-diagnosis.use-case';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
-import { SubmitSupplementaryBudgetHandler } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
+import { SubmitSupplementaryBudgetUseCase } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.use-case';
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
-import { WithdrawPartsHandler } from '../../application/commands/withdraw-parts/withdraw-parts.handler';
+import { WithdrawPartsUseCase } from '../../application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
-import { GetAverageExecutionTimeHandler } from '../../application/queries/get-average-execution-time/get-average-execution-time.handler';
+import { GetAverageExecutionTimeUseCase } from '../../application/queries/get-average-execution-time/get-average-execution-time.use-case';
 import { GetAverageExecutionTimeQuery } from '../../application/queries/get-average-execution-time/get-average-execution-time.query';
-import { GetMyWorkOrderHandler } from '../../application/queries/get-my-work-order/get-my-work-order.handler';
+import { GetMyWorkOrderUseCase } from '../../application/queries/get-my-work-order/get-my-work-order.use-case';
 import { GetMyWorkOrderQuery } from '../../application/queries/get-my-work-order/get-my-work-order.query';
-import { GetMyWorkOrdersHandler } from '../../application/queries/get-my-work-orders/get-my-work-orders.handler';
+import { GetMyWorkOrdersUseCase } from '../../application/queries/get-my-work-orders/get-my-work-orders.use-case';
 import { GetMyWorkOrdersQuery } from '../../application/queries/get-my-work-orders/get-my-work-orders.query';
-import { GetWorkOrderTrailHandler } from '../../application/queries/get-work-order-trail/get-work-order-trail.handler';
+import { GetWorkOrderTrailUseCase } from '../../application/queries/get-work-order-trail/get-work-order-trail.use-case';
 import { GetWorkOrderTrailQuery } from '../../application/queries/get-work-order-trail/get-work-order-trail.query';
-import { GetWorkOrderHandler } from '../../application/queries/get-work-order/get-work-order.handler';
+import { GetWorkOrderUseCase } from '../../application/queries/get-work-order/get-work-order.use-case';
 import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-work-order.query';
-import { ListWorkOrdersHandler } from '../../application/queries/list-work-orders/list-work-orders.handler';
+import { ListWorkOrdersUseCase } from '../../application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
@@ -95,27 +95,27 @@ import {
 export class WorkOrdersController {
   constructor(
     private readonly createWorkOrderUseCase: CreateWorkOrderUseCase,
-    private readonly addRequestedServiceUseCase: AddRequestedServiceHandler,
-    private readonly planPartUseCase: PlanPartHandler,
-    private readonly removeWorkOrderItemUseCase: RemoveWorkOrderItemHandler,
-    private readonly assignMechanicUseCase: AssignMechanicHandler,
-    private readonly startDiagnosisUseCase: StartDiagnosisHandler,
-    private readonly completeDiagnosisUseCase: CompleteDiagnosisHandler,
-    private readonly submitSupplementaryBudgetUseCase: SubmitSupplementaryBudgetHandler,
-    private readonly approveBudgetUseCase: ApproveBudgetHandler,
-    private readonly rejectBudgetUseCase: RejectBudgetHandler,
-    private readonly withdrawPartsUseCase: WithdrawPartsHandler,
-    private readonly returnPartsUseCase: ReturnPartsHandler,
-    private readonly completeWorkOrderUseCase: CompleteWorkOrderHandler,
-    private readonly deliverVehicleUseCase: DeliverVehicleHandler,
-    private readonly cancelWorkOrderUseCase: CancelWorkOrderHandler,
-    private readonly applyDiscountUseCase: ApplyDiscountHandler,
-    private readonly getWorkOrderUseCase: GetWorkOrderHandler,
-    private readonly listWorkOrdersUseCase: ListWorkOrdersHandler,
-    private readonly getWorkOrderTrailUseCase: GetWorkOrderTrailHandler,
-    private readonly getMyWorkOrdersUseCase: GetMyWorkOrdersHandler,
-    private readonly getMyWorkOrderUseCase: GetMyWorkOrderHandler,
-    private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeHandler,
+    private readonly addRequestedServiceUseCase: AddRequestedServiceUseCase,
+    private readonly planPartUseCase: PlanPartUseCase,
+    private readonly removeWorkOrderItemUseCase: RemoveWorkOrderItemUseCase,
+    private readonly assignMechanicUseCase: AssignMechanicUseCase,
+    private readonly startDiagnosisUseCase: StartDiagnosisUseCase,
+    private readonly completeDiagnosisUseCase: CompleteDiagnosisUseCase,
+    private readonly submitSupplementaryBudgetUseCase: SubmitSupplementaryBudgetUseCase,
+    private readonly approveBudgetUseCase: ApproveBudgetUseCase,
+    private readonly rejectBudgetUseCase: RejectBudgetUseCase,
+    private readonly withdrawPartsUseCase: WithdrawPartsUseCase,
+    private readonly returnPartsUseCase: ReturnPartsUseCase,
+    private readonly completeWorkOrderUseCase: CompleteWorkOrderUseCase,
+    private readonly deliverVehicleUseCase: DeliverVehicleUseCase,
+    private readonly cancelWorkOrderUseCase: CancelWorkOrderUseCase,
+    private readonly applyDiscountUseCase: ApplyDiscountUseCase,
+    private readonly getWorkOrderUseCase: GetWorkOrderUseCase,
+    private readonly listWorkOrdersUseCase: ListWorkOrdersUseCase,
+    private readonly getWorkOrderTrailUseCase: GetWorkOrderTrailUseCase,
+    private readonly getMyWorkOrdersUseCase: GetMyWorkOrdersUseCase,
+    private readonly getMyWorkOrderUseCase: GetMyWorkOrderUseCase,
+    private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeUseCase,
   ) {}
 
   @Post()
@@ -422,7 +422,7 @@ export class WorkOrdersController {
   // No @RequirePermissions here: the rule is "the owning customer or a holder of
   // work-orders:decide", and PermissionsGuard requires every permission it is given, so it
   // cannot express an either-of-two. BudgetDecisionAuthorizer enforces it instead, inside the
-  // handler, answering 404 rather than 403 to a stranger (design.md).
+  // use case, answering 404 rather than 403 to a stranger (design.md).
   @Post(':number/budget/approval')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
@@ -472,7 +472,7 @@ export class WorkOrdersController {
 
   // work-orders:read is the route-level gate - every actor able to reach it holds it, so the
   // work order's existence is not a secret from them. WorkOrderCompletionAuthorizer narrows to
-  // the assigned mechanic or an administrator inside the handler (design.md).
+  // the assigned mechanic or an administrator inside the use case (design.md).
   @Post(':number/completion')
   @RequirePermissions(AppPermission.WorkOrdersRead)
   @HttpCode(HttpStatus.OK)
@@ -516,7 +516,7 @@ export class WorkOrdersController {
   }
 
   // work-orders:cancel is the route-level gate. CancellationAuthorizer additionally requires
-  // work-orders:cancel-in-execution inside the handler when the work order carries an
+  // work-orders:cancel-in-execution inside the use case when the work order carries an
   // outstanding withdrawn part - the guard runs after the load, because the state is only known
   // then (H36, design.md).
   @Post(':number/cancellation')

@@ -65,7 +65,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
    * Returns fresh clones, not the stored references: the real repository always rebuilds a new
    * `InventoryItem` from the row `findAllByIdsForUpdate` reads, so a caller that mutates a
    * returned item without calling `save()` must not see that mutation "already persisted" here
-   * either - a batch handler that validates every line before saving any of them relies on this.
+   * either: a batch use case that validates every line before saving any of them relies on this.
    */
   async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
     return Promise.resolve(

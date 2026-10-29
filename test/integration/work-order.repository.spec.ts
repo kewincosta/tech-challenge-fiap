@@ -400,7 +400,7 @@ describe('TypeOrmWorkOrderRepository', () => {
     await repository.save(workOrder);
 
     // Proves save() read through the non-draining domainEvents getter, not pullDomainEvents -
-    // otherwise the handler's own pullDomainEvents() after save would find nothing to publish.
+    // otherwise the use case's own pullDomainEvents() after save would find nothing to publish.
     expect(workOrder.pullDomainEvents()).toHaveLength(1);
   });
 

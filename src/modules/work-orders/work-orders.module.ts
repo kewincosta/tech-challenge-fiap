@@ -15,22 +15,22 @@ import { IdentityModule } from '../identity';
 import { InventoryModule } from '../inventory';
 import { ServicesModule } from '../services';
 import { VehiclesModule } from '../vehicles';
-import { AddRequestedServiceHandler } from './application/commands/add-requested-service/add-requested-service.handler';
-import { ApplyDiscountHandler } from './application/commands/apply-discount/apply-discount.handler';
-import { ApproveBudgetHandler } from './application/commands/approve-budget/approve-budget.handler';
-import { AssignMechanicHandler } from './application/commands/assign-mechanic/assign-mechanic.handler';
-import { CancelWorkOrderHandler } from './application/commands/cancel-work-order/cancel-work-order.handler';
-import { CompleteDiagnosisHandler } from './application/commands/complete-diagnosis/complete-diagnosis.handler';
-import { CompleteWorkOrderHandler } from './application/commands/complete-work-order/complete-work-order.handler';
+import { AddRequestedServiceUseCase } from './application/commands/add-requested-service/add-requested-service.use-case';
+import { ApplyDiscountUseCase } from './application/commands/apply-discount/apply-discount.use-case';
+import { ApproveBudgetUseCase } from './application/commands/approve-budget/approve-budget.use-case';
+import { AssignMechanicUseCase } from './application/commands/assign-mechanic/assign-mechanic.use-case';
+import { CancelWorkOrderUseCase } from './application/commands/cancel-work-order/cancel-work-order.use-case';
+import { CompleteDiagnosisUseCase } from './application/commands/complete-diagnosis/complete-diagnosis.use-case';
+import { CompleteWorkOrderUseCase } from './application/commands/complete-work-order/complete-work-order.use-case';
 import { CreateWorkOrderUseCase } from './application/commands/create-work-order/create-work-order.use-case';
-import { DeliverVehicleHandler } from './application/commands/deliver-vehicle/deliver-vehicle.handler';
-import { PlanPartHandler } from './application/commands/plan-part/plan-part.handler';
-import { RejectBudgetHandler } from './application/commands/reject-budget/reject-budget.handler';
-import { RemoveWorkOrderItemHandler } from './application/commands/remove-work-order-item/remove-work-order-item.handler';
-import { ReturnPartsHandler } from './application/commands/return-parts/return-parts.handler';
-import { StartDiagnosisHandler } from './application/commands/start-diagnosis/start-diagnosis.handler';
-import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
-import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
+import { DeliverVehicleUseCase } from './application/commands/deliver-vehicle/deliver-vehicle.use-case';
+import { PlanPartUseCase } from './application/commands/plan-part/plan-part.use-case';
+import { RejectBudgetUseCase } from './application/commands/reject-budget/reject-budget.use-case';
+import { RemoveWorkOrderItemUseCase } from './application/commands/remove-work-order-item/remove-work-order-item.use-case';
+import { ReturnPartsUseCase } from './application/commands/return-parts/return-parts.use-case';
+import { StartDiagnosisUseCase } from './application/commands/start-diagnosis/start-diagnosis.use-case';
+import { SubmitSupplementaryBudgetUseCase } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.use-case';
+import { WithdrawPartsUseCase } from './application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
   CUSTOMER_DIRECTORY,
   PART_CATALOG,
@@ -53,12 +53,12 @@ import { WorkOrderMetricsQueryPort } from './application/ports/work-order-metric
 import { WorkOrderNumberGenerator } from './application/ports/work-order-number-generator.port';
 import { WorkOrderQueryPort } from './application/ports/work-order-query.port';
 import { WorkOrderRepository } from './application/ports/work-order.repository';
-import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
-import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
-import { GetMyWorkOrdersHandler } from './application/queries/get-my-work-orders/get-my-work-orders.handler';
-import { GetWorkOrderTrailHandler } from './application/queries/get-work-order-trail/get-work-order-trail.handler';
-import { GetWorkOrderHandler } from './application/queries/get-work-order/get-work-order.handler';
-import { ListWorkOrdersHandler } from './application/queries/list-work-orders/list-work-orders.handler';
+import { GetAverageExecutionTimeUseCase } from './application/queries/get-average-execution-time/get-average-execution-time.use-case';
+import { GetMyWorkOrderUseCase } from './application/queries/get-my-work-order/get-my-work-order.use-case';
+import { GetMyWorkOrdersUseCase } from './application/queries/get-my-work-orders/get-my-work-orders.use-case';
+import { GetWorkOrderTrailUseCase } from './application/queries/get-work-order-trail/get-work-order-trail.use-case';
+import { GetWorkOrderUseCase } from './application/queries/get-work-order/get-work-order.use-case';
+import { ListWorkOrdersUseCase } from './application/queries/list-work-orders/list-work-orders.use-case';
 import { BudgetDecisionAuthorizer } from './application/services/budget-decision.authorizer';
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
@@ -127,98 +127,98 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       ],
     },
     {
-      provide: AddRequestedServiceHandler,
+      provide: AddRequestedServiceUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         serviceCatalog: ServiceCatalog,
         events: DomainEventPublisher,
-      ) => new AddRequestedServiceHandler(workOrders, idGenerator, clock, serviceCatalog, events),
+      ) => new AddRequestedServiceUseCase(workOrders, idGenerator, clock, serviceCatalog, events),
       inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, SERVICE_CATALOG, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: PlanPartHandler,
+      provide: PlanPartUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         partCatalog: PartCatalog,
         events: DomainEventPublisher,
-      ) => new PlanPartHandler(workOrders, idGenerator, clock, partCatalog, events),
+      ) => new PlanPartUseCase(workOrders, idGenerator, clock, partCatalog, events),
       inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, PART_CATALOG, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: RemoveWorkOrderItemHandler,
+      provide: RemoveWorkOrderItemUseCase,
       useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
-        new RemoveWorkOrderItemHandler(workOrders, clock, events),
+        new RemoveWorkOrderItemUseCase(workOrders, clock, events),
       inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: AssignMechanicHandler,
+      provide: AssignMechanicUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         clock: Clock,
         actors: WorkOrderActors,
         events: DomainEventPublisher,
-      ) => new AssignMechanicHandler(workOrders, clock, actors, events),
+      ) => new AssignMechanicUseCase(workOrders, clock, actors, events),
       inject: [WORK_ORDER_REPOSITORY, CLOCK, WORK_ORDER_ACTORS, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: StartDiagnosisHandler,
+      provide: StartDiagnosisUseCase,
       useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
-        new StartDiagnosisHandler(workOrders, clock, events),
+        new StartDiagnosisUseCase(workOrders, clock, events),
       inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: CompleteDiagnosisHandler,
+      provide: CompleteDiagnosisUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new CompleteDiagnosisHandler(workOrders, idGenerator, clock, events),
+      ) => new CompleteDiagnosisUseCase(workOrders, idGenerator, clock, events),
       inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: SubmitSupplementaryBudgetHandler,
+      provide: SubmitSupplementaryBudgetUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new SubmitSupplementaryBudgetHandler(workOrders, idGenerator, clock, events),
+      ) => new SubmitSupplementaryBudgetUseCase(workOrders, idGenerator, clock, events),
       inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: ApproveBudgetHandler,
+      provide: ApproveBudgetUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         authorizer: BudgetDecisionAuthorizer,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new ApproveBudgetHandler(workOrders, authorizer, clock, events),
+      ) => new ApproveBudgetUseCase(workOrders, authorizer, clock, events),
       inject: [WORK_ORDER_REPOSITORY, BudgetDecisionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: RejectBudgetHandler,
+      provide: RejectBudgetUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         authorizer: BudgetDecisionAuthorizer,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new RejectBudgetHandler(workOrders, authorizer, clock, events),
+      ) => new RejectBudgetUseCase(workOrders, authorizer, clock, events),
       inject: [WORK_ORDER_REPOSITORY, BudgetDecisionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: WithdrawPartsHandler,
+      provide: WithdrawPartsUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
         clock: Clock,
         stockLedger: StockLedger,
         events: DomainEventPublisher,
-      ) => new WithdrawPartsHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      ) => new WithdrawPartsUseCase(workOrders, transactionRunner, clock, stockLedger, events),
       inject: [
         WORK_ORDER_REPOSITORY,
         TRANSACTION_RUNNER,
@@ -228,14 +228,14 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       ],
     },
     {
-      provide: ReturnPartsHandler,
+      provide: ReturnPartsUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
         clock: Clock,
         stockLedger: StockLedger,
         events: DomainEventPublisher,
-      ) => new ReturnPartsHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      ) => new ReturnPartsUseCase(workOrders, transactionRunner, clock, stockLedger, events),
       inject: [
         WORK_ORDER_REPOSITORY,
         TRANSACTION_RUNNER,
@@ -245,24 +245,24 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       ],
     },
     {
-      provide: CompleteWorkOrderHandler,
+      provide: CompleteWorkOrderUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         authorizer: WorkOrderCompletionAuthorizer,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new CompleteWorkOrderHandler(workOrders, authorizer, clock, events),
+      ) => new CompleteWorkOrderUseCase(workOrders, authorizer, clock, events),
       inject: [WORK_ORDER_REPOSITORY, WorkOrderCompletionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: DeliverVehicleHandler,
+      provide: DeliverVehicleUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
         clock: Clock,
         stockLedger: StockLedger,
         events: DomainEventPublisher,
-      ) => new DeliverVehicleHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      ) => new DeliverVehicleUseCase(workOrders, transactionRunner, clock, stockLedger, events),
       inject: [
         WORK_ORDER_REPOSITORY,
         TRANSACTION_RUNNER,
@@ -272,13 +272,13 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       ],
     },
     {
-      provide: ApplyDiscountHandler,
+      provide: ApplyDiscountUseCase,
       useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
-        new ApplyDiscountHandler(workOrders, clock, events),
+        new ApplyDiscountUseCase(workOrders, clock, events),
       inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: CancelWorkOrderHandler,
+      provide: CancelWorkOrderUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
@@ -287,7 +287,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         stockLedger: StockLedger,
         events: DomainEventPublisher,
       ) =>
-        new CancelWorkOrderHandler(
+        new CancelWorkOrderUseCase(
           workOrders,
           transactionRunner,
           authorizer,
@@ -321,37 +321,37 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       inject: [WORK_ORDER_ACTORS],
     },
     {
-      provide: GetWorkOrderHandler,
-      useFactory: (workOrderQuery: WorkOrderQueryPort) => new GetWorkOrderHandler(workOrderQuery),
+      provide: GetWorkOrderUseCase,
+      useFactory: (workOrderQuery: WorkOrderQueryPort) => new GetWorkOrderUseCase(workOrderQuery),
       inject: [WORK_ORDER_QUERY_PORT],
     },
     {
-      provide: ListWorkOrdersHandler,
-      useFactory: (workOrderQuery: WorkOrderQueryPort) => new ListWorkOrdersHandler(workOrderQuery),
+      provide: ListWorkOrdersUseCase,
+      useFactory: (workOrderQuery: WorkOrderQueryPort) => new ListWorkOrdersUseCase(workOrderQuery),
       inject: [WORK_ORDER_QUERY_PORT],
     },
     {
-      provide: GetWorkOrderTrailHandler,
+      provide: GetWorkOrderTrailUseCase,
       useFactory: (workOrderQuery: WorkOrderQueryPort) =>
-        new GetWorkOrderTrailHandler(workOrderQuery),
+        new GetWorkOrderTrailUseCase(workOrderQuery),
       inject: [WORK_ORDER_QUERY_PORT],
     },
     {
-      provide: GetMyWorkOrdersHandler,
+      provide: GetMyWorkOrdersUseCase,
       useFactory: (workOrderQuery: WorkOrderQueryPort, customers: CustomerDirectory) =>
-        new GetMyWorkOrdersHandler(workOrderQuery, customers),
+        new GetMyWorkOrdersUseCase(workOrderQuery, customers),
       inject: [WORK_ORDER_QUERY_PORT, CUSTOMER_DIRECTORY],
     },
     {
-      provide: GetMyWorkOrderHandler,
+      provide: GetMyWorkOrderUseCase,
       useFactory: (workOrderQuery: WorkOrderQueryPort, customers: CustomerDirectory) =>
-        new GetMyWorkOrderHandler(workOrderQuery, customers),
+        new GetMyWorkOrderUseCase(workOrderQuery, customers),
       inject: [WORK_ORDER_QUERY_PORT, CUSTOMER_DIRECTORY],
     },
     {
-      provide: GetAverageExecutionTimeHandler,
+      provide: GetAverageExecutionTimeUseCase,
       useFactory: (metricsQuery: WorkOrderMetricsQueryPort) =>
-        new GetAverageExecutionTimeHandler(metricsQuery),
+        new GetAverageExecutionTimeUseCase(metricsQuery),
       inject: [WORK_ORDER_METRICS_QUERY_PORT],
     },
     { provide: WORK_ORDER_REPOSITORY, useClass: TypeOrmWorkOrderRepository },

@@ -18,7 +18,7 @@ interface AverageRow {
 // several, corrupting AVG by counting that work order's elapsed time more than once. EXISTS is a
 // pure filter, never a multiplier. Both timestamps are named NOT NULL explicitly rather than left
 // implied by the status filter (design.md's fifth risk). COALESCE(..., 0) is what turns "no
-// matching row" into the zero the spec asks for, in SQL rather than in a branch a handler would
+// matching row" into the zero the spec asks for, in SQL rather than in a branch a use case would
 // have to remember (AD-003: the read side never travels through an aggregate).
 const AVERAGE_EXECUTION_TIME_SQL = `
   SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (wo.completed_at - wo.execution_started_at))), 0) AS average_seconds,

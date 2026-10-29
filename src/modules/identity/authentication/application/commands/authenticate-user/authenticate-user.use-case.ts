@@ -39,7 +39,7 @@ export class AuthenticateUserUseCase {
     if (!credentials) {
       throw new InvalidCredentialsError();
     }
-    // Re-fetched by id rather than carried on VerifiedCredentialsDto, so both this handler and
+    // Re-fetched by id rather than carried on VerifiedCredentialsDto, so both this use case and
     // RefreshSessionUseCase read the pending-password flag through the same general-purpose
     // query instead of two different shapes of the same fact.
     let user: UserDto;

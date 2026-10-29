@@ -111,9 +111,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
    * one transaction (copying `TypeOrmSessionRepository.save`), writes the work order row,
    * replaces its item rows (rows whose external id is no longer on the aggregate are deleted, the
    * rest are written - design.md's Tech Decisions), and appends one trail row per event read from
-   * `workOrder.domainEvents` - a non-draining read, so the handler's own `pullDomainEvents()`
+   * `workOrder.domainEvents` - a non-draining read, so the use case's own `pullDomainEvents()`
    * after `save` still sees them (AD-007, H39). A violation of `ux_work_orders_number` maps to
-   * `WorkOrderNumberTakenError`, which the handler retries with a fresh number; a violation of
+   * `WorkOrderNumberTakenError`, which the use case retries with a fresh number; a violation of
    * `ux_work_orders_active_vehicle` maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is
    * never retried. The row write itself is version-guarded (AD-009): an update only lands if the
    * row's version still matches what this aggregate was loaded at, or

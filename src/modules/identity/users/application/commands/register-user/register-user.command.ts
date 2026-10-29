@@ -2,7 +2,7 @@ export class RegisterUserCommand {
   constructor(
     readonly email: string,
     readonly name: string,
-    /** Omitted when `issuedByStaff` is true - the handler generates one instead (IDENT-07). */
+    /** Omitted when `issuedByStaff` is true: the use case generates one instead (IDENT-07). */
     readonly password: string | undefined,
     readonly document: string,
     /** True for the staff-creation route: the caller supplies no password, one is generated,

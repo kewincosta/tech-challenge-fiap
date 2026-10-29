@@ -9,7 +9,7 @@ import { ConsumedLineDto, ConsumeStockBatchCommand } from './consume-stock-batch
 
 /**
  * The inventory side of the write that spans two modules and two aggregates. Reached only from
- * inside `WithdrawPartsHandler`'s `transactionRunner.run` (AD-008) - `findAllByIdsForUpdate`
+ * inside `WithdrawPartsUseCase`'s `transactionRunner.run` (AD-008) - `findAllByIdsForUpdate`
  * refuses to run with no open transaction, which is this use case's own guarantee that it never
  * commits on its own.
  */

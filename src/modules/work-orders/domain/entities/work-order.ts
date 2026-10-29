@@ -534,7 +534,7 @@ export class WorkOrder extends AggregateRoot {
   /**
    * Validates the whole batch before touching anything - every line is checked, then every line
    * is applied, so a guard firing on line three leaves lines one and two untouched too (design.md's
-   * Risks & Concerns). Returns the resolved lines because the handler needs each work order
+   * Risks & Concerns). Returns the resolved lines because the use case needs each work order
    * item's inventory item id to dispatch the cross-module consumption command; this aggregate is
    * the only thing that holds that mapping.
    */

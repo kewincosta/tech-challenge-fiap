@@ -9,7 +9,7 @@ import { RestoreStockBatchCommand } from './restore-stock-batch.command';
 
 /**
  * The inventory side of a return. Same shape as `ConsumeStockBatchUseCase`: reached only from
- * inside `ReturnPartsHandler`'s `transactionRunner.run` (AD-008), validates every line before
+ * inside `ReturnPartsUseCase`'s `transactionRunner.run` (AD-008), validates every line before
  * saving any of them.
  *
  * Work-orders has no way to know which movement a return undoes - that data lives only in this

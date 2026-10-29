@@ -18,7 +18,9 @@ export interface RecordedWorkOrderClosing {
   insideTransaction: boolean;
 }
 
-/** Records what the work-orders handlers ask of stock, and refuses on demand like inventory does. */
+/**
+ * Records what the work-orders use cases ask of stock, and refuses on demand like inventory does.
+ */
 export class FakeStockLedger implements StockLedger {
   readonly consumed: RecordedStockMovement[] = [];
   readonly restored: RecordedStockMovement[] = [];

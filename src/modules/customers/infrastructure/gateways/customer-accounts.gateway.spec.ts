@@ -33,9 +33,9 @@ interface Setup {
   lookupFailure?: Error;
 }
 
-// The gateway uses only `execute` of the identity module's three handlers. The first two answer
+// The gateway uses only `execute` of the identity module's three use cases. The first two answer
 // for the one user they know and, like identity, refuse any other: the lookup with its not-found
-// error, the effective access with empty roles and permissions. The register handler keeps the
+// error, the effective access with empty roles and permissions. The register use case keeps the
 // commands it receives.
 function gatewayFor(setup: Setup = {}): {
   gateway: CustomerAccountsGateway;

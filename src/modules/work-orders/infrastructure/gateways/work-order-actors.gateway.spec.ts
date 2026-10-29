@@ -22,7 +22,7 @@ const USER: UserDto = {
   createdAt: '2026-08-31T12:00:00.000Z',
 };
 
-// The gateway uses only `execute` of the identity module's two handlers. Each stand-in answers for
+// The gateway uses only `execute` of the identity module's two use cases. Each stand-in answers for
 // the one user it knows, and like identity itself it refuses a user it does not know: the lookup
 // with its not-found error, the effective access with empty roles and permissions. A lookup
 // failure, when given, is what the lookup throws for the user it knows.
