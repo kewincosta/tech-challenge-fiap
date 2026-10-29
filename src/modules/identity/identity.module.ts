@@ -15,17 +15,17 @@ import {
   ID_GENERATOR,
   TRANSACTION_RUNNER,
 } from '../../shared/shared.tokens';
-import { AuthenticateUserHandler } from './authentication/application/commands/authenticate-user/authenticate-user.handler';
-import { LogoutAllSessionsHandler } from './authentication/application/commands/logout-all-sessions/logout-all-sessions.handler';
-import { RefreshSessionHandler } from './authentication/application/commands/refresh-session/refresh-session.handler';
-import { RevokeSessionHandler } from './authentication/application/commands/revoke-session/revoke-session.handler';
+import { AuthenticateUserUseCase } from './authentication/application/commands/authenticate-user/authenticate-user.use-case';
+import { LogoutAllSessionsUseCase } from './authentication/application/commands/logout-all-sessions/logout-all-sessions.use-case';
+import { RefreshSessionUseCase } from './authentication/application/commands/refresh-session/refresh-session.use-case';
+import { RevokeSessionUseCase } from './authentication/application/commands/revoke-session/revoke-session.use-case';
 import { AuthSettings } from './authentication/application/auth-settings';
 import { AccessTokenService } from './authentication/application/ports/access-token.port';
 import { RefreshTokenHasher } from './authentication/application/ports/refresh-token-hasher.port';
 import { RevokedSessionStore } from './authentication/application/ports/revoked-session-store.port';
 import { SessionQueryPort } from './authentication/application/ports/session-query.port';
 import { SessionRepository } from './authentication/application/ports/session.repository';
-import { ListUserSessionsHandler } from './authentication/application/queries/list-user-sessions/list-user-sessions.handler';
+import { ListUserSessionsUseCase } from './authentication/application/queries/list-user-sessions/list-user-sessions.use-case';
 import { RefreshTokenReuseDetected } from './authentication/domain/events/refresh-token-reuse-detected.event';
 import { RedisRevokedSessionStore } from './authentication/infrastructure/cache/redis-revoked-session-store';
 import { RefreshTokenReuseSubscriber } from './authentication/infrastructure/logging/security-events.subscriber';
@@ -38,23 +38,23 @@ import { Sha256RefreshTokenHasher } from './authentication/infrastructure/securi
 import { AuthController } from './authentication/presentation/controllers/auth.controller';
 import { JwtAuthGuard } from './authentication/presentation/guards/jwt-auth.guard';
 import { PendingPasswordGuard } from './authentication/presentation/guards/pending-password.guard';
-import { AssignRoleToUserHandler } from './authorization/application/commands/assign-role-to-user/assign-role-to-user.handler';
-import { CreateRoleHandler } from './authorization/application/commands/create-role/create-role.handler';
-import { DeleteRoleHandler } from './authorization/application/commands/delete-role/delete-role.handler';
-import { RevokeRoleFromUserHandler } from './authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler';
-import { SetRolePermissionsHandler } from './authorization/application/commands/set-role-permissions/set-role-permissions.handler';
-import { UpdateRoleHandler } from './authorization/application/commands/update-role/update-role.handler';
+import { AssignRoleToUserUseCase } from './authorization/application/commands/assign-role-to-user/assign-role-to-user.use-case';
+import { CreateRoleUseCase } from './authorization/application/commands/create-role/create-role.use-case';
+import { DeleteRoleUseCase } from './authorization/application/commands/delete-role/delete-role.use-case';
+import { RevokeRoleFromUserUseCase } from './authorization/application/commands/revoke-role-from-user/revoke-role-from-user.use-case';
+import { SetRolePermissionsUseCase } from './authorization/application/commands/set-role-permissions/set-role-permissions.use-case';
+import { UpdateRoleUseCase } from './authorization/application/commands/update-role/update-role.use-case';
 import { AccessCache } from './authorization/application/ports/access-cache.port';
 import { AssignmentRepository } from './authorization/application/ports/assignment.repository';
 import { EffectiveAccessReader } from './authorization/application/ports/effective-access-reader.port';
 import { PermissionRepository } from './authorization/application/ports/permission.repository';
 import { RbacQueryPort } from './authorization/application/ports/rbac-query.port';
 import { RoleRepository } from './authorization/application/ports/role.repository';
-import { GetRoleHandler } from './authorization/application/queries/get-role/get-role.handler';
-import { GetUserAccessHandler } from './authorization/application/queries/get-user-access/get-user-access.handler';
-import { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
-import { ListPermissionsHandler } from './authorization/application/queries/list-permissions/list-permissions.handler';
-import { ListRolesHandler } from './authorization/application/queries/list-roles/list-roles.handler';
+import { GetRoleUseCase } from './authorization/application/queries/get-role/get-role.use-case';
+import { GetUserAccessUseCase } from './authorization/application/queries/get-user-access/get-user-access.use-case';
+import { GetUserEffectiveAccessUseCase } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.use-case';
+import { ListPermissionsUseCase } from './authorization/application/queries/list-permissions/list-permissions.use-case';
+import { ListRolesUseCase } from './authorization/application/queries/list-roles/list-roles.use-case';
 import { EffectiveAccessService } from './authorization/application/services/effective-access.service';
 import { PermissionCatalogService } from './authorization/application/services/permission-catalog.service';
 import { AccessCacheInvalidationSubscriber } from './authorization/application/subscribers/access-cache-invalidation.subscriber';
@@ -74,18 +74,18 @@ import { PermissionsController } from './authorization/presentation/controllers/
 import { RolesController } from './authorization/presentation/controllers/roles.controller';
 import { UserAccessController } from './authorization/presentation/controllers/user-access.controller';
 import { PermissionsGuard } from './authorization/presentation/guards/permissions.guard';
-import { ChangePasswordHandler } from './users/application/commands/change-password/change-password.handler';
-import { DeactivateUserHandler } from './users/application/commands/deactivate-user/deactivate-user.handler';
-import { RegisterUserHandler } from './users/application/commands/register-user/register-user.handler';
-import { UpdateUserHandler } from './users/application/commands/update-user/update-user.handler';
+import { ChangePasswordUseCase } from './users/application/commands/change-password/change-password.use-case';
+import { DeactivateUserUseCase } from './users/application/commands/deactivate-user/deactivate-user.use-case';
+import { RegisterUserUseCase } from './users/application/commands/register-user/register-user.use-case';
+import { UpdateUserUseCase } from './users/application/commands/update-user/update-user.use-case';
 import { PasswordHasher } from './users/application/ports/password-hasher.port';
 import { UserQueryPort } from './users/application/ports/user-query.port';
 import { UserRepository } from './users/application/ports/user.repository';
-import { FindUserByDocumentHandler } from './users/application/queries/find-user-by-document/find-user-by-document.handler';
+import { FindUserByDocumentUseCase } from './users/application/queries/find-user-by-document/find-user-by-document.use-case';
 import { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
-import { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
-import { ListUsersHandler } from './users/application/queries/list-users/list-users.handler';
-import { VerifyCredentialsHandler } from './users/application/queries/verify-credentials/verify-credentials.handler';
+import { GetUserByIdUseCase } from './users/application/queries/get-user-by-id/get-user-by-id.use-case';
+import { ListUsersUseCase } from './users/application/queries/list-users/list-users.use-case';
+import { VerifyCredentialsUseCase } from './users/application/queries/verify-credentials/verify-credentials.use-case';
 import { TypeOrmUserQueryAdapter } from './users/infrastructure/persistence/typeorm-user-query.adapter';
 import { TypeOrmUserRepository } from './users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from './users/infrastructure/persistence/user.orm-entity';
@@ -139,17 +139,17 @@ import {
   ],
   providers: [
     {
-      provide: RegisterUserHandler,
+      provide: RegisterUserUseCase,
       useFactory: (
         users: UserRepository,
         passwordHasher: PasswordHasher,
         idGenerator: IdGenerator,
         clock: Clock,
         transactionRunner: TransactionRunner,
-        assignRoleToUser: AssignRoleToUserHandler,
+        assignRoleToUser: AssignRoleToUserUseCase,
         events: DomainEventPublisher,
       ) =>
-        new RegisterUserHandler(
+        new RegisterUserUseCase(
           users,
           passwordHasher,
           idGenerator,
@@ -164,55 +164,55 @@ import {
         ID_GENERATOR,
         CLOCK,
         TRANSACTION_RUNNER,
-        AssignRoleToUserHandler,
+        AssignRoleToUserUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
     {
-      provide: UpdateUserHandler,
+      provide: UpdateUserUseCase,
       useFactory: (users: UserRepository, clock: Clock, events: DomainEventPublisher) =>
-        new UpdateUserHandler(users, clock, events),
+        new UpdateUserUseCase(users, clock, events),
       inject: [USER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: DeactivateUserHandler,
+      provide: DeactivateUserUseCase,
       useFactory: (
         users: UserRepository,
         clock: Clock,
         events: DomainEventPublisher,
-        logoutAllSessions: LogoutAllSessionsHandler,
-      ) => new DeactivateUserHandler(users, clock, events, logoutAllSessions),
-      inject: [USER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER, LogoutAllSessionsHandler],
+        logoutAllSessions: LogoutAllSessionsUseCase,
+      ) => new DeactivateUserUseCase(users, clock, events, logoutAllSessions),
+      inject: [USER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER, LogoutAllSessionsUseCase],
     },
     {
-      provide: ChangePasswordHandler,
+      provide: ChangePasswordUseCase,
       useFactory: (
         users: UserRepository,
         passwordHasher: PasswordHasher,
         clock: Clock,
-        logoutAllSessions: LogoutAllSessionsHandler,
-      ) => new ChangePasswordHandler(users, passwordHasher, clock, logoutAllSessions),
-      inject: [USER_REPOSITORY, PASSWORD_HASHER, CLOCK, LogoutAllSessionsHandler],
+        logoutAllSessions: LogoutAllSessionsUseCase,
+      ) => new ChangePasswordUseCase(users, passwordHasher, clock, logoutAllSessions),
+      inject: [USER_REPOSITORY, PASSWORD_HASHER, CLOCK, LogoutAllSessionsUseCase],
     },
     {
-      provide: GetUserByIdHandler,
-      useFactory: (users: UserRepository) => new GetUserByIdHandler(users),
+      provide: GetUserByIdUseCase,
+      useFactory: (users: UserRepository) => new GetUserByIdUseCase(users),
       inject: [USER_REPOSITORY],
     },
     {
-      provide: VerifyCredentialsHandler,
+      provide: VerifyCredentialsUseCase,
       useFactory: (users: UserRepository, passwordHasher: PasswordHasher) =>
-        new VerifyCredentialsHandler(users, passwordHasher),
+        new VerifyCredentialsUseCase(users, passwordHasher),
       inject: [USER_REPOSITORY, PASSWORD_HASHER],
     },
     {
-      provide: FindUserByDocumentHandler,
-      useFactory: (userQuery: UserQueryPort) => new FindUserByDocumentHandler(userQuery),
+      provide: FindUserByDocumentUseCase,
+      useFactory: (userQuery: UserQueryPort) => new FindUserByDocumentUseCase(userQuery),
       inject: [USER_QUERY_PORT],
     },
     {
-      provide: ListUsersHandler,
-      useFactory: (userQuery: UserQueryPort) => new ListUsersHandler(userQuery),
+      provide: ListUsersUseCase,
+      useFactory: (userQuery: UserQueryPort) => new ListUsersUseCase(userQuery),
       inject: [USER_QUERY_PORT],
     },
     {
@@ -225,7 +225,7 @@ import {
       inject: [authConfig.KEY],
     },
     {
-      provide: AuthenticateUserHandler,
+      provide: AuthenticateUserUseCase,
       useFactory: (
         sessions: SessionRepository,
         accessTokens: AccessTokenService,
@@ -233,11 +233,11 @@ import {
         idGenerator: IdGenerator,
         clock: Clock,
         settings: AuthSettings,
-        verifyCredentials: VerifyCredentialsHandler,
-        getUserById: GetUserByIdHandler,
+        verifyCredentials: VerifyCredentialsUseCase,
+        getUserById: GetUserByIdUseCase,
         events: DomainEventPublisher,
       ) =>
-        new AuthenticateUserHandler(
+        new AuthenticateUserUseCase(
           sessions,
           accessTokens,
           refreshTokenHasher,
@@ -255,13 +255,13 @@ import {
         ID_GENERATOR,
         CLOCK,
         AUTH_SETTINGS,
-        VerifyCredentialsHandler,
-        GetUserByIdHandler,
+        VerifyCredentialsUseCase,
+        GetUserByIdUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
     {
-      provide: RefreshSessionHandler,
+      provide: RefreshSessionUseCase,
       useFactory: (
         sessions: SessionRepository,
         accessTokens: AccessTokenService,
@@ -270,10 +270,10 @@ import {
         idGenerator: IdGenerator,
         clock: Clock,
         settings: AuthSettings,
-        getUserById: GetUserByIdHandler,
+        getUserById: GetUserByIdUseCase,
         events: DomainEventPublisher,
       ) =>
-        new RefreshSessionHandler(
+        new RefreshSessionUseCase(
           sessions,
           accessTokens,
           refreshTokenHasher,
@@ -292,19 +292,19 @@ import {
         ID_GENERATOR,
         CLOCK,
         AUTH_SETTINGS,
-        GetUserByIdHandler,
+        GetUserByIdUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
     {
-      provide: LogoutAllSessionsHandler,
+      provide: LogoutAllSessionsUseCase,
       useFactory: (
         sessions: SessionRepository,
         revokedSessions: RevokedSessionStore,
         clock: Clock,
         settings: AuthSettings,
         events: DomainEventPublisher,
-      ) => new LogoutAllSessionsHandler(sessions, revokedSessions, clock, settings, events),
+      ) => new LogoutAllSessionsUseCase(sessions, revokedSessions, clock, settings, events),
       inject: [
         SESSION_REPOSITORY,
         REVOKED_SESSION_STORE,
@@ -314,16 +314,16 @@ import {
       ],
     },
     {
-      provide: RevokeSessionHandler,
+      provide: RevokeSessionUseCase,
       useFactory: (
         sessions: SessionRepository,
         revokedSessions: RevokedSessionStore,
         clock: Clock,
         settings: AuthSettings,
-        getUserEffectiveAccess: GetUserEffectiveAccessHandler,
+        getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
         events: DomainEventPublisher,
       ) =>
-        new RevokeSessionHandler(
+        new RevokeSessionUseCase(
           sessions,
           revokedSessions,
           clock,
@@ -336,58 +336,58 @@ import {
         REVOKED_SESSION_STORE,
         CLOCK,
         AUTH_SETTINGS,
-        GetUserEffectiveAccessHandler,
+        GetUserEffectiveAccessUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
     {
-      provide: ListUserSessionsHandler,
-      useFactory: (sessionQuery: SessionQueryPort) => new ListUserSessionsHandler(sessionQuery),
+      provide: ListUserSessionsUseCase,
+      useFactory: (sessionQuery: SessionQueryPort) => new ListUserSessionsUseCase(sessionQuery),
       inject: [SESSION_QUERY_PORT],
     },
     RefreshTokenReuseSubscriber,
     JwtAuthGuard,
     PendingPasswordGuard,
     {
-      provide: CreateRoleHandler,
+      provide: CreateRoleUseCase,
       useFactory: (
         roles: RoleRepository,
         permissionCatalog: PermissionCatalogService,
         idGenerator: IdGenerator,
         clock: Clock,
-      ) => new CreateRoleHandler(roles, permissionCatalog, idGenerator, clock),
+      ) => new CreateRoleUseCase(roles, permissionCatalog, idGenerator, clock),
       inject: [ROLE_REPOSITORY, PermissionCatalogService, ID_GENERATOR, CLOCK],
     },
     {
-      provide: UpdateRoleHandler,
-      useFactory: (roles: RoleRepository, clock: Clock) => new UpdateRoleHandler(roles, clock),
+      provide: UpdateRoleUseCase,
+      useFactory: (roles: RoleRepository, clock: Clock) => new UpdateRoleUseCase(roles, clock),
       inject: [ROLE_REPOSITORY, CLOCK],
     },
     {
-      provide: DeleteRoleHandler,
-      useFactory: (roles: RoleRepository) => new DeleteRoleHandler(roles),
+      provide: DeleteRoleUseCase,
+      useFactory: (roles: RoleRepository) => new DeleteRoleUseCase(roles),
       inject: [ROLE_REPOSITORY],
     },
     {
-      provide: SetRolePermissionsHandler,
+      provide: SetRolePermissionsUseCase,
       useFactory: (
         roles: RoleRepository,
         permissionCatalog: PermissionCatalogService,
         clock: Clock,
-      ) => new SetRolePermissionsHandler(roles, permissionCatalog, clock),
+      ) => new SetRolePermissionsUseCase(roles, permissionCatalog, clock),
       inject: [ROLE_REPOSITORY, PermissionCatalogService, CLOCK],
     },
     {
-      provide: AssignRoleToUserHandler,
+      provide: AssignRoleToUserUseCase,
       useFactory: (
         roles: RoleRepository,
         assignments: AssignmentRepository,
         clock: Clock,
-        getUserEffectiveAccess: GetUserEffectiveAccessHandler,
-        getUserById: GetUserByIdHandler,
+        getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
+        getUserById: GetUserByIdUseCase,
         events: DomainEventPublisher,
       ) =>
-        new AssignRoleToUserHandler(
+        new AssignRoleToUserUseCase(
           roles,
           assignments,
           clock,
@@ -399,42 +399,42 @@ import {
         ROLE_REPOSITORY,
         ASSIGNMENT_REPOSITORY,
         CLOCK,
-        GetUserEffectiveAccessHandler,
-        GetUserByIdHandler,
+        GetUserEffectiveAccessUseCase,
+        GetUserByIdUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
     {
-      provide: RevokeRoleFromUserHandler,
+      provide: RevokeRoleFromUserUseCase,
       useFactory: (assignments: AssignmentRepository, clock: Clock, events: DomainEventPublisher) =>
-        new RevokeRoleFromUserHandler(assignments, clock, events),
+        new RevokeRoleFromUserUseCase(assignments, clock, events),
       inject: [ASSIGNMENT_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: ListRolesHandler,
-      useFactory: (rbacQuery: RbacQueryPort) => new ListRolesHandler(rbacQuery),
+      provide: ListRolesUseCase,
+      useFactory: (rbacQuery: RbacQueryPort) => new ListRolesUseCase(rbacQuery),
       inject: [RBAC_QUERY_PORT],
     },
     {
-      provide: GetRoleHandler,
-      useFactory: (rbacQuery: RbacQueryPort) => new GetRoleHandler(rbacQuery),
+      provide: GetRoleUseCase,
+      useFactory: (rbacQuery: RbacQueryPort) => new GetRoleUseCase(rbacQuery),
       inject: [RBAC_QUERY_PORT],
     },
     {
-      provide: ListPermissionsHandler,
-      useFactory: (rbacQuery: RbacQueryPort) => new ListPermissionsHandler(rbacQuery),
+      provide: ListPermissionsUseCase,
+      useFactory: (rbacQuery: RbacQueryPort) => new ListPermissionsUseCase(rbacQuery),
       inject: [RBAC_QUERY_PORT],
     },
     {
-      provide: GetUserAccessHandler,
-      useFactory: (rbacQuery: RbacQueryPort, getUserById: GetUserByIdHandler) =>
-        new GetUserAccessHandler(rbacQuery, getUserById),
-      inject: [RBAC_QUERY_PORT, GetUserByIdHandler],
+      provide: GetUserAccessUseCase,
+      useFactory: (rbacQuery: RbacQueryPort, getUserById: GetUserByIdUseCase) =>
+        new GetUserAccessUseCase(rbacQuery, getUserById),
+      inject: [RBAC_QUERY_PORT, GetUserByIdUseCase],
     },
     {
-      provide: GetUserEffectiveAccessHandler,
+      provide: GetUserEffectiveAccessUseCase,
       useFactory: (effectiveAccess: EffectiveAccessService) =>
-        new GetUserEffectiveAccessHandler(effectiveAccess),
+        new GetUserEffectiveAccessUseCase(effectiveAccess),
       inject: [EffectiveAccessService],
     },
     {
@@ -480,9 +480,9 @@ import {
     JwtAuthGuard,
     PendingPasswordGuard,
     PermissionsGuard,
-    GetUserEffectiveAccessHandler,
-    GetUserByIdHandler,
-    RegisterUserHandler,
+    GetUserEffectiveAccessUseCase,
+    GetUserByIdUseCase,
+    RegisterUserUseCase,
     UserKeyResolver,
     FindUsersUseCase,
   ],

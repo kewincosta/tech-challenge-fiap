@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
-  GetUserByIdHandler,
+  GetUserByIdUseCase,
   GetUserByIdQuery,
-  GetUserEffectiveAccessHandler,
+  GetUserEffectiveAccessUseCase,
   GetUserEffectiveAccessQuery,
   RegisterUserCommand,
-  RegisterUserHandler,
+  RegisterUserUseCase,
   SystemRole,
   UserNotFoundError,
 } from '../../../identity';
@@ -18,9 +18,9 @@ import { CustomerAccounts, OpenedAccount } from '../../application/ports/custome
 @Injectable()
 export class CustomerAccountsGateway implements CustomerAccounts {
   constructor(
-    private readonly getUserById: GetUserByIdHandler,
-    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
-    private readonly registerUser: RegisterUserHandler,
+    private readonly getUserById: GetUserByIdUseCase,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
+    private readonly registerUser: RegisterUserUseCase,
   ) {}
 
   async findUser(userId: string): Promise<{ id: string } | null> {

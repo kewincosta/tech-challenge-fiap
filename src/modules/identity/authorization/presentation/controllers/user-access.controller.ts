@@ -21,11 +21,11 @@ import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
 import { Principal } from '../../../authentication/presentation/principal';
 import { AssignRoleToUserCommand } from '../../application/commands/assign-role-to-user/assign-role-to-user.command';
-import { AssignRoleToUserHandler } from '../../application/commands/assign-role-to-user/assign-role-to-user.handler';
+import { AssignRoleToUserUseCase } from '../../application/commands/assign-role-to-user/assign-role-to-user.use-case';
 import { RevokeRoleFromUserCommand } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.command';
-import { RevokeRoleFromUserHandler } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.handler';
+import { RevokeRoleFromUserUseCase } from '../../application/commands/revoke-role-from-user/revoke-role-from-user.use-case';
 import { AppPermission } from '../../application/contracts/app-permissions';
-import { GetUserAccessHandler } from '../../application/queries/get-user-access/get-user-access.handler';
+import { GetUserAccessUseCase } from '../../application/queries/get-user-access/get-user-access.use-case';
 import { GetUserAccessQuery } from '../../application/queries/get-user-access/get-user-access.query';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
 import { UserAccessResponseDto } from '../dtos/user-access.dtos';
@@ -36,9 +36,9 @@ import { UserAccessResponseDto } from '../dtos/user-access.dtos';
 @Controller('users')
 export class UserAccessController {
   constructor(
-    private readonly assignRoleToUser: AssignRoleToUserHandler,
-    private readonly revokeRoleFromUser: RevokeRoleFromUserHandler,
-    private readonly getAccess: GetUserAccessHandler,
+    private readonly assignRoleToUser: AssignRoleToUserUseCase,
+    private readonly revokeRoleFromUser: RevokeRoleFromUserUseCase,
+    private readonly getAccess: GetUserAccessUseCase,
   ) {}
 
   @Get(':userId/access')

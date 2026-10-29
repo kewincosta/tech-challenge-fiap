@@ -16,7 +16,7 @@ export class FindUsersUseCase {
       try {
         document = PersonDocument.create(query.document).value;
       } catch {
-        // A malformed document matches nobody, so the answer is an empty list, as ListUsersHandler
+        // A malformed document matches nobody, so the answer is an empty list, as ListUsersUseCase
         // gives for the same input.
         return [];
       }

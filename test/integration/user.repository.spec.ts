@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { AssignRoleToUserHandler } from '../../src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler';
+import { AssignRoleToUserUseCase } from '../../src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.use-case';
 import { RegisterUserCommand } from '../../src/modules/identity/users/application/commands/register-user/register-user.command';
-import { RegisterUserHandler } from '../../src/modules/identity/users/application/commands/register-user/register-user.handler';
+import { RegisterUserUseCase } from '../../src/modules/identity/users/application/commands/register-user/register-user.use-case';
 import { DocumentAlreadyInUseError } from '../../src/modules/identity/users/domain/errors/document-already-in-use.error';
 import { Email } from '../../src/modules/identity/users/domain/value-objects/email';
 import { PersonDocument } from '../../src/modules/identity/users/domain/value-objects/person-document';
@@ -65,8 +65,8 @@ describe('TypeOrmUserRepository', () => {
     const assignmentFailure = new Error('role assignment failed');
     const failingAssignRole = {
       execute: () => Promise.reject(assignmentFailure),
-    } as unknown as AssignRoleToUserHandler;
-    const handler = new RegisterUserHandler(
+    } as unknown as AssignRoleToUserUseCase;
+    const handler = new RegisterUserUseCase(
       repository,
       new FakePasswordHasher(),
       new FakeIdGenerator(),

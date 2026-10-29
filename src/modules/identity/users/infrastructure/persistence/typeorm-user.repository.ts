@@ -71,8 +71,8 @@ export class TypeOrmUserRepository implements UserRepository {
   /**
    * Returns the repository bound to the transaction open on this async context (see
    * TypeOrmTransactionRunner), or the default injected repository outside a transaction. Only the
-   * methods a RegisterUserHandler transaction actually touches - save and findById, the latter
-   * reached indirectly through GetUserByIdQuery when AssignRoleToUserHandler checks the user
+   * methods a RegisterUserUseCase transaction actually touches - save and findById, the latter
+   * reached indirectly through GetUserByIdQuery when AssignRoleToUserUseCase checks the user
    * exists - need this; the rest run before any transaction opens.
    */
   private repo(): Repository<UserOrmEntity> {

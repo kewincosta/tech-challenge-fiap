@@ -29,7 +29,7 @@ import { Throttle } from '@nestjs/throttler';
 import { authThrottle } from '../../../../../config/rate-limit.config';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { GetUserEffectiveAccessHandler } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
+import { GetUserEffectiveAccessUseCase } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.use-case';
 import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { AllowsPendingPassword } from '../../../authentication/presentation/decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
@@ -37,16 +37,16 @@ import { Public } from '../../../authentication/presentation/decorators/public.d
 import { Principal } from '../../../authentication/presentation/principal';
 import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
 import { ChangePasswordCommand } from '../../application/commands/change-password/change-password.command';
-import { ChangePasswordHandler } from '../../application/commands/change-password/change-password.handler';
+import { ChangePasswordUseCase } from '../../application/commands/change-password/change-password.use-case';
 import { DeactivateUserCommand } from '../../application/commands/deactivate-user/deactivate-user.command';
-import { DeactivateUserHandler } from '../../application/commands/deactivate-user/deactivate-user.handler';
+import { DeactivateUserUseCase } from '../../application/commands/deactivate-user/deactivate-user.use-case';
 import { RegisterUserCommand } from '../../application/commands/register-user/register-user.command';
-import { RegisterUserHandler } from '../../application/commands/register-user/register-user.handler';
+import { RegisterUserUseCase } from '../../application/commands/register-user/register-user.use-case';
 import { UpdateUserCommand } from '../../application/commands/update-user/update-user.command';
-import { UpdateUserHandler } from '../../application/commands/update-user/update-user.handler';
-import { GetUserByIdHandler } from '../../application/queries/get-user-by-id/get-user-by-id.handler';
+import { UpdateUserUseCase } from '../../application/commands/update-user/update-user.use-case';
+import { GetUserByIdUseCase } from '../../application/queries/get-user-by-id/get-user-by-id.use-case';
 import { GetUserByIdQuery } from '../../application/queries/get-user-by-id/get-user-by-id.query';
-import { ListUsersHandler } from '../../application/queries/list-users/list-users.handler';
+import { ListUsersUseCase } from '../../application/queries/list-users/list-users.use-case';
 import { ListUsersQuery } from '../../application/queries/list-users/list-users.query';
 import { ChangePasswordRequestDto } from '../dtos/change-password.request.dto';
 import { CreateStaffAccountRequestDto } from '../dtos/create-staff-account.request.dto';
@@ -64,13 +64,13 @@ import {
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly registerUser: RegisterUserHandler,
-    private readonly updateUser: UpdateUserHandler,
-    private readonly deactivateUser: DeactivateUserHandler,
-    private readonly changeUserPassword: ChangePasswordHandler,
-    private readonly listUsers: ListUsersHandler,
-    private readonly getUser: GetUserByIdHandler,
-    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
+    private readonly registerUser: RegisterUserUseCase,
+    private readonly updateUser: UpdateUserUseCase,
+    private readonly deactivateUser: DeactivateUserUseCase,
+    private readonly changeUserPassword: ChangePasswordUseCase,
+    private readonly listUsers: ListUsersUseCase,
+    private readonly getUser: GetUserByIdUseCase,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
   ) {}
 
   @Public()

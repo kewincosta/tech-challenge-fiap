@@ -24,17 +24,17 @@ import {
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
 import { CreateRoleCommand } from '../../application/commands/create-role/create-role.command';
-import { CreateRoleHandler } from '../../application/commands/create-role/create-role.handler';
+import { CreateRoleUseCase } from '../../application/commands/create-role/create-role.use-case';
 import { DeleteRoleCommand } from '../../application/commands/delete-role/delete-role.command';
-import { DeleteRoleHandler } from '../../application/commands/delete-role/delete-role.handler';
+import { DeleteRoleUseCase } from '../../application/commands/delete-role/delete-role.use-case';
 import { SetRolePermissionsCommand } from '../../application/commands/set-role-permissions/set-role-permissions.command';
-import { SetRolePermissionsHandler } from '../../application/commands/set-role-permissions/set-role-permissions.handler';
+import { SetRolePermissionsUseCase } from '../../application/commands/set-role-permissions/set-role-permissions.use-case';
 import { UpdateRoleCommand } from '../../application/commands/update-role/update-role.command';
-import { UpdateRoleHandler } from '../../application/commands/update-role/update-role.handler';
+import { UpdateRoleUseCase } from '../../application/commands/update-role/update-role.use-case';
 import { AppPermission } from '../../application/contracts/app-permissions';
-import { GetRoleHandler } from '../../application/queries/get-role/get-role.handler';
+import { GetRoleUseCase } from '../../application/queries/get-role/get-role.use-case';
 import { GetRoleQuery } from '../../application/queries/get-role/get-role.query';
-import { ListRolesHandler } from '../../application/queries/list-roles/list-roles.handler';
+import { ListRolesUseCase } from '../../application/queries/list-roles/list-roles.use-case';
 import { ListRolesQuery } from '../../application/queries/list-roles/list-roles.query';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
 import {
@@ -50,12 +50,12 @@ import {
 @Controller('roles')
 export class RolesController {
   constructor(
-    private readonly createRole: CreateRoleHandler,
-    private readonly updateRole: UpdateRoleHandler,
-    private readonly deleteRole: DeleteRoleHandler,
-    private readonly setRolePermissions: SetRolePermissionsHandler,
-    private readonly listRoles: ListRolesHandler,
-    private readonly getRole: GetRoleHandler,
+    private readonly createRole: CreateRoleUseCase,
+    private readonly updateRole: UpdateRoleUseCase,
+    private readonly deleteRole: DeleteRoleUseCase,
+    private readonly setRolePermissions: SetRolePermissionsUseCase,
+    private readonly listRoles: ListRolesUseCase,
+    private readonly getRole: GetRoleUseCase,
   ) {}
 
   @Get()

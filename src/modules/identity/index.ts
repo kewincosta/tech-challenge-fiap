@@ -1,7 +1,7 @@
 export { AppPermission } from './authorization/application/contracts/app-permissions';
 export { SystemRole } from './authorization/application/contracts/system-roles';
 export type { EffectiveAccessDto } from './authorization/application/dtos/effective-access.dto';
-export { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
+export { GetUserEffectiveAccessUseCase } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.use-case';
 export { GetUserEffectiveAccessQuery } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 export { CurrentUser } from './authentication/presentation/decorators/current-user.decorator';
 export type { Principal } from './authentication/presentation/principal';
@@ -9,10 +9,10 @@ export { RequirePermissions } from './authorization/presentation/decorators/requ
 export type { UserDto } from './users/application/dtos/user.dto';
 export { RegisterUserCommand } from './users/application/commands/register-user/register-user.command';
 export type { RegisteredUserDto } from './users/application/commands/register-user/register-user.command';
-export { RegisterUserHandler } from './users/application/commands/register-user/register-user.handler';
+export { RegisterUserUseCase } from './users/application/commands/register-user/register-user.use-case';
 export { FindUsersQuery } from './users/application/queries/find-users/find-users.query';
 export { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
-export { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';
+export { GetUserByIdUseCase } from './users/application/queries/get-user-by-id/get-user-by-id.use-case';
 export { GetUserByIdQuery } from './users/application/queries/get-user-by-id/get-user-by-id.query';
 export type { UserSummaryDto } from './users/application/ports/user-query.port';
 export { UserNotFoundError } from './users/domain/errors/user-not-found.error';

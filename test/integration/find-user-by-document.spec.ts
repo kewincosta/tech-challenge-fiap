@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { FindUserByDocumentQuery } from '../../src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.query';
-import { FindUserByDocumentHandler } from '../../src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.handler';
+import { FindUserByDocumentUseCase } from '../../src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.use-case';
 import { TypeOrmUserQueryAdapter } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user-query.adapter';
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
@@ -11,7 +11,7 @@ import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
-let handler: FindUserByDocumentHandler;
+let handler: FindUserByDocumentUseCase;
 let userRepository: TypeOrmUserRepository;
 
 function uniqueEmail(): string {
@@ -23,14 +23,14 @@ beforeAll(async () => {
   await dataSource.initialize();
   const usersRepo = dataSource.getRepository(UserOrmEntity);
   userRepository = new TypeOrmUserRepository(usersRepo);
-  handler = new FindUserByDocumentHandler(new TypeOrmUserQueryAdapter(usersRepo, dataSource));
+  handler = new FindUserByDocumentUseCase(new TypeOrmUserQueryAdapter(usersRepo, dataSource));
 });
 
 afterAll(async () => {
   await dataSource.destroy();
 });
 
-describe('FindUserByDocumentHandler', () => {
+describe('FindUserByDocumentUseCase', () => {
   it('should return the matching active user by document', async () => {
     const document = uniqueValidCpf();
     const user = buildUser({ email: uniqueEmail(), document });

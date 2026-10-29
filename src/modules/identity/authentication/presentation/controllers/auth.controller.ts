@@ -26,14 +26,14 @@ import { Request } from 'express';
 import { authThrottle } from '../../../../../config/rate-limit.config';
 import { ErrorResponseDto } from '../../../../../shared/presentation/dtos/error-response.dto';
 import { AuthenticateUserCommand } from '../../application/commands/authenticate-user/authenticate-user.command';
-import { AuthenticateUserHandler } from '../../application/commands/authenticate-user/authenticate-user.handler';
+import { AuthenticateUserUseCase } from '../../application/commands/authenticate-user/authenticate-user.use-case';
 import { LogoutAllSessionsCommand } from '../../application/commands/logout-all-sessions/logout-all-sessions.command';
-import { LogoutAllSessionsHandler } from '../../application/commands/logout-all-sessions/logout-all-sessions.handler';
+import { LogoutAllSessionsUseCase } from '../../application/commands/logout-all-sessions/logout-all-sessions.use-case';
 import { RefreshSessionCommand } from '../../application/commands/refresh-session/refresh-session.command';
-import { RefreshSessionHandler } from '../../application/commands/refresh-session/refresh-session.handler';
+import { RefreshSessionUseCase } from '../../application/commands/refresh-session/refresh-session.use-case';
 import { RevokeSessionCommand } from '../../application/commands/revoke-session/revoke-session.command';
-import { RevokeSessionHandler } from '../../application/commands/revoke-session/revoke-session.handler';
-import { ListUserSessionsHandler } from '../../application/queries/list-user-sessions/list-user-sessions.handler';
+import { RevokeSessionUseCase } from '../../application/commands/revoke-session/revoke-session.use-case';
+import { ListUserSessionsUseCase } from '../../application/queries/list-user-sessions/list-user-sessions.use-case';
 import { ListUserSessionsQuery } from '../../application/queries/list-user-sessions/list-user-sessions.query';
 import { AllowsPendingPassword } from '../decorators/allows-pending-password.decorator';
 import { CurrentUser } from '../decorators/current-user.decorator';
@@ -50,11 +50,11 @@ const USER_AGENT_MAX_LENGTH = 512;
 @Controller('auth')
 export class AuthController {
   constructor(
-    private readonly authenticateUser: AuthenticateUserHandler,
-    private readonly refreshSession: RefreshSessionHandler,
-    private readonly logoutAllSessions: LogoutAllSessionsHandler,
-    private readonly revokeUserSession: RevokeSessionHandler,
-    private readonly listUserSessions: ListUserSessionsHandler,
+    private readonly authenticateUser: AuthenticateUserUseCase,
+    private readonly refreshSession: RefreshSessionUseCase,
+    private readonly logoutAllSessions: LogoutAllSessionsUseCase,
+    private readonly revokeUserSession: RevokeSessionUseCase,
+    private readonly listUserSessions: ListUserSessionsUseCase,
   ) {}
 
   @Public()

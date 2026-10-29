@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   EffectiveAccessDto,
-  GetUserByIdHandler,
+  GetUserByIdUseCase,
   GetUserByIdQuery,
-  GetUserEffectiveAccessHandler,
+  GetUserEffectiveAccessUseCase,
   GetUserEffectiveAccessQuery,
   RegisteredUserDto,
   RegisterUserCommand,
-  RegisterUserHandler,
+  RegisterUserUseCase,
   UserDto,
   UserNotFoundError,
 } from '../../../identity';
@@ -51,7 +51,7 @@ function gatewayFor(setup: Setup = {}): {
         ? Promise.resolve(USER)
         : Promise.reject(new UserNotFoundError());
     },
-  } as unknown as GetUserByIdHandler;
+  } as unknown as GetUserByIdUseCase;
   const getUserEffectiveAccess = {
     execute: (query: GetUserEffectiveAccessQuery) =>
       Promise.resolve(
@@ -59,14 +59,14 @@ function gatewayFor(setup: Setup = {}): {
           ? (setup.access ?? { roles: [], permissions: [] })
           : { roles: [], permissions: [] },
       ),
-  } as unknown as GetUserEffectiveAccessHandler;
+  } as unknown as GetUserEffectiveAccessUseCase;
   const registerUser = {
     execute: (command: RegisterUserCommand) => {
       registerCommands.push(command);
       const registered = setup.registered ?? { id: NEW_USER_ID, temporaryPassword: 'aB3dE5fG7h9K' };
       return registered instanceof Error ? Promise.reject(registered) : Promise.resolve(registered);
     },
-  } as unknown as RegisterUserHandler;
+  } as unknown as RegisterUserUseCase;
   return {
     gateway: new CustomerAccountsGateway(getUserById, getUserEffectiveAccess, registerUser),
     registerCommands,

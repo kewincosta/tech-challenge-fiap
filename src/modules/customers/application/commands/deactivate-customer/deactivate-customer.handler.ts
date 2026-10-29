@@ -24,7 +24,7 @@ export class DeactivateCustomerHandler implements ICommandHandler<DeactivateCust
     if (!customer) {
       throw new CustomerNotFoundError();
     }
-    // Unlike DeactivateUserHandler (identity-foundation), this never touches sessions: a
+    // Unlike DeactivateUserUseCase (identity-foundation), this never touches sessions: a
     // deactivated customer only stops new work orders (rule 13 of the domain model); the backing
     // User's ability to log in is untouched.
     customer.deactivate(this.clock.now());

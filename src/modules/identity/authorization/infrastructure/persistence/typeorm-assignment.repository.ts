@@ -55,7 +55,7 @@ export class TypeOrmAssignmentRepository implements AssignmentRepository {
   }
 
   private async resolveUserInternalId(externalUserId: string): Promise<string> {
-    // Reads through the active transaction's manager when RegisterUserHandler is assigning the
+    // Reads through the active transaction's manager when RegisterUserUseCase is assigning the
     // default role to a user it just inserted in the same transaction - a different connection
     // would not see that row until commit. See TypeOrmTransactionRunner.
     const runner = currentEntityManager() ?? this.dataSource;

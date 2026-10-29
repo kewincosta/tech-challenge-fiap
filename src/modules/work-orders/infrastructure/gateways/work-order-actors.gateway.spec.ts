@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   EffectiveAccessDto,
-  GetUserByIdHandler,
+  GetUserByIdUseCase,
   GetUserByIdQuery,
-  GetUserEffectiveAccessHandler,
+  GetUserEffectiveAccessUseCase,
   GetUserEffectiveAccessQuery,
   UserDto,
   UserNotFoundError,
@@ -36,11 +36,11 @@ function gatewayFor(access: EffectiveAccessDto, lookupFailure?: Error): WorkOrde
         ? Promise.resolve(USER)
         : Promise.reject(new UserNotFoundError());
     },
-  } as unknown as GetUserByIdHandler;
+  } as unknown as GetUserByIdUseCase;
   const getUserEffectiveAccess = {
     execute: (query: GetUserEffectiveAccessQuery) =>
       Promise.resolve(query.userId === USER_ID ? access : { roles: [], permissions: [] }),
-  } as unknown as GetUserEffectiveAccessHandler;
+  } as unknown as GetUserEffectiveAccessUseCase;
   return new WorkOrderActorsGateway(getUserEffectiveAccess, getUserById);
 }
 

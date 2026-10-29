@@ -68,7 +68,7 @@ async function loginAsCustomer(customer: RegisteredCustomer): Promise<Authentica
   return login(app, customer.credentials);
 }
 
-/** Registration always assigns CUSTOMER (RegisterUserHandler), which itself carries
+/** Registration always assigns CUSTOMER (RegisterUserUseCase), which itself carries
  * work-orders:read-own - so proving a 403 without that permission means stripping the one role
  * every account gets by default, leaving an authenticated actor with no permissions at all. */
 async function loginWithNoRoles(): Promise<AuthenticatedClient> {

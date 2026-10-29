@@ -16,7 +16,7 @@ import { WithdrawPartsCommand } from './withdraw-parts.command';
  * on the aggregate first, purely in memory - a rejected batch never opens a transaction at all.
  * Only once the aggregate has accepted it does this open `transactionRunner.run`, save the work
  * order, and consume the stock through the ledger inside that same transaction, the structural
- * template `RegisterUserHandler` already established for a cross-module write.
+ * template `RegisterUserUseCase` already established for a cross-module write.
  */
 @CommandHandler(WithdrawPartsCommand)
 export class WithdrawPartsHandler implements ICommandHandler<WithdrawPartsCommand, void> {

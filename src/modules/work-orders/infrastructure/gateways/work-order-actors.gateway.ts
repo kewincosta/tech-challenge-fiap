@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   AppPermission,
-  GetUserByIdHandler,
+  GetUserByIdUseCase,
   GetUserByIdQuery,
-  GetUserEffectiveAccessHandler,
+  GetUserEffectiveAccessUseCase,
   GetUserEffectiveAccessQuery,
   SystemRole,
   UserNotFoundError,
@@ -17,8 +17,8 @@ import { ActorCapabilities, WorkOrderActors } from '../../application/ports/work
 @Injectable()
 export class WorkOrderActorsGateway implements WorkOrderActors {
   constructor(
-    private readonly getUserEffectiveAccess: GetUserEffectiveAccessHandler,
-    private readonly getUserById: GetUserByIdHandler,
+    private readonly getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
+    private readonly getUserById: GetUserByIdUseCase,
   ) {}
 
   async capabilitiesOf(userId: string): Promise<ActorCapabilities> {

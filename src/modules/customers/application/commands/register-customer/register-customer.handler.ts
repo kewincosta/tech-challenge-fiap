@@ -47,7 +47,7 @@ export class RegisterCustomerHandler implements ICommandHandler<
     // The existing-user branch's cross-module checks and the account-creation branch's
     // account opening both need to commit or roll back together with the customer
     // insert - see design.md's Risks & Concerns (the same risk identity-foundation's T9/T18 closed
-    // for RegisterUserHandler).
+    // for RegisterUserUseCase).
     return this.transactionRunner.run(async () => {
       const { userId, temporaryPassword } = hasExistingUser
         ? await this.resolveExistingUser(command.userId)
@@ -78,7 +78,7 @@ export class RegisterCustomerHandler implements ICommandHandler<
     if (!(await this.accounts.hasCustomerRole(userId))) {
       throw new UserMissingCustomerRoleError();
     }
-    // Application-layer pre-check, same two-layer shape as RegisterUserHandler's
+    // Application-layer pre-check, same two-layer shape as RegisterUserUseCase's
     // existsByEmail/existsByDocument: a friendly error on the common path, with the repository's
     // own unique-constraint mapping (T5) as the race-condition backstop.
     if (await this.customers.existsByUserId(userId)) {
