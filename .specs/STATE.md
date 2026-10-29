@@ -67,7 +67,7 @@
 
 ### AD-008
 
-- **Decision**: A repository whose aggregate can take part in a write spanning two modules must honour an ambient transaction: it resolves its `EntityManager` through `currentEntityManager()` first and only opens its own `dataSource.transaction` when there is none.
+- **Decision**: A repository whose aggregate can take part in a write spanning two modules must honour an ambient transaction: it resolves its `EntityManager` through `currentEntityManager()` first and only opens its own `dataSource.transaction` when there is none. Refined on 2026-10-29 by T62 of `clean-architecture`: a repository opens its own transaction through `runInNewTransaction`, which publishes that manager as the ambient one, so the key resolvers and owner reads it calls join the transaction and hold no second connection.
 - **Reason**: `TransactionRunner` carries one transaction across a `CommandBus` dispatch through `AsyncLocalStorage`, but a repository that calls `dataSource.transaction` unconditionally opens a second transaction on a second connection and silently leaves the two writes independent. Nothing in the calling module's own tests can catch that.
 - **Trade-off**: Every such repository carries a small branch on the ambient manager, and a row lock taken inside one is held until the outer transaction commits rather than until its own write finishes.
 - **Scope**: `shared/infrastructure/database/typeorm-transaction-runner.ts`, and every repository reachable from a cross-module write - today `users`, `authorization`, `inventory` and `work-orders`.
@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 (T62, then T39 to T41) dispatched.
-- **Completed**: T1 to T38 and T61. Totals after batch 6: unit 1055, integration 336, e2e 243 (baseline 955, 239, 203). Baselines: 172 dependency violations (core-no-frameworks 155, through-public-api 16, core-stays-in-module 0, no-circular 1), 0 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 (T42 to T46) dispatched.
+- **Completed**: T1 to T41, T61 and T62. Totals after batch 7: unit 1062, integration 337, e2e 243 (baseline 955, 239, 203). Baselines: 142 dependency violations (core-no-frameworks 129, through-public-api 12, core-stays-in-module 0, no-circular 1), 0 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 7's compact summary, then dispatch batch 8 (T42 to T46).
+- **Next step**: read batch 8's compact summary, then dispatch batch 9 (T47 to T50).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -264,6 +264,14 @@ entry. They apply to every feature.
 - `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
+
+**Facts from batch 7 that later tasks build on**:
+
+- `runInNewTransaction(dataSource, work)` in `typeorm-transaction-runner.ts` opens a transaction and publishes its manager as the ambient one; `TypeOrmTransactionRunner.run` and both repositories use it. Any adapter that opens its own transaction and calls a resolver or another module inside it must use it. The session and role repositories still call `dataSource.transaction` and call no resolver inside; T44 and T43 keep it that way or switch to the helper.
+- `inventory` is migrated end to end and listed in `migrated-modules.json`. `identity/index.ts` also exports `CurrentUser` and `Principal`.
+- T39 and T40 changed existing assertions where design C10 and CA-05 ask for it: the malformed-id get in `test/integration/inventory-read-queries.spec.ts:89` throws `InventoryItemNotFoundError` (the e2e cases at `inventory-items.e2e.spec.ts:217` and `:226` are unchanged), and the deactivate, settle and write-off specs assert state on the in-memory repository and the recording publisher in place of call counts.
+- `list-stock-shortages.use-case.spec.ts:51` keeps call assertions on a `vi.fn` query port. Query-port stubs moving to fakes is a deferred idea in `context.md`.
+- `docs/architecture/c4-components-inventory.mmd` still names the old handler classes (T60).
 
 **Plan change after batch 6**: T62 joins phase 7. `TypeOrmInventoryItemRepository` opens its own transaction when no ambient one exists and then calls `UserKeyResolver` and `WorkOrderReads`, which take a second pool connection. Batch 6 proved it with a pool of two: one of two concurrent saves timed out. The application's pool of ten has no connection timeout, so ten concurrent saves would wait forever. T62 makes a repository's own transaction the ambient one, in the inventory and the work order repository, with a regression case on a two-connection pool. Design C4 now says so.
 
