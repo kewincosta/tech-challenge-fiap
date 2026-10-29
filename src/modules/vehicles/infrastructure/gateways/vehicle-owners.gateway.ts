@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   CustomerNotFoundError,
-  GetCustomerByUserIdHandler,
+  GetCustomerByUserIdUseCase,
   GetCustomerByUserIdQuery,
-  GetCustomerHandler,
+  GetCustomerUseCase,
   GetCustomerQuery,
 } from '../../../customers';
 import { OwnerRef, VehicleOwners } from '../../application/ports/vehicle-owners.port';
@@ -18,8 +18,8 @@ const ACTIVE_STATUS = 'ACTIVE';
 @Injectable()
 export class VehicleOwnersGateway implements VehicleOwners {
   constructor(
-    private readonly getCustomer: GetCustomerHandler,
-    private readonly getCustomerByUserId: GetCustomerByUserIdHandler,
+    private readonly getCustomer: GetCustomerUseCase,
+    private readonly getCustomerByUserId: GetCustomerByUserIdUseCase,
   ) {}
 
   async findById(customerId: string): Promise<OwnerRef | null> {

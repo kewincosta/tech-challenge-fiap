@@ -13,7 +13,7 @@ import { CustomerAccounts, OpenedAccount } from '../../ports/customer-accounts.p
 import { CustomerRepository } from '../../ports/customer.repository';
 import { RegisteredCustomerDto, RegisterCustomerCommand } from './register-customer.command';
 
-export class RegisterCustomerHandler {
+export class RegisterCustomerUseCase {
   constructor(
     private readonly customers: CustomerRepository,
     private readonly idGenerator: IdGenerator,

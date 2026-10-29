@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
   CustomerNotFoundError,
-  GetCustomerByUserIdHandler,
+  GetCustomerByUserIdUseCase,
   GetCustomerByUserIdQuery,
-  GetCustomerHandler,
+  GetCustomerUseCase,
   GetCustomerQuery,
 } from '../../../customers';
 import { CustomerDirectory, CustomerRef } from '../../application/ports/customer-directory.port';
@@ -18,8 +18,8 @@ const ACTIVE_STATUS = 'ACTIVE';
 @Injectable()
 export class CustomerDirectoryGateway implements CustomerDirectory {
   constructor(
-    private readonly getCustomer: GetCustomerHandler,
-    private readonly getCustomerByUserId: GetCustomerByUserIdHandler,
+    private readonly getCustomer: GetCustomerUseCase,
+    private readonly getCustomerByUserId: GetCustomerByUserIdUseCase,
   ) {}
 
   async findById(customerId: string): Promise<CustomerRef | null> {

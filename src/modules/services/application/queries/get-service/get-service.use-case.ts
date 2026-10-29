@@ -16,7 +16,7 @@ export class GetServiceUseCase {
       ServiceId.create(query.serviceId);
     } catch {
       // A malformed id matches nothing by construction, and a uuid column would throw on it -
-      // same guard GetCustomerHandler uses.
+      // same guard GetCustomerUseCase uses.
       throw new ServiceNotFoundError();
     }
     const service = await this.serviceQuery.getById(query.serviceId);

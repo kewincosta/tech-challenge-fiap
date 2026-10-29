@@ -27,17 +27,17 @@ import {
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { DeactivateCustomerCommand } from '../../application/commands/deactivate-customer/deactivate-customer.command';
-import { DeactivateCustomerHandler } from '../../application/commands/deactivate-customer/deactivate-customer.handler';
+import { DeactivateCustomerUseCase } from '../../application/commands/deactivate-customer/deactivate-customer.use-case';
 import { RegisterCustomerCommand } from '../../application/commands/register-customer/register-customer.command';
-import { RegisterCustomerHandler } from '../../application/commands/register-customer/register-customer.handler';
+import { RegisterCustomerUseCase } from '../../application/commands/register-customer/register-customer.use-case';
 import { UpdateCustomerCommand } from '../../application/commands/update-customer/update-customer.command';
-import { UpdateCustomerHandler } from '../../application/commands/update-customer/update-customer.handler';
+import { UpdateCustomerUseCase } from '../../application/commands/update-customer/update-customer.use-case';
 import { CustomerSummaryDto } from '../../application/ports/customer-query.port';
-import { GetCustomerByUserIdHandler } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.handler';
+import { GetCustomerByUserIdUseCase } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
 import { GetCustomerByUserIdQuery } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
-import { GetCustomerHandler } from '../../application/queries/get-customer/get-customer.handler';
+import { GetCustomerUseCase } from '../../application/queries/get-customer/get-customer.use-case';
 import { GetCustomerQuery } from '../../application/queries/get-customer/get-customer.query';
-import { ListCustomersHandler } from '../../application/queries/list-customers/list-customers.handler';
+import { ListCustomersUseCase } from '../../application/queries/list-customers/list-customers.use-case';
 import { ListCustomersQuery } from '../../application/queries/list-customers/list-customers.query';
 import { RegisterCustomerRequestDto } from '../dtos/register-customer.request.dto';
 import { UpdateCustomerRequestDto } from '../dtos/update-customer.request.dto';
@@ -47,12 +47,12 @@ import { CustomerResponseDto, RegisteredCustomerResponseDto } from '../dtos/cust
 @Controller('customers')
 export class CustomersController {
   constructor(
-    private readonly registerCustomer: RegisterCustomerHandler,
-    private readonly updateCustomer: UpdateCustomerHandler,
-    private readonly deactivateCustomer: DeactivateCustomerHandler,
-    private readonly getCustomer: GetCustomerHandler,
-    private readonly getCustomerByUserId: GetCustomerByUserIdHandler,
-    private readonly listCustomers: ListCustomersHandler,
+    private readonly registerCustomer: RegisterCustomerUseCase,
+    private readonly updateCustomer: UpdateCustomerUseCase,
+    private readonly deactivateCustomer: DeactivateCustomerUseCase,
+    private readonly getCustomer: GetCustomerUseCase,
+    private readonly getCustomerByUserId: GetCustomerByUserIdUseCase,
+    private readonly listCustomers: ListCustomersUseCase,
   ) {}
 
   @Post()

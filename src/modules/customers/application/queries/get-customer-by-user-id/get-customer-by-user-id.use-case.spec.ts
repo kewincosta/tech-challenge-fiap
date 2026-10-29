@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
 import { CustomerQueryPort, CustomerSummaryDto } from '../../ports/customer-query.port';
-import { GetCustomerByUserIdHandler } from './get-customer-by-user-id.handler';
+import { GetCustomerByUserIdUseCase } from './get-customer-by-user-id.use-case';
 import { GetCustomerByUserIdQuery } from './get-customer-by-user-id.query';
 
 const USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -27,30 +27,30 @@ function fakePort(result: CustomerSummaryDto | null): CustomerQueryPort {
   };
 }
 
-describe('GetCustomerByUserIdHandler', () => {
+describe('GetCustomerByUserIdUseCase', () => {
   it("returns the customer record backing the user, read by the user's own id", async () => {
     const port = fakePort(customer());
-    const handler = new GetCustomerByUserIdHandler(port);
+    const useCase = new GetCustomerByUserIdUseCase(port);
 
-    const result = await handler.execute(new GetCustomerByUserIdQuery(USER_ID));
+    const result = await useCase.execute(new GetCustomerByUserIdQuery(USER_ID));
 
     expect(result).toEqual(customer());
     expect(port.getByUserId).toHaveBeenCalledWith(USER_ID);
   });
 
   it('refuses a user with no customer record with the customer not-found error', async () => {
-    const handler = new GetCustomerByUserIdHandler(fakePort(null));
+    const useCase = new GetCustomerByUserIdUseCase(fakePort(null));
 
-    await expect(handler.execute(new GetCustomerByUserIdQuery(USER_ID))).rejects.toThrow(
+    await expect(useCase.execute(new GetCustomerByUserIdQuery(USER_ID))).rejects.toThrow(
       CustomerNotFoundError,
     );
   });
 
   it('passes a malformed id straight through - every caller supplies a verified JWT subject', async () => {
     const port = fakePort(customer());
-    const handler = new GetCustomerByUserIdHandler(port);
+    const useCase = new GetCustomerByUserIdUseCase(port);
 
-    await handler.execute(new GetCustomerByUserIdQuery('not-a-uuid'));
+    await useCase.execute(new GetCustomerByUserIdQuery('not-a-uuid'));
 
     expect(port.getByUserId).toHaveBeenCalledWith('not-a-uuid');
   });

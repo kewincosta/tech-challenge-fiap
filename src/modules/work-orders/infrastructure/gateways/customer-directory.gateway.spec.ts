@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CustomerNotFoundError,
   CustomerSummaryDto,
-  GetCustomerByUserIdHandler,
+  GetCustomerByUserIdUseCase,
   GetCustomerByUserIdQuery,
-  GetCustomerHandler,
+  GetCustomerUseCase,
   GetCustomerQuery,
 } from '../../../customers';
 import { CustomerDirectoryGateway } from './customer-directory.gateway';
@@ -29,16 +29,16 @@ function answer(result: Answer): Promise<CustomerSummaryDto | null> {
   return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
 }
 
-// The gateway uses only `execute` of the customers module's handlers. Each stand-in answers for
+// The gateway uses only `execute` of the customers module's use cases. Each stand-in answers for
 // the one key it is asked about, so a gateway that sends the wrong identifier gets `null`.
 function gatewayOver(byId: Answer, byUserId: Answer = null): CustomerDirectoryGateway {
   const getCustomer = {
     execute: (query: GetCustomerQuery) => answer(query.customerId === CUSTOMER_ID ? byId : null),
-  } as unknown as GetCustomerHandler;
+  } as unknown as GetCustomerUseCase;
   const getCustomerByUserId = {
     execute: (query: GetCustomerByUserIdQuery) =>
       answer(query.userId === USER_ID ? byUserId : null),
-  } as unknown as GetCustomerByUserIdHandler;
+  } as unknown as GetCustomerByUserIdUseCase;
   return new CustomerDirectoryGateway(getCustomer, getCustomerByUserId);
 }
 

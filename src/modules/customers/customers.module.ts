@@ -11,15 +11,15 @@ import {
   TRANSACTION_RUNNER,
 } from '../../shared/shared.tokens';
 import { IdentityModule } from '../identity';
-import { DeactivateCustomerHandler } from './application/commands/deactivate-customer/deactivate-customer.handler';
-import { RegisterCustomerHandler } from './application/commands/register-customer/register-customer.handler';
-import { UpdateCustomerHandler } from './application/commands/update-customer/update-customer.handler';
+import { DeactivateCustomerUseCase } from './application/commands/deactivate-customer/deactivate-customer.use-case';
+import { RegisterCustomerUseCase } from './application/commands/register-customer/register-customer.use-case';
+import { UpdateCustomerUseCase } from './application/commands/update-customer/update-customer.use-case';
 import { CustomerAccounts } from './application/ports/customer-accounts.port';
 import { CustomerQueryPort } from './application/ports/customer-query.port';
 import { CustomerRepository } from './application/ports/customer.repository';
-import { GetCustomerByUserIdHandler } from './application/queries/get-customer-by-user-id/get-customer-by-user-id.handler';
-import { GetCustomerHandler } from './application/queries/get-customer/get-customer.handler';
-import { ListCustomersHandler } from './application/queries/list-customers/list-customers.handler';
+import { GetCustomerByUserIdUseCase } from './application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
+import { GetCustomerUseCase } from './application/queries/get-customer/get-customer.use-case';
+import { ListCustomersUseCase } from './application/queries/list-customers/list-customers.use-case';
 import { CUSTOMER_ACCOUNTS, CUSTOMER_QUERY_PORT, CUSTOMER_REPOSITORY } from './customers.tokens';
 import { CustomerAccountsGateway } from './infrastructure/gateways/customer-accounts.gateway';
 import { CustomerKeyResolver } from './infrastructure/persistence/customer-key-resolver';
@@ -33,42 +33,42 @@ import { CustomersController } from './presentation/controllers/customers.contro
   controllers: [CustomersController],
   providers: [
     {
-      provide: RegisterCustomerHandler,
+      provide: RegisterCustomerUseCase,
       useFactory: (
         customers: CustomerRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         transactionRunner: TransactionRunner,
         accounts: CustomerAccounts,
-      ) => new RegisterCustomerHandler(customers, idGenerator, clock, transactionRunner, accounts),
+      ) => new RegisterCustomerUseCase(customers, idGenerator, clock, transactionRunner, accounts),
       inject: [CUSTOMER_REPOSITORY, ID_GENERATOR, CLOCK, TRANSACTION_RUNNER, CUSTOMER_ACCOUNTS],
     },
     {
-      provide: UpdateCustomerHandler,
+      provide: UpdateCustomerUseCase,
       useFactory: (customers: CustomerRepository, clock: Clock, events: DomainEventPublisher) =>
-        new UpdateCustomerHandler(customers, clock, events),
+        new UpdateCustomerUseCase(customers, clock, events),
       inject: [CUSTOMER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: DeactivateCustomerHandler,
+      provide: DeactivateCustomerUseCase,
       useFactory: (customers: CustomerRepository, clock: Clock, events: DomainEventPublisher) =>
-        new DeactivateCustomerHandler(customers, clock, events),
+        new DeactivateCustomerUseCase(customers, clock, events),
       inject: [CUSTOMER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: GetCustomerHandler,
-      useFactory: (customerQuery: CustomerQueryPort) => new GetCustomerHandler(customerQuery),
+      provide: GetCustomerUseCase,
+      useFactory: (customerQuery: CustomerQueryPort) => new GetCustomerUseCase(customerQuery),
       inject: [CUSTOMER_QUERY_PORT],
     },
     {
-      provide: GetCustomerByUserIdHandler,
+      provide: GetCustomerByUserIdUseCase,
       useFactory: (customerQuery: CustomerQueryPort) =>
-        new GetCustomerByUserIdHandler(customerQuery),
+        new GetCustomerByUserIdUseCase(customerQuery),
       inject: [CUSTOMER_QUERY_PORT],
     },
     {
-      provide: ListCustomersHandler,
-      useFactory: (customerQuery: CustomerQueryPort) => new ListCustomersHandler(customerQuery),
+      provide: ListCustomersUseCase,
+      useFactory: (customerQuery: CustomerQueryPort) => new ListCustomersUseCase(customerQuery),
       inject: [CUSTOMER_QUERY_PORT],
     },
     { provide: CUSTOMER_REPOSITORY, useClass: TypeOrmCustomerRepository },
@@ -76,6 +76,6 @@ import { CustomersController } from './presentation/controllers/customers.contro
     { provide: CUSTOMER_ACCOUNTS, useClass: CustomerAccountsGateway },
     CustomerKeyResolver,
   ],
-  exports: [GetCustomerHandler, GetCustomerByUserIdHandler, CustomerKeyResolver],
+  exports: [GetCustomerUseCase, GetCustomerByUserIdUseCase, CustomerKeyResolver],
 })
 export class CustomersModule {}

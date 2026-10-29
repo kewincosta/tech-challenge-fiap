@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { GetCustomerByUserIdHandler } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.handler';
+import { GetCustomerByUserIdUseCase } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
 import { GetCustomerByUserIdQuery } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
-import { GetCustomerHandler } from '../../src/modules/customers/application/queries/get-customer/get-customer.handler';
+import { GetCustomerUseCase } from '../../src/modules/customers/application/queries/get-customer/get-customer.use-case';
 import { GetCustomerQuery } from '../../src/modules/customers/application/queries/get-customer/get-customer.query';
-import { ListCustomersHandler } from '../../src/modules/customers/application/queries/list-customers/list-customers.handler';
+import { ListCustomersUseCase } from '../../src/modules/customers/application/queries/list-customers/list-customers.use-case';
 import { ListCustomersQuery } from '../../src/modules/customers/application/queries/list-customers/list-customers.query';
 import { Customer } from '../../src/modules/customers/domain/entities/customer';
 import { CustomerNotFoundError } from '../../src/modules/customers/domain/errors/customer-not-found.error';
@@ -22,9 +22,9 @@ import { buildUser } from '../support/factories/user.factory';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
-let getCustomerHandler: GetCustomerHandler;
-let getCustomerByUserIdHandler: GetCustomerByUserIdHandler;
-let listCustomersHandler: ListCustomersHandler;
+let getCustomer: GetCustomerUseCase;
+let getCustomerByUserId: GetCustomerByUserIdUseCase;
+let listCustomers: ListCustomersUseCase;
 let customerRepository: TypeOrmCustomerRepository;
 let userRepository: TypeOrmUserRepository;
 
@@ -38,9 +38,9 @@ beforeAll(async () => {
     ),
     new UserKeyResolver(dataSource),
   );
-  getCustomerHandler = new GetCustomerHandler(queryAdapter);
-  getCustomerByUserIdHandler = new GetCustomerByUserIdHandler(queryAdapter);
-  listCustomersHandler = new ListCustomersHandler(queryAdapter);
+  getCustomer = new GetCustomerUseCase(queryAdapter);
+  getCustomerByUserId = new GetCustomerByUserIdUseCase(queryAdapter);
+  listCustomers = new ListCustomersUseCase(queryAdapter);
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
     new UserKeyResolver(dataSource),
@@ -68,19 +68,19 @@ describe('Customer read queries', () => {
   it('should get a customer by its external id', async () => {
     const { customerId } = await registerCustomer(`Jane-${randomUUID()}`, uniqueValidCpf());
 
-    const found = await getCustomerHandler.execute(new GetCustomerQuery(customerId));
+    const found = await getCustomer.execute(new GetCustomerQuery(customerId));
 
     expect(found?.id).toBe(customerId);
   });
 
   it('should refuse a customer id that does not exist with the customer not-found error', async () => {
-    await expect(getCustomerHandler.execute(new GetCustomerQuery(randomUUID()))).rejects.toThrow(
+    await expect(getCustomer.execute(new GetCustomerQuery(randomUUID()))).rejects.toThrow(
       CustomerNotFoundError,
     );
   });
 
   it('should refuse a malformed customer id with the customer not-found error, not a database error', async () => {
-    await expect(getCustomerHandler.execute(new GetCustomerQuery('not-a-uuid'))).rejects.toThrow(
+    await expect(getCustomer.execute(new GetCustomerQuery('not-a-uuid'))).rejects.toThrow(
       CustomerNotFoundError,
     );
   });
@@ -88,7 +88,7 @@ describe('Customer read queries', () => {
   it("should get a customer by its user's external id", async () => {
     const { customerId, userId } = await registerCustomer(`Jane-${randomUUID()}`, uniqueValidCpf());
 
-    const found = await getCustomerByUserIdHandler.execute(new GetCustomerByUserIdQuery(userId));
+    const found = await getCustomerByUserId.execute(new GetCustomerByUserIdQuery(userId));
 
     expect(found?.id).toBe(customerId);
   });
@@ -97,14 +97,12 @@ describe('Customer read queries', () => {
     const marker = randomUUID();
     await registerCustomer(`Zed-${marker}`, uniqueValidCpf());
 
-    const found = await listCustomersHandler.execute(new ListCustomersQuery(marker));
+    const found = await listCustomers.execute(new ListCustomersQuery(marker));
 
     expect(found).toHaveLength(1);
   });
 
   it('should return an empty list for a malformed document filter, not throw', async () => {
-    expect(await listCustomersHandler.execute(new ListCustomersQuery(undefined, '123'))).toEqual(
-      [],
-    );
+    expect(await listCustomers.execute(new ListCustomersQuery(undefined, '123'))).toEqual([]);
   });
 });

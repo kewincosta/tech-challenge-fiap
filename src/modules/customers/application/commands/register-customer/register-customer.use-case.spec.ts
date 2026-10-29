@@ -11,34 +11,34 @@ import { InvalidPhoneNumberError } from '../../../domain/errors/invalid-phone-nu
 import { TargetUserNotFoundError } from '../../../domain/errors/target-user-not-found.error';
 import { UserMissingCustomerRoleError } from '../../../domain/errors/user-missing-customer-role.error';
 import { RegisterCustomerCommand } from './register-customer.command';
-import { RegisterCustomerHandler } from './register-customer.handler';
+import { RegisterCustomerUseCase } from './register-customer.use-case';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 const NEW_ACCOUNT = { userId: USER_ID, temporaryPassword: 'aB3dE5fG7h9K' };
 
 /** `existingUser` seeds a user with or without the CUSTOMER role; the new account answers `NEW_ACCOUNT`. */
-function makeHandler(existingUser?: { holdsCustomerRole: boolean }) {
+function makeUseCase(existingUser?: { holdsCustomerRole: boolean }) {
   const customers = new InMemoryCustomerRepository();
   const transactionRunner = new FakeTransactionRunner();
   const accounts = new FakeCustomerAccounts(NEW_ACCOUNT, () => transactionRunner.active);
   if (existingUser) {
     accounts.withUser(USER_ID, existingUser.holdsCustomerRole);
   }
-  const handler = new RegisterCustomerHandler(
+  const useCase = new RegisterCustomerUseCase(
     customers,
     new FakeIdGenerator(),
     new FakeClock(),
     transactionRunner,
     accounts,
   );
-  return { handler, customers, transactionRunner, accounts };
+  return { useCase, customers, transactionRunner, accounts };
 }
 
-describe('RegisterCustomerHandler', () => {
+describe('RegisterCustomerUseCase', () => {
   it('should register a customer over an existing user holding CUSTOMER', async () => {
-    const { handler, customers } = makeHandler({ holdsCustomerRole: true });
+    const { useCase, customers } = makeUseCase({ holdsCustomerRole: true });
 
-    const result = await handler.execute(
+    const result = await useCase.execute(
       new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
     );
 
@@ -48,10 +48,10 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse an existing user without the CUSTOMER role', async () => {
-    const { handler, customers } = makeHandler({ holdsCustomerRole: false });
+    const { useCase, customers } = makeUseCase({ holdsCustomerRole: false });
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
       ),
     ).rejects.toThrow(UserMissingCustomerRoleError);
@@ -59,21 +59,21 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse a user that already backs a customer', async () => {
-    const { handler, customers } = makeHandler({ holdsCustomerRole: true });
+    const { useCase, customers } = makeUseCase({ holdsCustomerRole: true });
     customers.existsByUserId = () => Promise.resolve(true);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
       ),
     ).rejects.toThrow(CustomerAlreadyExistsForUserError);
   });
 
   it('should refuse a target user that does not exist', async () => {
-    const { handler, customers } = makeHandler();
+    const { useCase, customers } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
       ),
     ).rejects.toThrow(TargetUserNotFoundError);
@@ -81,9 +81,9 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should register via the account-creation branch and return the temporary password', async () => {
-    const { handler, customers, accounts } = makeHandler();
+    const { useCase, customers, accounts } = makeUseCase();
 
-    const result = await handler.execute(
+    const result = await useCase.execute(
       new RegisterCustomerCommand(
         undefined,
         'jane@example.com',
@@ -103,10 +103,10 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should reject a malformed address', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(
           undefined,
           'jane@example.com',
@@ -120,10 +120,10 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should reject a malformed phone number', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(
           undefined,
           'jane@example.com',
@@ -137,10 +137,10 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse a request supplying both an existing user id and account data', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(
           USER_ID,
           'jane@example.com',
@@ -154,10 +154,10 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse a request supplying neither an existing user id nor account data', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterCustomerCommand(
           undefined,
           undefined,
@@ -171,9 +171,9 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should run the whole registration inside one transaction, the account opening included', async () => {
-    const { handler, transactionRunner, accounts } = makeHandler();
+    const { useCase, transactionRunner, accounts } = makeUseCase();
 
-    await handler.execute(
+    await useCase.execute(
       new RegisterCustomerCommand(
         undefined,
         'jane@example.com',

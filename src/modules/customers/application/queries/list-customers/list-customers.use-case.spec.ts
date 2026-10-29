@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CustomerQueryPort, CustomerSummaryDto } from '../../ports/customer-query.port';
-import { ListCustomersHandler } from './list-customers.handler';
+import { ListCustomersUseCase } from './list-customers.use-case';
 import { ListCustomersQuery } from './list-customers.query';
 
 function fakePort(result: CustomerSummaryDto[] = []): CustomerQueryPort {
@@ -11,12 +11,12 @@ function fakePort(result: CustomerSummaryDto[] = []): CustomerQueryPort {
   };
 }
 
-describe('ListCustomersHandler', () => {
+describe('ListCustomersUseCase', () => {
   it('passes both filters through untouched when no document is supplied', async () => {
     const port = fakePort();
-    const handler = new ListCustomersHandler(port);
+    const useCase = new ListCustomersUseCase(port);
 
-    await handler.execute(new ListCustomersQuery('Jane'));
+    await useCase.execute(new ListCustomersQuery('Jane'));
 
     expect(port.listActive).toHaveBeenCalledWith({ name: 'Jane', document: undefined });
   });
@@ -27,9 +27,9 @@ describe('ListCustomersHandler', () => {
     'hands the document filter %s to the port exactly as typed',
     async (document) => {
       const port = fakePort();
-      const handler = new ListCustomersHandler(port);
+      const useCase = new ListCustomersUseCase(port);
 
-      await handler.execute(new ListCustomersQuery(undefined, document));
+      await useCase.execute(new ListCustomersQuery(undefined, document));
 
       expect(port.listActive).toHaveBeenCalledWith({ name: undefined, document });
     },
@@ -37,8 +37,8 @@ describe('ListCustomersHandler', () => {
 
   it('returns exactly what the port answers', async () => {
     const rows = [{ id: '11111111-1111-4111-8111-111111111111' } as CustomerSummaryDto];
-    const handler = new ListCustomersHandler(fakePort(rows));
+    const useCase = new ListCustomersUseCase(fakePort(rows));
 
-    await expect(handler.execute(new ListCustomersQuery())).resolves.toBe(rows);
+    await expect(useCase.execute(new ListCustomersQuery())).resolves.toBe(rows);
   });
 });

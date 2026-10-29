@@ -227,7 +227,7 @@ describe('Customers', () => {
     // Every current account-creation path (public sign-up, POST /users/staff) unconditionally
     // assigns CUSTOMER, so there is no HTTP fixture for "a real user missing the CUSTOMER role" -
     // that negative branch is proven at the unit level instead
-    // (register-customer.handler.spec.ts, "should refuse an existing user without the CUSTOMER
+    // (register-customer.use-case.spec.ts, "should refuse an existing user without the CUSTOMER
     // role"). This test proves the sibling branch this wiring is actually reachable for: a userId
     // that resolves to nobody.
     const response = await api(app)

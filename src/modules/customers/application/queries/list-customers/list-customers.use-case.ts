@@ -1,7 +1,7 @@
 import { CustomerQueryPort, CustomerSummaryDto } from '../../ports/customer-query.port';
 import { ListCustomersQuery } from './list-customers.query';
 
-export class ListCustomersHandler {
+export class ListCustomersUseCase {
   constructor(private readonly customerQuery: CustomerQueryPort) {}
 
   async execute(query: ListCustomersQuery): Promise<CustomerSummaryDto[]> {

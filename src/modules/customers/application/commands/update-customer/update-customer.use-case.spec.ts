@@ -9,17 +9,17 @@ import { CustomerUpdated } from '../../../domain/events/customer-updated.event';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
 import { UpdateCustomerCommand } from './update-customer.command';
-import { UpdateCustomerHandler } from './update-customer.handler';
+import { UpdateCustomerUseCase } from './update-customer.use-case';
 
 const CUSTOMER_ID = CustomerId.create('11111111-1111-4111-8111-111111111111');
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+function makeUseCase() {
   const customers = new InMemoryCustomerRepository();
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const handler = new UpdateCustomerHandler(customers, clock, events);
-  return { handler, customers, clock, events };
+  const useCase = new UpdateCustomerUseCase(customers, clock, events);
+  return { useCase, customers, clock, events };
 }
 
 async function seedCustomer(customers: InMemoryCustomerRepository) {
@@ -34,12 +34,12 @@ async function seedCustomer(customers: InMemoryCustomerRepository) {
   return customer;
 }
 
-describe('UpdateCustomerHandler', () => {
+describe('UpdateCustomerUseCase', () => {
   it('should update the address only, leaving the phone untouched', async () => {
-    const { handler, customers, clock, events } = makeHandler();
+    const { useCase, customers, clock, events } = makeUseCase();
     const seeded = await seedCustomer(customers);
 
-    await handler.execute(
+    await useCase.execute(
       new UpdateCustomerCommand(CUSTOMER_ID.value, {
         street: 'Rua das Flores',
         number: '123',
@@ -57,10 +57,10 @@ describe('UpdateCustomerHandler', () => {
   });
 
   it('should update the phone only, leaving the address untouched', async () => {
-    const { handler, customers } = makeHandler();
+    const { useCase, customers } = makeUseCase();
     await seedCustomer(customers);
 
-    await handler.execute(new UpdateCustomerCommand(CUSTOMER_ID.value, undefined, '11933334444'));
+    await useCase.execute(new UpdateCustomerCommand(CUSTOMER_ID.value, undefined, '11933334444'));
 
     const updated = customers.customers.find((c) => c.id.equals(CUSTOMER_ID))!;
     expect(updated.phoneNumber?.value).toBe('11933334444');
@@ -68,11 +68,11 @@ describe('UpdateCustomerHandler', () => {
   });
 
   it('should propagate InvalidAddressError for a malformed address', async () => {
-    const { handler, customers } = makeHandler();
+    const { useCase, customers } = makeUseCase();
     await seedCustomer(customers);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new UpdateCustomerCommand(CUSTOMER_ID.value, {
           street: '',
           number: '',
@@ -86,10 +86,10 @@ describe('UpdateCustomerHandler', () => {
   });
 
   it('should refuse when the customer does not exist', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new UpdateCustomerCommand('00000000-0000-4000-8000-000000000001')),
+      useCase.execute(new UpdateCustomerCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(CustomerNotFoundError);
   });
 });

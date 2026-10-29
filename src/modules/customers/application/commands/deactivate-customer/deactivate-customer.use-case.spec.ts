@@ -8,27 +8,27 @@ import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found
 import { CustomerDeactivated } from '../../../domain/events/customer-deactivated.event';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { DeactivateCustomerCommand } from './deactivate-customer.command';
-import { DeactivateCustomerHandler } from './deactivate-customer.handler';
+import { DeactivateCustomerUseCase } from './deactivate-customer.use-case';
 
 const CUSTOMER_ID = CustomerId.create('11111111-1111-4111-8111-111111111111');
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+function makeUseCase() {
   const customers = new InMemoryCustomerRepository();
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const handler = new DeactivateCustomerHandler(customers, clock, events);
-  return { handler, customers, clock, events };
+  const useCase = new DeactivateCustomerUseCase(customers, clock, events);
+  return { useCase, customers, clock, events };
 }
 
-describe('DeactivateCustomerHandler', () => {
+describe('DeactivateCustomerUseCase', () => {
   it('should deactivate a customer and set the soft-delete marker', async () => {
-    const { handler, customers, clock, events } = makeHandler();
+    const { useCase, customers, clock, events } = makeUseCase();
     const customer = Customer.register({ id: CUSTOMER_ID, userId: USER_ID, now: new Date() });
     customer.pullDomainEvents();
     await customers.save(customer);
 
-    await handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value));
+    await useCase.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value));
 
     const deactivated = customers.customers.find((c) => c.id.equals(CUSTOMER_ID))!;
     expect(deactivated.status).toBe(CustomerStatus.Inactive);
@@ -37,23 +37,23 @@ describe('DeactivateCustomerHandler', () => {
   });
 
   it('should be idempotent when deactivated twice', async () => {
-    const { handler, customers, clock, events } = makeHandler();
+    const { useCase, customers, clock, events } = makeUseCase();
     const customer = Customer.register({ id: CUSTOMER_ID, userId: USER_ID, now: new Date() });
     customer.pullDomainEvents();
     await customers.save(customer);
-    await handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value));
+    await useCase.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value));
 
     await expect(
-      handler.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value)),
+      useCase.execute(new DeactivateCustomerCommand(CUSTOMER_ID.value)),
     ).resolves.not.toThrow();
     expect(events.published).toEqual([new CustomerDeactivated(CUSTOMER_ID.value, clock.now())]);
   });
 
   it('should refuse when the customer does not exist', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new DeactivateCustomerCommand('00000000-0000-4000-8000-000000000001')),
+      useCase.execute(new DeactivateCustomerCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(CustomerNotFoundError);
   });
 });

@@ -26,7 +26,7 @@ export class CreateServiceUseCase {
     const duration = ServiceDuration.fromMinutes(command.estimatedDurationMinutes);
 
     // Application-layer pre-check for the friendly 409, with the unique index as the race
-    // backstop - the same two-layer shape RegisterCustomerHandler uses.
+    // backstop - the same two-layer shape RegisterCustomerUseCase uses.
     if (await this.services.existsActiveByName(name)) {
       throw new ServiceNameAlreadyInUseError();
     }

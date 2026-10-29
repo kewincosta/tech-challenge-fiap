@@ -8,7 +8,7 @@ import { GetCustomerQuery } from './get-customer.query';
  * apart from "exists but deactivated" (status). Registering a vehicle answers 404 for the first
  * and 422 for the second.
  */
-export class GetCustomerHandler {
+export class GetCustomerUseCase {
   constructor(private readonly customerQuery: CustomerQueryPort) {}
 
   async execute(query: GetCustomerQuery): Promise<CustomerSummaryDto> {

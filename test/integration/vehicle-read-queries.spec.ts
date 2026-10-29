@@ -11,8 +11,8 @@ import { Vehicle } from '../../src/modules/vehicles/domain/entities/vehicle';
 import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/license-plate';
 import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
-import { GetCustomerByUserIdHandler } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.handler';
-import { GetCustomerHandler } from '../../src/modules/customers/application/queries/get-customer/get-customer.handler';
+import { GetCustomerByUserIdUseCase } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
+import { GetCustomerUseCase } from '../../src/modules/customers/application/queries/get-customer/get-customer.use-case';
 import { GetMyVehiclesHandler } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.handler';
 import { GetMyVehiclesQuery } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.query';
 import { GetVehicleHandler } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.handler';
@@ -61,8 +61,8 @@ beforeAll(async () => {
   // customers handlers over the test database, proving the cross-module contract, not a stub
   // standing in for it.
   const vehicleOwners = new VehicleOwnersGateway(
-    new GetCustomerHandler(customerQueryAdapter),
-    new GetCustomerByUserIdHandler(customerQueryAdapter),
+    new GetCustomerUseCase(customerQueryAdapter),
+    new GetCustomerByUserIdUseCase(customerQueryAdapter),
   );
   getMyVehiclesHandler = new GetMyVehiclesHandler(vehicleQueryAdapter, vehicleOwners);
 
