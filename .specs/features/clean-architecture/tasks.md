@@ -291,11 +291,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The three routes have a happy-path case each
-- [ ] Each route has a 403 case for an actor lacking its permission
-- [ ] An unknown user or role on `DELETE /users/:userId/roles/:roleId` is asserted with the status and code the route answers today
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by the cases added
+- [x] The three routes have a happy-path case each
+- [x] Each route has a 403 case for an actor lacking its permission
+- [x] An unknown user or role on `DELETE /users/:userId/roles/:roleId` is asserted with the status and code the route answers today
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by the cases added
 
 **Tests**: e2e
 **Gate**: full
