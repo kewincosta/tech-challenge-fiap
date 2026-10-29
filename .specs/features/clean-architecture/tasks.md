@@ -580,11 +580,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The port lives in `src/shared/application/ports/domain-event-publisher.port.ts` with no framework import
-- [ ] Specs prove: a subscriber starts during `publish`; `publish` returns before an async subscriber settles; a synchronous throw and a rejected promise are each logged at error level as `"<SubscriberName>" has thrown an unhandled exception.`; only subscribers of the event's type run
-- [ ] `test/support/fakes/recording-domain-event-publisher.ts` records published events
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: unit total grows by the dispatcher's cases
+- [x] The port lives in `src/shared/application/ports/domain-event-publisher.port.ts` with no framework import
+- [x] Specs prove: a subscriber starts during `publish`; `publish` returns before an async subscriber settles; a synchronous throw and a rejected promise are each logged at error level as `"<SubscriberName>" has thrown an unhandled exception.`; only subscribers of the event's type run
+- [x] `test/support/fakes/recording-domain-event-publisher.ts` records published events
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: unit total grows by the dispatcher's cases
 
 **Tests**: unit
 **Gate**: quick
