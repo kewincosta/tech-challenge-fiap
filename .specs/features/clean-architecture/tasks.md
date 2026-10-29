@@ -1198,10 +1198,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Both adapters' SQL names only `vehicles`, and their entries leave the known table findings
-- [ ] `vehicle.repository.spec.ts`, `vehicle-query.adapter.spec.ts` and `vehicle-read-queries.spec.ts` pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] Both adapters' SQL names only `vehicles`, and their entries leave the known table findings
+- [x] `vehicle.repository.spec.ts`, `vehicle-query.adapter.spec.ts` and `vehicle-read-queries.spec.ts` pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

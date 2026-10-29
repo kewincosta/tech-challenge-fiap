@@ -1,15 +1,5 @@
 [
   {
-    "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter.ts",
-    "kind": "foreign-table",
-    "table": "customers"
-  },
-  {
-    "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository.ts",
-    "kind": "foreign-table",
-    "table": "customers"
-  },
-  {
     "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-metrics-query.adapter.ts",
     "kind": "foreign-table",
     "table": "services"

@@ -6,6 +6,7 @@ import { CustomerId } from '../../src/modules/customers/domain/value-objects/cus
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerQueryAdapter } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
+import { CustomerKeyResolver } from '../../src/modules/customers';
 import { Vehicle } from '../../src/modules/vehicles/domain/entities/vehicle';
 import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/license-plate';
 import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehicle-id';
@@ -42,7 +43,10 @@ let userRepository: TypeOrmUserRepository;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  const vehicleQueryAdapter = new TypeOrmVehicleQueryAdapter(dataSource);
+  const vehicleQueryAdapter = new TypeOrmVehicleQueryAdapter(
+    dataSource,
+    new CustomerKeyResolver(dataSource),
+  );
   const customerQueryAdapter = new TypeOrmCustomerQueryAdapter(
     dataSource,
     new FindUsersUseCase(
@@ -64,7 +68,7 @@ beforeAll(async () => {
 
   vehicleRepository = new TypeOrmVehicleRepository(
     dataSource.getRepository(VehicleOrmEntity),
-    dataSource,
+    new CustomerKeyResolver(dataSource),
   );
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),

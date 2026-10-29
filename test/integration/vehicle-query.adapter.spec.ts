@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Customer } from '../../src/modules/customers/domain/entities/customer';
 import { CustomerId } from '../../src/modules/customers/domain/value-objects/customer-id';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
+import { CustomerKeyResolver } from '../../src/modules/customers';
 import { Vehicle } from '../../src/modules/vehicles/domain/entities/vehicle';
 import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/license-plate';
 import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehicle-id';
@@ -20,6 +21,22 @@ import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { buildUser } from '../support/factories/user.factory';
 import { createTestDataSource } from '../support/db';
 
+// Records what the adapter asks the customers key resolver for, in order, so a spec can show that a
+// list reads its owners in one batch call.
+const calls: string[] = [];
+
+class RecordingCustomerKeyResolver extends CustomerKeyResolver {
+  override toInternalId(externalId: string): Promise<string | null> {
+    calls.push('toInternalId');
+    return super.toInternalId(externalId);
+  }
+
+  override toExternalIds(internalIds: string[]): Promise<Map<string, string>> {
+    calls.push('toExternalIds');
+    return super.toExternalIds(internalIds);
+  }
+}
+
 let dataSource: DataSource;
 let queryAdapter: TypeOrmVehicleQueryAdapter;
 let vehicleRepository: TypeOrmVehicleRepository;
@@ -29,16 +46,23 @@ let userRepository: TypeOrmUserRepository;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  queryAdapter = new TypeOrmVehicleQueryAdapter(dataSource);
+  queryAdapter = new TypeOrmVehicleQueryAdapter(
+    dataSource,
+    new RecordingCustomerKeyResolver(dataSource),
+  );
   vehicleRepository = new TypeOrmVehicleRepository(
     dataSource.getRepository(VehicleOrmEntity),
-    dataSource,
+    new CustomerKeyResolver(dataSource),
   );
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
     new UserKeyResolver(dataSource),
   );
   userRepository = new TypeOrmUserRepository(dataSource.getRepository(UserOrmEntity));
+});
+
+beforeEach(() => {
+  calls.length = 0;
 });
 
 afterAll(async () => {
@@ -105,5 +129,26 @@ describe('TypeOrmVehicleQueryAdapter', () => {
     const found = await queryAdapter.listByCustomerId(customerId);
 
     expect(found.find((v) => v.id === vehicle.id.value)).toBeUndefined();
+  });
+
+  it('should list no vehicle for a customer that does not exist', async () => {
+    expect(await queryAdapter.listByCustomerId(randomUUID())).toEqual([]);
+  });
+
+  it('should show the owner of every vehicle in a list, reading the owner in one batch', async () => {
+    const customerId = await registerCustomer();
+    await registerCustomer();
+    const vehicles = [
+      await registerVehicle(customerId),
+      await registerVehicle(customerId),
+      await registerVehicle(customerId),
+    ];
+
+    const found = await queryAdapter.listByCustomerId(customerId);
+
+    expect(found.map((v) => [v.id, v.customerId]).sort()).toEqual(
+      vehicles.map((v) => [v.id.value, customerId]).sort(),
+    );
+    expect(calls).toEqual(['toInternalId', 'toExternalIds']);
   });
 });
