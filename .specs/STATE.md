@@ -213,14 +213,23 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 of 11 (T1 to T7) dispatched to a worker sub-agent.
-- **Completed**: none
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 (T8 to T13) dispatched, with one fix commit ahead of T8.
+- **Completed**: T1 to T7. Totals after batch 1: unit 955, integration 239, e2e 243 (baseline 955, 239, 203).
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 1's compact summary, then dispatch batch 2 (T8 to T13).
+- **Next step**: read batch 2's compact summary, then dispatch batch 3 (T14 to T19).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
 
 **Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
+
+**Fix outside the task list**: `listTrail` (`typeorm-work-order-query.adapter.ts:160`) orders by `we.occurred_at` alone. Events written with the same timestamp come back in either order, so the chronological trail case in `test/e2e/work-order-budgets.e2e.spec.ts` flakes, also on a clean checkout of `51a3a8a`. Batch 2 adds `we.id` (a `bigserial`) as the tie-breaker in its own `fix(work-orders)` commit before T8. T36 and T54 keep the tie-breaker. The Verifier treats that commit as part of the diff range.
+
+**Notes for later batches** (from batch 1):
+
+- T19 and T33: `GET /customers?document=` also accepts a masked CPF (`test/e2e/customers.e2e.spec.ts:315`) because `PersonDocument` strips non-digits. Identity's user search normalizes the document the same way.
+- T42 to T46: `DELETE /users/:userId/roles/:roleId` with an unknown user or role answers 404 with the generic code `RESOURCE_NOT_FOUND` (`test/e2e/user-access.e2e.spec.ts:195` and `:206`). A Nest `NotFoundException` in `TypeOrmAssignmentRepository` produces it today. The migration keeps that answer.
+- T58 to T60: `README.md:588`, `README.md:661` and `docs/architecture/c4-components-customer-management.mmd:3` still describe the buses as current.
+- T58 to T60: ADR 0001 names `@nestjs/cqrs` in its title and decision, and ADR 0026 replaces that part while the modular monolith and the layers stay in force. Proposed to the user: an `Amended by 0026` status on 0001, added to the status table of `docs/adr/README.md`, with the body of 0001 untouched. Waiting for the answer.
 
 **Environment**: Postgres and Redis run through `docker compose up -d postgres redis` on host ports 15432 and 16379.
