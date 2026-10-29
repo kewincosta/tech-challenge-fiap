@@ -16,6 +16,8 @@ import { StockMovementId } from '../../src/modules/inventory/domain/value-object
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
 import { TypeOrmInventoryQueryAdapter } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
 
@@ -33,7 +35,11 @@ beforeAll(async () => {
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
   );
-  const queryAdapter = new TypeOrmInventoryQueryAdapter(dataSource);
+  const queryAdapter = new TypeOrmInventoryQueryAdapter(
+    dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
+  );
   getItemHandler = new GetInventoryItemHandler(queryAdapter);
   listItemsHandler = new ListInventoryItemsHandler(queryAdapter);
   getHistoryHandler = new GetItemMovementHistoryHandler(queryAdapter);

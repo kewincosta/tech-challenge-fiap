@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { IdentityModule } from '../identity';
 import { AdjustStockHandler } from './application/commands/adjust-stock/adjust-stock.handler';
 import { ConsumeStockBatchHandler } from './application/commands/consume-stock-batch/consume-stock-batch.handler';
 import { CreateInventoryItemHandler } from './application/commands/create-inventory-item/create-inventory-item.handler';
@@ -23,7 +24,10 @@ import { TypeOrmInventoryQueryAdapter } from './infrastructure/persistence/typeo
 import { InventoryItemsController } from './presentation/controllers/inventory-items.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([InventoryItemOrmEntity, StockMovementOrmEntity])],
+  imports: [
+    TypeOrmModule.forFeature([InventoryItemOrmEntity, StockMovementOrmEntity]),
+    IdentityModule,
+  ],
   controllers: [InventoryItemsController],
   providers: [
     CreateInventoryItemHandler,

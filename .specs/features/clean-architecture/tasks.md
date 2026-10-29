@@ -918,12 +918,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The adapter's SQL names only `inventory_items` and `stock_movements`, and its entries leave the known table findings
-- [ ] The movement history orders by `occurred_at`, then `id`, and an integration case with two movements at the same `occurred_at`, stored in a physical order that differs from their `id` order, proves it
-- [ ] `inventory-query.adapter.spec.ts`, `stock-shortages.query.spec.ts` and `inventory-read-queries.spec.ts` pass with the new collaborators
-- [ ] The shortage, in-use and movement e2e cases from T6 pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] The adapter's SQL names only `inventory_items` and `stock_movements`, and its entries leave the known table findings
+- [x] The movement history orders by `occurred_at`, then `id`, and an integration case with two movements at the same `occurred_at`, stored in a physical order that differs from their `id` order, proves it
+- [x] `inventory-query.adapter.spec.ts`, `stock-shortages.query.spec.ts` and `inventory-read-queries.spec.ts` pass with the new collaborators
+- [x] The shortage, in-use and movement e2e cases from T6 pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

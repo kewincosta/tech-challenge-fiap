@@ -10,6 +10,8 @@ import { StockMovementId } from '../../src/modules/inventory/domain/value-object
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
 import { TypeOrmInventoryQueryAdapter } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
 
@@ -25,7 +27,11 @@ beforeAll(async () => {
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
   );
-  queryAdapter = new TypeOrmInventoryQueryAdapter(dataSource);
+  queryAdapter = new TypeOrmInventoryQueryAdapter(
+    dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
+  );
   actorExternalId = await insertUser();
 });
 
@@ -166,6 +172,41 @@ describe('TypeOrmInventoryQueryAdapter', () => {
     expect(movements[0].kind).toBe('INBOUND');
     expect(movements[1].kind).toBe('ADJUSTMENT');
     expect(movements[0].actorUserId).toBe(actorExternalId);
+  });
+
+  it('should list movements that share one instant in the order they were written', async () => {
+    const item = await saveItem();
+    const [itemRow]: Array<{ id: string }> = await dataSource.query(
+      `SELECT id FROM inventory_items WHERE external_id = $1`,
+      [item.id.value],
+    );
+    const [actorRow]: Array<{ id: string }> = await dataSource.query(
+      `SELECT id FROM users WHERE external_id = $1`,
+      [actorExternalId],
+    );
+    // The ids come from the sequence in ascending order and the rows are inserted in the opposite
+    // order, so the physical order of the rows differs from their write order.
+    const writeOrder: Array<{ id: string; externalId: string }> = [];
+    for (let position = 0; position < 3; position += 1) {
+      const [nextId]: Array<{ id: string }> = await dataSource.query(
+        `SELECT nextval(pg_get_serial_sequence('stock_movements', 'id')) AS id`,
+      );
+      writeOrder.push({ id: nextId.id, externalId: randomUUID() });
+    }
+    const sharedInstant = new Date('2026-08-30T10:00:00.000Z');
+    for (const movement of [...writeOrder].reverse()) {
+      await dataSource.query(
+        `INSERT INTO stock_movements (id, external_id, inventory_item_id, kind, quantity, unit_price_cents, occurred_at, actor_user_id)
+         VALUES ($1, $2, $3, 'INBOUND', 1, 2500, $4, $5)`,
+        [movement.id, movement.externalId, itemRow.id, sharedInstant, actorRow.id],
+      );
+    }
+
+    const movements = await queryAdapter.listMovements(item.id.value);
+
+    expect(movements.map((movement) => movement.id)).toEqual(
+      writeOrder.map((movement) => movement.externalId),
+    );
   });
 
   it('should return an empty list from listMovements for an item with no movements', async () => {

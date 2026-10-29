@@ -20,26 +20,6 @@
     "table": "${table}"
   },
   {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
-    "kind": "foreign-table",
-    "table": "users"
-  },
-  {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
-    "kind": "foreign-table",
-    "table": "work_order_budgets"
-  },
-  {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
-    "kind": "foreign-table",
-    "table": "work_order_parts"
-  },
-  {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter.ts",
-    "kind": "foreign-table",
-    "table": "work_orders"
-  },
-  {
     "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter.ts",
     "kind": "foreign-table",
     "table": "customers"

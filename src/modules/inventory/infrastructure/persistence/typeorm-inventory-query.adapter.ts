@@ -1,12 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Money } from '../../../../shared/domain/value-objects/money';
+import { UserKeyResolver } from '../../../identity';
 import {
   InventoryItemSummaryDto,
   InventoryQueryPort,
   StockMovementSummaryDto,
   StockShortageDto,
 } from '../../application/ports/inventory-query.port';
+import { OutstandingDemandRow, WORK_ORDER_READS, WorkOrderReads } from '../work-order-reads';
 
 interface InventoryItemRow {
   external_id: string;
@@ -24,21 +26,20 @@ interface StockMovementRow {
   kind: string;
   quantity: number;
   unit_price_cents: string;
-  actor_external_id: string;
+  actor_user_id: string;
   note: string | null;
   occurred_at: Date;
   status: string | null;
-  work_order_external_id: string | null;
+  work_order_id: string | null;
   undoes_movement_external_id: string | null;
 }
 
-interface StockShortageRow {
+interface ShortageItemRow {
+  id: string;
   external_id: string;
   sku: string;
   name: string;
   quantity_on_hand: number;
-  outstanding: string;
-  work_order_numbers: string[];
 }
 
 const SELECT_ITEMS = `
@@ -46,60 +47,40 @@ const SELECT_ITEMS = `
     FROM inventory_items
 `;
 
-// Never touches stock_movements: a PENDING consumption is stock already gone, the opposite of
-// what "outstanding" means here (design.md's Risks & Concerns). Demand is read straight off
-// work_order_parts, only from approved rounds of work orders in execution - a draft item, a part
-// on a rejected round, and a part on a round still awaiting approval are all excluded by the two
-// JOIN conditions, not filtered afterward. GROUP BY ii.id alone is enough to select the other
-// inventory_items columns: Postgres derives them from the primary key functional dependency.
-const SELECT_SHORTAGES = `
-  SELECT ii.external_id, ii.sku, ii.name, ii.quantity_on_hand,
-         SUM(wop.planned_quantity - wop.withdrawn_quantity) AS outstanding,
-         array_agg(DISTINCT wo.number) AS work_order_numbers
-    FROM work_order_parts wop
-    JOIN work_orders wo ON wo.id = wop.work_order_id AND wo.status = 'IN_EXECUTION'
-    JOIN work_order_budgets wob ON wob.id = wop.budget_id AND wob.status = 'APPROVED'
-    JOIN inventory_items ii ON ii.id = wop.inventory_item_id
-   WHERE wop.planned_quantity > wop.withdrawn_quantity
-   GROUP BY ii.id
-  HAVING SUM(wop.planned_quantity - wop.withdrawn_quantity) > ii.quantity_on_hand
+const SELECT_ITEMS_BY_INTERNAL_ID = `
+  SELECT id, external_id, sku, name, quantity_on_hand
+    FROM inventory_items
+   WHERE id = ANY($1::bigint[])
 `;
 
-// Same cross-table read SELECT_SHORTAGES already performs, narrowed to one item and widened to
-// every non-terminal status: a part planned on a work order still in flight is what blocks the
-// deactivation, whether that work order has been budgeted yet or not. DELIVERED and CANCELED are
-// closed books, so an item they name is free to leave the catalog.
-const SELECT_OPEN_WORK_ORDERS_USING_ITEM = `
-  SELECT DISTINCT wo.number
-    FROM work_order_parts wop
-    JOIN work_orders wo ON wo.id = wop.work_order_id
-    JOIN inventory_items ii ON ii.id = wop.inventory_item_id
-   WHERE ii.external_id = $1
-     AND wo.status NOT IN ('DELIVERED', 'CANCELED')
-   ORDER BY wo.number
-`;
-
-// Raw SQL, not a TypeORM relation: users belongs to the users module, and AD-003 forbids
-// importing another module's repository or entities across module boundaries at this layer -
-// a plain join, the same way TypeOrmCustomerQueryAdapter reads across users, keeps the ledger
-// read to one query while still returning the actor's external id, never the internal one.
-// LEFT JOINs for the two consumption-era references: an INBOUND or ADJUSTMENT movement carries
-// neither a work order nor a movement it undoes.
+// The actor and the work order belong to other modules, so the row carries their internal keys and
+// the adapter turns them into UUIDs through their owners (AD-013). LEFT JOIN for the movement a
+// RETURN undoes: an INBOUND or ADJUSTMENT movement undoes none.
 const SELECT_MOVEMENTS = `
   SELECT sm.external_id, sm.kind, sm.quantity, sm.unit_price_cents,
-         u.external_id AS actor_external_id, sm.note, sm.occurred_at, sm.status,
-         wo.external_id AS work_order_external_id,
+         sm.actor_user_id, sm.note, sm.occurred_at, sm.status, sm.work_order_id,
          undone.external_id AS undoes_movement_external_id
     FROM stock_movements sm
     JOIN inventory_items ii ON ii.id = sm.inventory_item_id
-    JOIN users u ON u.id = sm.actor_user_id
-    LEFT JOIN work_orders wo ON wo.id = sm.work_order_id
     LEFT JOIN stock_movements undone ON undone.id = sm.undoes_movement_id
 `;
 
+/** The columns behind these keys are foreign keys, so a key without a row means inconsistent data. */
+function externalIdOf(externalIds: Map<string, string>, internalId: string): string {
+  const externalId = externalIds.get(internalId);
+  if (externalId === undefined) {
+    throw new Error(`No row for internal key ${internalId}`);
+  }
+  return externalId;
+}
+
 @Injectable()
 export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @Inject(WORK_ORDER_READS) private readonly workOrderReads: WorkOrderReads,
+    private readonly userKeys: UserKeyResolver,
+  ) {}
 
   async getById(externalId: string): Promise<InventoryItemSummaryDto | null> {
     const rows: InventoryItemRow[] = await this.dataSource.query(
@@ -119,26 +100,55 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
     return rows.map((row) => this.itemToDto(row));
   }
 
-  /** Ordered by `occurred_at` - chronological, the order INV-04 AC1 asks for. */
+  /**
+   * Ordered by `occurred_at` - chronological, the order INV-04 AC1 asks for. Movements that share
+   * the instant come back in the order they were written, which `id` follows.
+   */
   async listMovements(itemExternalId: string): Promise<StockMovementSummaryDto[]> {
     const rows: StockMovementRow[] = await this.dataSource.query(
-      `${SELECT_MOVEMENTS} WHERE ii.external_id = $1 ORDER BY sm.occurred_at ASC`,
+      `${SELECT_MOVEMENTS} WHERE ii.external_id = $1 ORDER BY sm.occurred_at ASC, sm.id ASC`,
       [itemExternalId],
     );
-    return rows.map((row) => this.movementToDto(row));
+    if (rows.length === 0) {
+      return [];
+    }
+    const actors = await this.userKeys.toExternalIds([
+      ...new Set(rows.map((row) => row.actor_user_id)),
+    ]);
+    const workOrderIds = rows.flatMap((row) =>
+      row.work_order_id === null ? [] : [row.work_order_id],
+    );
+    const workOrders =
+      workOrderIds.length === 0
+        ? new Map<string, string>()
+        : await this.workOrderReads.externalIdsOf([...new Set(workOrderIds)]);
+    return rows.map((row) => this.movementToDto(row, actors, workOrders));
   }
 
+  // Demand comes from the parts the work orders plan and never from the stock ledger: a PENDING
+  // consumption is stock already gone, the opposite of what outstanding means here.
   async listStockShortages(): Promise<StockShortageDto[]> {
-    const rows: StockShortageRow[] = await this.dataSource.query(SELECT_SHORTAGES);
-    return rows.map((row) => this.shortageToDto(row));
+    const demand = await this.workOrderReads.outstandingDemand();
+    if (demand.length === 0) {
+      return [];
+    }
+    const items: ShortageItemRow[] = await this.dataSource.query(SELECT_ITEMS_BY_INTERNAL_ID, [
+      demand.map((row) => row.inventoryItemInternalId),
+    ]);
+    const itemById = new Map(items.map((item) => [item.id, item]));
+    return demand.flatMap((row) => {
+      const item = itemById.get(row.inventoryItemInternalId);
+      // Short means the work orders still need more than the shelf holds.
+      return item && row.outstanding > item.quantity_on_hand ? [this.shortageToDto(item, row)] : [];
+    });
   }
 
   async listOpenWorkOrderNumbersUsing(externalId: string): Promise<string[]> {
-    const rows: { number: string }[] = await this.dataSource.query(
-      SELECT_OPEN_WORK_ORDERS_USING_ITEM,
+    const rows: Array<{ id: string }> = await this.dataSource.query(
+      `SELECT id FROM inventory_items WHERE external_id = $1`,
       [externalId],
     );
-    return rows.map((row) => row.number);
+    return rows.length === 0 ? [] : this.workOrderReads.openWorkOrderNumbersUsing(rows[0].id);
   }
 
   private itemToDto(row: InventoryItemRow): InventoryItemSummaryDto {
@@ -156,30 +166,33 @@ export class TypeOrmInventoryQueryAdapter implements InventoryQueryPort {
     };
   }
 
-  private movementToDto(row: StockMovementRow): StockMovementSummaryDto {
+  private movementToDto(
+    row: StockMovementRow,
+    actors: Map<string, string>,
+    workOrders: Map<string, string>,
+  ): StockMovementSummaryDto {
     return {
       id: row.external_id,
       kind: row.kind,
       quantity: row.quantity,
       unitPriceCents: Money.fromDatabase(row.unit_price_cents).cents,
-      actorUserId: row.actor_external_id,
+      actorUserId: externalIdOf(actors, row.actor_user_id),
       note: row.note,
       occurredAt: row.occurred_at,
       status: row.status,
-      workOrderId: row.work_order_external_id,
+      workOrderId: row.work_order_id === null ? null : externalIdOf(workOrders, row.work_order_id),
       undoesMovementId: row.undoes_movement_external_id,
     };
   }
 
-  private shortageToDto(row: StockShortageRow): StockShortageDto {
+  private shortageToDto(item: ShortageItemRow, demand: OutstandingDemandRow): StockShortageDto {
     return {
-      inventoryItemId: row.external_id,
-      sku: row.sku,
-      name: row.name,
-      quantityOnHand: row.quantity_on_hand,
-      // integer arithmetic in Postgres, but the driver hands a SUM(...) back as a string.
-      outstandingQuantity: Number(row.outstanding),
-      workOrderNumbers: row.work_order_numbers,
+      inventoryItemId: item.external_id,
+      sku: item.sku,
+      name: item.name,
+      quantityOnHand: item.quantity_on_hand,
+      outstandingQuantity: demand.outstanding,
+      workOrderNumbers: demand.workOrderNumbers,
     };
   }
 }
