@@ -9,6 +9,11 @@ const CLOSED_STATUSES: WorkOrderStatus[] = [WorkOrderStatus.Delivered, WorkOrder
 
 export class InMemoryWorkOrderRepository implements WorkOrderRepository {
   workOrders: WorkOrder[] = [];
+  /** The numbers of the work orders saved while the transaction was open, in order. */
+  readonly savedInsideTransaction: string[] = [];
+
+  /** `insideTransaction` tells whether the transaction is open at the moment of a save. */
+  constructor(private readonly insideTransaction: () => boolean = () => false) {}
 
   async findByNumber(number: WorkOrderNumber): Promise<WorkOrder | null> {
     return Promise.resolve(
@@ -33,6 +38,9 @@ export class InMemoryWorkOrderRepository implements WorkOrderRepository {
       )
     ) {
       throw new VehicleAlreadyHasActiveWorkOrderError();
+    }
+    if (this.insideTransaction()) {
+      this.savedInsideTransaction.push(workOrder.number.value);
     }
     this.workOrders = [...others, workOrder];
     return Promise.resolve();

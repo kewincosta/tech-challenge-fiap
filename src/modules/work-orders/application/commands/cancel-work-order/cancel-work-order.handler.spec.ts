@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderPartItem } from '../../../domain/entities/work-order-part-item';
 import { CancelInExecutionForbiddenError } from '../../../domain/errors/cancel-in-execution-forbidden.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { WorkOrderCanceled } from '../../../domain/events/work-order-canceled.event';
 import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -77,38 +78,40 @@ function makeAuthorizer(capabilities: Partial<ActorCapabilities>): CancellationA
 }
 
 function makeHandler(authorizer: CancellationAuthorizer, refusal?: Error) {
-  const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const stockLedger = new FakeStockLedger();
+  const workOrders = new InMemoryWorkOrderRepository(() => transactionRunner.active);
+  const stockLedger = new FakeStockLedger(() => transactionRunner.active);
   if (refusal) {
     stockLedger.refuseWith(refusal);
   }
-  const eventBus = stubEventBus();
+  const clock = new FakeClock(NOW);
+  const events = new RecordingDomainEventPublisher();
   const handler = new CancelWorkOrderHandler(
     workOrders,
     transactionRunner,
     authorizer,
-    new FakeClock(NOW),
+    clock,
     stockLedger,
-    eventBus.bus,
+    events,
   );
-  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, clock, events };
 }
 
 describe('CancelWorkOrderHandler', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
     const authorizer = makeAuthorizer({});
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
 
     await expect(
       handler.execute(new CancelWorkOrderCommand('ZZZZZZ-2026', 'x', ACTOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
     const authorizer = makeAuthorizer({});
-    const { handler, workOrders, transactionRunner } = makeHandler(authorizer);
+    const { handler, workOrders, transactionRunner, stockLedger, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(2));
 
     await expect(
@@ -116,6 +119,8 @@ describe('CancelWorkOrderHandler', () => {
     ).rejects.toThrow(CancelInExecutionForbiddenError);
     expect(transactionRunner.runCalls).toBe(0);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.InExecution);
+    expect(stockLedger.writtenOff).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('opens exactly one transaction, saves the work order and writes the stock off through the ledger', async () => {
@@ -127,8 +132,13 @@ describe('CancelWorkOrderHandler', () => {
 
     expect(transactionRunner.runCalls).toBe(1);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Canceled);
+    expect(workOrders.savedInsideTransaction).toEqual([NUMBER]);
     expect(stockLedger.writtenOff).toEqual([
-      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+      {
+        workOrderId: workOrders.workOrders[0].id.value,
+        actorUserId: ACTOR_ID,
+        insideTransaction: true,
+      },
     ]);
   });
 
@@ -140,27 +150,40 @@ describe('CancelWorkOrderHandler', () => {
     await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', ACTOR_ID));
 
     expect(stockLedger.writtenOff).toEqual([
-      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+      {
+        workOrderId: workOrders.workOrders[0].id.value,
+        actorUserId: ACTOR_ID,
+        insideTransaction: true,
+      },
     ]);
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
     const authorizer = makeAuthorizer({ cancelsInExecution: true });
-    const { handler, workOrders } = makeHandler(authorizer, new Error('boom'));
+    const { handler, workOrders, stockLedger, events } = makeHandler(authorizer, new Error('boom'));
     await workOrders.save(restoreInExecution(2));
 
     await expect(
       handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', ACTOR_ID)),
     ).rejects.toThrow('boom');
+    expect(stockLedger.writtenOff).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('publishes the recorded events after the transaction', async () => {
     const authorizer = makeAuthorizer({});
-    const { handler, workOrders, eventBus } = makeHandler(authorizer);
+    const { handler, workOrders, clock, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution(0));
 
     await handler.execute(new CancelWorkOrderCommand(NUMBER, 'Cliente desistiu', ACTOR_ID));
 
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new WorkOrderCanceled(
+        workOrders.workOrders[0].id.value,
+        ACTOR_ID,
+        WorkOrderStatus.InExecution,
+        clock.now(),
+      ),
+    ]);
   });
 });

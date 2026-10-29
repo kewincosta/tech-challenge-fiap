@@ -11,7 +11,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -34,17 +34,21 @@ import { RequirePermissions } from '../../../identity/authorization/presentation
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
 import { AddRequestedServiceHandler } from '../../application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
+import { ApplyDiscountHandler } from '../../application/commands/apply-discount/apply-discount.handler';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
 import { ApproveBudgetHandler } from '../../application/commands/approve-budget/approve-budget.handler';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
 import { AssignMechanicHandler } from '../../application/commands/assign-mechanic/assign-mechanic.handler';
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
+import { CancelWorkOrderHandler } from '../../application/commands/cancel-work-order/cancel-work-order.handler';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
 import { CompleteDiagnosisHandler } from '../../application/commands/complete-diagnosis/complete-diagnosis.handler';
 import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
+import { CompleteWorkOrderHandler } from '../../application/commands/complete-work-order/complete-work-order.handler';
 import { CreateWorkOrderCommand } from '../../application/commands/create-work-order/create-work-order.command';
 import { CreateWorkOrderUseCase } from '../../application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
+import { DeliverVehicleHandler } from '../../application/commands/deliver-vehicle/deliver-vehicle.handler';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
 import { PlanPartHandler } from '../../application/commands/plan-part/plan-part.handler';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
@@ -52,11 +56,13 @@ import { RejectBudgetHandler } from '../../application/commands/reject-budget/re
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
 import { RemoveWorkOrderItemHandler } from '../../application/commands/remove-work-order-item/remove-work-order-item.handler';
 import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
+import { ReturnPartsHandler } from '../../application/commands/return-parts/return-parts.handler';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
 import { StartDiagnosisHandler } from '../../application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
 import { SubmitSupplementaryBudgetHandler } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
+import { WithdrawPartsHandler } from '../../application/commands/withdraw-parts/withdraw-parts.handler';
 import {
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
@@ -98,7 +104,12 @@ export class WorkOrdersController {
     private readonly submitSupplementaryBudgetUseCase: SubmitSupplementaryBudgetHandler,
     private readonly approveBudgetUseCase: ApproveBudgetHandler,
     private readonly rejectBudgetUseCase: RejectBudgetHandler,
-    private readonly commandBus: CommandBus,
+    private readonly withdrawPartsUseCase: WithdrawPartsHandler,
+    private readonly returnPartsUseCase: ReturnPartsHandler,
+    private readonly completeWorkOrderUseCase: CompleteWorkOrderHandler,
+    private readonly deliverVehicleUseCase: DeliverVehicleHandler,
+    private readonly cancelWorkOrderUseCase: CancelWorkOrderHandler,
+    private readonly applyDiscountUseCase: ApplyDiscountHandler,
     private readonly queryBus: QueryBus,
   ) {}
 
@@ -376,7 +387,7 @@ export class WorkOrdersController {
     @Body() body: WithdrawPartsRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<WithdrawPartsCommand, void>(
+    await this.withdrawPartsUseCase.execute(
       new WithdrawPartsCommand(number, body.lines, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -397,7 +408,7 @@ export class WorkOrdersController {
     @Body() body: WithdrawPartsRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ReturnPartsCommand, void>(
+    await this.returnPartsUseCase.execute(
       new ReturnPartsCommand(number, body.lines, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -467,7 +478,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CompleteWorkOrderCommand, void>(
+    await this.completeWorkOrderUseCase.execute(
       new CompleteWorkOrderCommand(number, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -487,9 +498,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<DeliverVehicleCommand, void>(
-      new DeliverVehicleCommand(number, principal.userId),
-    );
+    await this.deliverVehicleUseCase.execute(new DeliverVehicleCommand(number, principal.userId));
     return this.getWorkOrderOrThrow(number);
   }
 
@@ -513,7 +522,7 @@ export class WorkOrdersController {
     @Body() body: CancellationRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CancelWorkOrderCommand, void>(
+    await this.cancelWorkOrderUseCase.execute(
       new CancelWorkOrderCommand(number, body.reason, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -535,7 +544,7 @@ export class WorkOrdersController {
     @Body() body: ApplyDiscountRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ApplyDiscountCommand, void>(
+    await this.applyDiscountUseCase.execute(
       new ApplyDiscountCommand(number, body.amountCents, body.note, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);

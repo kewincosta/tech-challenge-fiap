@@ -3,7 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Clock } from '../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
-import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
+import { TransactionRunner } from '../../shared/application/ports/transaction-runner.port';
+import {
+  CLOCK,
+  DOMAIN_EVENT_PUBLISHER,
+  ID_GENERATOR,
+  TRANSACTION_RUNNER,
+} from '../../shared/shared.tokens';
 import { CustomersModule } from '../customers';
 import { IdentityModule } from '../identity';
 import { InventoryModule } from '../inventory';
@@ -40,6 +46,7 @@ import {
 import { CustomerDirectory } from './application/ports/customer-directory.port';
 import { PartCatalog } from './application/ports/part-catalog.port';
 import { ServiceCatalog } from './application/ports/service-catalog.port';
+import { StockLedger } from './application/ports/stock-ledger.port';
 import { VehicleDirectory } from './application/ports/vehicle-directory.port';
 import { WorkOrderActors } from './application/ports/work-order-actors.port';
 import { WorkOrderNumberGenerator } from './application/ports/work-order-number-generator.port';
@@ -201,20 +208,116 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       ) => new RejectBudgetHandler(workOrders, authorizer, clock, events),
       inject: [WORK_ORDER_REPOSITORY, BudgetDecisionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
-    WithdrawPartsHandler,
-    ReturnPartsHandler,
-    CompleteWorkOrderHandler,
-    DeliverVehicleHandler,
-    ApplyDiscountHandler,
-    CancelWorkOrderHandler,
+    {
+      provide: WithdrawPartsHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        transactionRunner: TransactionRunner,
+        clock: Clock,
+        stockLedger: StockLedger,
+        events: DomainEventPublisher,
+      ) => new WithdrawPartsHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        TRANSACTION_RUNNER,
+        CLOCK,
+        STOCK_LEDGER,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: ReturnPartsHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        transactionRunner: TransactionRunner,
+        clock: Clock,
+        stockLedger: StockLedger,
+        events: DomainEventPublisher,
+      ) => new ReturnPartsHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        TRANSACTION_RUNNER,
+        CLOCK,
+        STOCK_LEDGER,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: CompleteWorkOrderHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        authorizer: WorkOrderCompletionAuthorizer,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new CompleteWorkOrderHandler(workOrders, authorizer, clock, events),
+      inject: [WORK_ORDER_REPOSITORY, WorkOrderCompletionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: DeliverVehicleHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        transactionRunner: TransactionRunner,
+        clock: Clock,
+        stockLedger: StockLedger,
+        events: DomainEventPublisher,
+      ) => new DeliverVehicleHandler(workOrders, transactionRunner, clock, stockLedger, events),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        TRANSACTION_RUNNER,
+        CLOCK,
+        STOCK_LEDGER,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
+    {
+      provide: ApplyDiscountHandler,
+      useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
+        new ApplyDiscountHandler(workOrders, clock, events),
+      inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: CancelWorkOrderHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        transactionRunner: TransactionRunner,
+        authorizer: CancellationAuthorizer,
+        clock: Clock,
+        stockLedger: StockLedger,
+        events: DomainEventPublisher,
+      ) =>
+        new CancelWorkOrderHandler(
+          workOrders,
+          transactionRunner,
+          authorizer,
+          clock,
+          stockLedger,
+          events,
+        ),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        TRANSACTION_RUNNER,
+        CancellationAuthorizer,
+        CLOCK,
+        STOCK_LEDGER,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
     {
       provide: BudgetDecisionAuthorizer,
       useFactory: (actors: WorkOrderActors, customers: CustomerDirectory) =>
         new BudgetDecisionAuthorizer(actors, customers),
       inject: [WORK_ORDER_ACTORS, CUSTOMER_DIRECTORY],
     },
-    WorkOrderCompletionAuthorizer,
-    CancellationAuthorizer,
+    {
+      provide: WorkOrderCompletionAuthorizer,
+      useFactory: (actors: WorkOrderActors) => new WorkOrderCompletionAuthorizer(actors),
+      inject: [WORK_ORDER_ACTORS],
+    },
+    {
+      provide: CancellationAuthorizer,
+      useFactory: (actors: WorkOrderActors) => new CancellationAuthorizer(actors),
+      inject: [WORK_ORDER_ACTORS],
+    },
     GetWorkOrderHandler,
     ListWorkOrdersHandler,
     GetWorkOrderTrailHandler,

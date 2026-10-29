@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -10,6 +10,7 @@ import { WorkOrderServiceItem } from '../../../domain/entities/work-order-servic
 import { DiscountExceedsChargedTotalError } from '../../../domain/errors/discount-exceeds-charged-total.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { DiscountApplied } from '../../../domain/events/discount-applied.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -71,19 +72,21 @@ function restoreInExecution(status: WorkOrderStatus = WorkOrderStatus.InExecutio
 
 function makeHandler() {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
-  const handler = new ApplyDiscountHandler(workOrders, new FakeClock(NOW), eventBus.bus);
-  return { handler, workOrders, eventBus };
+  const clock = new FakeClock(NOW);
+  const events = new RecordingDomainEventPublisher();
+  const handler = new ApplyDiscountHandler(workOrders, clock, events);
+  return { handler, workOrders, clock, events };
 }
 
 describe('ApplyDiscountHandler', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
 
     await expect(
       handler.execute(new ApplyDiscountCommand('ZZZZZZ-2026', 1000, 'x', CREATOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('carries the amount to the aggregate as Money, never as a bare number', async () => {
@@ -100,29 +103,33 @@ describe('ApplyDiscountHandler', () => {
   });
 
   it("lets the aggregate's discount-exceeds-total error travel out untouched", async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await expect(
       handler.execute(new ApplyDiscountCommand(NUMBER, 999999, 'x', CREATOR_ID)),
     ).rejects.toThrow(DiscountExceedsChargedTotalError);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(restoreInExecution(WorkOrderStatus.Received));
 
     await expect(
       handler.execute(new ApplyDiscountCommand(NUMBER, 1000, 'x', CREATOR_ID)),
     ).rejects.toThrow(WorkOrderStateError);
+    expect(events.published).toHaveLength(0);
   });
 
   it('publishes the recorded events after the save', async () => {
-    const { handler, workOrders, eventBus } = makeHandler();
+    const { handler, workOrders, clock, events } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await handler.execute(new ApplyDiscountCommand(NUMBER, 1000, 'x', CREATOR_ID));
 
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new DiscountApplied(workOrders.workOrders[0].id.value, CREATOR_ID, clock.now()),
+    ]);
   });
 });

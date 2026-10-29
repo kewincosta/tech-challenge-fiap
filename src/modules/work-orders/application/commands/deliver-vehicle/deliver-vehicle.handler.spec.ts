@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { VehicleDelivered } from '../../../domain/events/vehicle-delivered.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
@@ -52,41 +53,45 @@ function restoreAt(status: WorkOrderStatus): WorkOrder {
 }
 
 function makeHandler(refusal?: Error) {
-  const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const stockLedger = new FakeStockLedger();
+  const workOrders = new InMemoryWorkOrderRepository(() => transactionRunner.active);
+  const stockLedger = new FakeStockLedger(() => transactionRunner.active);
   if (refusal) {
     stockLedger.refuseWith(refusal);
   }
-  const eventBus = stubEventBus();
+  const clock = new FakeClock(NOW);
+  const events = new RecordingDomainEventPublisher();
   const handler = new DeliverVehicleHandler(
     workOrders,
     transactionRunner,
-    new FakeClock(NOW),
+    clock,
     stockLedger,
-    eventBus.bus,
+    events,
   );
-  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
+  return { handler, workOrders, transactionRunner, stockLedger, clock, events };
 }
 
 describe('DeliverVehicleHandler', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
 
     await expect(
       handler.execute(new DeliverVehicleCommand('ZZZZZZ-2026', CREATOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('validates on the aggregate before opening the transaction, so a rejected delivery never starts one', async () => {
-    const { handler, workOrders, transactionRunner } = makeHandler();
+    const { handler, workOrders, transactionRunner, stockLedger, events } = makeHandler();
     await workOrders.save(restoreAt(WorkOrderStatus.InExecution));
 
     await expect(handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
       WorkOrderStateError,
     );
     expect(transactionRunner.runCalls).toBe(0);
+    expect(stockLedger.settled).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('opens exactly one transaction and saves the work order', async () => {
@@ -97,6 +102,7 @@ describe('DeliverVehicleHandler', () => {
 
     expect(transactionRunner.runCalls).toBe(1);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Delivered);
+    expect(workOrders.savedInsideTransaction).toEqual([NUMBER]);
   });
 
   it('settles the stock of the work order through the ledger, for the actor', async () => {
@@ -106,25 +112,33 @@ describe('DeliverVehicleHandler', () => {
     await handler.execute(new DeliverVehicleCommand(NUMBER, ACTOR_ID));
 
     expect(stockLedger.settled).toEqual([
-      { workOrderId: workOrders.workOrders[0].id.value, actorUserId: ACTOR_ID },
+      {
+        workOrderId: workOrders.workOrders[0].id.value,
+        actorUserId: ACTOR_ID,
+        insideTransaction: true,
+      },
     ]);
   });
 
   it('publishes the recorded events after the transaction', async () => {
-    const { handler, workOrders, eventBus } = makeHandler();
+    const { handler, workOrders, clock, events } = makeHandler();
     await workOrders.save(restoreAt(WorkOrderStatus.Completed));
 
     await handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID));
 
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new VehicleDelivered(workOrders.workOrders[0].id.value, CREATOR_ID, clock.now()),
+    ]);
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler(new Error('boom'));
+    const { handler, workOrders, stockLedger, events } = makeHandler(new Error('boom'));
     await workOrders.save(restoreAt(WorkOrderStatus.Completed));
 
     await expect(handler.execute(new DeliverVehicleCommand(NUMBER, CREATOR_ID))).rejects.toThrow(
       'boom',
     );
+    expect(stockLedger.settled).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 });

@@ -1765,10 +1765,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs use fakes and assert outcomes
-- [ ] The withdrawal, closing and concurrency e2e specs pass, including one 409 `CONCURRENT_MODIFICATION` of two concurrent changes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs use fakes and assert outcomes
+- [x] The withdrawal, closing and concurrency e2e specs pass, including one 409 `CONCURRENT_MODIFICATION` of two concurrent changes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

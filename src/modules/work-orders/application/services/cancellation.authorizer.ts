@@ -1,5 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { WORK_ORDER_ACTORS } from '../../work-orders.tokens';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { CancelInExecutionForbiddenError } from '../../domain/errors/cancel-in-execution-forbidden.error';
 import { WorkOrderActors } from '../ports/work-order-actors.port';
@@ -12,9 +10,8 @@ import { WorkOrderActors } from '../ports/work-order-actors.port';
  * covers every case its own reason (parts already withdrawn become a loss) applies to
  * (spec.md's Assumptions).
  */
-@Injectable()
 export class CancellationAuthorizer {
-  constructor(@Inject(WORK_ORDER_ACTORS) private readonly actors: WorkOrderActors) {}
+  constructor(private readonly actors: WorkOrderActors) {}
 
   async assertMayCancel(workOrder: WorkOrder, actorUserId: string): Promise<void> {
     if (!workOrder.hasOutstandingWithdrawals) {

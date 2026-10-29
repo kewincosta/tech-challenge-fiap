@@ -1,12 +1,9 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { STOCK_LEDGER, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WithdrawPartsCommand } from './withdraw-parts.command';
@@ -18,14 +15,13 @@ import { WithdrawPartsCommand } from './withdraw-parts.command';
  * order, and consume the stock through the ledger inside that same transaction, the structural
  * template `RegisterUserUseCase` already established for a cross-module write.
  */
-@CommandHandler(WithdrawPartsCommand)
-export class WithdrawPartsHandler implements ICommandHandler<WithdrawPartsCommand, void> {
+export class WithdrawPartsHandler {
   constructor(
-    @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
-    @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
-    @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(STOCK_LEDGER) private readonly stockLedger: StockLedger,
-    private readonly eventBus: EventBus,
+    private readonly workOrders: WorkOrderRepository,
+    private readonly transactionRunner: TransactionRunner,
+    private readonly clock: Clock,
+    private readonly stockLedger: StockLedger,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: WithdrawPartsCommand): Promise<void> {
@@ -56,6 +52,6 @@ export class WithdrawPartsHandler implements ICommandHandler<WithdrawPartsComman
         command.actorUserId,
       );
     });
-    this.eventBus.publishAll(workOrder.pullDomainEvents());
+    this.events.publish(workOrder.pullDomainEvents());
   }
 }

@@ -1,22 +1,18 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { ApplyDiscountCommand } from './apply-discount.command';
 
 /** No authorizer - `work-orders:discount` on the route is the whole check (`AssignMechanicHandler`'s
  * shape, minus the extra lookups that command needed and this one does not). */
-@CommandHandler(ApplyDiscountCommand)
-export class ApplyDiscountHandler implements ICommandHandler<ApplyDiscountCommand, void> {
+export class ApplyDiscountHandler {
   constructor(
-    @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly workOrders: WorkOrderRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: ApplyDiscountCommand): Promise<void> {
@@ -34,6 +30,6 @@ export class ApplyDiscountHandler implements ICommandHandler<ApplyDiscountComman
       now: this.clock.now(),
     });
     await this.workOrders.save(workOrder);
-    this.eventBus.publishAll(workOrder.pullDomainEvents());
+    this.events.publish(workOrder.pullDomainEvents());
   }
 }

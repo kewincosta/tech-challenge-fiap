@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -12,6 +12,7 @@ import { WorkOrderPartItem } from '../../../domain/entities/work-order-part-item
 import { ReturnExceedsWithdrawnError } from '../../../domain/errors/return-exceeds-withdrawn.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { PartReturned } from '../../../domain/events/part-returned.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
@@ -81,26 +82,21 @@ function restoreInExecution(status: WorkOrderStatus = WorkOrderStatus.InExecutio
 }
 
 function makeHandler(refusal?: Error) {
-  const workOrders = new InMemoryWorkOrderRepository();
   const transactionRunner = new FakeTransactionRunner();
-  const stockLedger = new FakeStockLedger();
+  const workOrders = new InMemoryWorkOrderRepository(() => transactionRunner.active);
+  const stockLedger = new FakeStockLedger(() => transactionRunner.active);
   if (refusal) {
     stockLedger.refuseWith(refusal);
   }
-  const eventBus = stubEventBus();
-  const handler = new ReturnPartsHandler(
-    workOrders,
-    transactionRunner,
-    new FakeClock(),
-    stockLedger,
-    eventBus.bus,
-  );
-  return { handler, workOrders, transactionRunner, stockLedger, eventBus };
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const handler = new ReturnPartsHandler(workOrders, transactionRunner, clock, stockLedger, events);
+  return { handler, workOrders, transactionRunner, stockLedger, clock, events };
 }
 
 describe('ReturnPartsHandler', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
 
     await expect(
       handler.execute(
@@ -112,10 +108,11 @@ describe('ReturnPartsHandler', () => {
       ),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('validates on the aggregate before opening the transaction, so a rejected batch never starts one', async () => {
-    const { handler, workOrders, transactionRunner } = makeHandler();
+    const { handler, workOrders, transactionRunner, stockLedger, events } = makeHandler();
     await workOrders.save(restoreInExecution(WorkOrderStatus.AwaitingApproval));
 
     await expect(
@@ -128,10 +125,12 @@ describe('ReturnPartsHandler', () => {
       ),
     ).rejects.toThrow(WorkOrderStateError);
     expect(transactionRunner.runCalls).toBe(0);
+    expect(stockLedger.restored).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('lets ReturnExceedsWithdrawnError travel out untouched, before any transaction', async () => {
-    const { handler, workOrders, transactionRunner } = makeHandler();
+    const { handler, workOrders, transactionRunner, stockLedger, events } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await expect(
@@ -144,6 +143,8 @@ describe('ReturnPartsHandler', () => {
       ),
     ).rejects.toThrow(ReturnExceedsWithdrawnError);
     expect(transactionRunner.runCalls).toBe(0);
+    expect(stockLedger.restored).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('opens exactly one transaction, saves the work order, then restores the stock through the ledger with plain lines', async () => {
@@ -161,17 +162,19 @@ describe('ReturnPartsHandler', () => {
     expect(transactionRunner.runCalls).toBe(1);
     const updated = workOrders.workOrders[0];
     expect(updated.partItems[0].withdrawnQuantity).toBe(0);
+    expect(workOrders.savedInsideTransaction).toEqual([NUMBER]);
     expect(stockLedger.restored).toEqual([
       {
         workOrderId: updated.id.value,
         lines: [{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }],
         actorUserId: MECHANIC_ID,
+        insideTransaction: true,
       },
     ]);
   });
 
   it('publishes the recorded events after the transaction', async () => {
-    const { handler, workOrders, eventBus } = makeHandler();
+    const { handler, workOrders, clock, events } = makeHandler();
     await workOrders.save(restoreInExecution());
 
     await handler.execute(
@@ -182,11 +185,13 @@ describe('ReturnPartsHandler', () => {
       ),
     );
 
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new PartReturned(workOrders.workOrders[0].id.value, MECHANIC_ID, clock.now()),
+    ]);
   });
 
   it('lets an error raised by the inventory side travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler(
+    const { handler, workOrders, stockLedger, events } = makeHandler(
       new Error('no pending consumption covers this return'),
     );
     await workOrders.save(restoreInExecution());
@@ -200,5 +205,7 @@ describe('ReturnPartsHandler', () => {
         ),
       ),
     ).rejects.toThrow('no pending consumption covers this return');
+    expect(stockLedger.restored).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -12,6 +12,7 @@ import { CompletionForbiddenError } from '../../../domain/errors/completion-forb
 import { DiscountExceedsChargedTotalError } from '../../../domain/errors/discount-exceeds-charged-total.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { WorkOrderCompleted } from '../../../domain/events/work-order-completed.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -82,42 +83,41 @@ function restoreInExecution(
 
 function makeHandler(authorizer: WorkOrderCompletionAuthorizer) {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
-  const handler = new CompleteWorkOrderHandler(
-    workOrders,
-    authorizer,
-    new FakeClock(NOW),
-    eventBus.bus,
-  );
-  return { handler, workOrders, eventBus };
+  const clock = new FakeClock(NOW);
+  const events = new RecordingDomainEventPublisher();
+  const handler = new CompleteWorkOrderHandler(workOrders, authorizer, clock, events);
+  return { handler, workOrders, clock, events };
 }
 
 describe('CompleteWorkOrderHandler', () => {
   it('completes the work order and publishes the recorded event when the authorizer admits the actor', async () => {
     const authorizer = makeAuthorizer();
-    const { handler, workOrders, eventBus } = makeHandler(authorizer);
+    const { handler, workOrders, clock, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution());
 
     await handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID));
 
     const updated = workOrders.workOrders[0];
     expect(updated.status).toBe(WorkOrderStatus.Completed);
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new WorkOrderCompleted(updated.id.value, MECHANIC_ID, clock.now()),
+    ]);
   });
 
   it('refuses an unknown work order before the authorizer is consulted', async () => {
     const authorizer = makeAuthorizer();
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
 
     await expect(
       handler.execute(new CompleteWorkOrderCommand('ZZZZZZ-2026', MECHANIC_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
     const authorizer = makeAuthorizer();
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution());
     const otherMechanicId = '66666666-6666-4666-8666-666666666666';
 
@@ -125,25 +125,28 @@ describe('CompleteWorkOrderHandler', () => {
       handler.execute(new CompleteWorkOrderCommand(NUMBER, otherMechanicId)),
     ).rejects.toThrow(CompletionForbiddenError);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.InExecution);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
     const authorizer = makeAuthorizer();
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ status: WorkOrderStatus.AwaitingApproval }));
 
     await expect(
       handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID)),
     ).rejects.toThrow(WorkOrderStateError);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's discount-exceeds-total error travel out untouched", async () => {
     const authorizer = makeAuthorizer();
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
     await workOrders.save(restoreInExecution({ discount: Money.fromCents(999999) }));
 
     await expect(
       handler.execute(new CompleteWorkOrderCommand(NUMBER, MECHANIC_ID)),
     ).rejects.toThrow(DiscountExceedsChargedTotalError);
+    expect(events.published).toHaveLength(0);
   });
 });
