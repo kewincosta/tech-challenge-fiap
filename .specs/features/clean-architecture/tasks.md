@@ -401,12 +401,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] ADR 0031 justifies the command/query split, one class per use case, Nest's container confined to the composition roots, and domain events
-- [ ] ADR 0030 records that route permissions stay in the HTTP guard and that each entry point checks its own caller
-- [ ] ADR 0028 justifies each module querying only its own tables by avoiding coupling, avoiding dependency cycles and keeping each module responsible for its own data, and no other reason
-- [ ] ADR 0027 records the `inventory` and `work-orders` inversion and the cycle it avoids
-- [ ] Each new ADR names its `AD-NNN`, and each `AD-NNN` already names its ADR
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] ADR 0031 justifies the command/query split, one class per use case, Nest's container confined to the composition roots, and domain events
+- [x] ADR 0030 records that route permissions stay in the HTTP guard and that each entry point checks its own caller
+- [x] ADR 0028 justifies each module querying only its own tables by avoiding coupling, avoiding dependency cycles and keeping each module responsible for its own data, and no other reason
+- [x] ADR 0027 records the `inventory` and `work-orders` inversion and the cycle it avoids
+- [x] Each new ADR names its `AD-NNN`, and each `AD-NNN` already names its ADR
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs

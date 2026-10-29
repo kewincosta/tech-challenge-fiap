@@ -35,7 +35,7 @@ decision from here on gets both.
 | [0005](0005-argon2id-for-password-hashing.md)                      | Argon2id for password hashing                                                    | Accepted                                             |
 | [0006](0006-internal-key-plus-external-uuid.md)                    | Internal sequential key plus external UUID on every addressable table            | Accepted                                             |
 | [0007](0007-money-in-integer-brl-cents.md)                         | Money in the shared kernel, integer BRL cents across the backend                 | Accepted                                             |
-| [0008](0008-cross-context-calls-through-the-buses.md)              | Cross context communication through the CommandBus and the QueryBus              | Accepted                                             |
+| [0008](0008-cross-context-calls-through-the-buses.md)              | Cross context communication through the CommandBus and the QueryBus              | Superseded by [0027](0027-ports-between-modules.md)  |
 | [0009](0009-customer-as-its-own-aggregate.md)                      | Customer as its own aggregate, over a user identity                              | Accepted                                             |
 | [0010](0010-no-aggregate-for-the-staff-profiles.md)                | No aggregate for Mechanic, Service advisor and Administrator                     | Accepted                                             |
 | [0011](0011-groups-removed-from-the-authorization-model.md)        | Groups removed from the authorization model                                      | Accepted                                             |
@@ -53,3 +53,9 @@ decision from here on gets both.
 | [0023](0023-repositories-honour-an-ambient-transaction.md)         | A repository reachable from a cross-module write honours an ambient transaction  | Accepted                                             |
 | [0024](0024-optimistic-version-guard-on-the-work-order.md)         | Optimistic version guard on the work order repository                            | Accepted                                             |
 | [0025](0025-deviation-from-the-budget-cancels-the-work-order.md)   | Any deviation from an approved budget cancels the work order and opens a new one | Superseded by [0018](0018-numbered-budget-rounds.md) |
+| [0026](0026-use-cases-are-plain-classes.md)                        | Use cases are plain classes that the controllers call directly                   | Accepted                                             |
+| [0027](0027-ports-between-modules.md)                              | Modules meet through consumer-owned ports and public APIs, with no cycle         | Accepted                                             |
+| [0028](0028-each-module-queries-only-its-own-tables.md)            | Each module queries only its own tables                                          | Accepted                                             |
+| [0029](0029-one-identity-module.md)                                | Users, authentication and authorization form one identity module                 | Accepted                                             |
+| [0030](0030-route-permissions-stay-in-the-http-guard.md)           | Route permissions stay in the guard, and each entry point checks its own caller  | Accepted                                             |
+| [0031](0031-patterns-kept-beyond-the-dependency-rule.md)           | Four patterns kept beyond the dependency rule, each with its own justification   | Accepted                                             |
