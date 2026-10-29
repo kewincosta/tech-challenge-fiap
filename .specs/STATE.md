@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 (T47 to T50) dispatched.
-- **Completed**: T1 to T46, T61 and T62. Totals after batch 8: unit 1099, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: 82 dependency violations (core-no-frameworks 70, through-public-api 12, core-stays-in-module 0, no-circular 0), 0 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 (T51 to T55) dispatched.
+- **Completed**: T1 to T50, T61 and T62. Totals after batch 9: unit 1100, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: 50 dependency violations, all in work-orders (core-no-frameworks 46, through-public-api 4), 0 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 9's compact summary, then dispatch batch 10 (T51 to T55).
+- **Next step**: read batch 10's compact summary, then dispatch batch 11 (T56 to T60), then the Verifier.
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -264,6 +264,14 @@ entry. They apply to every feature.
 - `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
+
+**Facts from batch 9 that later tasks build on**:
+
+- `customers` and `vehicles` are migrated end to end. Get customer still returns deactivated customers. The `null` branches of `CustomerDirectory`, `VehicleDirectory` and `VehicleOwners` are unreachable with the real providers, and their specs still pin them, as with the catalogs.
+- Hand mutations left survivors on logic no task touched and no AC anchors: the address and phone given to customer registration are asserted nowhere; a registered vehicle's year is asserted nowhere; dropping `save` from update, deactivate or remove survives the unit specs because the in-memory repositories hold the same instance (the e2e cases kill each one). Candidates for fix tasks if the Verifier flags them.
+- `RegisterCustomerUseCase` records `CustomerRegistered` and never publishes it, as before; nothing subscribes.
+- T57 must reword the comment at `src/shared/infrastructure/events/in-memory-domain-event-dispatcher.ts:12`, which names `@nestjs/cqrs`, so the acceptance grep finds nothing. `customer-accounts.gateway.spec.ts:36` and `:38` still call identity's use cases "handlers"; T55 rewords comments like these.
+- Docs that still name the old classes: `docs/architecture/c4-components-customer-management.mmd`, `docs/architecture/low-level-design/customers.md` (T59, T60).
 
 **Facts from batch 8 that later tasks build on**:
 
