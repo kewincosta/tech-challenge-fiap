@@ -10,16 +10,6 @@
     "table": "users"
   },
   {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts",
-    "kind": "foreign-table",
-    "table": "work_orders"
-  },
-  {
-    "file": "src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts",
-    "kind": "runtime-table",
-    "table": "${table}"
-  },
-  {
     "file": "src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter.ts",
     "kind": "foreign-table",
     "table": "customers"

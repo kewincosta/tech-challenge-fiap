@@ -9,6 +9,8 @@ import { Sku } from '../../src/modules/inventory/domain/value-objects/sku';
 import { StockMovementId } from '../../src/modules/inventory/domain/value-objects/stock-movement-id';
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
@@ -32,6 +34,8 @@ beforeAll(async () => {
   inventoryRepository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
   workOrderRepository = new TypeOrmWorkOrderRepository(
     dataSource.getRepository(WorkOrderOrmEntity),

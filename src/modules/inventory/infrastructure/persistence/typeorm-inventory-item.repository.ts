@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import { UserKeyResolver } from '../../../identity';
 import { InventoryItem } from '../../domain/entities/inventory-item';
 import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
 import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
@@ -13,6 +14,7 @@ import {
 import { StockMovementKind } from '../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../domain/value-objects/sku';
+import { WORK_ORDER_READS, WorkOrderReads } from '../work-order-reads';
 import { InventoryItemMapper } from './inventory-item.mapper';
 import { InventoryItemOrmEntity } from './inventory-item.orm-entity';
 import { StockMovementOrmEntity } from './stock-movement.orm-entity';
@@ -45,6 +47,8 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     @InjectRepository(InventoryItemOrmEntity)
     private readonly items: Repository<InventoryItemOrmEntity>,
     private readonly dataSource: DataSource,
+    @Inject(WORK_ORDER_READS) private readonly workOrderReads: WorkOrderReads,
+    private readonly userKeys: UserKeyResolver,
   ) {}
 
   /** Never attaches movements - the full ledger is a read model, not part of this aggregate. */
@@ -96,18 +100,21 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     inventoryItemId: InventoryItemId,
     workOrderId: string,
   ): Promise<PendingConsumptionDto[]> {
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(workOrderId);
+    if (workOrderInternalId === null) {
+      return [];
+    }
     const manager = currentEntityManager() ?? this.dataSource.manager;
     const rows: Array<{ external_id: string; remaining: number }> = await manager.query(
       `SELECT sm.external_id, ${NET_REMAINING_EXPR} AS remaining
          FROM stock_movements sm
          JOIN inventory_items ii ON ii.id = sm.inventory_item_id
-         JOIN work_orders wo ON wo.id = sm.work_order_id
          ${RETURNED_TOTALS_JOIN}
-        WHERE ii.external_id = $1 AND wo.external_id = $2
+        WHERE ii.external_id = $1 AND sm.work_order_id = $2
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
           AND ${NET_REMAINING_EXPR} > 0
         ORDER BY sm.occurred_at DESC`,
-      [inventoryItemId.value, workOrderId],
+      [inventoryItemId.value, workOrderInternalId],
     );
     return rows.map((row) => ({ movementId: row.external_id, quantity: row.remaining }));
   }
@@ -116,17 +123,20 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
    * moves to `SETTLED` on delivery - see the interface doc for why netting does not apply here. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
-    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    const actorInternalId = await this.actorInternalId(input.actorUserId);
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(input.workOrderId);
+    if (workOrderInternalId === null) {
+      return 0;
+    }
     // TypeORM's raw `query()` returns `[rows, rowCount]` for UPDATE/DELETE, unlike the plain rows
     // array a SELECT or INSERT returns - `PostgresQueryRunner.query`'s own switch on `raw.command`.
     const [rows]: [Array<{ id: string }>, number] = await manager.query(
-      `UPDATE stock_movements sm
+      `UPDATE stock_movements
           SET status = 'SETTLED'
-         FROM work_orders wo
-        WHERE wo.id = sm.work_order_id AND wo.external_id = $1
-          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
-        RETURNING sm.id`,
-      [input.workOrderId],
+        WHERE work_order_id = $1
+          AND kind = 'CONSUMPTION' AND status = 'PENDING'
+        RETURNING id`,
+      [workOrderInternalId],
     );
     if (rows.length === 0) {
       return 0;
@@ -145,16 +155,19 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
    * prior return already drained contributes nothing and is skipped entirely. */
   async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
-    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    const actorInternalId = await this.actorInternalId(input.actorUserId);
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(input.workOrderId);
+    if (workOrderInternalId === null) {
+      return 0;
+    }
     const candidates: Array<{ id: string; remaining: number }> = await manager.query(
       `SELECT sm.id, ${NET_REMAINING_EXPR} AS remaining
          FROM stock_movements sm
-         JOIN work_orders wo ON wo.id = sm.work_order_id
          ${RETURNED_TOTALS_JOIN}
-        WHERE wo.external_id = $1
+        WHERE sm.work_order_id = $1
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
           AND ${NET_REMAINING_EXPR} > 0`,
-      [input.workOrderId],
+      [workOrderInternalId],
     );
     if (candidates.length === 0) {
       return 0;
@@ -214,16 +227,12 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
           for (let index = 0; index < movementRows.length; index += 1) {
             const movement = item.newMovements[index];
             movementRows[index].inventoryItemInternalId = itemRow.id;
-            movementRows[index].actorInternalId = await this.resolveInternalId(
-              manager,
-              'users',
-              movement.actorUserId,
-            );
+            movementRows[index].actorInternalId = await this.actorInternalId(movement.actorUserId);
             movementRows[index].workOrderInternalId = movement.workOrderId
-              ? await this.resolveInternalId(manager, 'work_orders', movement.workOrderId)
+              ? await this.workOrderInternalId(movement.workOrderId)
               : null;
             movementRows[index].undoesMovementInternalId = movement.undoesMovementId
-              ? await this.resolveInternalId(manager, 'stock_movements', movement.undoesMovementId)
+              ? await this.movementInternalId(manager, movement.undoesMovementId)
               : null;
           }
           await manager.save(StockMovementOrmEntity, movementRows);
@@ -253,18 +262,29 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     return ambient ? work(ambient) : this.dataSource.transaction(work);
   }
 
-  /** `table` is always a literal this file controls, never external input. */
-  private async resolveInternalId(
-    manager: EntityManager,
-    table: string,
-    externalId: string,
-  ): Promise<string> {
+  private async actorInternalId(actorUserId: string): Promise<string> {
+    const internalId = await this.userKeys.toInternalId(actorUserId);
+    if (internalId === null) {
+      throw new Error(`users row for external id ${actorUserId} not found`);
+    }
+    return internalId;
+  }
+
+  private async workOrderInternalId(workOrderId: string): Promise<string> {
+    const internalId = await this.workOrderReads.internalIdOf(workOrderId);
+    if (internalId === null) {
+      throw new Error(`work_orders row for external id ${workOrderId} not found`);
+    }
+    return internalId;
+  }
+
+  private async movementInternalId(manager: EntityManager, externalId: string): Promise<string> {
     const rows: Array<{ id: string }> = await manager.query(
-      `SELECT id FROM ${table} WHERE external_id = $1`,
+      `SELECT id FROM stock_movements WHERE external_id = $1`,
       [externalId],
     );
     if (rows.length === 0) {
-      throw new Error(`${table} row for external id ${externalId} not found`);
+      throw new Error(`stock_movements row for external id ${externalId} not found`);
     }
     return rows[0].id;
   }

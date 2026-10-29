@@ -947,11 +947,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The repository's SQL names only inventory tables, and its entries leave the known table findings
-- [ ] `inventory-item.repository.spec.ts`, `inventory-item-batch-lock.spec.ts` and `cross-module-transaction.spec.ts` pass
-- [ ] Withdrawal, return, delivery and cancellation e2e cases pass, including the 422 that changes nothing
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] The repository's SQL names only inventory tables, and its entries leave the known table findings
+- [x] `inventory-item.repository.spec.ts`, `inventory-item-batch-lock.spec.ts` and `cross-module-transaction.spec.ts` pass
+- [x] Withdrawal, return, delivery and cancellation e2e cases pass, including the 422 that changes nothing
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

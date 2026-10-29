@@ -26,6 +26,8 @@ beforeAll(async () => {
   repository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
   queryAdapter = new TypeOrmInventoryQueryAdapter(
     dataSource,

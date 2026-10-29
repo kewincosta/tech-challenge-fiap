@@ -12,6 +12,8 @@ import { StockMovementId } from '../../src/modules/inventory/domain/value-object
 import { StockQuantity } from '../../src/modules/inventory/domain/value-objects/stock-quantity';
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
 
@@ -25,6 +27,8 @@ beforeAll(async () => {
   repository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
   actorExternalId = await insertUser();
 });
@@ -334,6 +338,87 @@ describe('TypeOrmInventoryItemRepository', () => {
     expect(rows[0].external_id).toBe(actorExternalId);
   });
 
+  it('should refuse to save a movement whose acting user does not exist, and write nothing', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 1,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: randomUUID(),
+      movementId: movementId(),
+      now: new Date(),
+    });
+
+    await expect(repository.save(item)).rejects.toThrow(/^users row for external id .+ not found$/);
+    expect(await repository.findById(item.id)).toBeNull();
+  });
+
+  it('should refuse to save a consumption for a work order that does not exist, and change nothing', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const consuming = await repository.findById(item.id);
+    consuming!.consume({
+      quantity: 2,
+      workOrderId: randomUUID(),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+
+    await expect(repository.save(consuming!)).rejects.toThrow(
+      /^work_orders row for external id .+ not found$/,
+    );
+    expect((await repository.findById(item.id))?.quantityOnHand.units).toBe(5);
+  });
+
+  it('should refuse to save a return that undoes a movement that does not exist, and change nothing', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 5,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderExternalId = await insertWorkOrder();
+    const returning = await repository.findById(item.id);
+    returning!.restoreUnits({
+      quantity: 1,
+      workOrderId: workOrderExternalId,
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      undoesMovementId: randomUUID(),
+      now: new Date(),
+    });
+
+    await expect(repository.save(returning!)).rejects.toThrow(
+      /^stock_movements row for external id .+ not found$/,
+    );
+    expect((await repository.findById(item.id))?.quantityOnHand.units).toBe(5);
+  });
+
+  it.each(['settleWorkOrderConsumptions', 'writeOffWorkOrderConsumptions'] as const)(
+    '%s refuses an acting user that does not exist',
+    async (method) => {
+      const workOrderExternalId = await insertWorkOrder();
+
+      await expect(
+        repository[method]({
+          workOrderId: workOrderExternalId,
+          actorUserId: randomUUID(),
+          now: new Date(),
+        }),
+      ).rejects.toThrow(/^users row for external id .+ not found$/);
+    },
+  );
+
   it('should end a withdraw-then-return-in-full round trip at the starting count, with three movements on the ledger', async () => {
     const item = buildItem();
     item.replenish({
@@ -578,6 +663,48 @@ describe('TypeOrmInventoryItemRepository', () => {
       { movementId: newer.value, quantity: 3 },
       { movementId: older.value, quantity: 2 },
     ]);
+  });
+
+  it('findPendingConsumptions returns only the consumptions of the work order it is asked about, and none for an unknown one', async () => {
+    const item = buildItem();
+    item.replenish({
+      quantity: 10,
+      unitPrice: Money.fromCents(2500),
+      actorUserId: actorExternalId,
+      movementId: movementId(),
+      now: new Date(),
+    });
+    await repository.save(item);
+    const workOrderA = await insertWorkOrder();
+    const workOrderB = await insertWorkOrder();
+    const consumeA = movementId();
+    const consumingA = await repository.findById(item.id);
+    consumingA!.consume({
+      quantity: 2,
+      workOrderId: workOrderA,
+      actorUserId: actorExternalId,
+      movementId: consumeA,
+      now: new Date(),
+    });
+    await repository.save(consumingA!);
+    const consumeB = movementId();
+    const consumingB = await repository.findById(item.id);
+    consumingB!.consume({
+      quantity: 3,
+      workOrderId: workOrderB,
+      actorUserId: actorExternalId,
+      movementId: consumeB,
+      now: new Date(),
+    });
+    await repository.save(consumingB!);
+
+    expect(await repository.findPendingConsumptions(item.id, workOrderA)).toEqual([
+      { movementId: consumeA.value, quantity: 2 },
+    ]);
+    expect(await repository.findPendingConsumptions(item.id, workOrderB)).toEqual([
+      { movementId: consumeB.value, quantity: 3 },
+    ]);
+    expect(await repository.findPendingConsumptions(item.id, randomUUID())).toEqual([]);
   });
 
   it('findPendingConsumptions subtracts what was already returned, and drops a fully drained consumption', async () => {

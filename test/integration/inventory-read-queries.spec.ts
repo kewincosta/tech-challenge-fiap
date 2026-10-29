@@ -34,6 +34,8 @@ beforeAll(async () => {
   repository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
   const queryAdapter = new TypeOrmInventoryQueryAdapter(
     dataSource,
