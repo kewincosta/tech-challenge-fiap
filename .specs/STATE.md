@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 in progress: T42 `38c76af`, T43 `799bdf4` and T44 `ae9b89f` done; its worker continues with T45 and T46 (a Sonnet session limit paused it until 18:10).
-- **Completed**: T1 to T41, T61 and T62. Totals after batch 7: unit 1062, integration 337, e2e 243 (baseline 955, 239, 203). Baselines: 142 dependency violations (core-no-frameworks 129, through-public-api 12, core-stays-in-module 0, no-circular 1), 0 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 (T47 to T50) dispatched.
+- **Completed**: T1 to T46, T61 and T62. Totals after batch 8: unit 1099, integration 337, e2e 244 (baseline 955, 239, 203). Baselines: 82 dependency violations (core-no-frameworks 70, through-public-api 12, core-stays-in-module 0, no-circular 0), 0 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 8's compact summary, then dispatch batch 9 (T47 to T50).
+- **Next step**: read batch 9's compact summary, then dispatch batch 10 (T51 to T55).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -264,6 +264,15 @@ entry. They apply to every feature.
 - `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
+
+**Facts from batch 8 that later tasks build on**:
+
+- `identity` is migrated end to end and listed in `migrated-modules.json`. `IdentityModule` implements `OnModuleInit` and subscribes the access cache and refresh-token-reuse subscribers on the dispatcher; nothing subscribes through `@nestjs/cqrs` any more. `@nestjs/cqrs` is still imported by customers (7 files), vehicles (7), work-orders (22) and `app.module.ts`.
+- Get-user-by-id throws `UserNotFoundError` (C10). Inside identity the callers keep their old answers by catching it: login answers `InvalidCredentialsError`, assign role and user access answer `AssignedUserNotFoundError`, refresh lets it through. `AssignedUserNotFoundError` now duplicates `UserNotFoundError` (same code, kind and message); removing it would change two assertions, so it stays. `identity/index.ts` exports `UserNotFoundError` for the gateways.
+- `FindUserByDocumentUseCase` is still wired in `identity.module.ts`, and no route, gateway or script calls it since T33. T57 removes use cases that nothing calls.
+- `customer.repository.spec.ts` ("should link a customer to a user saved earlier in the same open transaction") failed once on the untouched tree at `84af554`, with no detail recorded, and passed 25 isolated runs and every full run after. Cause unknown; investigate if it fails again.
+- The TTL e2e case pins `REFRESH_TOKEN_TTL_SECONDS` and `SESSION_ABSOLUTE_TTL_SECONDS` in one dedicated app and restores both in `finally`.
+- Docs that still name the old identity classes: `docs/architecture/c4-components-identity-and-access.mmd`, `low-level-design/authorization.md`, `low-level-design/users.md` (T59, T60). `security/reports/raw/semgrep.json` is a generated scan and stays untouched.
 
 **Facts from batch 7 that later tasks build on**:
 
