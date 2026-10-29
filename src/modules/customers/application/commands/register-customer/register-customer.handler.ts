@@ -1,18 +1,9 @@
 import { Inject } from '@nestjs/common';
-import { CommandBus, CommandHandler, ICommandHandler, QueryBus } from '@nestjs/cqrs';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK, ID_GENERATOR, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
-import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { SystemRole } from '../../../../identity/authorization/application/contracts/system-roles';
-import { UserDto } from '../../../../identity/users/application/dtos/user.dto';
-import { GetUserByIdQuery } from '../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query';
-import {
-  RegisteredUserDto,
-  RegisterUserCommand,
-} from '../../../../identity/users/application/commands/register-user/register-user.command';
 import { Customer } from '../../../domain/entities/customer';
 import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambiguous-customer-registration.error';
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
@@ -25,6 +16,8 @@ import {
 import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
+import { CUSTOMER_ACCOUNTS } from '../../../customers.tokens';
+import { CustomerAccounts, OpenedAccount } from '../../ports/customer-accounts.port';
 import { RegisteredCustomerDto, RegisterCustomerCommand } from './register-customer.command';
 
 @CommandHandler(RegisterCustomerCommand)
@@ -37,8 +30,7 @@ export class RegisterCustomerHandler implements ICommandHandler<
     @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    @Inject(CUSTOMER_ACCOUNTS) private readonly accounts: CustomerAccounts,
   ) {}
 
   async execute(command: RegisterCustomerCommand): Promise<RegisteredCustomerDto> {
@@ -53,7 +45,7 @@ export class RegisterCustomerHandler implements ICommandHandler<
     const phoneNumber = PhoneNumber.create(command.phoneNumber);
 
     // The existing-user branch's cross-module checks and the account-creation branch's
-    // RegisterUserCommand dispatch both need to commit or roll back together with the customer
+    // account opening both need to commit or roll back together with the customer
     // insert - see design.md's Risks & Concerns (the same risk identity-foundation's T9/T18 closed
     // for RegisterUserHandler).
     return this.transactionRunner.run(async () => {
@@ -79,16 +71,11 @@ export class RegisterCustomerHandler implements ICommandHandler<
   private async resolveExistingUser(
     userId: string,
   ): Promise<{ userId: string; temporaryPassword?: string }> {
-    const user = await this.queryBus.execute<GetUserByIdQuery, UserDto | null>(
-      new GetUserByIdQuery(userId),
-    );
+    const user = await this.accounts.findUser(userId);
     if (!user) {
       throw new TargetUserNotFoundError();
     }
-    const access = await this.queryBus.execute<GetUserEffectiveAccessQuery, EffectiveAccessDto>(
-      new GetUserEffectiveAccessQuery(userId),
-    );
-    if (!access.roles.includes(SystemRole.Customer)) {
+    if (!(await this.accounts.hasCustomerRole(userId))) {
       throw new UserMissingCustomerRoleError();
     }
     // Application-layer pre-check, same two-layer shape as RegisterUserHandler's
@@ -100,12 +87,7 @@ export class RegisterCustomerHandler implements ICommandHandler<
     return { userId };
   }
 
-  private async createAccount(
-    command: RegisterCustomerCommand,
-  ): Promise<{ userId: string; temporaryPassword?: string }> {
-    const result = await this.commandBus.execute<RegisterUserCommand, RegisteredUserDto>(
-      new RegisterUserCommand(command.email!, command.name!, undefined, command.document!, true),
-    );
-    return { userId: result.id, temporaryPassword: result.temporaryPassword };
+  private createAccount(command: RegisterCustomerCommand): Promise<OpenedAccount> {
+    return this.accounts.open(command.email!, command.name!, command.document!);
   }
 }

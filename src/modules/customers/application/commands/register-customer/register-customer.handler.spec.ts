@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubCommandBus, stubQueryBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeCustomerAccounts } from '../../../../../../test/support/fakes/fake-customer-accounts';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryCustomerRepository } from '../../../../../../test/support/fakes/in-memory-customer.repository';
-import { RegisterUserCommand } from '../../../../identity/users/application/commands/register-user/register-user.command';
 import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambiguous-customer-registration.error';
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
 import { InvalidAddressError } from '../../../domain/errors/invalid-address.error';
@@ -15,39 +14,29 @@ import { RegisterCustomerCommand } from './register-customer.command';
 import { RegisterCustomerHandler } from './register-customer.handler';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
-const EXISTING_USER_DTO = {
-  id: USER_ID,
-  email: 'jane@example.com',
-  name: 'Jane Doe',
-  status: 'ACTIVE',
-  mustChangePassword: false,
-  createdAt: '2026-08-31T00:00:00.000Z',
-};
+const NEW_ACCOUNT = { userId: USER_ID, temporaryPassword: 'aB3dE5fG7h9K' };
 
-function makeHandler() {
+/** `existingUser` seeds a user with or without the CUSTOMER role; the new account answers `NEW_ACCOUNT`. */
+function makeHandler(existingUser?: { holdsCustomerRole: boolean }) {
   const customers = new InMemoryCustomerRepository();
-  const idGenerator = new FakeIdGenerator();
-  const clock = new FakeClock();
   const transactionRunner = new FakeTransactionRunner();
-  const commandBus = stubCommandBus();
-  const queryBus = stubQueryBus();
+  const accounts = new FakeCustomerAccounts(NEW_ACCOUNT, () => transactionRunner.active);
+  if (existingUser) {
+    accounts.withUser(USER_ID, existingUser.holdsCustomerRole);
+  }
   const handler = new RegisterCustomerHandler(
     customers,
-    idGenerator,
-    clock,
+    new FakeIdGenerator(),
+    new FakeClock(),
     transactionRunner,
-    commandBus.bus,
-    queryBus.bus,
+    accounts,
   );
-  return { handler, customers, transactionRunner, commandBus, queryBus };
+  return { handler, customers, transactionRunner, accounts };
 }
 
 describe('RegisterCustomerHandler', () => {
   it('should register a customer over an existing user holding CUSTOMER', async () => {
-    const { handler, customers, queryBus } = makeHandler();
-    queryBus.execute
-      .mockResolvedValueOnce(EXISTING_USER_DTO)
-      .mockResolvedValueOnce({ roles: ['CUSTOMER'], permissions: [] });
+    const { handler, customers } = makeHandler({ holdsCustomerRole: true });
 
     const result = await handler.execute(
       new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
@@ -58,23 +47,18 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse an existing user without the CUSTOMER role', async () => {
-    const { handler, queryBus } = makeHandler();
-    queryBus.execute
-      .mockResolvedValueOnce(EXISTING_USER_DTO)
-      .mockResolvedValueOnce({ roles: ['MECHANIC'], permissions: [] });
+    const { handler, customers } = makeHandler({ holdsCustomerRole: false });
 
     await expect(
       handler.execute(
         new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
       ),
     ).rejects.toThrow(UserMissingCustomerRoleError);
+    expect(customers.customers).toHaveLength(0);
   });
 
   it('should refuse a user that already backs a customer', async () => {
-    const { handler, customers, queryBus } = makeHandler();
-    queryBus.execute
-      .mockResolvedValueOnce(EXISTING_USER_DTO)
-      .mockResolvedValueOnce({ roles: ['CUSTOMER'], permissions: [] });
+    const { handler, customers } = makeHandler({ holdsCustomerRole: true });
     customers.existsByUserId = () => Promise.resolve(true);
 
     await expect(
@@ -85,19 +69,18 @@ describe('RegisterCustomerHandler', () => {
   });
 
   it('should refuse a target user that does not exist', async () => {
-    const { handler, queryBus } = makeHandler();
-    queryBus.execute.mockResolvedValueOnce(null);
+    const { handler, customers } = makeHandler();
 
     await expect(
       handler.execute(
         new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
       ),
     ).rejects.toThrow(TargetUserNotFoundError);
+    expect(customers.customers).toHaveLength(0);
   });
 
   it('should register via the account-creation branch and return the temporary password', async () => {
-    const { handler, customers, commandBus } = makeHandler();
-    commandBus.execute.mockResolvedValueOnce({ id: USER_ID, temporaryPassword: 'aB3dE5fG7h9K' });
+    const { handler, customers, accounts } = makeHandler();
 
     const result = await handler.execute(
       new RegisterCustomerCommand(
@@ -112,9 +95,9 @@ describe('RegisterCustomerHandler', () => {
 
     expect(result.temporaryPassword).toBe('aB3dE5fG7h9K');
     expect(customers.customers[0].userId).toBe(USER_ID);
-    expect(commandBus.execute).toHaveBeenCalledWith(
-      new RegisterUserCommand('jane@example.com', 'Jane Doe', undefined, '11144477735', true),
-    );
+    expect(accounts.opened).toMatchObject([
+      { email: 'jane@example.com', name: 'Jane Doe', document: '11144477735' },
+    ]);
   });
 
   it('should reject a malformed address', async () => {
@@ -185,9 +168,8 @@ describe('RegisterCustomerHandler', () => {
     ).rejects.toThrow(AmbiguousCustomerRegistrationError);
   });
 
-  it('should run the whole registration inside one transaction', async () => {
-    const { handler, transactionRunner, commandBus } = makeHandler();
-    commandBus.execute.mockResolvedValueOnce({ id: USER_ID, temporaryPassword: 'aB3dE5fG7h9K' });
+  it('should run the whole registration inside one transaction, the account opening included', async () => {
+    const { handler, transactionRunner, accounts } = makeHandler();
 
     await handler.execute(
       new RegisterCustomerCommand(
@@ -201,5 +183,6 @@ describe('RegisterCustomerHandler', () => {
     );
 
     expect(transactionRunner.runCalls).toBe(1);
+    expect(accounts.opened.map((account) => account.insideTransaction)).toEqual([true]);
   });
 });

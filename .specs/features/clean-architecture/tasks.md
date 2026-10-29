@@ -1086,10 +1086,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The registration handler injects the port and no bus; its spec uses the fake and asserts outcomes
-- [ ] `POST /customers` e2e cases pass, both for a new account and for an existing user
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] The registration handler injects the port and no bus; its spec uses the fake and asserts outcomes
+- [x] `POST /customers` e2e cases pass, both for a new account and for an existing user
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full

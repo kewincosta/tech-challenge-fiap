@@ -4,6 +4,9 @@ export type { EffectiveAccessDto } from './authorization/application/dtos/effect
 export { GetUserEffectiveAccessHandler } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.handler';
 export { GetUserEffectiveAccessQuery } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 export type { UserDto } from './users/application/dtos/user.dto';
+export { RegisterUserCommand } from './users/application/commands/register-user/register-user.command';
+export type { RegisteredUserDto } from './users/application/commands/register-user/register-user.command';
+export { RegisterUserHandler } from './users/application/commands/register-user/register-user.handler';
 export { FindUsersQuery } from './users/application/queries/find-users/find-users.query';
 export { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
 export { GetUserByIdHandler } from './users/application/queries/get-user-by-id/get-user-by-id.handler';

@@ -164,6 +164,7 @@ import { UsersController } from './users/presentation/controllers/users.controll
     PermissionsGuard,
     GetUserEffectiveAccessHandler,
     GetUserByIdHandler,
+    RegisterUserHandler,
     UserKeyResolver,
     FindUsersUseCase,
   ],
