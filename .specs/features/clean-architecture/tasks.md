@@ -489,11 +489,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `eslint.config.mjs` builds strict blocks for the listed modules from the JSON, keeping today's blocks for the rest
-- [ ] `test/architecture/core-purity.spec.ts` scans the listed modules' `domain` and `application` files, specs included, for banned imports, decorators and `Symbol(`, and a fixture case proves each detection
-- [ ] The list starts empty, and lint and the test pass
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total grows by the purity cases
+- [x] `eslint.config.mjs` builds strict blocks for the listed modules from the JSON, keeping today's blocks for the rest
+- [x] `test/architecture/core-purity.spec.ts` scans the listed modules' `domain` and `application` files, specs included, for banned imports, decorators and `Symbol(`, and a fixture case proves each detection
+- [x] The list starts empty, and lint and the test pass
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total grows by the purity cases
 
 **Tests**: unit
 **Gate**: build
