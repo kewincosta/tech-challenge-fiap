@@ -213,17 +213,26 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 (T8 to T13) dispatched, with one fix commit ahead of T8.
-- **Completed**: T1 to T7. Totals after batch 1: unit 955, integration 239, e2e 243 (baseline 955, 239, 203).
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done up to T11 (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`); its worker continues with T61, T12 and T13.
+- **Completed**: T1 to T11. Totals after T11: unit 980, integration 240, e2e 243 (baseline 955, 239, 203).
 - **In-progress** (file:line): none yet
 - **Next step**: read batch 2's compact summary, then dispatch batch 3 (T14 to T19).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
 
-**Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
+**Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13 plus T61, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
 
-**Fix outside the task list**: `listTrail` (`typeorm-work-order-query.adapter.ts:160`) orders by `we.occurred_at` alone. Events written with the same timestamp come back in either order, so the chronological trail case in `test/e2e/work-order-budgets.e2e.spec.ts` flakes, also on a clean checkout of `51a3a8a`. Batch 2 adds `we.id` (a `bigserial`) as the tie-breaker in its own `fix(work-orders)` commit before T8. T36 and T54 keep the tie-breaker. The Verifier treats that commit as part of the diff range.
+**Fix outside the task list**: `listTrail` (`typeorm-work-order-query.adapter.ts:160`) orders by `we.occurred_at` alone. Events written with the same timestamp come back in either order, so the chronological trail case in `test/e2e/work-order-budgets.e2e.spec.ts` flakes, also on a clean checkout of `51a3a8a`. Commit `6cdf869` adds `we.id` (a `bigserial`) as the tie-breaker, with a regression case in `test/integration/work-order-query.adapter.spec.ts`. T36 and T54 keep the tie-breaker. The Verifier treats that commit as part of the diff range.
+
+**Plan changes after batch 2 stopped at T11**:
+
+- T11's baseline bullet expected the same number of dependency violations. The count went from 426 to 361, because the 65 imports among users, authentication and authorization became imports inside `identity`; no entry was added. The bullet now says so.
+- T61 (module cycle check) joins phase 2. `no-circular` sees only cycles that close file by file, and CA-04 AC2 asks lint to fail on any cycle between modules. The module graph has no cycle today, so the check has no known list.
+- T44 owns the one file cycle left in the baseline, between `session.orm-entity.ts` and `refresh-token.orm-entity.ts`.
+- T24 adds `sm.id` as the tie-breaker of the movement history (`typeorm-inventory-query.adapter.ts:125`), the same defect as the trail.
+- T9 maps 19 relations: the 18 tables the migrations create and TypeORM's `migrations` table, owned by `shared`.
+- Installing dependency-cruiser in T8 moved two transitive dev packages in `package-lock.json`: acorn 8.18.0 to 8.19.0, enhanced-resolve 5.24.5 to 5.26.0.
 
 **Notes for later batches** (from batch 1):
 

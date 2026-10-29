@@ -119,7 +119,7 @@ T1 → T2 → T3 → T4 → T5 → T6 → T7
 ### Phase 2: Architecture checks in report mode (design phase 1)
 
 ```
-T8 → T9 → T10
+T8 → T9 → T10 → T61
 ```
 
 ### Phase 3: Identity module (design phase 2)
@@ -499,6 +499,34 @@ T58 → T59 → T60
 **Gate**: build
 
 **Commit**: `build(lint): add the core purity ratchet`
+
+---
+
+#### T61: Module cycle check
+
+**What**: A check that collapses the cruised dependency graph to modules (each folder under `src/modules`, and `src/shared`) and fails on any cycle between them, naming for each step of the cycle a file that imports and the file it imports. Added after T11 ran, because `no-circular` sees only the cycles that close file by file; it runs before T12.
+**Where**: `scripts/architecture/check-module-cycles.ts` (new)
+**Depends on**: T10
+**Reuses**: The graph dependency-cruiser builds from `.dependency-cruiser.cjs`, type-only imports counted
+**Requirement**: CA-04, CA-03
+
+**Tools**:
+
+- MCP: `context7` (dependency-cruiser output and options)
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `lint:architecture` runs the check after the table check, and the check passes on the real tree with no known list (the module graph has no cycle today)
+- [ ] `test/architecture/module-cycles.spec.ts` proves a two-module cycle that closes between modules and not file by file, a three-module cycle, and the pass on an acyclic fixture; each failure names the files on every step of the cycle
+- [ ] Files outside `src/modules` and `src/shared`, such as `app.module.ts` and `src/config`, stay out of the module graph
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: unit total grows by the check's cases
+
+**Tests**: unit
+**Gate**: build
+
+**Commit**: `build(lint): fail on dependency cycles between modules`
 
 ---
 
@@ -891,6 +919,7 @@ T58 → T59 → T60
 **Done when**:
 
 - [ ] The adapter's SQL names only `inventory_items` and `stock_movements`, and its entries leave the known table findings
+- [ ] The movement history orders by `occurred_at`, then `id`, and an integration case with two movements at the same `occurred_at`, stored in a physical order that differs from their `id` order, proves it
 - [ ] `inventory-query.adapter.spec.ts`, `stock-shortages.query.spec.ts` and `inventory-read-queries.spec.ts` pass with the new collaborators
 - [ ] The shortage, in-use and movement e2e cases from T6 pass
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
@@ -1435,7 +1464,7 @@ T58 → T59 → T60
 #### T44: Authentication use cases, settings and reuse log
 
 **What**: Authenticate, logout all, refresh, revoke and list sessions become framework-free use cases reading `AuthSettings`; the refresh-token-reuse subscriber moves to infrastructure and is registered on the dispatcher.
-**Where**: `src/modules/identity/authentication/application/` (use cases and `auth-settings.ts`)
+**Where**: `src/modules/identity/authentication/application/` (use cases and `auth-settings.ts`), `src/modules/identity/authentication/infrastructure/persistence/` (the session and refresh token ORM entities)
 **Depends on**: T43
 **Reuses**: `authConfig` for building the settings in `identity.module.ts`
 **Requirement**: CA-01, CA-05
@@ -1448,6 +1477,7 @@ T58 → T59 → T60
 **Done when**:
 
 - [ ] No file in `identity/authentication/application` imports `@nestjs/config` or Nest's `Logger`
+- [ ] `session.orm-entity.ts` and `refresh-token.orm-entity.ts` no longer import each other, sessions and refresh tokens persist as before (the authentication integration and e2e specs pass unchanged), and the regenerated dependency baseline has no `no-circular` entry
 - [ ] An e2e case boots a dedicated app with `REFRESH_TOKEN_TTL_SECONDS=600`, logs in, asserts `refreshTokenExpiresAt` 600 seconds after the login, and restores the environment
 - [ ] A spec of the moved subscriber asserts the warn line `Refresh token reuse detected for session <sessionId>; the session was revoked.` under `AuthenticationSecurity`
 - [ ] `authentication.e2e.spec.ts` passes
@@ -1909,7 +1939,7 @@ T58 → T59 → T60
 Phase 1 → Phase 2 → ... → Phase 17
 
 Phase 1:  T1 → T2 → T3 → T4 → T5 → T6 → T7
-Phase 2:  T8 → T9 → T10
+Phase 2:  T8 → T9 → T10 → T61
 Phase 3:  T11
 Phase 4:  T12 → T13
 Phase 5:  T14 → T15 → T16 → T17 → T18 → T19
@@ -1945,6 +1975,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T8 | T7 (phase 1) | Phase 2 start | ✅ Match |
 | T9 | T8 | T8 → T9 | ✅ Match |
 | T10 | T9 | T9 → T10 | ✅ Match |
+| T61 | T10 | T10 → T61 | ✅ Match |
 | T11 | T10 (phase 2) | Phase 3 start | ✅ Match |
 | T12 | T11 (phase 3) | Phase 4 start | ✅ Match |
 | T13 | T12 | T12 → T13 | ✅ Match |
@@ -2010,6 +2041,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T8: dependency-cruiser | Architecture checks | unit | unit | ✅ OK |
 | T9: Table ownership | Architecture checks | unit | unit | ✅ OK |
 | T10: Purity ratchet | Architecture checks | unit | unit | ✅ OK |
+| T61: Module cycles | Architecture checks | unit | unit | ✅ OK |
 | T11: Identity move | Every layer, paths only | e2e (highest) | e2e | ✅ OK |
 | T12: Event dispatcher | Domain event dispatcher | unit | unit | ✅ OK |
 | T13: Shared tokens | Tokens | none | none | ✅ OK |

@@ -263,12 +263,13 @@ export class CreateWorkOrderUseCase {
 ### C12. Architecture checks
 
 - **Purpose**: Make `npm run lint` fail on every structural rule of the spec.
-- **Location**: `eslint.config.mjs`, `.dependency-cruiser.cjs`, `.dependency-cruiser-known-violations.json`, `scripts/architecture/check-table-ownership.ts`, `scripts/architecture/table-owners.ts`, `scripts/architecture/known-table-findings.json`
+- **Location**: `eslint.config.mjs`, `.dependency-cruiser.cjs`, `.dependency-cruiser-known-violations.json`, `scripts/architecture/check-table-ownership.ts`, `scripts/architecture/table-owners.ts`, `scripts/architecture/known-table-findings.json`, `scripts/architecture/check-module-cycles.ts`
 - **Interfaces**:
   - ESLint: the `domain` and `application` blocks stop ignoring specs; the application ban list gains `@nestjs/*`, `class-validator`, `class-transformer`, `zod`, `rxjs`, `rxjs/*` and `node:*`; both blocks gain `no-restricted-syntax` for `Decorator` and for `CallExpression[callee.name='Symbol']`. During the migration the blocks list the migrated modules; at the end they cover `src/**`
   - dependency-cruiser 18.7, cruising `src` with type-only imports counted: `no-circular`; `core-stays-in-module` (from `^src/modules/([^/]+)/(?:[^/]+/)?(domain|application)/` to `^src/modules/`, `pathNot` `^src/modules/$1/`); `through-public-api` (from `^src/modules/([^/]+)/` to `^src/modules/[^/]+/`, `pathNot` `^src/modules/$1/` and `^src/modules/[^/]+/index\.ts$`); `inward-only` (no import from `domain` or `application` into `infrastructure` or `presentation`, and none from `domain` into `application`); `shared-is-a-leaf` (no import from `src/shared` into `src/modules`). The baseline is written with `--baseline` and read with `--ignore-known`
   - Table ownership check: an explicit map of the 19 tables to their modules; it scans `src/modules/**/infrastructure/**/*.ts` for the table after `FROM`, `JOIN`, `INTO` and `UPDATE`, fails on a table another module owns, on an unknown table and on a table name built at runtime (`${` after those keywords), and fails when a migration creates a table the map lacks. Its known-findings file shrinks to empty like the dependency baseline
-  - `npm run lint` becomes `eslint . && npm run lint:architecture`, with `lint:architecture` running `depcruise src --ignore-known` and the table check
+  - Module cycle check: collapses the cruised graph to modules (each folder under `src/modules`, and `src/shared`) and fails on any cycle between them, naming for each step a file that imports and the file it imports. `no-circular` alone sees only the cycles that close file by file. It has no known list, because the module graph has no cycle once `identity` exists
+  - `npm run lint` becomes `eslint . && npm run lint:architecture`, with `lint:architecture` running `depcruise src --ignore-known`, the table check and the module cycle check
 - **Dependencies**: `dependency-cruiser` as a dev dependency; `ts-node`, already a dev dependency
 - **Reuses**: the existing ESLint blocks and the pre-push hook
 
