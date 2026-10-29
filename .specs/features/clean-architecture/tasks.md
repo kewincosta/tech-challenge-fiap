@@ -1848,10 +1848,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The seed imports no bus and exports the function the spec runs
-- [ ] `test/integration/seed.script.spec.ts` runs it twice against the test database and finds the demo services, items, stock, customers and vehicles once each
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total grows by the seed's cases
+- [x] The seed imports no bus and exports the function the spec runs
+- [x] `test/integration/seed.script.spec.ts` runs it twice against the test database and finds the demo services, items, stock, customers and vehicles once each
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total grows by the seed's cases
 
 **Tests**: integration
 **Gate**: full
