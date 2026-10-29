@@ -1654,12 +1654,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The tokens live in `src/modules/vehicles/vehicles.tokens.ts`, the repository contract in `vehicles/application/ports`, and no file under `vehicles/domain` or `vehicles/application` declares a `Symbol`
-- [ ] Specs use fakes and assert outcomes; get covers `VehicleNotFoundError`
-- [ ] The controller's `getVehicleOrThrow` is gone; the vehicle e2e cases pass
-- [ ] `vehicles` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `vehicles` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The tokens live in `src/modules/vehicles/vehicles.tokens.ts`, the repository contract in `vehicles/application/ports`, and no file under `vehicles/domain` or `vehicles/application` declares a `Symbol`
+- [x] Specs use fakes and assert outcomes; get covers `VehicleNotFoundError`
+- [x] The controller's `getVehicleOrThrow` is gone; the vehicle e2e cases pass
+- [x] `vehicles` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `vehicles` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build

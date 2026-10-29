@@ -11,7 +11,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -27,21 +26,20 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
-import { CurrentUser } from '../../../identity/authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../identity/authentication/presentation/principal';
-import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
-import {
-  RegisterVehicleCommand,
-  RegisteredVehicleDto,
-} from '../../application/commands/register-vehicle/register-vehicle.command';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
+import { RegisterVehicleCommand } from '../../application/commands/register-vehicle/register-vehicle.command';
+import { RegisterVehicleHandler } from '../../application/commands/register-vehicle/register-vehicle.handler';
 import { RemoveVehicleCommand } from '../../application/commands/remove-vehicle/remove-vehicle.command';
+import { RemoveVehicleHandler } from '../../application/commands/remove-vehicle/remove-vehicle.handler';
 import { UpdateVehicleCommand } from '../../application/commands/update-vehicle/update-vehicle.command';
-import { GetMyVehiclesQuery } from '../../application/queries/get-my-vehicles/get-my-vehicles.query';
-import { GetVehicleQuery } from '../../application/queries/get-vehicle/get-vehicle.query';
-import { ListVehiclesByCustomerQuery } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.query';
+import { UpdateVehicleHandler } from '../../application/commands/update-vehicle/update-vehicle.handler';
 import { VehicleSummaryDto } from '../../application/ports/vehicle-query.port';
-import { VehicleNotFoundError } from '../../domain/errors/vehicle-not-found.error';
+import { GetMyVehiclesHandler } from '../../application/queries/get-my-vehicles/get-my-vehicles.handler';
+import { GetMyVehiclesQuery } from '../../application/queries/get-my-vehicles/get-my-vehicles.query';
+import { GetVehicleHandler } from '../../application/queries/get-vehicle/get-vehicle.handler';
+import { GetVehicleQuery } from '../../application/queries/get-vehicle/get-vehicle.query';
+import { ListVehiclesByCustomerHandler } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.handler';
+import { ListVehiclesByCustomerQuery } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.query';
 import { RegisterVehicleRequestDto } from '../dtos/register-vehicle.request.dto';
 import { UpdateVehicleRequestDto } from '../dtos/update-vehicle.request.dto';
 import { RegisteredVehicleResponseDto, VehicleResponseDto } from '../dtos/vehicle.response.dto';
@@ -50,8 +48,12 @@ import { RegisteredVehicleResponseDto, VehicleResponseDto } from '../dtos/vehicl
 @Controller('vehicles')
 export class VehiclesController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly registerVehicle: RegisterVehicleHandler,
+    private readonly updateVehicle: UpdateVehicleHandler,
+    private readonly removeVehicle: RemoveVehicleHandler,
+    private readonly getVehicle: GetVehicleHandler,
+    private readonly listVehiclesByCustomer: ListVehiclesByCustomerHandler,
+    private readonly getMyVehicles: GetMyVehiclesHandler,
   ) {}
 
   @Post()
@@ -64,7 +66,7 @@ export class VehiclesController {
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async register(@Body() body: RegisterVehicleRequestDto): Promise<RegisteredVehicleResponseDto> {
-    return this.commandBus.execute<RegisterVehicleCommand, RegisteredVehicleDto>(
+    return this.registerVehicle.execute(
       new RegisterVehicleCommand(body.customerId, body.plate, body.brand, body.model, body.year),
     );
   }
@@ -75,9 +77,7 @@ export class VehiclesController {
   @ApiOkResponse({ type: [VehicleResponseDto] })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async myVehicles(@CurrentUser() principal: Principal): Promise<VehicleResponseDto[]> {
-    const vehicles = await this.queryBus.execute<GetMyVehiclesQuery, VehicleSummaryDto[]>(
-      new GetMyVehiclesQuery(principal.userId),
-    );
+    const vehicles = await this.getMyVehicles.execute(new GetMyVehiclesQuery(principal.userId));
     return vehicles.map((vehicle) => this.toResponseDto(vehicle));
   }
 
@@ -92,7 +92,7 @@ export class VehiclesController {
   async list(
     @Query('customerId', ParseUUIDPipe) customerId: string,
   ): Promise<VehicleResponseDto[]> {
-    const vehicles = await this.queryBus.execute<ListVehiclesByCustomerQuery, VehicleSummaryDto[]>(
+    const vehicles = await this.listVehiclesByCustomer.execute(
       new ListVehiclesByCustomerQuery(customerId),
     );
     return vehicles.map((vehicle) => this.toResponseDto(vehicle));
@@ -108,7 +108,7 @@ export class VehiclesController {
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<VehicleResponseDto> {
-    return this.getVehicleOrThrow(externalId);
+    return this.toResponseDto(await this.getVehicle.execute(new GetVehicleQuery(externalId)));
   }
 
   @Patch(':externalId')
@@ -123,10 +123,10 @@ export class VehiclesController {
     @Param('externalId', ParseUUIDPipe) externalId: string,
     @Body() body: UpdateVehicleRequestDto,
   ): Promise<VehicleResponseDto> {
-    await this.commandBus.execute<UpdateVehicleCommand, void>(
+    await this.updateVehicle.execute(
       new UpdateVehicleCommand(externalId, body.brand, body.model, body.year, body.customerId),
     );
-    return this.getVehicleOrThrow(externalId);
+    return this.toResponseDto(await this.getVehicle.execute(new GetVehicleQuery(externalId)));
   }
 
   @Delete(':externalId')
@@ -138,17 +138,7 @@ export class VehiclesController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async remove(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
-    await this.commandBus.execute<RemoveVehicleCommand, void>(new RemoveVehicleCommand(externalId));
-  }
-
-  private async getVehicleOrThrow(externalId: string): Promise<VehicleResponseDto> {
-    const vehicle = await this.queryBus.execute<GetVehicleQuery, VehicleSummaryDto | null>(
-      new GetVehicleQuery(externalId),
-    );
-    if (!vehicle) {
-      throw new VehicleNotFoundError();
-    }
-    return this.toResponseDto(vehicle);
+    await this.removeVehicle.execute(new RemoveVehicleCommand(externalId));
   }
 
   private toResponseDto(vehicle: VehicleSummaryDto): VehicleResponseDto {

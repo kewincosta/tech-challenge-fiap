@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { GetVehicleHandler } from './get-vehicle.handler';
 import { GetVehicleQuery } from './get-vehicle.query';
@@ -34,17 +35,21 @@ describe('GetVehicleHandler', () => {
     expect(port.getById).toHaveBeenCalledWith(VEHICLE_ID);
   });
 
-  it('returns null for an id the port knows nothing about', async () => {
+  it('refuses an id the port knows nothing about with the vehicle not-found error', async () => {
     const handler = new GetVehicleHandler(fakePort(null));
 
-    await expect(handler.execute(new GetVehicleQuery(VEHICLE_ID))).resolves.toBeNull();
+    await expect(handler.execute(new GetVehicleQuery(VEHICLE_ID))).rejects.toThrow(
+      VehicleNotFoundError,
+    );
   });
 
-  it('returns null for a malformed id without touching the port', async () => {
+  it('refuses a malformed id with the vehicle not-found error without touching the port', async () => {
     const port = fakePort(vehicle());
     const handler = new GetVehicleHandler(port);
 
-    await expect(handler.execute(new GetVehicleQuery('not-a-uuid'))).resolves.toBeNull();
+    await expect(handler.execute(new GetVehicleQuery('not-a-uuid'))).rejects.toThrow(
+      VehicleNotFoundError,
+    );
     expect(port.getById).not.toHaveBeenCalled();
   });
 });

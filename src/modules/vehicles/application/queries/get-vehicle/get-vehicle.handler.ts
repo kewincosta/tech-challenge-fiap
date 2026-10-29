@@ -1,23 +1,22 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import {
-  VEHICLE_QUERY_PORT,
-  VehicleQueryPort,
-  VehicleSummaryDto,
-} from '../../ports/vehicle-query.port';
+import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
+import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { GetVehicleQuery } from './get-vehicle.query';
 
-@QueryHandler(GetVehicleQuery)
-export class GetVehicleHandler implements IQueryHandler<GetVehicleQuery, VehicleSummaryDto | null> {
-  constructor(@Inject(VEHICLE_QUERY_PORT) private readonly vehicleQuery: VehicleQueryPort) {}
+export class GetVehicleHandler {
+  constructor(private readonly vehicleQuery: VehicleQueryPort) {}
 
-  async execute(query: GetVehicleQuery): Promise<VehicleSummaryDto | null> {
+  async execute(query: GetVehicleQuery): Promise<VehicleSummaryDto> {
     try {
       VehicleId.create(query.vehicleId);
     } catch {
-      return null;
+      // A malformed id matches nothing by construction, and a uuid column would throw on it.
+      throw new VehicleNotFoundError();
     }
-    return this.vehicleQuery.getById(query.vehicleId);
+    const vehicle = await this.vehicleQuery.getById(query.vehicleId);
+    if (!vehicle) {
+      throw new VehicleNotFoundError();
+    }
+    return vehicle;
   }
 }

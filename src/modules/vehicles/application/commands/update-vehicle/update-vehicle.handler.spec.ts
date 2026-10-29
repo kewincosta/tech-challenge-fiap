@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeVehicleOwners } from '../../../../../../test/support/fakes/fake-vehicle-owners';
 import { InMemoryVehicleRepository } from '../../../../../../test/support/fakes/in-memory-vehicle.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Vehicle } from '../../../domain/entities/vehicle';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
 import { VehicleNotFoundError } from '../../../domain/errors/vehicle-not-found.error';
+import { VehicleUpdated } from '../../../domain/events/vehicle-updated.event';
 import { LicensePlate } from '../../../domain/value-objects/license-plate';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
@@ -25,8 +26,10 @@ function makeHandler(newOwner?: OwnerRef) {
   if (newOwner) {
     owners.add(newOwner);
   }
-  const handler = new UpdateVehicleHandler(vehicles, new FakeClock(), owners, stubEventBus().bus);
-  return { handler, vehicles };
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const handler = new UpdateVehicleHandler(vehicles, clock, owners, events);
+  return { handler, vehicles, clock, events };
 }
 
 async function seedVehicle(vehicles: InMemoryVehicleRepository) {
@@ -45,7 +48,7 @@ async function seedVehicle(vehicles: InMemoryVehicleRepository) {
 
 describe('UpdateVehicleHandler', () => {
   it('should update brand, model and year', async () => {
-    const { handler, vehicles } = makeHandler();
+    const { handler, vehicles, clock, events } = makeHandler();
     await seedVehicle(vehicles);
 
     await handler.execute(new UpdateVehicleCommand(VEHICLE_ID.value, 'Honda', 'Civic', 2021));
@@ -54,6 +57,7 @@ describe('UpdateVehicleHandler', () => {
     expect(updated.brand).toBe('Honda');
     expect(updated.model).toBe('Civic');
     expect(updated.year.value).toBe(2021);
+    expect(events.published).toEqual([new VehicleUpdated(VEHICLE_ID.value, clock.now())]);
   });
 
   it('should transfer ownership to a new active customer', async () => {

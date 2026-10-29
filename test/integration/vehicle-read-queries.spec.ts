@@ -8,6 +8,7 @@ import { TypeOrmCustomerQueryAdapter } from '../../src/modules/customers/infrast
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
 import { CustomerKeyResolver } from '../../src/modules/customers';
 import { Vehicle } from '../../src/modules/vehicles/domain/entities/vehicle';
+import { VehicleNotFoundError } from '../../src/modules/vehicles/domain/errors/vehicle-not-found.error';
 import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/license-plate';
 import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
@@ -117,8 +118,10 @@ describe('Vehicle read queries', () => {
     expect(found?.id).toBe(vehicle.id.value);
   });
 
-  it('should return null for a vehicle id that does not exist', async () => {
-    expect(await getVehicleHandler.execute(new GetVehicleQuery(randomUUID()))).toBeNull();
+  it('should refuse a vehicle id that does not exist with the vehicle not-found error', async () => {
+    await expect(getVehicleHandler.execute(new GetVehicleQuery(randomUUID()))).rejects.toThrow(
+      VehicleNotFoundError,
+    );
   });
 
   it('should list every vehicle of one customer', async () => {
