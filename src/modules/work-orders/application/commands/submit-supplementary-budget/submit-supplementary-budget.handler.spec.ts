@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -11,6 +11,8 @@ import { WorkOrderServiceItem } from '../../../domain/entities/work-order-servic
 import { EmptyDraftBudgetError } from '../../../domain/errors/empty-draft-budget.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { BudgetSent } from '../../../domain/events/budget-sent.event';
+import { SupplementaryBudgetGenerated } from '../../../domain/events/supplementary-budget-generated.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -102,19 +104,20 @@ function buildReceivedWorkOrder(): WorkOrder {
 
 function makeHandler() {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
   const handler = new SubmitSupplementaryBudgetHandler(
     workOrders,
     new FakeIdGenerator(),
-    new FakeClock(),
-    eventBus.bus,
+    clock,
+    events,
   );
-  return { handler, workOrders, eventBus };
+  return { handler, workOrders, clock, events };
 }
 
 describe('SubmitSupplementaryBudgetHandler', () => {
   it('mints a BudgetId, generates round two over the draft, and publishes both recorded events', async () => {
-    const { handler, workOrders, eventBus } = makeHandler();
+    const { handler, workOrders, clock, events } = makeHandler();
     await workOrders.save(restoreInExecution(true));
 
     await handler.execute(new SubmitSupplementaryBudgetCommand(NUMBER, CREATOR_ID));
@@ -122,34 +125,39 @@ describe('SubmitSupplementaryBudgetHandler', () => {
     const updated = workOrders.workOrders[0];
     expect(updated.status).toBe(WorkOrderStatus.AwaitingApproval);
     expect(updated.budgets).toHaveLength(2);
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
-    expect((eventBus.publishAll.mock.calls[0] as unknown[][])[0]).toHaveLength(2);
+    expect(events.published).toEqual([
+      new SupplementaryBudgetGenerated(updated.id.value, CREATOR_ID, clock.now()),
+      new BudgetSent(updated.id.value, CREATOR_ID, clock.now()),
+    ]);
   });
 
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
 
     await expect(
       handler.execute(new SubmitSupplementaryBudgetCommand('ZZZZZZ-2026', CREATOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('lets EmptyDraftBudgetError travel out untouched', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(restoreInExecution(false));
 
     await expect(
       handler.execute(new SubmitSupplementaryBudgetCommand(NUMBER, CREATOR_ID)),
     ).rejects.toThrow(EmptyDraftBudgetError);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(buildReceivedWorkOrder());
 
     await expect(
       handler.execute(new SubmitSupplementaryBudgetCommand(NUMBER, CREATOR_ID)),
     ).rejects.toThrow(WorkOrderStateError);
+    expect(events.published).toHaveLength(0);
   });
 });

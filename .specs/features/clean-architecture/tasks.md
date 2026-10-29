@@ -1738,10 +1738,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs use fakes and assert outcomes, including the owner, permission holder and stranger paths of the authorizer
-- [ ] `work-order-budgets.e2e.spec.ts` passes
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs use fakes and assert outcomes, including the owner, permission holder and stranger paths of the authorizer
+- [x] `work-order-budgets.e2e.spec.ts` passes
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

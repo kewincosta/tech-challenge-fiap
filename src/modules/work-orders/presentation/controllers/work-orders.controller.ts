@@ -35,6 +35,7 @@ import { AddRequestedServiceCommand } from '../../application/commands/add-reque
 import { AddRequestedServiceHandler } from '../../application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
+import { ApproveBudgetHandler } from '../../application/commands/approve-budget/approve-budget.handler';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
 import { AssignMechanicHandler } from '../../application/commands/assign-mechanic/assign-mechanic.handler';
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
@@ -47,12 +48,14 @@ import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicl
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
 import { PlanPartHandler } from '../../application/commands/plan-part/plan-part.handler';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
+import { RejectBudgetHandler } from '../../application/commands/reject-budget/reject-budget.handler';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
 import { RemoveWorkOrderItemHandler } from '../../application/commands/remove-work-order-item/remove-work-order-item.handler';
 import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
 import { StartDiagnosisHandler } from '../../application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
+import { SubmitSupplementaryBudgetHandler } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
 import {
   WorkOrderSummaryDto,
@@ -92,6 +95,9 @@ export class WorkOrdersController {
     private readonly assignMechanicUseCase: AssignMechanicHandler,
     private readonly startDiagnosisUseCase: StartDiagnosisHandler,
     private readonly completeDiagnosisUseCase: CompleteDiagnosisHandler,
+    private readonly submitSupplementaryBudgetUseCase: SubmitSupplementaryBudgetHandler,
+    private readonly approveBudgetUseCase: ApproveBudgetHandler,
+    private readonly rejectBudgetUseCase: RejectBudgetHandler,
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}
@@ -349,7 +355,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<SubmitSupplementaryBudgetCommand, void>(
+    await this.submitSupplementaryBudgetUseCase.execute(
       new SubmitSupplementaryBudgetCommand(number, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -418,9 +424,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ApproveBudgetCommand, void>(
-      new ApproveBudgetCommand(number, principal.userId),
-    );
+    await this.approveBudgetUseCase.execute(new ApproveBudgetCommand(number, principal.userId));
     return this.getWorkOrderOrThrow(number);
   }
 
@@ -442,9 +446,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<RejectBudgetCommand, void>(
-      new RejectBudgetCommand(number, principal.userId),
-    );
+    await this.rejectBudgetUseCase.execute(new RejectBudgetCommand(number, principal.userId));
     return this.getWorkOrderOrThrow(number);
   }
 

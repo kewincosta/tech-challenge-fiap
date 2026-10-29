@@ -1,5 +1,3 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CUSTOMER_DIRECTORY, WORK_ORDER_ACTORS } from '../../work-orders.tokens';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
 import { CustomerDirectory } from '../ports/customer-directory.port';
@@ -13,11 +11,10 @@ import { WorkOrderActors } from '../ports/work-order-actors.port';
  * `WorkOrderNotFoundError` rather than a forbidden error means the API never confirms a work
  * order number exists to a stranger.
  */
-@Injectable()
 export class BudgetDecisionAuthorizer {
   constructor(
-    @Inject(WORK_ORDER_ACTORS) private readonly actors: WorkOrderActors,
-    @Inject(CUSTOMER_DIRECTORY) private readonly customers: CustomerDirectory,
+    private readonly actors: WorkOrderActors,
+    private readonly customers: CustomerDirectory,
   ) {}
 
   async assertMayDecide(workOrder: WorkOrder, actorUserId: string): Promise<void> {

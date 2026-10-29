@@ -1,21 +1,17 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { BudgetDecisionAuthorizer } from '../../services/budget-decision.authorizer';
 import { ApproveBudgetCommand } from './approve-budget.command';
 
-@CommandHandler(ApproveBudgetCommand)
-export class ApproveBudgetHandler implements ICommandHandler<ApproveBudgetCommand, void> {
+export class ApproveBudgetHandler {
   constructor(
-    @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
+    private readonly workOrders: WorkOrderRepository,
     private readonly authorizer: BudgetDecisionAuthorizer,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: ApproveBudgetCommand): Promise<void> {
@@ -32,6 +28,6 @@ export class ApproveBudgetHandler implements ICommandHandler<ApproveBudgetComman
 
     workOrder.approveBudget({ actorUserId: command.actorUserId, now: this.clock.now() });
     await this.workOrders.save(workOrder);
-    this.eventBus.publishAll(workOrder.pullDomainEvents());
+    this.events.publish(workOrder.pullDomainEvents());
   }
 }

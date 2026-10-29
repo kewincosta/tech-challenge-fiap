@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeCustomerDirectory } from '../../../../../../test/support/fakes/fake-customer-directory';
 import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -11,6 +11,8 @@ import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderServiceItem } from '../../../domain/entities/work-order-service-item';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { BudgetApproved } from '../../../domain/events/budget-approved.event';
+import { ExecutionStarted } from '../../../domain/events/execution-started.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -103,54 +105,60 @@ function buildReceivedWorkOrder(): WorkOrder {
 
 function makeHandler(authorizer: BudgetDecisionAuthorizer) {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
-  const handler = new ApproveBudgetHandler(workOrders, authorizer, new FakeClock(), eventBus.bus);
-  return { handler, workOrders, eventBus };
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const handler = new ApproveBudgetHandler(workOrders, authorizer, clock, events);
+  return { handler, workOrders, clock, events };
 }
 
 describe('ApproveBudgetHandler', () => {
   it('approves the pending round and publishes both recorded events when the authorizer admits the actor', async () => {
     const authorizer = makeAuthorizer({}, CUSTOMER_ID);
-    const { handler, workOrders, eventBus } = makeHandler(authorizer);
+    const { handler, workOrders, clock, events } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval());
 
     await handler.execute(new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID));
 
     const updated = workOrders.workOrders[0];
     expect(updated.status).toBe(WorkOrderStatus.InExecution);
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
-    expect((eventBus.publishAll.mock.calls[0] as unknown[][])[0]).toHaveLength(2);
+    expect(events.published).toEqual([
+      new BudgetApproved(updated.id.value, CUSTOMER_ACTOR_ID, clock.now()),
+      new ExecutionStarted(updated.id.value, CUSTOMER_ACTOR_ID, clock.now()),
+    ]);
   });
 
   it('refuses an actor the authorizer refuses, and never reaches save', async () => {
     const otherCustomerId = '66666666-6666-4666-8666-666666666666';
     const authorizer = makeAuthorizer({}, otherCustomerId);
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
     await workOrders.save(restoreAwaitingApproval());
 
     await expect(
       handler.execute(new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(events.published).toHaveLength(0);
   });
 
   it('refuses an unknown work order before the authorizer is consulted', async () => {
     const authorizer = makeAuthorizer({}, null);
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
 
     await expect(
       handler.execute(new ApproveBudgetCommand('ZZZZZZ-2026', CUSTOMER_ACTOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's wrong-state error travel out untouched", async () => {
     const authorizer = makeAuthorizer({ decidesAnyBudget: true }, null);
-    const { handler, workOrders } = makeHandler(authorizer);
+    const { handler, workOrders, events } = makeHandler(authorizer);
     await workOrders.save(buildReceivedWorkOrder());
 
     await expect(
       handler.execute(new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID)),
     ).rejects.toThrow(WorkOrderStateError);
+    expect(events.published).toHaveLength(0);
   });
 });
