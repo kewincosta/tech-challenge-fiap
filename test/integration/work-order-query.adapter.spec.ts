@@ -1,8 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
+import { CustomerKeyResolver } from '../../src/modules/customers';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { InventoryItemKeyResolver } from '../../src/modules/inventory';
+import { ServiceKeyResolver } from '../../src/modules/services';
+import { VehicleKeyResolver } from '../../src/modules/vehicles';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
+import { BudgetId } from '../../src/modules/work-orders/domain/value-objects/budget-id';
 import { PlannedQuantity } from '../../src/modules/work-orders/domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
@@ -13,6 +19,25 @@ import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infr
 import { createTestDataSource } from '../support/db';
 import { buildWorkOrderRepository } from '../support/work-order-adapters';
 
+// Records which method of which key resolver the adapter calls, so a spec can show that a request
+// reads each owner in one batch call.
+const calls: string[] = [];
+
+function recorded<T extends object>(owner: string, resolver: T): T {
+  return new Proxy(resolver, {
+    get(target, property, receiver) {
+      const member: unknown = Reflect.get(target, property, receiver);
+      if (typeof member !== 'function') {
+        return member;
+      }
+      return (...args: unknown[]): unknown => {
+        calls.push(`${owner}.${String(property)}`);
+        return (member as (...methodArgs: unknown[]) => unknown).apply(target, args);
+      };
+    },
+  });
+}
+
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
 let queryAdapter: TypeOrmWorkOrderQueryAdapter;
@@ -21,7 +46,18 @@ beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
   repository = buildWorkOrderRepository(dataSource);
-  queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);
+  queryAdapter = new TypeOrmWorkOrderQueryAdapter(
+    dataSource,
+    recorded('customers', new CustomerKeyResolver(dataSource)),
+    recorded('vehicles', new VehicleKeyResolver(dataSource)),
+    recorded('users', new UserKeyResolver(dataSource)),
+    recorded('services', new ServiceKeyResolver(dataSource)),
+    recorded('inventoryItems', new InventoryItemKeyResolver(dataSource)),
+  );
+});
+
+beforeEach(() => {
+  calls.length = 0;
 });
 
 afterAll(async () => {
@@ -152,6 +188,54 @@ function openWorkOrder(
     budgetDecidedByUserId: null,
     executionStartedAt: null,
   });
+}
+
+interface Extras {
+  creator: SeededRef;
+  mechanic: SeededRef;
+  decider: SeededRef;
+  services: SeededRef[];
+  parts: SeededRef[];
+}
+
+/** Takes a received work order through diagnosis to an approved budget, with the given items. */
+function withItemsAndDecidedBudget(workOrder: WorkOrder, extras: Extras): WorkOrder {
+  const now = new Date();
+  workOrder.startDiagnosis({ actorUserId: extras.creator.externalId, now });
+  for (const service of extras.services) {
+    workOrder.addService({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: extras.creator.externalId,
+      now,
+    });
+  }
+  for (const part of extras.parts) {
+    workOrder.planPart({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      inventoryItemId: part.externalId,
+      sku: 'FLT-001',
+      itemName: 'Filtro de oleo',
+      unitPrice: Money.fromCents(2500),
+      plannedQuantity: PlannedQuantity.create(2),
+      actorUserId: extras.creator.externalId,
+      now,
+    });
+  }
+  workOrder.assignMechanic({
+    mechanicUserId: extras.mechanic.externalId,
+    actorUserId: extras.creator.externalId,
+    now,
+  });
+  workOrder.completeDiagnosis({
+    budgetId: BudgetId.create(randomUUID()),
+    actorUserId: extras.creator.externalId,
+    now,
+  });
+  workOrder.approveBudget({ actorUserId: extras.decider.externalId, now });
+  return workOrder;
 }
 
 describe('TypeOrmWorkOrderQueryAdapter', () => {
@@ -374,5 +458,164 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     const listed = await queryAdapter.listByCustomerId(first.customer.externalId);
 
     expect(listed.map((row) => row.id)).toEqual([firstWorkOrder.id.value]);
+  });
+
+  it('should show no assigned mechanic on a work order that has none', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+
+    const found = await queryAdapter.getByNumber(workOrder.number.value);
+
+    expect(found?.assignedMechanicUserId).toBeNull();
+    expect(found?.createdByUserId).toBe(fixture.creator.externalId);
+  });
+
+  it('should return an empty list for a customer that does not exist', async () => {
+    expect(await queryAdapter.listByCustomerId(randomUUID())).toEqual([]);
+  });
+
+  // A request translates the keys of every row it returns in one batch call per owner, however many
+  // work orders, items and users the rows hold.
+  it('should show every customer, vehicle, user, service and part of a work order as its own, with the items in the order they were added', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const mechanic = await insertUser();
+    const decider = await insertUser();
+    const services = [await insertService(), await insertService()];
+    const parts = [await insertInventoryItem(), await insertInventoryItem()];
+    const workOrder = withItemsAndDecidedBudget(openWorkOrder(fixture), {
+      creator: fixture.creator,
+      mechanic,
+      decider,
+      services,
+      parts,
+    });
+    await repository.save(workOrder);
+
+    const found = await queryAdapter.getByNumber(workOrder.number.value);
+
+    expect(found).toMatchObject({
+      customerId: fixture.customer.externalId,
+      vehicleId: fixture.vehicle.externalId,
+      createdByUserId: fixture.creator.externalId,
+      assignedMechanicUserId: mechanic.externalId,
+    });
+    expect(found?.serviceItems.map((item) => item.serviceId)).toEqual(
+      services.map((service) => service.externalId),
+    );
+    expect(found?.partItems.map((item) => item.inventoryItemId)).toEqual(
+      parts.map((part) => part.externalId),
+    );
+    expect(found?.budgets.map((budget) => budget.decidedByUserId)).toEqual([decider.externalId]);
+    expect([...calls].sort()).toEqual([
+      'customers.toExternalIds',
+      'inventoryItems.toExternalIds',
+      'services.toExternalIds',
+      'users.toExternalIds',
+      'vehicles.toExternalIds',
+    ]);
+  });
+
+  it("should show each work order of a list with its own customer's vehicle, users, services and parts, in one batch call per owner", async () => {
+    const first = await seedWorkOrderRefs();
+    const second: Fixture = {
+      creator: await insertUser(),
+      customer: first.customer,
+      vehicle: await insertVehicle(first.customer.internalId),
+    };
+    const firstExtras = {
+      creator: first.creator,
+      mechanic: await insertUser(),
+      decider: await insertUser(),
+      services: [await insertService()],
+      parts: [await insertInventoryItem()],
+    };
+    const secondExtras = {
+      creator: second.creator,
+      mechanic: await insertUser(),
+      decider: await insertUser(),
+      services: [await insertService(), await insertService()],
+      parts: [await insertInventoryItem(), await insertInventoryItem()],
+    };
+    const firstWorkOrder = withItemsAndDecidedBudget(openWorkOrder(first), firstExtras);
+    const secondWorkOrder = withItemsAndDecidedBudget(openWorkOrder(second), secondExtras);
+    await repository.save(firstWorkOrder);
+    await repository.save(secondWorkOrder);
+
+    const listed = await queryAdapter.listByCustomerId(first.customer.externalId);
+
+    const shown = (workOrder: WorkOrder, fixture: Fixture, extras: typeof firstExtras) => ({
+      id: workOrder.id.value,
+      customerId: fixture.customer.externalId,
+      vehicleId: fixture.vehicle.externalId,
+      createdByUserId: fixture.creator.externalId,
+      assignedMechanicUserId: extras.mechanic.externalId,
+      services: extras.services.map((service) => service.externalId),
+      parts: extras.parts.map((part) => part.externalId),
+      deciders: [extras.decider.externalId],
+    });
+    expect(
+      listed
+        .map((row) => ({
+          id: row.id,
+          customerId: row.customerId,
+          vehicleId: row.vehicleId,
+          createdByUserId: row.createdByUserId,
+          assignedMechanicUserId: row.assignedMechanicUserId,
+          services: row.serviceItems.map((item) => item.serviceId),
+          parts: row.partItems.map((item) => item.inventoryItemId),
+          deciders: row.budgets.map((budget) => budget.decidedByUserId),
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    ).toEqual(
+      [
+        shown(firstWorkOrder, first, firstExtras),
+        shown(secondWorkOrder, second, secondExtras),
+      ].sort((a, b) => a.id.localeCompare(b.id)),
+    );
+    expect([...calls].sort()).toEqual([
+      'customers.toExternalIds',
+      'customers.toInternalId',
+      'inventoryItems.toExternalIds',
+      'services.toExternalIds',
+      'users.toExternalIds',
+      'vehicles.toExternalIds',
+    ]);
+  });
+
+  it('should show each trail entry with its own actor, and none for an entry written without one', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const other = await insertUser();
+    const service = await insertService();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+    const reloaded = await repository.findByNumber(workOrder.number);
+    reloaded!.addService({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: other.externalId,
+      now: new Date(Date.now() + 1000),
+    });
+    await repository.save(reloaded!);
+    const [workOrderRow]: Array<{ id: string }> = await dataSource.query(
+      `SELECT id FROM work_orders WHERE external_id = $1`,
+      [workOrder.id.value],
+    );
+    await dataSource.query(
+      `INSERT INTO work_order_events (external_id, work_order_id, event_type, actor_user_id, occurred_at)
+       VALUES (gen_random_uuid(), $1, 'SERVICE_ADDED_TO_WORK_ORDER', NULL, $2)`,
+      [workOrderRow.id, new Date(Date.now() + 2000)],
+    );
+
+    const trail = await queryAdapter.listTrail(workOrder.number.value);
+
+    expect(trail.map((entry) => entry.actorUserId)).toEqual([
+      fixture.creator.externalId,
+      other.externalId,
+      null,
+    ]);
+    expect(calls).toEqual(['users.toExternalIds']);
   });
 });

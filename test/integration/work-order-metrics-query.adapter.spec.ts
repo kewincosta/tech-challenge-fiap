@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import { ServiceKeyResolver } from '../../src/modules/services';
 import type { AverageExecutionTimeFilter } from '../../src/modules/work-orders/application/ports/work-order-metrics-query.port';
 import { TypeOrmWorkOrderMetricsQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-metrics-query.adapter';
 import { createTestDataSource } from '../support/db';
@@ -11,7 +12,7 @@ let adapter: TypeOrmWorkOrderMetricsQueryAdapter;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  adapter = new TypeOrmWorkOrderMetricsQueryAdapter(dataSource);
+  adapter = new TypeOrmWorkOrderMetricsQueryAdapter(dataSource, new ServiceKeyResolver(dataSource));
 });
 
 afterAll(async () => {
@@ -370,5 +371,28 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
     expect(Number.isInteger(result.averageSeconds)).toBe(true);
     expect(result.averageSeconds).toBe(3601);
+  });
+
+  it('answers zero with a count of zero for a service that does not exist, not the average of every service', async () => {
+    const fixture = await seedRefs();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
+    await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
+      status: 'COMPLETED',
+      executionStartedAt: addSeconds(day, 0),
+      completedAt: addSeconds(day, 3600),
+    });
+    const window = { completedFrom: addSeconds(day, -1), completedTo: addSeconds(day, 86400) };
+
+    expect(await adapter.averageExecutionTime(window)).toEqual({
+      averageSeconds: 3600,
+      workOrderCount: 1,
+    });
+    expect(await adapter.averageExecutionTime({ ...window, serviceId: randomUUID() })).toEqual({
+      averageSeconds: 0,
+      workOrderCount: 0,
+    });
   });
 });

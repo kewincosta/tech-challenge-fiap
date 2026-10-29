@@ -10,7 +10,10 @@ import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-obje
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
-import { buildWorkOrderRepository } from '../support/work-order-adapters';
+import {
+  buildWorkOrderQueryAdapter,
+  buildWorkOrderRepository,
+} from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
@@ -20,7 +23,7 @@ beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
   repository = buildWorkOrderRepository(dataSource);
-  queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);
+  queryAdapter = buildWorkOrderQueryAdapter(dataSource);
 });
 
 afterAll(async () => {

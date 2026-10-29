@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ServiceKeyResolver } from '../../../services';
 import {
   AverageExecutionTimeAggregate,
   AverageExecutionTimeFilter,
@@ -27,13 +28,12 @@ const AVERAGE_EXECUTION_TIME_SQL = `
      AND wo.execution_started_at IS NOT NULL
      AND wo.completed_at IS NOT NULL
      AND (
-       $1::uuid IS NULL
+       $1::bigint IS NULL
        OR EXISTS (
          SELECT 1
            FROM work_order_services wos
-           JOIN services s ON s.id = wos.service_id
           WHERE wos.work_order_id = wo.id
-            AND s.external_id = $1
+            AND wos.service_id = $1
        )
      )
      AND ($2::timestamptz IS NULL OR wo.completed_at >= $2)
@@ -42,13 +42,25 @@ const AVERAGE_EXECUTION_TIME_SQL = `
 
 @Injectable()
 export class TypeOrmWorkOrderMetricsQueryAdapter implements WorkOrderMetricsQueryPort {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly serviceKeys: ServiceKeyResolver,
+  ) {}
 
   async averageExecutionTime(
     filter: AverageExecutionTimeFilter,
   ): Promise<AverageExecutionTimeAggregate> {
+    // The service filter is the services module's key, so it is translated first (AD-013). A
+    // service that does not exist is carried by no work order.
+    let serviceInternalId: string | null = null;
+    if (filter.serviceId !== undefined) {
+      serviceInternalId = await this.serviceKeys.toInternalId(filter.serviceId);
+      if (serviceInternalId === null) {
+        return { averageSeconds: 0, workOrderCount: 0 };
+      }
+    }
     const rows: AverageRow[] = await this.dataSource.query(AVERAGE_EXECUTION_TIME_SQL, [
-      filter.serviceId ?? null,
+      serviceInternalId,
       filter.completedFrom ?? null,
       filter.completedTo ?? null,
     ]);

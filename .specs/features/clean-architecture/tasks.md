@@ -1253,10 +1253,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Both adapters' SQL names only work-orders tables; the known table findings file is empty
-- [ ] `work-order-query.adapter.spec.ts`, `work-order-read-queries.spec.ts`, `work-order-budgets.query.spec.ts` and `work-order-metrics-query.adapter.spec.ts` pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] Both adapters' SQL names only work-orders tables; the known table findings file is empty
+- [x] `work-order-query.adapter.spec.ts`, `work-order-read-queries.spec.ts`, `work-order-budgets.query.spec.ts` and `work-order-metrics-query.adapter.spec.ts` pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full
