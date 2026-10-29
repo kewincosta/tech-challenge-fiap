@@ -149,7 +149,7 @@ T20 → T21 → T22
 ### Phase 7: Inventory reads work order data through the inversion (design phase 6)
 
 ```
-T23 → T24 → T25
+T23 → T24 → T25 → T62
 ```
 
 ### Phase 8: Cross-module calls through consumer ports (design phase 7, part 1)
@@ -957,6 +957,34 @@ T58 → T59 → T60
 **Gate**: full
 
 **Commit**: `refactor(inventory): stop querying other modules' tables in the repository`
+
+---
+
+#### T62: Repositories join the transaction they open
+
+**What**: When the inventory or the work order repository opens its own transaction, it publishes the manager as the ambient one, so every key resolver and `WorkOrderReads` call inside it joins that transaction and holds no second connection. Added after batch 6 found that two concurrent stock saves outside a transaction exhaust a pool of two connections; the application's pool of ten has no connection timeout, so ten concurrent saves would wait forever. It runs before T39.
+**Where**: `src/shared/infrastructure/database/typeorm-transaction-runner.ts`, `src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts`, `src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository.ts`
+**Depends on**: T25
+**Reuses**: The `AsyncLocalStorage` context of `TypeOrmTransactionRunner` (AD-008)
+**Requirement**: CA-03
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] Both repositories open their own transaction through one shared helper that publishes the manager as the ambient one, and no adapter opens a transaction any other way while it calls a resolver or another module inside it
+- [ ] `test/integration/repository-own-transaction.spec.ts` runs two concurrent inventory saves outside any transaction on a data source whose pool holds two connections and has a connection timeout, and both complete; the case fails without the helper (checked by hand in a scratch copy)
+- [ ] The comments in the changed files that still describe cross-module calls through the bus describe the ports
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: integration total grows by the new cases
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `fix(shared): make a repository's own transaction the ambient one`
 
 ---
 
@@ -1953,7 +1981,7 @@ Phase 3:  T11
 Phase 4:  T12 → T13
 Phase 5:  T14 → T15 → T16 → T17 → T18 → T19
 Phase 6:  T20 → T21 → T22
-Phase 7:  T23 → T24 → T25
+Phase 7:  T23 → T24 → T25 → T62
 Phase 8:  T26 → T27 → T28 → T29 → T30 → T31
 Phase 9:  T32 → T33 → T34 → T35 → T36
 Phase 10: T37 → T38
@@ -2000,6 +2028,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T23 | T22 (phase 6); T18 (phase 5) | Phase 7 start | ✅ Match |
 | T24 | T23; T14 (phase 5) | T23 → T24 | ✅ Match |
 | T25 | T24 | T24 → T25 | ✅ Match |
+| T62 | T25 | T25 → T62 | ✅ Match |
 | T26 | T25 (phase 7); T17 (phase 5) | Phase 8 start | ✅ Match |
 | T27 | T26 | T26 → T27 | ✅ Match |
 | T28 | T27; T14 (phase 5) | T27 → T28 | ✅ Match |
@@ -2066,6 +2095,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T23: Work order reads | Repository-level adapter | integration | integration | ✅ OK |
 | T24: Inventory queries | Query adapter | integration | integration | ✅ OK |
 | T25: Inventory repository | Repository | integration | integration | ✅ OK |
+| T62: Own transaction | Repositories, transaction context | integration | integration | ✅ OK |
 | T26: Catalogs | Gateways, use cases | unit | unit | ✅ OK |
 | T27: Stock ledger | Gateway, use cases | unit | unit | ✅ OK |
 | T28: Actors | Gateway, use cases | unit | unit | ✅ OK |

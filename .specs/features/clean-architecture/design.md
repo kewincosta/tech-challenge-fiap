@@ -187,7 +187,7 @@ export class CreateWorkOrderUseCase {
   - `toExternalId(internalId: string): Promise<string | null>`
   - `toInternalIds(externalIds: string[]): Promise<Map<string, string>>`
   - `toExternalIds(internalIds: string[]): Promise<Map<string, string>>`
-- **Dependencies**: `DataSource`; `currentEntityManager()` first, so a row written earlier in the caller's transaction resolves (CA-03 AC13)
+- **Dependencies**: `DataSource`; `currentEntityManager()` first, so a row written earlier in the caller's transaction resolves (CA-03 AC13). A repository that opens its own transaction publishes its manager as the ambient one, so the resolvers it calls join that transaction and never hold a second connection
 - **Reuses**: the SQL of today's private helpers; a missing row yields `null`, and the calling repository keeps throwing the plain `Error` it throws today
 
 ### C5. Owner read API for the customer listing

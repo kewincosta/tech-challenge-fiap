@@ -213,15 +213,15 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 (T32 to T38) dispatched.
-- **Completed**: T1 to T31 and T61. Totals after batch 5: unit 1055, integration 310, e2e 243 (baseline 955, 239, 203). Baselines: 186 dependency violations (core-no-frameworks 165, through-public-api 19, core-stays-in-module 1, no-circular 1), 11 table findings, no module cycle.
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 (T62, then T39 to T41) dispatched.
+- **Completed**: T1 to T38 and T61. Totals after batch 6: unit 1055, integration 336, e2e 243 (baseline 955, 239, 203). Baselines: 172 dependency violations (core-no-frameworks 155, through-public-api 16, core-stays-in-module 0, no-circular 1), 0 table findings, no module cycle.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 6's compact summary, then dispatch batch 7 (T39 to T41).
+- **Next step**: read batch 7's compact summary, then dispatch batch 8 (T42 to T46).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
 
-**Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13 plus T61, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
+**Batch plan** (whole phases, run in sequence; the Verifier runs after batch 11): 1 = T1-T7, 2 = T8-T13 plus T61, 3 = T14-T19, 4 = T20-T25, 5 = T26-T31, 6 = T32-T38, 7 = T62 and T39-T41, 8 = T42-T46, 9 = T47-T50, 10 = T51-T55, 11 = T56-T60. Batches 7 to 10 are smaller than the ~7-task budget because each of their tasks migrates several use cases.
 
 **Fix outside the task list**: `listTrail` (`typeorm-work-order-query.adapter.ts:160`) orders by `we.occurred_at` alone. Events written with the same timestamp come back in either order, so the chronological trail case in `test/e2e/work-order-budgets.e2e.spec.ts` flakes, also on a clean checkout of `51a3a8a`. Commit `6cdf869` adds `we.id` (a `bigserial`) as the tie-breaker, with a regression case in `test/integration/work-order-query.adapter.spec.ts`. T36 and T54 keep the tie-breaker. The Verifier treats that commit as part of the diff range.
 
@@ -264,6 +264,18 @@ entry. They apply to every feature.
 - `FakeTransactionRunner` has a read-only `active` flag, so a spec can prove a call ran inside the transaction.
 - T27 re-wrapped two pre-existing comments that use a spaced hyphen as a dash, in `cancel-work-order.handler.ts` and `return-parts.handler.ts`. T51 to T53 reword them when they rewrite those files.
 - `npm run seed` dispatches its commands through the bus until T56. Once T37 turns the services handlers into use cases, the seed fails at runtime with no handler for its first command, and it stays broken until T56. No test runs it before T56, so each task only keeps it compiling.
+
+**Plan change after batch 6**: T62 joins phase 7. `TypeOrmInventoryItemRepository` opens its own transaction when no ambient one exists and then calls `UserKeyResolver` and `WorkOrderReads`, which take a second pool connection. Batch 6 proved it with a pool of two: one of two concurrent saves timed out. The application's pool of ten has no connection timeout, so ten concurrent saves would wait forever. T62 makes a repository's own transaction the ambient one, in the inventory and the work order repository, with a regression case on a two-connection pool. Design C4 now says so.
+
+**Facts from batch 6 that later tasks build on**:
+
+- No module queries another module's table: `known-table-findings.json` is `[]` and no `application` file imports another module.
+- T35 resolves every foreign key in one batch per owner before the work order repository opens its transaction. T36 reads the items and budgets of all listed work orders with `ANY` and orders items by `id`.
+- A composed read leaves out a row whose referenced key is missing, as the inner joins did; the foreign keys make that unreachable. The metrics adapter answers `{ averageSeconds: 0, workOrderCount: 0 }` for an unknown service filter.
+- T33 moved the document parsing out of the list handler. Its spec now asserts that the handler passes the document as typed, and the normalization and the malformed answer are asserted in `find-users.use-case.spec.ts`, the adapter's integration cases and the T6 e2e.
+- `GET /customers?name=` with an empty string reads every user before the customers. The answer is the same as before, at a higher cost, and no test covers that input. T47 can treat an empty name as no filter.
+- T37 changed the get-service unit cases and two cases of `test/integration/service-read-queries.spec.ts` from `null` to `ServiceNotFoundError`, as design C10 moves the not-found into the use case. `ServiceCatalogGateway`'s `null` branch is unreachable with the real provider, and its T26 spec case still pins it.
+- `identity/index.ts` also exports `RequirePermissions`. `test/support/work-order-adapters.ts` builds the work order repository and query adapter with the real resolvers.
 
 **Plan change after batch 4**: 78 `core-stays-in-module` entries are left, and phase 8 removes all of them except `list-customers.handler.ts` importing identity's `PersonDocument`, which T33 removes. T31's bullet now names that exception, and T33 checks that no `application` file imports another module.
 
