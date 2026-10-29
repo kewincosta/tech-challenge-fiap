@@ -802,10 +802,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] `src/modules/work-orders/domain/repositories/` no longer exists
-- [ ] No file under `src/modules/work-orders/domain` or `application` declares a `Symbol`
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: all three totals unchanged
+- [x] `src/modules/work-orders/domain/repositories/` no longer exists
+- [x] No file under `src/modules/work-orders/domain` or `application` declares a `Symbol`
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: all three totals unchanged
 
 **Tests**: none
 **Gate**: build

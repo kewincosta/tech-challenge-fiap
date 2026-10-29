@@ -9,10 +9,8 @@ import { GetInventoryItemQuery } from '../../../../inventory/application/queries
 import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';

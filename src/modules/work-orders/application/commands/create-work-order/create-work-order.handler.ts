@@ -13,16 +13,11 @@ import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenc
 import { ReferencedVehicleNotFoundError } from '../../../domain/errors/referenced-vehicle-not-found.error';
 import { VehicleNotOwnedByCustomerError } from '../../../domain/errors/vehicle-not-owned-by-customer.error';
 import { WorkOrderNumberTakenError } from '../../../domain/errors/work-order-number-taken.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_NUMBER_GENERATOR, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
-import {
-  WORK_ORDER_NUMBER_GENERATOR,
-  WorkOrderNumberGenerator,
-} from '../../ports/work-order-number-generator.port';
+import { WorkOrderNumberGenerator } from '../../ports/work-order-number-generator.port';
 import { CreatedWorkOrderDto, CreateWorkOrderCommand } from './create-work-order.command';
 
 const ACTIVE_STATUS = 'ACTIVE';

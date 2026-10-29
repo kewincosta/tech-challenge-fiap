@@ -9,10 +9,8 @@ import { GetServiceQuery } from '../../../../services/application/queries/get-se
 import { ReferencedServiceNotFoundError } from '../../../domain/errors/referenced-service-not-found.error';
 import { ServiceInactiveError } from '../../../domain/errors/service-inactive.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { AddRequestedServiceCommand } from './add-requested-service.command';

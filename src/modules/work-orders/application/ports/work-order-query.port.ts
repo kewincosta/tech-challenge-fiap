@@ -76,5 +76,3 @@ export interface WorkOrderQueryPort {
   /** Chronological order. Existence of the work order is the caller's concern, not this port's. */
   listTrail(number: string): Promise<WorkOrderTrailEntryDto[]>;
 }
-
-export const WORK_ORDER_QUERY_PORT = Symbol('WorkOrderQueryPort');

@@ -1,5 +1,5 @@
 import { WorkOrder } from '../../../src/modules/work-orders/domain/entities/work-order';
-import { WorkOrderRepository } from '../../../src/modules/work-orders/domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../../src/modules/work-orders/application/ports/work-order.repository';
 import { WorkOrderNumber } from '../../../src/modules/work-orders/domain/value-objects/work-order-number';
 
 export class InMemoryWorkOrderRepository implements WorkOrderRepository {

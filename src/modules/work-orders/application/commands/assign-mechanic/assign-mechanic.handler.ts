@@ -9,10 +9,8 @@ import { GetUserByIdQuery } from '../../../../identity/users/application/queries
 import { AssignedMechanicNotFoundError } from '../../../domain/errors/assigned-mechanic-not-found.error';
 import { AssignedUserNotMechanicError } from '../../../domain/errors/assigned-user-not-mechanic.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { AssignMechanicCommand } from './assign-mechanic.command';
 

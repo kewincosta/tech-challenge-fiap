@@ -2,11 +2,8 @@ import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryBus, QueryHandler } from '@nestjs/cqrs';
 import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
 import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
-import {
-  WORK_ORDER_QUERY_PORT,
-  WorkOrderQueryPort,
-  WorkOrderSummaryDto,
-} from '../../ports/work-order-query.port';
+import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
+import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetMyWorkOrdersQuery } from './get-my-work-orders.query';
 
 /** `GetMyVehiclesHandler`'s exact shape: resolve the customer, empty list when there is none. */

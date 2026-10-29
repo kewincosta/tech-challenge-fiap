@@ -4,10 +4,8 @@ import { Money } from '../../../../../shared/domain/value-objects/money';
 import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { ApplyDiscountCommand } from './apply-discount.command';
 

@@ -1,11 +1,8 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
-import {
-  WORK_ORDER_QUERY_PORT,
-  WorkOrderQueryPort,
-  WorkOrderSummaryDto,
-} from '../../ports/work-order-query.port';
+import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
+import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetWorkOrderQuery } from './get-work-order.query';
 
 @QueryHandler(GetWorkOrderQuery)

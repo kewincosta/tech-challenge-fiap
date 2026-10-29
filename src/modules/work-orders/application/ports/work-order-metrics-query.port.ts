@@ -30,5 +30,3 @@ export interface AverageExecutionTimeDto extends AverageExecutionTimeAggregate {
 export interface WorkOrderMetricsQueryPort {
   averageExecutionTime(filter: AverageExecutionTimeFilter): Promise<AverageExecutionTimeAggregate>;
 }
-
-export const WORK_ORDER_METRICS_QUERY_PORT = Symbol('WorkOrderMetricsQueryPort');

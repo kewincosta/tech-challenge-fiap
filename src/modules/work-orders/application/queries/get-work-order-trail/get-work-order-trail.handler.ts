@@ -1,10 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import {
-  WORK_ORDER_QUERY_PORT,
-  WorkOrderQueryPort,
-  WorkOrderTrailEntryDto,
-} from '../../ports/work-order-query.port';
+import { WorkOrderQueryPort, WorkOrderTrailEntryDto } from '../../ports/work-order-query.port';
+import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetWorkOrderTrailQuery } from './get-work-order-trail.query';
 
 /**

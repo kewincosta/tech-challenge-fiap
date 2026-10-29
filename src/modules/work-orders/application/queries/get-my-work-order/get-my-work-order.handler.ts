@@ -3,11 +3,8 @@ import { IQueryHandler, QueryBus, QueryHandler } from '@nestjs/cqrs';
 import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
 import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
-import {
-  WORK_ORDER_QUERY_PORT,
-  WorkOrderQueryPort,
-  WorkOrderSummaryDto,
-} from '../../ports/work-order-query.port';
+import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
+import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetMyWorkOrderQuery } from './get-my-work-order.query';
 
 /**

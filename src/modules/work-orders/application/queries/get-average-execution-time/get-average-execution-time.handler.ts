@@ -2,9 +2,9 @@ import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import {
   AverageExecutionTimeDto,
-  WORK_ORDER_METRICS_QUERY_PORT,
   WorkOrderMetricsQueryPort,
 } from '../../ports/work-order-metrics-query.port';
+import { WORK_ORDER_METRICS_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetAverageExecutionTimeQuery } from './get-average-execution-time.query';
 
 /**

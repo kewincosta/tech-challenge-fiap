@@ -14,7 +14,7 @@ import { ReferencedVehicleNotFoundError } from '../../../domain/errors/reference
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../../domain/errors/vehicle-already-has-active-work-order.error';
 import { VehicleNotOwnedByCustomerError } from '../../../domain/errors/vehicle-not-owned-by-customer.error';
 import { WorkOrderNumberTakenError } from '../../../domain/errors/work-order-number-taken.error';
-import { WorkOrderRepository } from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
 import { WorkOrderNumberGenerator } from '../../ports/work-order-number-generator.port';
 import { CreateWorkOrderCommand } from './create-work-order.command';
 import { CreateWorkOrderHandler } from './create-work-order.handler';

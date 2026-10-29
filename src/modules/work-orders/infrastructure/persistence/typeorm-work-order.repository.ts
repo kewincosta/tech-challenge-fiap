@@ -9,7 +9,7 @@ import { WorkOrder } from '../../domain/entities/work-order';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../domain/errors/vehicle-already-has-active-work-order.error';
 import { WorkOrderNumberTakenError } from '../../domain/errors/work-order-number-taken.error';
 import { WorkOrderTrailEvent } from '../../domain/events/work-order-trail.event';
-import { WorkOrderRepository } from '../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../application/ports/work-order.repository';
 import { WorkOrderNumber } from '../../domain/value-objects/work-order-number';
 import { WorkOrderMapper } from './work-order.mapper';
 import { WorkOrderBudgetOrmEntity } from './work-order-budget.orm-entity';

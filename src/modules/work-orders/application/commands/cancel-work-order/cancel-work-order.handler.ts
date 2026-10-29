@@ -5,10 +5,8 @@ import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { WriteOffStockMovementsCommand } from '../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { CancellationAuthorizer } from '../../services/cancellation.authorizer';
 import { CancelWorkOrderCommand } from './cancel-work-order.command';

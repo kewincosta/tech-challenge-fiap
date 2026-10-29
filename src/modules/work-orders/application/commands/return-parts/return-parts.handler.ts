@@ -5,10 +5,8 @@ import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { RestoreStockBatchCommand } from '../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { ReturnPartsCommand } from './return-parts.command';

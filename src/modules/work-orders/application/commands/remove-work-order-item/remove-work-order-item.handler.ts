@@ -3,10 +3,8 @@ import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
-import {
-  WORK_ORDER_REPOSITORY,
-  WorkOrderRepository,
-} from '../../../domain/repositories/work-order.repository';
+import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { RemoveWorkOrderItemCommand } from './remove-work-order-item.command';

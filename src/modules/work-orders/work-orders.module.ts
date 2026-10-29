@@ -16,9 +16,12 @@ import { ReturnPartsHandler } from './application/commands/return-parts/return-p
 import { StartDiagnosisHandler } from './application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
 import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
-import { WORK_ORDER_METRICS_QUERY_PORT } from './application/ports/work-order-metrics-query.port';
-import { WORK_ORDER_NUMBER_GENERATOR } from './application/ports/work-order-number-generator.port';
-import { WORK_ORDER_QUERY_PORT } from './application/ports/work-order-query.port';
+import {
+  WORK_ORDER_METRICS_QUERY_PORT,
+  WORK_ORDER_NUMBER_GENERATOR,
+  WORK_ORDER_QUERY_PORT,
+  WORK_ORDER_REPOSITORY,
+} from './work-orders.tokens';
 import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
 import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
 import { GetMyWorkOrdersHandler } from './application/queries/get-my-work-orders/get-my-work-orders.handler';
@@ -28,7 +31,6 @@ import { ListWorkOrdersHandler } from './application/queries/list-work-orders/li
 import { BudgetDecisionAuthorizer } from './application/services/budget-decision.authorizer';
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
-import { WORK_ORDER_REPOSITORY } from './domain/repositories/work-order.repository';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
