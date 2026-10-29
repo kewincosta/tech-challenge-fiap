@@ -432,11 +432,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Rules `no-circular`, `core-no-frameworks`, `core-stays-in-module`, `through-public-api`, `inward-only` and `shared-is-a-leaf` are in the config, counting type-only imports
-- [ ] `.dependency-cruiser-known-violations.json` holds today's violations; `npm run lint` runs `depcruise src --ignore-known` through a `lint:architecture` script and passes
-- [ ] `test/architecture/dependency-rules.spec.ts` cruises fixture trees and asserts that each rule reports its fixture; the unit config includes `test/architecture/**/*.spec.ts`; fixtures are excluded from ESLint and `tsc`
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total grows by the rule cases
+- [x] Rules `no-circular`, `core-no-frameworks`, `core-stays-in-module`, `through-public-api`, `inward-only` and `shared-is-a-leaf` are in the config, counting type-only imports
+- [x] `.dependency-cruiser-known-violations.json` holds today's violations; `npm run lint` runs `depcruise src --ignore-known` through a `lint:architecture` script and passes
+- [x] `test/architecture/dependency-rules.spec.ts` cruises fixture trees and asserts that each rule reports its fixture; the unit config includes `test/architecture/**/*.spec.ts`; fixtures are excluded from ESLint and `tsc`
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total grows by the rule cases
 
 **Tests**: unit
 **Gate**: build

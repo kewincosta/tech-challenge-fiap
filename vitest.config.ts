@@ -1,9 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { swcPlugin } from './vitest.base';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts', 'security/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'security/**/*.spec.ts', 'test/architecture/**/*.spec.ts'],
+    // The fixture trees hold files named like specs on purpose, to prove the rules reach specs.
+    exclude: [...configDefaults.exclude, 'test/architecture/fixtures/**'],
     environment: 'node',
     setupFiles: ['./test/support/setup-tests.ts'],
     coverage: {
