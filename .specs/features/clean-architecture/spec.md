@@ -126,7 +126,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 4. WHEN a use case needs data or an action owned by another module THEN the system SHALL reach it through a port declared in the consuming module's `application/ports` and implemented in the consuming module's `infrastructure`.
 5. The system SHALL hold `users`, `authentication` and `authorization` under `src/modules/identity`, wired by one Nest module.
 6. The system SHALL contain no reference to `CommandBus`, `QueryBus` or `@nestjs/cqrs` in `src`, `test` or `scripts`, and no `@nestjs/cqrs` dependency in `package.json`.
-7. The system SHALL add to `src/shared` only the domain event publisher port, its in-memory dispatcher and their specs.
+7. The system SHALL add to `src/shared` only the domain event publisher port, its in-memory dispatcher, their specs, and the file that receives the shared injection tokens moved out of `shared/application`.
 8. The system SHALL write only to tables owned by the module whose adapter issues the write.
 9. The system SHALL run no query, in any module's adapter, that reads a table another module owns.
 10. WHEN an adapter needs to translate between the UUID and the internal key of a row another module owns THEN the system SHALL obtain the translation from that module's key resolver.
@@ -264,15 +264,15 @@ Each requirement gets a unique ID for tracking across design, tasks, and validat
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CA-01 | P1: The core runs without the framework | - | Pending |
-| CA-02 | P1: Every route answers exactly as before | - | Pending |
-| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | - | Pending |
-| CA-04 | P1: The build enforces the architecture | - | Pending |
-| CA-05 | P1: Use case tests exercise real collaborators | - | Pending |
-| CA-06 | P1: A second entry point reuses the use cases | - | Pending |
-| CA-07 | P1: The decisions and extra choices are recorded | - | Pending |
-| CA-08 | P2: Use cases carry the use case name | - | Pending |
-| CA-09 | P2: The documentation matches the new structure | - | Pending |
+| CA-01 | P1: The core runs without the framework | Design | In Design |
+| CA-02 | P1: Every route answers exactly as before | Design | In Design |
+| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | Design | In Design |
+| CA-04 | P1: The build enforces the architecture | Design | In Design |
+| CA-05 | P1: Use case tests exercise real collaborators | Design | In Design |
+| CA-06 | P1: A second entry point reuses the use cases | Design | In Design |
+| CA-07 | P1: The decisions and extra choices are recorded | Design | In Design |
+| CA-08 | P2: Use cases carry the use case name | Design | In Design |
+| CA-09 | P2: The documentation matches the new structure | Design | In Design |
 
 **ID format:** `CA-NN`
 

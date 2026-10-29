@@ -27,7 +27,7 @@
 - **Trade-off**: A cross-module read costs a bus round trip instead of a join, and a write that spans two modules has to be given an explicit shared transaction.
 - **Scope**: Every module interaction.
 - **Date**: 2026-08-30
-- **Status**: active
+- **Status**: superseded by AD-012
 
 ### AD-004
 
@@ -90,6 +90,60 @@
 - **Trade-off**: Recording a decision costs two files instead of one, and a decision recorded in only one of them is now a visible gap rather than a complete record. The Decisions log stays the file read on resume, so an ADR alone does not reach a future session's context.
 - **Scope**: Every feature after `architecture-documentation`. The nine existing entries are reconciled by that feature rather than rewritten here.
 - **Date**: 2026-09-02
+- **Status**: active
+
+### AD-011
+
+- **Decision**: Use cases are plain classes with no framework import, decorator or injection token. Controllers call them directly, each module's composition root builds them with factory providers, repository contracts live in `application/ports`, and `@nestjs/cqrs` leaves the project.
+- **Reason**: The dependency rule of the Clean Architecture study the project adopted on 2026-10-27: the core knows neither the framework nor the container, and a bus makes a use case resolve its collaborators through a global registry. ADR 0026.
+- **Trade-off**: Every use case is wired by hand in its composition root, and the 76 handlers, their specs and the seed are rewritten.
+- **Scope**: Every module's `domain` and `application`, every composition root, `scripts/seed.ts`.
+- **Date**: 2026-10-28
+- **Status**: active
+
+### AD-012
+
+- **Decision**: A module reaches another only through a port it declares in its `application/ports` and implements in its own infrastructure by calling the other module's public API, exported from that module's `index.ts`. No `domain` or `application` file imports another module, and module dependencies have no cycle. Where the owner of some data already depends on the module that needs it, the consumer declares the interface, the owner implements it, and the root module binds the two.
+- **Reason**: Avoid coupling between modules and dependency cycles, with every boundary explicit and checked by dependency-cruiser. ADR 0027.
+- **Trade-off**: Each cross-module need costs a port, a gateway and a fake. `inventory` reaches work order data through a global binding registered by the root module.
+- **Scope**: Every module interaction. Supersedes AD-003.
+- **Date**: 2026-10-28
+- **Status**: active
+
+### AD-013
+
+- **Decision**: Each module queries only its own tables. Turning a UUID into another module's internal key goes through the key resolver that module offers, and data another module owns comes from its public API, in batch, composed in memory by the consumer. The shared schema and its foreign keys stay.
+- **Reason**: Avoid coupling between modules, avoid dependency cycles, and keep each module responsible for its own data. ADR 0028.
+- **Trade-off**: A read that crosses modules runs several batch queries where one join used to do, and it no longer comes from one database snapshot.
+- **Scope**: Every repository and query adapter, and the table ownership check in `npm run lint`. AD-001's resolution of external ids into internal keys now runs through the owner's resolver.
+- **Date**: 2026-10-28
+- **Status**: active
+
+### AD-014
+
+- **Decision**: `users`, `authentication` and `authorization` form one module, `identity`, each kept as an area with its own layer folders, under one Nest module.
+- **Reason**: The three depend on one another in both directions: registration assigns a role in the same transaction, a password change ends sessions, login verifies credentials, and the permissions guard uses the authentication principal. The architecture documents already treat them as one bounded context. ADR 0029.
+- **Trade-off**: `identity` becomes the largest module, and the path of every file in it changes.
+- **Scope**: `src/modules/identity` and the documentation that names the three modules.
+- **Date**: 2026-10-28
+- **Status**: active
+
+### AD-015
+
+- **Decision**: Route-level permission checks stay in the HTTP guard, rules that depend on the data stay in the use cases, and each entry point authenticates and authorizes its own caller.
+- **Reason**: A route permission depends on who calls and through which channel: a JWT over HTTP, a trusted process for the seed, a signature for a webhook. The data-dependent rules are business rules every entry point shares. ADR 0030.
+- **Trade-off**: A new entry point has to check its caller before calling a use case.
+- **Scope**: `PermissionsGuard`, the work order authorizers, every future entry point.
+- **Date**: 2026-10-28
+- **Status**: active
+
+### AD-016
+
+- **Decision**: Four patterns stay beyond the dependency rule, each with its own justification: the split between command and query use cases, one class per use case, Nest's dependency injection confined to the composition roots, and domain events published through a port to an in-process dispatcher that does not wait for its subscribers.
+- **Reason**: The study treats these as choices that need their own justification, never as purity criteria. ADR 0031 gives one per pattern.
+- **Trade-off**: Four conventions to keep and to explain.
+- **Scope**: Every module.
+- **Date**: 2026-10-28
 - **Status**: active
 
 ---
