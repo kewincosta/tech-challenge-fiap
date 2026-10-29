@@ -9,8 +9,8 @@ import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { WriteOffStockMovementsCommand } from '../../../../inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
-import { EffectiveAccessDto } from '../../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderPartItem } from '../../../domain/entities/work-order-part-item';
 import { CancelInExecutionForbiddenError } from '../../../domain/errors/cancel-in-execution-forbidden.error';

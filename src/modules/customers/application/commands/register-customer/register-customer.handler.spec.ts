@@ -4,7 +4,7 @@ import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryCustomerRepository } from '../../../../../../test/support/fakes/in-memory-customer.repository';
-import { RegisterUserCommand } from '../../../../users/application/commands/register-user/register-user.command';
+import { RegisterUserCommand } from '../../../../identity/users/application/commands/register-user/register-user.command';
 import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambiguous-customer-registration.error';
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
 import { InvalidAddressError } from '../../../domain/errors/invalid-address.error';

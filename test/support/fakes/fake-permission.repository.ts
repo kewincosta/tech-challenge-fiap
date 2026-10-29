@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { Permission } from '../../../src/modules/authorization/domain/entities/permission';
-import { PermissionRepository } from '../../../src/modules/authorization/domain/repositories/permission.repository';
-import { PermissionCode } from '../../../src/modules/authorization/domain/value-objects/permission-code';
-import { PermissionId } from '../../../src/modules/authorization/domain/value-objects/permission-id';
+import { Permission } from '../../../src/modules/identity/authorization/domain/entities/permission';
+import { PermissionRepository } from '../../../src/modules/identity/authorization/domain/repositories/permission.repository';
+import { PermissionCode } from '../../../src/modules/identity/authorization/domain/value-objects/permission-code';
+import { PermissionId } from '../../../src/modules/identity/authorization/domain/value-objects/permission-id';
 
 export class FakePermissionRepository implements PermissionRepository {
   private readonly permissions: Permission[];

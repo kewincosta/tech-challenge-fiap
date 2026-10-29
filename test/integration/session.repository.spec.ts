@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { RefreshTokenOrmEntity } from '../../src/modules/authentication/infrastructure/persistence/refresh-token.orm-entity';
-import { SessionOrmEntity } from '../../src/modules/authentication/infrastructure/persistence/session.orm-entity';
-import { TypeOrmSessionRepository } from '../../src/modules/authentication/infrastructure/persistence/typeorm-session.repository';
-import { RefreshTokenStatus } from '../../src/modules/authentication/domain/refresh-token-status';
-import { SessionRevocationReason } from '../../src/modules/authentication/domain/session-revocation-reason';
-import { SessionStatus } from '../../src/modules/authentication/domain/session-status';
-import { RefreshTokenHash } from '../../src/modules/authentication/domain/value-objects/refresh-token-hash';
-import { RefreshTokenId } from '../../src/modules/authentication/domain/value-objects/refresh-token-id';
+import { RefreshTokenOrmEntity } from '../../src/modules/identity/authentication/infrastructure/persistence/refresh-token.orm-entity';
+import { SessionOrmEntity } from '../../src/modules/identity/authentication/infrastructure/persistence/session.orm-entity';
+import { TypeOrmSessionRepository } from '../../src/modules/identity/authentication/infrastructure/persistence/typeorm-session.repository';
+import { RefreshTokenStatus } from '../../src/modules/identity/authentication/domain/refresh-token-status';
+import { SessionRevocationReason } from '../../src/modules/identity/authentication/domain/session-revocation-reason';
+import { SessionStatus } from '../../src/modules/identity/authentication/domain/session-status';
+import { RefreshTokenHash } from '../../src/modules/identity/authentication/domain/value-objects/refresh-token-hash';
+import { RefreshTokenId } from '../../src/modules/identity/authentication/domain/value-objects/refresh-token-id';
 import { buildSession, SESSION_NOW } from '../support/factories/session.factory';
 import { createTestDataSource } from '../support/db';
 

@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { Session } from '../../../src/modules/authentication/domain/entities/session';
-import { RefreshTokenHash } from '../../../src/modules/authentication/domain/value-objects/refresh-token-hash';
-import { RefreshTokenId } from '../../../src/modules/authentication/domain/value-objects/refresh-token-id';
-import { SessionId } from '../../../src/modules/authentication/domain/value-objects/session-id';
+import { Session } from '../../../src/modules/identity/authentication/domain/entities/session';
+import { RefreshTokenHash } from '../../../src/modules/identity/authentication/domain/value-objects/refresh-token-hash';
+import { RefreshTokenId } from '../../../src/modules/identity/authentication/domain/value-objects/refresh-token-id';
+import { SessionId } from '../../../src/modules/identity/authentication/domain/value-objects/session-id';
 
 export const SESSION_NOW = new Date('2026-08-26T12:00:00.000Z');
 

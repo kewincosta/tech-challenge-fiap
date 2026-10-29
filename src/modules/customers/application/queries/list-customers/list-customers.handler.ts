@@ -1,6 +1,6 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { PersonDocument } from '../../../../users/domain/value-objects/person-document';
+import { PersonDocument } from '../../../../identity/users/domain/value-objects/person-document';
 import {
   CUSTOMER_QUERY_PORT,
   CustomerQueryPort,

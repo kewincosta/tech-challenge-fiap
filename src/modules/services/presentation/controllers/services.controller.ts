@@ -24,8 +24,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
+import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
 import {
   CreatedServiceDto,
   CreateServiceCommand,

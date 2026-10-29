@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stubQueryBus } from '../../../../../test/support/fakes/bus.stubs';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { EffectiveAccessDto } from '../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { CustomerSummaryDto } from '../../../customers/application/ports/customer-query.port';
 import { GetCustomerByUserIdQuery } from '../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
 import { WorkOrder } from '../../domain/entities/work-order';

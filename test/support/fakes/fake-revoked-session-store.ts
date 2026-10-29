@@ -1,4 +1,4 @@
-import { RevokedSessionStore } from '../../../src/modules/authentication/application/ports/revoked-session-store.port';
+import { RevokedSessionStore } from '../../../src/modules/identity/authentication/application/ports/revoked-session-store.port';
 
 export class FakeRevokedSessionStore implements RevokedSessionStore {
   readonly revoked = new Set<string>();

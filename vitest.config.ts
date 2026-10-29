@@ -35,7 +35,7 @@ export default defineConfig({
           functions: 80,
           lines: 80,
         },
-        'src/modules/users/domain/value-objects/**/*.ts': {
+        'src/modules/identity/users/domain/value-objects/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,
@@ -58,7 +58,7 @@ export default defineConfig({
         // (AssignRoleToUserHandler.ensureAssignable). The rest of application/** (role CRUD,
         // access queries) is proven at the e2e layer instead, per the plan's own testing
         // strategy table, and would need many new unit tests to clear 80 on its own.
-        'src/modules/authorization/application/commands/assign-role-to-user/**/*.ts': {
+        'src/modules/identity/authorization/application/commands/assign-role-to-user/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,
@@ -97,7 +97,7 @@ export default defineConfig({
           functions: 80,
           lines: 80,
         },
-        'src/modules/users/application/**/*.ts': {
+        'src/modules/identity/users/application/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,

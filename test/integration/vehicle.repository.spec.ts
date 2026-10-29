@@ -12,8 +12,8 @@ import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehic
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
 import { TypeOrmVehicleRepository } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
-import { TypeOrmUserRepository } from '../../src/modules/users/infrastructure/persistence/typeorm-user.repository';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { buildUser } from '../support/factories/user.factory';

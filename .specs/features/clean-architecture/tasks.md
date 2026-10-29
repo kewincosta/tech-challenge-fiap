@@ -519,14 +519,14 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] No import in `src`, `test`, `scripts` or `security` names `modules/users`, `modules/authentication` or `modules/authorization`
-- [ ] `app.module.ts` imports `IdentityModule` in place of the three modules
-- [ ] `vitest.config.ts` globs at lines 36, 59 and 98 point at the new paths with the same percentages
-- [ ] `test/support/db.ts` imports the moved ORM entities
-- [ ] The dependency baseline is regenerated with the same number of violations, and the known table findings carry the new paths
-- [ ] The OpenAPI contract test passes
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: all three totals equal the previous task's
+- [x] No import in `src`, `test`, `scripts` or `security` names `modules/users`, `modules/authentication` or `modules/authorization`
+- [x] `app.module.ts` imports `IdentityModule` in place of the three modules
+- [x] `vitest.config.ts` globs at lines 36, 59 and 98 point at the new paths with the same percentages
+- [x] `test/support/db.ts` imports the moved ORM entities
+- [x] The dependency baseline is regenerated. The only entries that leave are the imports among users, authentication and authorization, which become imports inside `identity` (426 to 361), and no entry is added. The known table findings need no change, because none of them sits in those three modules
+- [x] The OpenAPI contract test passes
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: all three totals equal the previous task's
 
 **Tests**: e2e
 **Gate**: build

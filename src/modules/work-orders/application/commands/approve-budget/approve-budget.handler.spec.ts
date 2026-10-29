@@ -3,8 +3,8 @@ import { stubEventBus, stubQueryBus } from '../../../../../../test/support/fakes
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
-import { EffectiveAccessDto } from '../../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
 import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
 import { BudgetStatus } from '../../../domain/budget-status';

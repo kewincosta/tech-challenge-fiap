@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { FindUserByDocumentQuery } from '../../src/modules/users/application/queries/find-user-by-document/find-user-by-document.query';
-import { FindUserByDocumentHandler } from '../../src/modules/users/application/queries/find-user-by-document/find-user-by-document.handler';
-import { TypeOrmUserQueryAdapter } from '../../src/modules/users/infrastructure/persistence/typeorm-user-query.adapter';
-import { TypeOrmUserRepository } from '../../src/modules/users/infrastructure/persistence/typeorm-user.repository';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { FindUserByDocumentQuery } from '../../src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.query';
+import { FindUserByDocumentHandler } from '../../src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.handler';
+import { TypeOrmUserQueryAdapter } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user-query.adapter';
+import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { buildUser } from '../support/factories/user.factory';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestDataSource } from '../support/db';

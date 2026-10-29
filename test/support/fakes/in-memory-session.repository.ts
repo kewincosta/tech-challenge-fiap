@@ -1,8 +1,8 @@
-import { Session } from '../../../src/modules/authentication/domain/entities/session';
-import { SessionRepository } from '../../../src/modules/authentication/domain/repositories/session.repository';
-import { SessionRevocationReason } from '../../../src/modules/authentication/domain/session-revocation-reason';
-import { RefreshTokenHash } from '../../../src/modules/authentication/domain/value-objects/refresh-token-hash';
-import { SessionId } from '../../../src/modules/authentication/domain/value-objects/session-id';
+import { Session } from '../../../src/modules/identity/authentication/domain/entities/session';
+import { SessionRepository } from '../../../src/modules/identity/authentication/domain/repositories/session.repository';
+import { SessionRevocationReason } from '../../../src/modules/identity/authentication/domain/session-revocation-reason';
+import { RefreshTokenHash } from '../../../src/modules/identity/authentication/domain/value-objects/refresh-token-hash';
+import { SessionId } from '../../../src/modules/identity/authentication/domain/value-objects/session-id';
 
 export class InMemorySessionRepository implements SessionRepository {
   sessions: Session[] = [];

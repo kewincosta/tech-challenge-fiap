@@ -1,4 +1,4 @@
-import { PasswordHasher } from '../../../src/modules/users/application/ports/password-hasher.port';
+import { PasswordHasher } from '../../../src/modules/identity/users/application/ports/password-hasher.port';
 
 export class FakePasswordHasher implements PasswordHasher {
   readonly verifyCalls: Array<{ hash: string; plain: string }> = [];

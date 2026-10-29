@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import * as argon2 from 'argon2';
 import dataSource from '../src/shared/infrastructure/database/typeorm-cli.datasource';
-import { PersonDocument } from '../src/modules/users/domain/value-objects/person-document';
+import { PersonDocument } from '../src/modules/identity/users/domain/value-objects/person-document';
 
 async function seedAdmin(): Promise<void> {
   const email = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
-import { MODULE_OF_FOLDER, TABLE_OWNERS } from './table-owners';
+import { TABLE_OWNERS } from './table-owners';
 
 /**
  * Table ownership check, run by `npm run lint:architecture` after dependency-cruiser.
@@ -128,8 +128,7 @@ function referencesIn({ text, expressions }: Literal): Reference[] {
 }
 
 function moduleOfFile(file: string): string {
-  const folder = file.split('/')[2];
-  return MODULE_OF_FOLDER[folder] ?? folder;
+  return file.split('/')[2];
 }
 
 function keyOf(finding: Finding): string {

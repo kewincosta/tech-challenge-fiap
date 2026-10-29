@@ -1,10 +1,10 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import { EffectiveAccessDto } from '../../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { UserDto } from '../../../../users/application/dtos/user.dto';
-import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
+import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { UserDto } from '../../../../identity/users/application/dtos/user.dto';
+import { GetUserByIdQuery } from '../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query';
 import { AssignedMechanicNotFoundError } from '../../../domain/errors/assigned-mechanic-not-found.error';
 import { AssignedUserNotMechanicError } from '../../../domain/errors/assigned-user-not-mechanic.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';

@@ -1,608 +1,6 @@
 [
   {
     "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "node_modules/@nestjs/config/index.js",
-    "unresolvedTo": "@nestjs/config",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
-    "to": "node_modules/@nestjs/config/index.js",
-    "unresolvedTo": "@nestjs/config",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "node_modules/@nestjs/config/index.js",
-    "unresolvedTo": "@nestjs/config",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "node_modules/@nestjs/config/index.js",
-    "unresolvedTo": "@nestjs/config",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/queries/list-user-sessions/list-user-sessions.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/queries/list-user-sessions/list-user-sessions.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/subscribers/security-events.subscriber.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/subscribers/security-events.subscriber.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/domain/entities/session.spec.ts",
-    "to": "crypto",
-    "unresolvedTo": "crypto",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.spec.ts",
-    "to": "crypto",
-    "unresolvedTo": "crypto",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/create-role/create-role.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/create-role/create-role.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/delete-role/delete-role.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/delete-role/delete-role.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/set-role-permissions/set-role-permissions.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/set-role-permissions/set-role-permissions.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/update-role/update-role.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/update-role/update-role.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-role/get-role.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-role/get-role.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/list-permissions/list-permissions.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/list-permissions/list-permissions.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/list-roles/list-roles.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/list-roles/list-roles.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/services/effective-access.service.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/services/permission-catalog.service.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/subscribers/access-cache-invalidation.subscriber.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/domain/entities/role.spec.ts",
-    "to": "crypto",
-    "unresolvedTo": "crypto",
-    "dependencyTypes": [
-      "core",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/customers/application/commands/deactivate-customer/deactivate-customer.handler.ts",
     "to": "node_modules/@nestjs/common/index.js",
     "unresolvedTo": "@nestjs/common",
@@ -758,6 +156,832 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/queries/list-customers/list-customers.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
+    "to": "node_modules/@nestjs/config/index.js",
+    "unresolvedTo": "@nestjs/config",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
+    "to": "node_modules/@nestjs/config/index.js",
+    "unresolvedTo": "@nestjs/config",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/logout-all-sessions/logout-all-sessions.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/refresh-session/refresh-session.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/refresh-session/refresh-session.handler.ts",
+    "to": "node_modules/@nestjs/config/index.js",
+    "unresolvedTo": "@nestjs/config",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/refresh-session/refresh-session.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/revoke-session/revoke-session.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/revoke-session/revoke-session.handler.ts",
+    "to": "node_modules/@nestjs/config/index.js",
+    "unresolvedTo": "@nestjs/config",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/commands/revoke-session/revoke-session.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/queries/list-user-sessions/list-user-sessions.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/queries/list-user-sessions/list-user-sessions.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/subscribers/security-events.subscriber.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/application/subscribers/security-events.subscriber.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authentication/domain/entities/session.spec.ts",
+    "to": "crypto",
+    "unresolvedTo": "crypto",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.spec.ts",
+    "to": "crypto",
+    "unresolvedTo": "crypto",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/create-role/create-role.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/create-role/create-role.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/delete-role/delete-role.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/delete-role/delete-role.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/revoke-role-from-user/revoke-role-from-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/set-role-permissions/set-role-permissions.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/set-role-permissions/set-role-permissions.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/update-role/update-role.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/commands/update-role/update-role.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/get-role/get-role.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/get-role/get-role.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/get-user-access/get-user-access.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/get-user-access/get-user-access.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/list-permissions/list-permissions.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/list-permissions/list-permissions.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/list-roles/list-roles.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/queries/list-roles/list-roles.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/services/effective-access.service.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/services/permission-catalog.service.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/application/subscribers/access-cache-invalidation.subscriber.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/authorization/domain/entities/role.spec.ts",
+    "to": "crypto",
+    "unresolvedTo": "crypto",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/change-password/change-password.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/change-password/change-password.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/deactivate-user/deactivate-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/deactivate-user/deactivate-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/register-user/register-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/register-user/register-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/update-user/update-user.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/commands/update-user/update-user.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/find-user-by-document/find-user-by-document.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/list-users/list-users.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/list-users/list-users.handler.ts",
+    "to": "node_modules/@nestjs/cqrs/index.js",
+    "unresolvedTo": "@nestjs/cqrs",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/verify-credentials/verify-credentials.handler.ts",
+    "to": "node_modules/@nestjs/common/index.js",
+    "unresolvedTo": "@nestjs/common",
+    "dependencyTypes": [
+      "npm",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-no-frameworks"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/identity/users/application/queries/verify-credentials/verify-credentials.handler.ts",
     "to": "node_modules/@nestjs/cqrs/index.js",
     "unresolvedTo": "@nestjs/cqrs",
     "dependencyTypes": [
@@ -1262,230 +1486,6 @@
   {
     "type": "dependency",
     "from": "src/modules/services/application/queries/list-services/list-services.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/update-user/update-user.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/update-user/update-user.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/find-user-by-document/find-user-by-document.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/find-user-by-document/find-user-by-document.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/list-users/list-users.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/list-users/list-users.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/verify-credentials/verify-credentials.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/queries/verify-credentials/verify-credentials.handler.ts",
     "to": "node_modules/@nestjs/cqrs/index.js",
     "unresolvedTo": "@nestjs/cqrs",
     "dependencyTypes": [
@@ -2381,247 +2381,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/verify-credentials/verify-credentials.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/verify-credentials/verify-credentials.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/queries/verify-credentials/verify-credentials.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/verify-credentials/verify-credentials.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/domain/errors/user-not-found.error.ts",
-    "unresolvedTo": "../../../../users/domain/errors/user-not-found.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.spec.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/app-permissions",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/app-permissions",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.spec.ts",
-    "to": "src/modules/users/application/commands/register-user/register-user.command.ts",
-    "unresolvedTo": "../../../../users/application/commands/register-user/register-user.command",
+    "to": "src/modules/identity/users/application/commands/register-user/register-user.command.ts",
+    "unresolvedTo": "../../../../identity/users/application/commands/register-user/register-user.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -2634,8 +2396,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
+    "to": "src/modules/identity/authorization/application/contracts/system-roles.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/contracts/system-roles",
     "dependencyTypes": [
       "local",
       "import"
@@ -2648,8 +2410,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -2662,8 +2424,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -2676,8 +2438,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/commands/register-user/register-user.command.ts",
-    "unresolvedTo": "../../../../users/application/commands/register-user/register-user.command",
+    "to": "src/modules/identity/users/application/commands/register-user/register-user.command.ts",
+    "unresolvedTo": "../../../../identity/users/application/commands/register-user/register-user.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -2690,8 +2452,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -2704,8 +2466,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -2718,148 +2480,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/queries/list-customers/list-customers.handler.ts",
-    "to": "src/modules/users/domain/value-objects/person-document.ts",
-    "unresolvedTo": "../../../../users/domain/value-objects/person-document",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.spec.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.spec.ts",
-    "to": "src/modules/authentication/domain/errors/invalid-credentials.error.ts",
-    "unresolvedTo": "../../../../authentication/domain/errors/invalid-credentials.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "src/modules/authentication/domain/errors/invalid-credentials.error.ts",
-    "unresolvedTo": "../../../../authentication/domain/errors/invalid-credentials.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.spec.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.spec.ts",
-    "to": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command.ts",
-    "unresolvedTo": "../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.spec.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command.ts",
-    "unresolvedTo": "../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
+    "to": "src/modules/identity/users/domain/value-objects/person-document.ts",
+    "unresolvedTo": "../../../../identity/users/domain/value-objects/person-document",
     "dependencyTypes": [
       "local",
       "import"
@@ -3026,34 +2648,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -3081,9 +2675,23 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3096,8 +2704,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3110,8 +2718,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3124,8 +2732,22 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3138,8 +2760,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3152,8 +2774,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3166,8 +2788,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3180,8 +2802,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3194,8 +2816,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3208,8 +2830,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3250,8 +2872,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3264,8 +2886,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3460,34 +3082,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -3504,6 +3098,34 @@
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query.ts",
     "unresolvedTo": "../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3698,34 +3320,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -3753,9 +3347,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3767,23 +3361,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3823,9 +3403,37 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3838,8 +3446,22 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "core-stays-in-module"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3852,8 +3474,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -3866,8 +3488,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3880,8 +3502,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3894,8 +3516,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3908,8 +3530,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3922,8 +3544,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -3936,8 +3558,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -3950,8 +3572,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -3963,8 +3585,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/modules/authentication/infrastructure/persistence/refresh-token.orm-entity.ts",
-    "to": "src/modules/authentication/infrastructure/persistence/session.orm-entity.ts",
+    "from": "src/modules/identity/authentication/infrastructure/persistence/refresh-token.orm-entity.ts",
+    "to": "src/modules/identity/authentication/infrastructure/persistence/session.orm-entity.ts",
     "unresolvedTo": "./session.orm-entity",
     "dependencyTypes": [
       "local",
@@ -3976,14 +3598,14 @@
     },
     "cycle": [
       {
-        "name": "src/modules/authentication/infrastructure/persistence/session.orm-entity.ts",
+        "name": "src/modules/identity/authentication/infrastructure/persistence/session.orm-entity.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/modules/authentication/infrastructure/persistence/refresh-token.orm-entity.ts",
+        "name": "src/modules/identity/authentication/infrastructure/persistence/refresh-token.orm-entity.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -3993,289 +3615,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/verify-credentials/verify-credentials.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/verify-credentials/verify-credentials.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/authenticate-user/authenticate-user.handler.ts",
-    "to": "src/modules/users/application/queries/verify-credentials/verify-credentials.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/verify-credentials/verify-credentials.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/refresh-session/refresh-session.handler.ts",
-    "to": "src/modules/users/domain/errors/user-not-found.error.ts",
-    "unresolvedTo": "../../../../users/domain/errors/user-not-found.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.spec.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/app-permissions",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/app-permissions",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authentication/application/commands/revoke-session/revoke-session.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/application/queries/get-user-access/get-user-access.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/presentation/controllers/user-access.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/presentation/controllers/user-access.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/authorization/presentation/guards/permissions.guard.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.spec.ts",
-    "to": "src/modules/users/application/commands/register-user/register-user.command.ts",
-    "unresolvedTo": "../../../../users/application/commands/register-user/register-user.command",
+    "to": "src/modules/identity/users/application/commands/register-user/register-user.command.ts",
+    "unresolvedTo": "../../../../identity/users/application/commands/register-user/register-user.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -4288,8 +3630,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
+    "to": "src/modules/identity/authorization/application/contracts/system-roles.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/contracts/system-roles",
     "dependencyTypes": [
       "local",
       "import"
@@ -4302,8 +3644,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -4316,8 +3658,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -4330,8 +3672,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/commands/register-user/register-user.command.ts",
-    "unresolvedTo": "../../../../users/application/commands/register-user/register-user.command",
+    "to": "src/modules/identity/users/application/commands/register-user/register-user.command.ts",
+    "unresolvedTo": "../../../../identity/users/application/commands/register-user/register-user.command",
     "dependencyTypes": [
       "local",
       "import"
@@ -4344,8 +3686,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -4358,8 +3700,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/commands/register-customer/register-customer.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -4372,8 +3714,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/application/queries/list-customers/list-customers.handler.ts",
-    "to": "src/modules/users/domain/value-objects/person-document.ts",
-    "unresolvedTo": "../../../../users/domain/value-objects/person-document",
+    "to": "src/modules/identity/users/domain/value-objects/person-document.ts",
+    "unresolvedTo": "../../../../identity/users/domain/value-objects/person-document",
     "dependencyTypes": [
       "local",
       "import"
@@ -4386,8 +3728,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/presentation/controllers/customers.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
+    "to": "src/modules/identity/authentication/presentation/decorators/current-user.decorator.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/decorators/current-user.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4400,8 +3742,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/presentation/controllers/customers.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
+    "to": "src/modules/identity/authentication/presentation/principal.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/principal",
     "dependencyTypes": [
       "local",
       "import"
@@ -4414,8 +3756,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/presentation/controllers/customers.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -4428,8 +3770,8 @@
   {
     "type": "dependency",
     "from": "src/modules/customers/presentation/controllers/customers.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
+    "to": "src/modules/identity/authorization/presentation/decorators/require-permissions.decorator.ts",
+    "unresolvedTo": "../../../identity/authorization/presentation/decorators/require-permissions.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4442,8 +3784,8 @@
   {
     "type": "dependency",
     "from": "src/modules/inventory/presentation/controllers/inventory-items.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
+    "to": "src/modules/identity/authentication/presentation/decorators/current-user.decorator.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/decorators/current-user.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4456,8 +3798,8 @@
   {
     "type": "dependency",
     "from": "src/modules/inventory/presentation/controllers/inventory-items.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
+    "to": "src/modules/identity/authentication/presentation/principal.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/principal",
     "dependencyTypes": [
       "local",
       "import"
@@ -4470,8 +3812,8 @@
   {
     "type": "dependency",
     "from": "src/modules/inventory/presentation/controllers/inventory-items.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -4484,8 +3826,8 @@
   {
     "type": "dependency",
     "from": "src/modules/inventory/presentation/controllers/inventory-items.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
+    "to": "src/modules/identity/authorization/presentation/decorators/require-permissions.decorator.ts",
+    "unresolvedTo": "../../../identity/authorization/presentation/decorators/require-permissions.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4498,8 +3840,8 @@
   {
     "type": "dependency",
     "from": "src/modules/services/presentation/controllers/services.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -4512,260 +3854,8 @@
   {
     "type": "dependency",
     "from": "src/modules/services/presentation/controllers/services.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.spec.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.spec.ts",
-    "to": "src/modules/authentication/domain/errors/invalid-credentials.error.ts",
-    "unresolvedTo": "../../../../authentication/domain/errors/invalid-credentials.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/change-password/change-password.handler.ts",
-    "to": "src/modules/authentication/domain/errors/invalid-credentials.error.ts",
-    "unresolvedTo": "../../../../authentication/domain/errors/invalid-credentials.error",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.spec.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/deactivate-user/deactivate-user.handler.ts",
-    "to": "src/modules/authentication/application/commands/logout-all-sessions/logout-all-sessions.command.ts",
-    "unresolvedTo": "../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.spec.ts",
-    "to": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command.ts",
-    "unresolvedTo": "../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.spec.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "src/modules/authorization/application/commands/assign-role-to-user/assign-role-to-user.command.ts",
-    "unresolvedTo": "../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/application/commands/register-user/register-user.handler.ts",
-    "to": "src/modules/authorization/application/contracts/system-roles.ts",
-    "unresolvedTo": "../../../../authorization/application/contracts/system-roles",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/allows-pending-password.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/allows-pending-password.decorator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/public.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/public.decorator",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/users/presentation/controllers/users.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
+    "to": "src/modules/identity/authorization/presentation/decorators/require-permissions.decorator.ts",
+    "unresolvedTo": "../../../identity/authorization/presentation/decorators/require-permissions.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4890,8 +3980,8 @@
   {
     "type": "dependency",
     "from": "src/modules/vehicles/presentation/controllers/vehicles.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
+    "to": "src/modules/identity/authentication/presentation/decorators/current-user.decorator.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/decorators/current-user.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4904,8 +3994,8 @@
   {
     "type": "dependency",
     "from": "src/modules/vehicles/presentation/controllers/vehicles.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
+    "to": "src/modules/identity/authentication/presentation/principal.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/principal",
     "dependencyTypes": [
       "local",
       "import"
@@ -4918,8 +4008,8 @@
   {
     "type": "dependency",
     "from": "src/modules/vehicles/presentation/controllers/vehicles.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -4932,8 +4022,8 @@
   {
     "type": "dependency",
     "from": "src/modules/vehicles/presentation/controllers/vehicles.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
+    "to": "src/modules/identity/authorization/presentation/decorators/require-permissions.decorator.ts",
+    "unresolvedTo": "../../../identity/authorization/presentation/decorators/require-permissions.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -4988,34 +4078,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -5043,9 +4105,23 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/approve-budget/approve-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5058,8 +4134,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5072,8 +4148,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5086,8 +4162,22 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.spec.ts",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5100,8 +4190,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5114,8 +4204,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5128,8 +4218,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/users/application/dtos/user.dto.ts",
-    "unresolvedTo": "../../../../users/application/dtos/user.dto",
+    "to": "src/modules/identity/users/application/dtos/user.dto.ts",
+    "unresolvedTo": "../../../../identity/users/application/dtos/user.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5142,8 +4232,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "src/modules/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
-    "unresolvedTo": "../../../../users/application/queries/get-user-by-id/get-user-by-id.query",
+    "to": "src/modules/identity/users/application/queries/get-user-by-id/get-user-by-id.query.ts",
+    "unresolvedTo": "../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5156,8 +4246,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5170,8 +4260,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5212,8 +4302,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5226,8 +4316,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/complete-work-order/complete-work-order.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5422,34 +4512,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -5466,6 +4528,34 @@
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
     "to": "src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query.ts",
     "unresolvedTo": "../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5660,34 +4750,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
     "to": "src/modules/customers/application/ports/customer-query.port.ts",
     "unresolvedTo": "../../../customers/application/ports/customer-query.port",
     "dependencyTypes": [
@@ -5715,9 +4777,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5729,23 +4791,9 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5785,9 +4833,37 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/budget-decision.authorizer.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5800,8 +4876,22 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
+    "dependencyTypes": [
+      "local",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "through-public-api"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/modules/work-orders/application/services/cancellation.authorizer.spec.ts",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5814,8 +4904,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -5828,8 +4918,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5842,8 +4932,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/cancellation.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5856,8 +4946,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5870,8 +4960,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.spec.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5884,8 +4974,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -5898,8 +4988,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/dtos/effective-access.dto.ts",
-    "unresolvedTo": "../../../authorization/application/dtos/effective-access.dto",
+    "to": "src/modules/identity/authorization/application/dtos/effective-access.dto.ts",
+    "unresolvedTo": "../../../identity/authorization/application/dtos/effective-access.dto",
     "dependencyTypes": [
       "local",
       "import"
@@ -5912,8 +5002,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/services/work-order-completion.authorizer.ts",
-    "to": "src/modules/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
-    "unresolvedTo": "../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
+    "to": "src/modules/identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query.ts",
+    "unresolvedTo": "../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query",
     "dependencyTypes": [
       "local",
       "import"
@@ -5926,8 +5016,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/presentation/controllers/work-orders.controller.ts",
-    "to": "src/modules/authentication/presentation/decorators/current-user.decorator.ts",
-    "unresolvedTo": "../../../authentication/presentation/decorators/current-user.decorator",
+    "to": "src/modules/identity/authentication/presentation/decorators/current-user.decorator.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/decorators/current-user.decorator",
     "dependencyTypes": [
       "local",
       "import"
@@ -5940,8 +5030,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/presentation/controllers/work-orders.controller.ts",
-    "to": "src/modules/authentication/presentation/principal.ts",
-    "unresolvedTo": "../../../authentication/presentation/principal",
+    "to": "src/modules/identity/authentication/presentation/principal.ts",
+    "unresolvedTo": "../../../identity/authentication/presentation/principal",
     "dependencyTypes": [
       "local",
       "import"
@@ -5954,8 +5044,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/presentation/controllers/work-orders.controller.ts",
-    "to": "src/modules/authorization/application/contracts/app-permissions.ts",
-    "unresolvedTo": "../../../authorization/application/contracts/app-permissions",
+    "to": "src/modules/identity/authorization/application/contracts/app-permissions.ts",
+    "unresolvedTo": "../../../identity/authorization/application/contracts/app-permissions",
     "dependencyTypes": [
       "local",
       "import"
@@ -5968,8 +5058,8 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/presentation/controllers/work-orders.controller.ts",
-    "to": "src/modules/authorization/presentation/decorators/require-permissions.decorator.ts",
-    "unresolvedTo": "../../../authorization/presentation/decorators/require-permissions.decorator",
+    "to": "src/modules/identity/authorization/presentation/decorators/require-permissions.decorator.ts",
+    "unresolvedTo": "../../../identity/authorization/presentation/decorators/require-permissions.decorator",
     "dependencyTypes": [
       "local",
       "import"

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
+import { EffectiveAccessDto } from '../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { CancelInExecutionForbiddenError } from '../../domain/errors/cancel-in-execution-forbidden.error';
 

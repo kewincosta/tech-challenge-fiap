@@ -27,10 +27,10 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../authentication/presentation/principal';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { CurrentUser } from '../../../identity/authentication/presentation/decorators/current-user.decorator';
+import { Principal } from '../../../identity/authentication/presentation/principal';
+import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
+import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';

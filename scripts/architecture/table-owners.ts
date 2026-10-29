@@ -27,13 +27,3 @@ export const TABLE_OWNERS: Readonly<Record<string, string>> = {
   // Written by TypeORM's migration runner, not by a migration. No module queries it.
   migrations: 'shared',
 };
-
-/**
- * The module a folder under `src/modules` belongs to, where the name differs. The identity module
- * sits in these three folders until it moves to `src/modules/identity`.
- */
-export const MODULE_OF_FOLDER: Readonly<Record<string, string>> = {
-  users: 'identity',
-  authentication: 'identity',
-  authorization: 'identity',
-};

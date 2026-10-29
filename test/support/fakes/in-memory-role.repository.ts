@@ -1,7 +1,7 @@
-import { Role } from '../../../src/modules/authorization/domain/entities/role';
-import { RoleRepository } from '../../../src/modules/authorization/domain/repositories/role.repository';
-import { RoleId } from '../../../src/modules/authorization/domain/value-objects/role-id';
-import { RoleName } from '../../../src/modules/authorization/domain/value-objects/role-name';
+import { Role } from '../../../src/modules/identity/authorization/domain/entities/role';
+import { RoleRepository } from '../../../src/modules/identity/authorization/domain/repositories/role.repository';
+import { RoleId } from '../../../src/modules/identity/authorization/domain/value-objects/role-id';
+import { RoleName } from '../../../src/modules/identity/authorization/domain/value-objects/role-name';
 
 export class InMemoryRoleRepository implements RoleRepository {
   roles: Role[] = [];

@@ -1,8 +1,8 @@
-import { User } from '../../../src/modules/users/domain/entities/user';
-import { UserRepository } from '../../../src/modules/users/domain/repositories/user.repository';
-import { Email } from '../../../src/modules/users/domain/value-objects/email';
-import { PersonDocument } from '../../../src/modules/users/domain/value-objects/person-document';
-import { UserId } from '../../../src/modules/users/domain/value-objects/user-id';
+import { User } from '../../../src/modules/identity/users/domain/entities/user';
+import { UserRepository } from '../../../src/modules/identity/users/domain/repositories/user.repository';
+import { Email } from '../../../src/modules/identity/users/domain/value-objects/email';
+import { PersonDocument } from '../../../src/modules/identity/users/domain/value-objects/person-document';
+import { UserId } from '../../../src/modules/identity/users/domain/value-objects/user-id';
 
 export class InMemoryUserRepository implements UserRepository {
   users: User[] = [];

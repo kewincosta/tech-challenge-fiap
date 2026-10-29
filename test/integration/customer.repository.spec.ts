@@ -8,8 +8,8 @@ import { CustomerId } from '../../src/modules/customers/domain/value-objects/cus
 import { PhoneNumber } from '../../src/modules/customers/domain/value-objects/phone-number';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
-import { TypeOrmUserRepository } from '../../src/modules/users/infrastructure/persistence/typeorm-user.repository';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { buildUser } from '../support/factories/user.factory';
 import { createTestDataSource } from '../support/db';

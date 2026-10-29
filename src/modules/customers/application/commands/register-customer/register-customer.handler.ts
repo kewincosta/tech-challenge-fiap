@@ -9,15 +9,15 @@ import {
   TRANSACTION_RUNNER,
   TransactionRunner,
 } from '../../../../../shared/application/ports/transaction-runner.port';
-import { EffectiveAccessDto } from '../../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
-import { SystemRole } from '../../../../authorization/application/contracts/system-roles';
-import { UserDto } from '../../../../users/application/dtos/user.dto';
-import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
+import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { SystemRole } from '../../../../identity/authorization/application/contracts/system-roles';
+import { UserDto } from '../../../../identity/users/application/dtos/user.dto';
+import { GetUserByIdQuery } from '../../../../identity/users/application/queries/get-user-by-id/get-user-by-id.query';
 import {
   RegisteredUserDto,
   RegisterUserCommand,
-} from '../../../../users/application/commands/register-user/register-user.command';
+} from '../../../../identity/users/application/commands/register-user/register-user.command';
 import { Customer } from '../../../domain/entities/customer';
 import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambiguous-customer-registration.error';
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';

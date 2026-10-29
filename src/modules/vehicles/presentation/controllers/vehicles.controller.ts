@@ -27,10 +27,10 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../authentication/presentation/principal';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
+import { CurrentUser } from '../../../identity/authentication/presentation/decorators/current-user.decorator';
+import { Principal } from '../../../identity/authentication/presentation/principal';
+import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
 import {
   RegisterVehicleCommand,
   RegisteredVehicleDto,

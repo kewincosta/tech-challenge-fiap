@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { stubQueryBus } from '../../../../../test/support/fakes/bus.stubs';
 import { Money } from '../../../../shared/domain/value-objects/money';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
+import { EffectiveAccessDto } from '../../../identity/authorization/application/dtos/effective-access.dto';
+import { GetUserEffectiveAccessQuery } from '../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { BudgetStatus } from '../../domain/budget-status';
 import { Budget } from '../../domain/entities/budget';
 import { WorkOrder } from '../../domain/entities/work-order';

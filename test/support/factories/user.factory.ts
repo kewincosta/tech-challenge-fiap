@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { faker } from '@faker-js/faker';
-import { User } from '../../../src/modules/users/domain/entities/user';
-import { Email } from '../../../src/modules/users/domain/value-objects/email';
-import { PasswordHash } from '../../../src/modules/users/domain/value-objects/password-hash';
-import { PersonDocument } from '../../../src/modules/users/domain/value-objects/person-document';
-import { UserId } from '../../../src/modules/users/domain/value-objects/user-id';
+import { User } from '../../../src/modules/identity/users/domain/entities/user';
+import { Email } from '../../../src/modules/identity/users/domain/value-objects/email';
+import { PasswordHash } from '../../../src/modules/identity/users/domain/value-objects/password-hash';
+import { PersonDocument } from '../../../src/modules/identity/users/domain/value-objects/person-document';
+import { UserId } from '../../../src/modules/identity/users/domain/value-objects/user-id';
 import { uniqueValidCpf } from './document.factory';
 
 export interface UserFactoryOverrides {
