@@ -21,24 +21,19 @@ describe('ListCustomersHandler', () => {
     expect(port.listActive).toHaveBeenCalledWith({ name: 'Jane', document: undefined });
   });
 
-  it('normalises a formatted CPF to its digits before filtering', async () => {
-    const port = fakePort();
-    const handler = new ListCustomersHandler(port);
+  // The document is the user's: the query adapter hands it to the user search, which normalizes a
+  // formatted one and finds nobody for a malformed one (find-users.use-case.spec.ts).
+  it.each(['111.444.777-35', '123'])(
+    'hands the document filter %s to the port exactly as typed',
+    async (document) => {
+      const port = fakePort();
+      const handler = new ListCustomersHandler(port);
 
-    await handler.execute(new ListCustomersQuery(undefined, '111.444.777-35'));
+      await handler.execute(new ListCustomersQuery(undefined, document));
 
-    expect(port.listActive).toHaveBeenCalledWith({ name: undefined, document: '11144477735' });
-  });
-
-  it('answers an empty list for a malformed document filter, never an error', async () => {
-    const port = fakePort([{ id: 'x' } as CustomerSummaryDto]);
-    const handler = new ListCustomersHandler(port);
-
-    const result = await handler.execute(new ListCustomersQuery(undefined, '123'));
-
-    expect(result).toEqual([]);
-    expect(port.listActive).not.toHaveBeenCalled();
-  });
+      expect(port.listActive).toHaveBeenCalledWith({ name: undefined, document });
+    },
+  );
 
   it('returns exactly what the port answers', async () => {
     const rows = [{ id: '11111111-1111-4111-8111-111111111111' } as CustomerSummaryDto];

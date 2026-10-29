@@ -1169,12 +1169,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The adapter's SQL names only `customers`, and its entries leave the known table findings
-- [ ] No file in `customers/application` imports `PersonDocument`
-- [ ] No file in any module's `application` imports another module; the dependency baseline is regenerated without that entry
-- [ ] `customer-query.adapter.spec.ts` and `customer-read-queries.spec.ts` pass, and the filter cases from T6 pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] The adapter's SQL names only `customers`, and its entries leave the known table findings
+- [x] No file in `customers/application` imports `PersonDocument`
+- [x] No file in any module's `application` imports another module; the dependency baseline is regenerated without that entry
+- [x] `customer-query.adapter.spec.ts` and `customer-read-queries.spec.ts` pass, and the filter cases from T6 pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

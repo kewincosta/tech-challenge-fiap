@@ -21,6 +21,7 @@ export interface CustomerSummaryDto {
 
 export interface ListCustomersFilter {
   name?: string;
+  /** As typed, masked or bare. A malformed document matches no customer. */
   document?: string;
 }
 

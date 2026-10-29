@@ -12,7 +12,8 @@ import { CustomerId } from '../../src/modules/customers/domain/value-objects/cus
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerQueryAdapter } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
-import { UserKeyResolver } from '../../src/modules/identity';
+import { FindUsersUseCase, UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmUserQueryAdapter } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user-query.adapter';
 import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
@@ -29,7 +30,13 @@ let userRepository: TypeOrmUserRepository;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  const queryAdapter = new TypeOrmCustomerQueryAdapter(dataSource);
+  const queryAdapter = new TypeOrmCustomerQueryAdapter(
+    dataSource,
+    new FindUsersUseCase(
+      new TypeOrmUserQueryAdapter(dataSource.getRepository(UserOrmEntity), dataSource),
+    ),
+    new UserKeyResolver(dataSource),
+  );
   getCustomerHandler = new GetCustomerHandler(queryAdapter);
   getCustomerByUserIdHandler = new GetCustomerByUserIdHandler(queryAdapter);
   listCustomersHandler = new ListCustomersHandler(queryAdapter);

@@ -2310,20 +2310,6 @@
     }
   },
   {
-    "type": "dependency",
-    "from": "src/modules/customers/application/queries/list-customers/list-customers.handler.ts",
-    "to": "src/modules/identity/users/domain/value-objects/person-document.ts",
-    "unresolvedTo": "../../../../identity/users/domain/value-objects/person-document",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-stays-in-module"
-    }
-  },
-  {
     "type": "cycle",
     "from": "src/modules/identity/authentication/infrastructure/persistence/refresh-token.orm-entity.ts",
     "to": "src/modules/identity/authentication/infrastructure/persistence/session.orm-entity.ts",
@@ -2352,20 +2338,6 @@
         ]
       }
     ]
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/customers/application/queries/list-customers/list-customers.handler.ts",
-    "to": "src/modules/identity/users/domain/value-objects/person-document.ts",
-    "unresolvedTo": "../../../../identity/users/domain/value-objects/person-document",
-    "dependencyTypes": [
-      "local",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "through-public-api"
-    }
   },
   {
     "type": "dependency",

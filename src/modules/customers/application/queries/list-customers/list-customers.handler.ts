@@ -1,6 +1,5 @@
 import { Inject } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { PersonDocument } from '../../../../identity/users/domain/value-objects/person-document';
 import {
   CUSTOMER_QUERY_PORT,
   CustomerQueryPort,
@@ -16,16 +15,6 @@ export class ListCustomersHandler implements IQueryHandler<
   constructor(@Inject(CUSTOMER_QUERY_PORT) private readonly customerQuery: CustomerQueryPort) {}
 
   async execute(query: ListCustomersQuery): Promise<CustomerSummaryDto[]> {
-    let document: string | undefined;
-    if (query.document !== undefined) {
-      try {
-        document = PersonDocument.create(query.document).value;
-      } catch {
-        // A malformed document filter matches nobody by construction - no error, empty result,
-        // consistent with ListUsersHandler's tolerance for free-typed search input.
-        return [];
-      }
-    }
-    return this.customerQuery.listActive({ name: query.name, document });
+    return this.customerQuery.listActive({ name: query.name, document: query.document });
   }
 }
