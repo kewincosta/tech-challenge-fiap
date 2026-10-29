@@ -1,13 +1,13 @@
 # authentication
 
 Proving who a person is. Login, the session lifecycle, access and refresh tokens, and revocation.
-Part of the Identity & Access context, alongside [users](users.md) and
+One of the three areas of [identity](README.md), alongside [users](users.md) and
 [authorization](authorization.md).
 
-This module does not own the password. `users` does, and login verifies credentials over the
-`QueryBus`.
+This area does not own the password. `users` does, and login verifies credentials by calling its
+`VerifyCredentialsUseCase`.
 
-Conventions this page does not repeat are in [the high level design](../high-level-design.md).
+Conventions this page does not repeat are in [the high level design](../../high-level-design.md).
 
 ## Aggregate
 
@@ -19,7 +19,7 @@ Invariants it holds:
 - A session is `ACTIVE` or `REVOKED`, and revocation carries a reason from `SessionRevocationReason`.
 - A session has at most one active refresh token, enforced in the database by `ux_refresh_tokens_active_per_session`.
 - Refreshing rotates: the redeemed token moves to `ROTATED` and points at its replacement through `replaced_by_id`.
-- Redeeming an already-rotated token is treated as theft. `Session.refresh` revokes the session with reason `TokenReuse`, records `RefreshTokenReuseDetected`, and throws ([0004](../../adr/0004-jwt-with-refresh-token-rotation.md)).
+- Redeeming an already-rotated token is treated as theft. `Session.refresh` revokes the session with reason `TokenReuse`, records `RefreshTokenReuseDetected`, and throws ([0004](../../../adr/0004-jwt-with-refresh-token-rotation.md)).
 - A session past `absolute_expires_at` cannot be refreshed however recently it was used.
 
 ## Value objects
@@ -29,26 +29,34 @@ already-hashed token so a raw one cannot be stored.
 
 ## Commands
 
-| Command                    | Handler               | What it does                                                                                                                                        |
-| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AuthenticateUserCommand`  | `authenticate-user`   | Verifies credentials over the `QueryBus`, opens a session, issues the pair.                                                                         |
-| `RefreshSessionCommand`    | `refresh-session`     | Rotates the refresh token, or detects reuse and revokes.                                                                                            |
-| `RevokeSessionCommand`     | `revoke-session`      | Ends one session.                                                                                                                                   |
-| `LogoutAllSessionsCommand` | `logout-all-sessions` | Ends every active session of the user ([0022](../../adr/0022-a-logout-ends-every-active-session.md)). Dispatched by the password change in `users`. |
+| Command                    | Use case                   | What it does                                                                                                                                                                                                |
+| -------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthenticateUserCommand`  | `AuthenticateUserUseCase`  | Verifies credentials through `VerifyCredentialsUseCase`, opens a session, issues the pair.                                                                                                                  |
+| `RefreshSessionCommand`    | `RefreshSessionUseCase`    | Rotates the refresh token, or detects reuse and revokes.                                                                                                                                                    |
+| `RevokeSessionCommand`     | `RevokeSessionUseCase`     | Ends one session. When the actor is not its owner, it reads the actor's permissions through `GetUserEffectiveAccessUseCase`.                                                                                |
+| `LogoutAllSessionsCommand` | `LogoutAllSessionsUseCase` | Ends every active session of the user ([0022](../../../adr/0022-a-logout-ends-every-active-session.md)). Called by `ChangePasswordUseCase` and `DeactivateUserUseCase` in `users`, and by the logout route. |
 
-## Queries, ports and subscribers
+## Queries, ports and settings
 
-`ListUserSessionsQuery` lists a user's sessions. Ports in `application/ports`: `AccessTokenPort`
-(signs and verifies the JWT), `RefreshTokenHasher`, `RevokedSessionStore` and `SessionQueryPort`.
+`ListUserSessionsQuery` lists a user's sessions. Ports in `application/ports`: `SessionRepository`,
+`SessionQueryPort`, `AccessTokenService` (signs and verifies the JWT), `RefreshTokenHasher` and
+`RevokedSessionStore`.
 
-`SecurityEventsSubscriber` (`application/subscribers`) reacts to the session events for logging.
+`AuthSettings` (`application/auth-settings.ts`) carries the access token, refresh token and session
+lifetimes. `identity.module.ts` builds it from the environment configuration, so no use case reads
+the configuration.
+
+`RefreshTokenReuseSubscriber` (`infrastructure/logging`) listens for `RefreshTokenReuseDetected` and
+logs a warning under the `AuthenticationSecurity` context, naming the session that was revoked.
 
 ## Persistence and cache
 
-`TypeOrmSessionRepository` and its mapper in `infrastructure/persistence`.
-`RedisRevokedSessionStore` in `infrastructure/cache` holds the revoked session list that
-`JwtAuthGuard` consults, which is what makes a revocation take effect before the access token
-expires ([0003](../../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
+`TypeOrmSessionRepository`, `TypeOrmSessionQueryAdapter` and the mapper in
+`infrastructure/persistence`. `JwtAccessTokenService` and `Sha256RefreshTokenHasher` in
+`infrastructure/security` implement the token ports. `RedisRevokedSessionStore` in
+`infrastructure/cache` holds the revoked session list that `JwtAuthGuard` consults, which is what
+makes a revocation take effect before the access token expires
+([0003](../../../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
 
 ### `sessions`
 

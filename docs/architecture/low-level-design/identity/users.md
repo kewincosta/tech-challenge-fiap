@@ -1,11 +1,11 @@
 # users
 
 Who a person is. Registration, the document that identifies them, the password, and the account
-lifecycle. Part of the Identity & Access context, alongside
+lifecycle. One of the three areas of [identity](README.md), alongside
 [authentication](authentication.md) and [authorization](authorization.md).
 
-Conventions this page does not repeat are in [the high level design](../high-level-design.md).
-Decisions are in [the records](../../adr/README.md).
+Conventions this page does not repeat are in [the high level design](../../high-level-design.md).
+Decisions are in [the records](../../../adr/README.md).
 
 ## Aggregate
 
@@ -30,35 +30,47 @@ Invariants it holds:
 
 ## Commands
 
-| Command                 | Handler           | What it does                                                                                                                                     |
-| ----------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `RegisterUserCommand`   | `register-user`   | Registers an account. Also assigns the `CUSTOMER` role over the `CommandBus`, inside one transaction, so an account never exists without a role. |
-| `UpdateUserCommand`     | `update-user`     | Changes name or email.                                                                                                                           |
-| `ChangePasswordCommand` | `change-password` | Replaces the hash, clears `mustChangePassword`, and revokes every session of that user.                                                          |
-| `DeactivateUserCommand` | `deactivate-user` | Soft-deletes the account.                                                                                                                        |
+| Command                 | Use case                | What it does                                                                                                                                                    |
+| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RegisterUserCommand`   | `RegisterUserUseCase`   | Registers an account. Also assigns the `CUSTOMER` role by calling `AssignRoleToUserUseCase`, inside one transaction, so an account never exists without a role. |
+| `UpdateUserCommand`     | `UpdateUserUseCase`     | Changes name, email or document.                                                                                                                                |
+| `ChangePasswordCommand` | `ChangePasswordUseCase` | Replaces the hash, clears `mustChangePassword`, and ends every session of that user through `LogoutAllSessionsUseCase`.                                         |
+| `DeactivateUserCommand` | `DeactivateUserUseCase` | Soft-deletes the account and ends every session of that user.                                                                                                   |
 
-`RegisterUserHandler` is the module's one cross-boundary write. It is why every account in the
-system carries `CUSTOMER`, which is a fact with consequences well outside this module.
+`RegisterUserUseCase` is the one write of this area that spans another: it saves the user and the
+role assignment in a single transaction. It is why every account in the system carries `CUSTOMER`,
+which is a fact with consequences well outside this module. `customers` opens the account of a new
+customer through the same use case, from its `CustomerAccounts` gateway.
 
 ## Queries and ports
 
-| Query                     | Answers                                                                                        |
-| ------------------------- | ---------------------------------------------------------------------------------------------- |
-| `GetUserByIdQuery`        | One user by external id. Used across modules over the `QueryBus`.                              |
-| `FindUserByDocumentQuery` | The lookup `customers` uses to find an existing person by CPF or CNPJ.                         |
-| `ListUsersQuery`          | The administrative listing.                                                                    |
-| `VerifyCredentialsQuery`  | Used by `authentication` at login. This module owns the password, so it owns the verification. |
+| Query                     | Answers                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GetUserByIdQuery`        | One user by external id. Throws `UserNotFoundError` when there is none. Called inside `identity`, and by `customers` and `work-orders` through their gateways. |
+| `FindUsersQuery`          | Users by a list of ids, a fragment of the name or a document, in any combination and of any status. The customer listing is composed from it.                  |
+| `FindUserByDocumentQuery` | A lookup by CPF or CNPJ. No route or other module calls it today.                                                                                              |
+| `ListUsersQuery`          | The administrative listing.                                                                                                                                    |
+| `VerifyCredentialsQuery`  | Used by `authentication` at login. This module owns the password, so it owns the verification.                                                                 |
 
-Ports: `UserRepository` (`domain/repositories`), `UserQueryPort` and `PasswordHasher`
-(`application/ports`). The hasher is implemented by `Argon2PasswordHasher`
-([0005](../../adr/0005-argon2id-for-password-hashing.md)).
+`FindUsersQuery` normalizes the document the way `PersonDocument` does, so a masked CPF finds the
+same user, and a malformed document finds nobody.
+
+Ports, all in `application/ports`: `UserRepository`, `UserQueryPort` and `PasswordHasher`. The
+hasher is implemented by `Argon2PasswordHasher`
+([0005](../../../adr/0005-argon2id-for-password-hashing.md)).
 
 ## Persistence
 
-`TypeOrmUserRepository`, `TypeOrmUserQueryAdapter` and `UserMapper` in
+`TypeOrmUserRepository`, `TypeOrmUserQueryAdapter`, `UserMapper` and `UserKeyResolver` in
 `infrastructure/persistence`. The repository honours an ambient transaction
-([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)), which is what lets
+([0023](../../../adr/0023-repositories-honour-an-ambient-transaction.md)), which is what lets
 registration commit with the role assignment.
+
+`UserKeyResolver` turns a user UUID into its internal key and back, one at a time and in batch, for
+the modules that reference a user: `customers`, `inventory` and `work-orders` each join a user
+without reading `users` themselves ([0028](../../../adr/0028-each-module-queries-only-its-own-tables.md)).
+It resolves a row written earlier in the caller's transaction, and answers `null` for an unknown
+key. `index.ts` exports it.
 
 ### `users`
 

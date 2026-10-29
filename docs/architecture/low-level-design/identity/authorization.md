@@ -1,12 +1,12 @@
 # authorization
 
 What a person may do. Roles, permissions, assignments, and the effective access every guarded
-request is checked against. Part of the Identity & Access context, alongside [users](users.md) and
-[authentication](authentication.md).
+request is checked against. One of the three areas of [identity](README.md), alongside
+[users](users.md) and [authentication](authentication.md).
 
-This module provides `PermissionsGuard` and the `@RequirePermissions()` decorator that the rest of
+This area provides `PermissionsGuard` and the `@RequirePermissions()` decorator that the rest of
 the system routes through. Where that guard sits in the chain is in
-[the high level design](../high-level-design.md).
+[the high level design](../../high-level-design.md).
 
 ## Aggregates
 
@@ -17,10 +17,10 @@ Invariants they hold:
 
 - A role name is unique, and a system role (`is_system`) cannot be renamed or deleted. `ROLE_SYSTEM_IMMUTABLE` (422).
 - A permission code is unique and shape-validated.
-- Assignment is not an aggregate. It is a row in `user_roles`, written through `AssignmentRepository`, because a link with no behaviour of its own does not earn one ([0010](../../adr/0010-no-aggregate-for-the-staff-profiles.md) records the same reasoning for profiles).
+- Assignment is not an aggregate. It is a row in `user_roles`, written through `AssignmentRepository`, because a link with no behaviour of its own does not earn one ([0010](../../../adr/0010-no-aggregate-for-the-staff-profiles.md) records the same reasoning for profiles).
 
 Groups used to be a third level here and were removed
-([0011](../../adr/0011-groups-removed-from-the-authorization-model.md)). Effective access resolves
+([0011](../../../adr/0011-groups-removed-from-the-authorization-model.md)). Effective access resolves
 in one hop: a user holds roles, a role holds permissions.
 
 ## Value objects
@@ -30,47 +30,48 @@ an invalid name or code cannot reach the database.
 
 ## The escalation rule
 
-`AssignRoleToUserHandler.ensureAssignable` is where
-[0012](../../adr/0012-super-administrator-created-outside-the-api.md) becomes code:
+`AssignRoleToUserUseCase.ensureAssignable` is where
+[0012](../../../adr/0012-super-administrator-created-outside-the-api.md) becomes code:
 
 - Assigning `SUPER_ADMIN` is refused outright. `AUTHZ_ROLE_NOT_ASSIGNABLE` (403).
 - Assigning `ADMIN` requires the acting user to hold `SUPER_ADMIN`. `AUTHZ_ROLE_ESCALATION_FORBIDDEN` (403).
 - A missing actor, which is what a system-initiated call looks like, is refused rather than trusted.
 
-## Commands and queries
+## Use cases
 
-| Command                                                       | What it does                                                                                       |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `CreateRoleCommand`, `UpdateRoleCommand`, `DeleteRoleCommand` | Role lifecycle, refusing system roles.                                                             |
-| `SetRolePermissionsCommand`                                   | Replaces a role's permission set.                                                                  |
-| `AssignRoleToUserCommand`, `RevokeRoleFromUserCommand`        | Assignment, subject to the escalation rule. Record `RoleAssignedToUser` and `RoleRevokedFromUser`. |
+| Command                                                       | Use case                                                      | What it does                                                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `CreateRoleCommand`, `UpdateRoleCommand`, `DeleteRoleCommand` | `CreateRoleUseCase`, `UpdateRoleUseCase`, `DeleteRoleUseCase` | Role lifecycle, refusing system roles.                                                             |
+| `SetRolePermissionsCommand`                                   | `SetRolePermissionsUseCase`                                   | Replaces a role's permission set.                                                                  |
+| `AssignRoleToUserCommand`, `RevokeRoleFromUserCommand`        | `AssignRoleToUserUseCase`, `RevokeRoleFromUserUseCase`        | Assignment, subject to the escalation rule. Record `RoleAssignedToUser` and `RoleRevokedFromUser`. |
 
-Queries: `GetRoleQuery`, `ListRolesQuery`, `ListPermissionsQuery`, `GetUserAccessQuery`,
-`GetUserEffectiveAccessQuery`. The last one is what other modules call over the `QueryBus`,
-including the escalation rule itself.
+Queries: `GetRoleQuery` (throws `RoleNotFoundError` when there is none), `ListRolesQuery`,
+`ListPermissionsQuery`, `GetUserAccessQuery` and `GetUserEffectiveAccessQuery`. The last one is what
+the other modules call through `GetUserEffectiveAccessUseCase`, which `identity` exports from its
+`index.ts`, and what the escalation rule itself calls.
 
 ## Services, ports and subscribers
 
 `EffectiveAccessService` (`application/services`) resolves a user's roles and permissions, checking
 `AccessCache` before falling back to `EffectiveAccessReader`. `PermissionCatalogService` owns the
-`AppPermission` catalog.
+`AppPermission` catalog. Both are plain classes that `identity.module.ts` builds.
 
 `AccessCacheInvalidationSubscriber` (`application/subscribers`) listens for `RoleAssignedToUser`
 and `RoleRevokedFromUser` and drops the cached entry, so an access change does not wait out the
-TTL.
+TTL. The composition root subscribes it on the dispatcher when the module starts.
 
-Ports in `application/ports`: `AccessCache`, `AssignmentRepository`, `EffectiveAccessReader`,
-`RbacQueryPort`. Repositories in `domain/repositories`: `RoleRepository`, `PermissionRepository`.
+Ports, all in `application/ports`: `AccessCache`, `AssignmentRepository`, `EffectiveAccessReader`,
+`RbacQueryPort`, `RoleRepository` and `PermissionRepository`.
 
 ## Persistence and cache
 
 `TypeOrmRoleRepository`, `TypeOrmPermissionRepository`, `TypeOrmAssignmentRepository`,
 `TypeOrmEffectiveAccessReader` and `TypeOrmRbacQueryAdapter` in `infrastructure/persistence`.
 `RedisAccessCache` in `infrastructure/cache`, keyed `authz:access:${userId}` with a 60 second TTL
-([0003](../../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
+([0003](../../../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)).
 
 `TypeOrmAssignmentRepository` honours an ambient transaction
-([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)), which is what lets user
+([0023](../../../adr/0023-repositories-honour-an-ambient-transaction.md)), which is what lets user
 registration commit the account and its role together.
 
 `TypeOrmEffectiveAccessReader` resolves both roles and permissions in one query, a `UNION` over
@@ -104,7 +105,7 @@ From migration `1787702400000-create-identity-and-access-schema.ts`. Seeded by
 ### `user_roles`
 
 A join table no route addresses, so it carries no `external_id`
-([0006](../../adr/0006-internal-key-plus-external-uuid.md)).
+([0006](../../../adr/0006-internal-key-plus-external-uuid.md)).
 
 | Column       | Type          | Notes                                                                  |
 | ------------ | ------------- | ---------------------------------------------------------------------- |
@@ -160,7 +161,7 @@ supplied in a request body, which makes it bad input rather than a missing resou
 
 ## One consequence to know
 
-Registration assigns `CUSTOMER` to every account (`users`, `RegisterUserHandler`). Every staff
+Registration assigns `CUSTOMER` to every account (`users`, `RegisterUserUseCase`). Every staff
 account therefore also carries whatever `CUSTOMER` carries, so a permission held by `CUSTOMER` is
 held by everyone with an account. Any rule meant to exclude staff cannot be expressed as a
 permission `CUSTOMER` holds.

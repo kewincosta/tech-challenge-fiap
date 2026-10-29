@@ -1933,9 +1933,9 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The users, authentication and authorization pages are reorganized under identity, and the index links them
-- [ ] No page names a bus, a `*Handler` class or an old identity module path
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] The users, authentication and authorization pages are reorganized under identity, and the index links them
+- [x] No page names a bus, a `*Handler` class or an old identity module path
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs

@@ -24,8 +24,8 @@ amount with `MONEY_INVALID_AMOUNT` (400).
 The base every aggregate extends. It carries `record()` for a domain event and two ways to read
 them back:
 
-- `pullDomainEvents()` drains, and is what the handler calls to publish after `save` returns.
-- A second, **non-draining** read exists so a repository can write a trail from the same events the handler will publish afterwards. That is what makes [0021](../../adr/0021-the-trail-written-inside-the-aggregate-transaction.md) possible without the repository stealing the events from the publisher.
+- `pullDomainEvents()` drains, and is what the use case calls to publish after `save` returns.
+- A second, **non-draining** read exists so a repository can write a trail from the same events the use case will publish afterwards. That is what makes [0021](../../adr/0021-the-trail-written-inside-the-aggregate-transaction.md) possible without the repository stealing the events from the publisher.
 
 ### `DomainEvent` and `EntityId`
 
@@ -64,25 +64,39 @@ that later finds the same exposure adopts the guard rather than inventing anothe
 
 ## Application ports
 
-Three ports, all implemented in `infrastructure`:
+Four ports, all implemented in `infrastructure`. Their injection tokens are in
+`src/shared/shared.tokens.ts`, next to the composition root:
 
-| Port                | Implementation             | Why it is a port                                                                                                                                            |
-| ------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Clock`             | `SystemClock`              | So a handler's time-dependent behaviour is testable without freezing the system clock.                                                                      |
-| `IdGenerator`       | `CryptoIdGenerator`        | So an aggregate's identifier is injected rather than generated inside the domain.                                                                           |
-| `TransactionRunner` | `TypeOrmTransactionRunner` | So a handler can span a transaction across a bus dispatch without importing TypeORM ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)). |
+| Port                   | Implementation                  | Why it is a port                                                                                                                                      |
+| ---------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Clock`                | `SystemClock`                   | So the time-dependent behaviour of a use case is testable without freezing the system clock.                                                          |
+| `IdGenerator`          | `CryptoIdGenerator`             | So an aggregate's identifier is injected rather than generated inside the domain.                                                                     |
+| `TransactionRunner`    | `TypeOrmTransactionRunner`      | So a use case can span a transaction across modules without importing TypeORM ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)). |
+| `DomainEventPublisher` | `InMemoryDomainEventDispatcher` | So a use case hands the events of its aggregate to whoever listens without knowing who that is. `DomainEventSubscriber` is the shape of a listener.   |
 
-The `application` layer may not import `typeorm` at all, enforced by `eslint.config.mjs`, which is
-what makes these ports load-bearing rather than decorative.
+`domain` and `application` import no framework or infrastructure package, and `npm run lint` fails
+when one does. These ports are how those layers reach the clock, the ids, the transaction and the
+subscribers.
 
 ## Infrastructure
 
 ### `typeorm-transaction-runner.ts`
 
-Holds `TypeOrmTransactionRunner` and `currentEntityManager()`. The runner places its
-`EntityManager` in an `AsyncLocalStorage`; `currentEntityManager()` reads it back. The rule that
-obliges a repository to use it, and why, is
-[ADR 0023](../../adr/0023-repositories-honour-an-ambient-transaction.md).
+Holds `TypeOrmTransactionRunner`, `currentEntityManager()` and `runInNewTransaction()`. The runner
+places its `EntityManager` in an `AsyncLocalStorage`; `currentEntityManager()` reads it back. A
+repository that finds no ambient transaction opens its own through `runInNewTransaction()`, which
+publishes that manager as the ambient one, so the key resolvers and the reads of other modules that
+it calls join the transaction and take no second connection. The rule that obliges a repository to
+use all of this, and why, is [ADR 0023](../../adr/0023-repositories-honour-an-ambient-transaction.md).
+
+### `in-memory-domain-event-dispatcher.ts`
+
+Holds `InMemoryDomainEventDispatcher` (`infrastructure/events`). A module subscribes its listeners
+in its composition root, and `publish` hands each event to the subscribers of its class. Each
+subscriber starts during `publish` and the dispatcher never waits for it. A subscriber that throws or
+rejects is logged at error level, under the `EventBus` context, as
+`"<SubscriberName>" has thrown an unhandled exception.`, and the error never reaches the caller.
+`SharedModule` provides the dispatcher and binds `DOMAIN_EVENT_PUBLISHER` to the same instance.
 
 ### `database/migrations/`
 

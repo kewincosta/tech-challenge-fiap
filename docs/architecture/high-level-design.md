@@ -88,7 +88,7 @@ instead, as the budget decision and cancellation authorizers do.
 
 Effective access is resolved per user and cached in Redis, invalidated by a subscriber on
 assignment changes ([0003](../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)). The cache
-key and its TTL are on [the authorization page](low-level-design/authorization.md).
+key and its TTL are on [the authorization page](low-level-design/identity/authorization.md).
 
 One consequence catches people: registration assigns `CUSTOMER` to every account, so every staff
 account also carries the permissions of `CUSTOMER`. A permission that `CUSTOMER` holds is held by

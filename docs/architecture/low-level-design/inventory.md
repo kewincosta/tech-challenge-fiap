@@ -34,41 +34,61 @@ Invariants they hold:
 
 ## Commands
 
-| Command                         | Handler                     | Called by                                                                                                                  |
-| ------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `CreateInventoryItemCommand`    | `create-inventory-item`     | The administrator, over HTTP.                                                                                              |
-| `UpdateInventoryItemCommand`    | `update-inventory-item`     | The administrator.                                                                                                         |
-| `ReplenishStockCommand`         | `replenish-stock`           | The administrator. Appends an `INBOUND` movement.                                                                          |
-| `AdjustStockCommand`            | `adjust-stock`              | The administrator. Appends an `ADJUSTMENT`, note required.                                                                 |
-| `ConsumeStockBatchCommand`      | `consume-stock-batch`       | `work-orders`, on withdrawal. Appends `CONSUMPTION` movements as `PENDING`.                                                |
-| `RestoreStockBatchCommand`      | `restore-stock-batch`       | `work-orders`, on a return. Draws down consumptions and appends one `RETURN` per consumption drawn.                        |
-| `SettleStockMovementsCommand`   | `settle-stock-movements`    | `work-orders`, on delivery. Moves pending consumptions to `SETTLED`.                                                       |
-| `WriteOffStockMovementsCommand` | `write-off-stock-movements` | `work-orders`, on cancellation. Moves them to `WRITTEN_OFF` ([0016](../../adr/0016-cancellation-writes-movements-off.md)). |
+| Command                          | Use case                         | Called by                                                                                                                         |
+| -------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `CreateInventoryItemCommand`     | `CreateInventoryItemUseCase`     | The administrator, over HTTP.                                                                                                     |
+| `UpdateInventoryItemCommand`     | `UpdateInventoryItemUseCase`     | The administrator.                                                                                                                |
+| `DeactivateInventoryItemCommand` | `DeactivateInventoryItemUseCase` | The administrator. Refused with `INVENTORY_ITEM_IN_USE` while a work order that is neither delivered nor canceled plans the item. |
+| `ReplenishStockCommand`          | `ReplenishStockUseCase`          | The administrator. Appends an `INBOUND` movement.                                                                                 |
+| `AdjustStockCommand`             | `AdjustStockUseCase`             | The administrator. Appends an `ADJUSTMENT`, note required.                                                                        |
+| `ConsumeStockBatchCommand`       | `ConsumeStockBatchUseCase`       | `work-orders`, on withdrawal. Appends `CONSUMPTION` movements as `PENDING`.                                                       |
+| `RestoreStockBatchCommand`       | `RestoreStockBatchUseCase`       | `work-orders`, on a return. Draws down consumptions and appends one `RETURN` per consumption drawn.                               |
+| `SettleStockMovementsCommand`    | `SettleStockMovementsUseCase`    | `work-orders`, on delivery. Moves pending consumptions to `SETTLED`.                                                              |
+| `WriteOffStockMovementsCommand`  | `WriteOffStockMovementsUseCase`  | `work-orders`, on cancellation. Moves them to `WRITTEN_OFF` ([0016](../../adr/0016-cancellation-writes-movements-off.md)).        |
 
-The last four are dispatched over the `CommandBus` from `work-orders` and run inside that caller's
-transaction. They must therefore stay registered in `inventory.module.ts`: a
-`@CommandHandler`-decorated class that is not in the `providers` array compiles, lints and
-unit-tests clean, and fails at runtime with "No handler found for the command".
+The last four are called by `work-orders` through its `StockLedger` port. The gateway of that port
+calls these use cases, which `InventoryModule` exports and `index.ts` re-exports, and they run inside
+the caller's transaction ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)).
+`ReplenishStockUseCase` is also what the seed script calls for the opening stock of each item.
 
 ## Queries and ports
 
-| Query                         | Answers                                                                            |
-| ----------------------------- | ---------------------------------------------------------------------------------- |
-| `GetInventoryItemQuery`       | One item.                                                                          |
-| `ListInventoryItemsQuery`     | The catalog of stock.                                                              |
-| `GetItemMovementHistoryQuery` | The full ledger for one item, which is the traceability requirement made readable. |
-| `ListStockShortagesQuery`     | Items whose demand from work orders in execution exceeds what is on the shelf.     |
+| Query                         | Answers                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GetInventoryItemQuery`       | One item. Throws `InventoryItemNotFoundError` when there is none. `work-orders` calls it through its `PartCatalog` gateway.                 |
+| `ListInventoryItemsQuery`     | The catalog of stock.                                                                                                                       |
+| `GetItemMovementHistoryQuery` | The full ledger for one item, which is the traceability requirement made readable. Throws `InventoryItemNotFoundError` for an unknown item. |
+| `ListStockShortagesQuery`     | Items whose demand from work orders in execution exceeds what is on the shelf.                                                              |
 
-Ports: `InventoryItemRepository` (`domain/repositories`), `InventoryQueryPort`
-(`application/ports`).
+Ports, both in `application/ports`: `InventoryItemRepository` and `InventoryQueryPort`.
+
+## Reading work order data
+
+The shortage report, the in-use check and the movement history need data that `work-orders` owns,
+and `work-orders` already calls this module to move stock. A call back would close a cycle, so
+`inventory` declares the interface it needs and `work-orders` implements it
+([0027](../../adr/0027-ports-between-modules.md)).
+
+`WorkOrderReads` (`infrastructure/work-order-reads.ts`, exported by `index.ts` with its
+`WORK_ORDER_READS` token) has four methods: the internal key of a work order, the external ids behind
+a list of internal keys, the outstanding demand per item (planned minus withdrawn, on approved
+budgets of work orders in execution, with their numbers), and the numbers of the open work orders
+that plan an item. `TypeOrmWorkOrderReads` in `work-orders` implements it, and the global
+`WorkOrderReadsModule` binds the two once, at the root.
 
 ## Persistence
 
-`TypeOrmInventoryItemRepository` and `TypeOrmInventoryQueryAdapter` in `infrastructure/persistence`.
-The repository honours an ambient transaction
-([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)) and takes a row lock on the
-item, which is what actually prevents two concurrent withdrawals from both reading the same
-quantity.
+`TypeOrmInventoryItemRepository`, `TypeOrmInventoryQueryAdapter`, `InventoryItemMapper` and
+`InventoryItemKeyResolver` in `infrastructure/persistence`. The repository honours an ambient
+transaction ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)) and takes a row
+lock on the item, which is what actually prevents two concurrent withdrawals from both reading the
+same quantity.
+
+Both adapters read only this module's tables. User keys go through `UserKeyResolver` and work order
+keys through `WorkOrderReads`, and the query adapter combines the demand `WorkOrderReads` returns
+with its own `inventory_items` ([0028](../../adr/0028-each-module-queries-only-its-own-tables.md)).
+
+`InventoryItemKeyResolver` turns an item UUID into its internal key and back for `work-orders`.
 
 ### `inventory_items`
 
@@ -147,6 +167,7 @@ consumption to. The columns are unused and kept rather than dropped.
 | `GET /inventory-items/shortages`                   | `inventory:read`   |
 | `GET /inventory-items/:externalId`                 | `inventory:read`   |
 | `PATCH /inventory-items/:externalId`               | `inventory:manage` |
+| `DELETE /inventory-items/:externalId`              | `inventory:manage` |
 | `POST /inventory-items/:externalId/replenishments` | `inventory:manage` |
 | `POST /inventory-items/:externalId/adjustments`    | `inventory:manage` |
 | `GET /inventory-items/:externalId/movements`       | `audit:read`       |
@@ -164,4 +185,5 @@ than `inventory:read`, because reading who moved what is an audit question.
 | `AdjustmentNoteRequiredError`  | `INVENTORY_ADJUSTMENT_NOTE_REQUIRED`  | 400    |
 | `InventoryItemNotFoundError`   | `INVENTORY_ITEM_NOT_FOUND`            | 404    |
 | `SkuAlreadyInUseError`         | `INVENTORY_SKU_ALREADY_IN_USE`        | 409    |
+| `InventoryItemInUseError`      | `INVENTORY_ITEM_IN_USE`               | 409    |
 | `InsufficientStockError`       | `INVENTORY_INSUFFICIENT_STOCK`        | 422    |

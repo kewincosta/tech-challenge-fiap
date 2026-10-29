@@ -4,8 +4,8 @@ The life of a work order, from reception to delivery or cancellation: its items,
 what is charged, and who did each step. The whole of the Workshop Operations context, and the
 largest module in the system.
 
-This is the module that spans others. It reads customers, vehicles and services, and it moves stock
-in `inventory` inside its own transaction.
+This is the module that spans others. It reads customers, vehicles, services and users through ports
+it declares itself, and it moves stock in `inventory` inside its own transaction.
 
 Conventions this page does not repeat are in [the high level design](../high-level-design.md).
 
@@ -46,7 +46,8 @@ Invariants it holds:
 
 ## Commands
 
-Sixteen write handlers, in lifecycle order.
+Sixteen command use cases, in lifecycle order. Each command is run by the use case of the same name,
+`CreateWorkOrderCommand` by `CreateWorkOrderUseCase`, and so on.
 
 | Command                            | What it does                                                                             |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -60,20 +61,24 @@ Sixteen write handlers, in lifecycle order.
 | `ApproveBudgetCommand`             | Approves the pending round and moves to `IN_EXECUTION`.                                  |
 | `RejectBudgetCommand`              | Rejects it and returns to the previous scope.                                            |
 | `SubmitSupplementaryBudgetCommand` | Prices the next round from execution and returns to `AWAITING_APPROVAL`.                 |
-| `WithdrawPartsCommand`             | Moves stock. Dispatches `ConsumeStockBatchCommand` into `inventory`.                     |
-| `ReturnPartsCommand`               | Returns unused parts. Dispatches `RestoreStockBatchCommand`.                             |
+| `WithdrawPartsCommand`             | Moves stock. Calls `StockLedger.consume`, which consumes the parts in `inventory`.       |
+| `ReturnPartsCommand`               | Returns unused parts. Calls `StockLedger.restore`.                                       |
 | `CompleteWorkOrderCommand`         | Computes the charged total and moves to `COMPLETED`.                                     |
-| `DeliverVehicleCommand`            | Moves to `DELIVERED` and dispatches `SettleStockMovementsCommand`.                       |
-| `CancelWorkOrderCommand`           | Moves to `CANCELED` and dispatches `WriteOffStockMovementsCommand`.                      |
+| `DeliverVehicleCommand`            | Moves to `DELIVERED` and calls `StockLedger.settle`.                                     |
+| `CancelWorkOrderCommand`           | Moves to `CANCELED` and calls `StockLedger.writeOff`.                                    |
 | `ApplyDiscountCommand`             | Reduces the charged total, with an actor and a reason.                                   |
 
 Four of these open a transaction that spans into `inventory`: withdrawal, return, delivery and
-cancellation ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)).
+cancellation. They run under the `TransactionRunner`, so the work order and the stock movements
+commit together ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)).
 
 ## Authorizers
 
-Three services in `application/services` hold rules `PermissionsGuard` cannot express, because it
-requires _all_ the permissions a route names and cannot say "either of two":
+Three plain classes in `application/services` hold rules `PermissionsGuard` cannot express, because it
+requires _all_ the permissions a route names and cannot say "either of two". They read what the caller
+may do from the `WorkOrderActors` port, which maps the permissions `work-orders:decide`,
+`work-orders:cancel-in-execution` and `work-orders:manage` to three flags, so this module imports no
+permission catalog:
 
 | Authorizer                      | Rule                                                                                                                                                     |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -83,30 +88,56 @@ requires _all_ the permissions a route names and cannot say "either of two":
 
 ## Queries and ports
 
-| Query                          | Answers                                                                                                                                                                          |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GetWorkOrderQuery`            | One work order in full, by number.                                                                                                                                               |
-| `ListWorkOrdersQuery`          | The board, filtered by status.                                                                                                                                                   |
-| `GetWorkOrderTrailQuery`       | The append-only trail.                                                                                                                                                           |
-| `GetMyWorkOrdersQuery`         | The caller's own work orders, resolving the customer from the token.                                                                                                             |
-| `GetMyWorkOrderQuery`          | One of the caller's own, by number. Answers the same `null` for "no customer", "no such number" and "not yours", so a stranger's number is indistinguishable from a missing one. |
-| `GetAverageExecutionTimeQuery` | Mean elapsed time between execution start and completion, in whole seconds, computed in SQL.                                                                                     |
+| Query                          | Answers                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GetWorkOrderQuery`            | One work order in full, by number. Throws `WorkOrderNotFoundError` when there is none.                                                                                                            |
+| `ListWorkOrdersQuery`          | The board, filtered by status.                                                                                                                                                                    |
+| `GetWorkOrderTrailQuery`       | The append-only trail. Throws `WorkOrderNotFoundError` for an unknown number.                                                                                                                     |
+| `GetMyWorkOrdersQuery`         | The caller's own work orders, resolving the customer from the token.                                                                                                                              |
+| `GetMyWorkOrderQuery`          | One of the caller's own, by number. Throws the same `WorkOrderNotFoundError` for "no customer", "no such number" and "not yours", so a stranger's number is indistinguishable from a missing one. |
+| `GetAverageExecutionTimeQuery` | Mean elapsed time between execution start and completion, in whole seconds, computed in SQL.                                                                                                      |
 
-Ports: `WorkOrderRepository` (`domain/repositories`), `WorkOrderQueryPort`,
-`WorkOrderMetricsQueryPort` and `WorkOrderNumberGenerator` (`application/ports`).
+Ports, all in `application/ports`. Two are the usual ones for a module's own data:
+`WorkOrderRepository`, `WorkOrderQueryPort`, `WorkOrderMetricsQueryPort` and
+`WorkOrderNumberGenerator`. Six are what this module needs of the others, and a gateway in
+`infrastructure/gateways` implements each by calling the other module's public API
+([0027](../../adr/0027-ports-between-modules.md)):
+
+| Port                | Gateway                    | Calls                                                                  |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------- |
+| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`   |
+| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                      |
+| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                      |
+| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                               |
+| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, settle and write-off use cases of `inventory`    |
+| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity` |
+
+A gateway turns the provider's not-found error into `null`, and the use case raises its own error,
+such as `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`. A customer that exists but is deactivated is still
+found, with `active` false, which is what separates a 404 from a 422.
 
 ## Persistence
 
 `TypeOrmWorkOrderRepository`, `TypeOrmWorkOrderQueryAdapter`,
-`TypeOrmWorkOrderMetricsQueryAdapter` and the mapper, in `infrastructure/persistence`.
+`TypeOrmWorkOrderMetricsQueryAdapter`, `TypeOrmWorkOrderReads` and the mapper, in
+`infrastructure/persistence`.
 
 The repository does three things beyond persisting the aggregate: it honours an ambient
 transaction, it enforces the version guard, and it writes the trail rows from the aggregate's own
 events inside the same transaction
 ([0021](../../adr/0021-the-trail-written-inside-the-aggregate-transaction.md)).
 
+The repository and the query adapters read only this module's tables. The customer, vehicle, user,
+service and inventory item keys go through the key resolvers of their owners, one batch call per
+owner for each request ([0028](../../adr/0028-each-module-queries-only-its-own-tables.md)).
+
+`TypeOrmWorkOrderReads` implements the `WorkOrderReads` interface that `inventory` declares, and the
+global `WorkOrderReadsModule` binds the two at the root. That is why every import between the two
+modules points from `work-orders` to `inventory`.
+
 The metrics adapter filters by `EXISTS` rather than joining `work_order_services`, because a join
-would multiply rows for a work order carrying several services and corrupt the average.
+would multiply rows for a work order carrying several services and corrupt the average. It turns the
+service UUID of the filter into an internal key with `ServiceKeyResolver` first.
 
 ### `work_orders`
 

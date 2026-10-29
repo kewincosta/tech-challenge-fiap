@@ -31,26 +31,39 @@ Brand and model are validated together as vehicle details: `VEHICLE_INVALID_DETA
 
 ## Commands
 
-| Command                  | Handler            | What it does                                                      |
-| ------------------------ | ------------------ | ----------------------------------------------------------------- |
-| `RegisterVehicleCommand` | `register-vehicle` | Registers a vehicle under a customer, refusing an inactive owner. |
-| `UpdateVehicleCommand`   | `update-vehicle`   | Changes brand, model or year.                                     |
-| `RemoveVehicleCommand`   | `remove-vehicle`   | Soft-deletes the vehicle.                                         |
+| Command                  | Use case                 | What it does                                                      |
+| ------------------------ | ------------------------ | ----------------------------------------------------------------- |
+| `RegisterVehicleCommand` | `RegisterVehicleUseCase` | Registers a vehicle under a customer, refusing an inactive owner. |
+| `UpdateVehicleCommand`   | `UpdateVehicleUseCase`   | Changes brand, model or year.                                     |
+| `RemoveVehicleCommand`   | `RemoveVehicleUseCase`   | Soft-deletes the vehicle.                                         |
+
+`RegisterVehicleUseCase` finds the owner through the `VehicleOwners` port. The answer carries the
+owner's `active` flag, which is what separates a customer that does not exist
+(`VEHICLE_REFERENCED_CUSTOMER_NOT_FOUND`, 404) from one that was deactivated
+(`VEHICLE_OWNING_CUSTOMER_INACTIVE`, 422).
 
 ## Queries and ports
 
-| Query                         | Answers                                                                                                                                              |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GetVehicleQuery`             | One vehicle by external id.                                                                                                                          |
-| `ListVehiclesByCustomerQuery` | Every vehicle of one customer.                                                                                                                       |
-| `GetMyVehiclesQuery`          | The caller's own vehicles, resolving the customer from the token over the `QueryBus`. Answers an empty list when the account has no customer record. |
+| Query                         | Answers                                                                                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GetVehicleQuery`             | One vehicle by external id. Throws `VehicleNotFoundError` when there is none. `work-orders` calls it through its `VehicleDirectory`.                     |
+| `ListVehiclesByCustomerQuery` | Every vehicle of one customer.                                                                                                                           |
+| `GetMyVehiclesQuery`          | The caller's own vehicles, resolving the customer from the token through `VehicleOwners`. Answers an empty list when the account has no customer record. |
 
-Ports: `VehicleRepository` (`domain/repositories`), `VehicleQueryPort` (`application/ports`).
+Ports, all in `application/ports`: `VehicleRepository`, `VehicleQueryPort` and `VehicleOwners`.
+`VehicleOwnersGateway` (`infrastructure/gateways`) implements the last one by calling
+`GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`, and turns their
+`CustomerNotFoundError` into `null`.
 
 ## Persistence
 
-`TypeOrmVehicleRepository`, `TypeOrmVehicleQueryAdapter` and `VehicleMapper` in
-`infrastructure/persistence`.
+`TypeOrmVehicleRepository`, `TypeOrmVehicleQueryAdapter`, `VehicleMapper` and `VehicleKeyResolver`
+in `infrastructure/persistence`. The repository and the query adapter turn a customer UUID into its
+internal key, and back, through `CustomerKeyResolver`, and read only `vehicles`
+([0028](../../adr/0028-each-module-queries-only-its-own-tables.md)).
+
+`VehicleKeyResolver` does the same for a vehicle UUID, for `work-orders`. `index.ts` exports it
+together with `GetVehicleUseCase` and `VehicleNotFoundError`.
 
 ### `vehicles`
 
