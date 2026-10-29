@@ -28,6 +28,6 @@ import { CustomersController } from './presentation/controllers/customers.contro
     { provide: CUSTOMER_QUERY_PORT, useClass: TypeOrmCustomerQueryAdapter },
     CustomerKeyResolver,
   ],
-  exports: [CustomerKeyResolver],
+  exports: [GetCustomerHandler, GetCustomerByUserIdHandler, CustomerKeyResolver],
 })
 export class CustomersModule {}

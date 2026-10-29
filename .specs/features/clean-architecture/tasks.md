@@ -829,12 +829,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Ports in `work-orders/application/ports` expose `CustomerRef`, `VehicleRef` and `findByUserId` as in design C3
-- [ ] Gateway specs prove the mapping, `active` from the provider's status, and `null` both when the provider returns `null` and when it throws its not-found error
-- [ ] `test/support/fakes/fake-customer-directory.ts` and `fake-vehicle-directory.ts` hold seeded data
-- [ ] `WorkOrdersModule` imports `CustomersModule` and `VehiclesModule` and provides the gateways under tokens from `work-orders.tokens.ts`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total grows by the gateway cases
+- [x] Ports in `work-orders/application/ports` expose `CustomerRef`, `VehicleRef` and `findByUserId` as in design C3
+- [x] Gateway specs prove the mapping, `active` from the provider's status, and `null` both when the provider returns `null` and when it throws its not-found error
+- [x] `test/support/fakes/fake-customer-directory.ts` and `fake-vehicle-directory.ts` hold seeded data
+- [x] `WorkOrdersModule` imports `CustomersModule` and `VehiclesModule` and provides the gateways under tokens from `work-orders.tokens.ts`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total grows by the gateway cases
 
 **Tests**: unit
 **Gate**: full

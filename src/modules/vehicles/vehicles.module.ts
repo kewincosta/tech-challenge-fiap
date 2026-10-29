@@ -28,6 +28,6 @@ import { VehiclesController } from './presentation/controllers/vehicles.controll
     { provide: VEHICLE_QUERY_PORT, useClass: TypeOrmVehicleQueryAdapter },
     VehicleKeyResolver,
   ],
-  exports: [VehicleKeyResolver],
+  exports: [GetVehicleHandler, VehicleKeyResolver],
 })
 export class VehiclesModule {}

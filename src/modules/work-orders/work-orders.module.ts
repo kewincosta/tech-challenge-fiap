@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CustomersModule } from '../customers';
+import { VehiclesModule } from '../vehicles';
 import { AddRequestedServiceHandler } from './application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountHandler } from './application/commands/apply-discount/apply-discount.handler';
 import { ApproveBudgetHandler } from './application/commands/approve-budget/approve-budget.handler';
@@ -17,6 +19,8 @@ import { StartDiagnosisHandler } from './application/commands/start-diagnosis/st
 import { SubmitSupplementaryBudgetHandler } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.handler';
 import { WithdrawPartsHandler } from './application/commands/withdraw-parts/withdraw-parts.handler';
 import {
+  CUSTOMER_DIRECTORY,
+  VEHICLE_DIRECTORY,
   WORK_ORDER_METRICS_QUERY_PORT,
   WORK_ORDER_NUMBER_GENERATOR,
   WORK_ORDER_QUERY_PORT,
@@ -31,6 +35,8 @@ import { ListWorkOrdersHandler } from './application/queries/list-work-orders/li
 import { BudgetDecisionAuthorizer } from './application/services/budget-decision.authorizer';
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
+import { CustomerDirectoryGateway } from './infrastructure/gateways/customer-directory.gateway';
+import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
@@ -51,6 +57,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       WorkOrderEventOrmEntity,
       WorkOrderBudgetOrmEntity,
     ]),
+    CustomersModule,
+    VehiclesModule,
   ],
   controllers: [WorkOrdersController],
   providers: [
@@ -83,6 +91,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: WORK_ORDER_QUERY_PORT, useClass: TypeOrmWorkOrderQueryAdapter },
     { provide: WORK_ORDER_METRICS_QUERY_PORT, useClass: TypeOrmWorkOrderMetricsQueryAdapter },
     { provide: WORK_ORDER_NUMBER_GENERATOR, useClass: RandomWorkOrderNumberGenerator },
+    { provide: CUSTOMER_DIRECTORY, useClass: CustomerDirectoryGateway },
+    { provide: VEHICLE_DIRECTORY, useClass: VehicleDirectoryGateway },
   ],
 })
 export class WorkOrdersModule {}
