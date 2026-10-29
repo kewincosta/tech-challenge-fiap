@@ -1059,10 +1059,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Neither handler injects `QueryBus`; their specs use the directory fake
-- [ ] The tracking e2e cases from T4 pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger
+- [x] Neither handler injects `QueryBus`; their specs use the directory fake
+- [x] The tracking e2e cases from T4 pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger
 
 **Tests**: unit
 **Gate**: full

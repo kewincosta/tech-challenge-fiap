@@ -1,10 +1,9 @@
 import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryBus, QueryHandler } from '@nestjs/cqrs';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
+import { CustomerDirectory } from '../../ports/customer-directory.port';
 import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
-import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
+import { CUSTOMER_DIRECTORY, WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetMyWorkOrderQuery } from './get-my-work-order.query';
 
 /**
@@ -20,7 +19,7 @@ export class GetMyWorkOrderHandler implements IQueryHandler<
 > {
   constructor(
     @Inject(WORK_ORDER_QUERY_PORT) private readonly workOrderQuery: WorkOrderQueryPort,
-    private readonly queryBus: QueryBus,
+    @Inject(CUSTOMER_DIRECTORY) private readonly customers: CustomerDirectory,
   ) {}
 
   async execute(query: GetMyWorkOrderQuery): Promise<WorkOrderSummaryDto | null> {
@@ -28,10 +27,7 @@ export class GetMyWorkOrderHandler implements IQueryHandler<
     // before any read happens (GetWorkOrderHandler's own reasoning).
     WorkOrderNumber.create(query.number);
 
-    const customer = await this.queryBus.execute<
-      GetCustomerByUserIdQuery,
-      CustomerSummaryDto | null
-    >(new GetCustomerByUserIdQuery(query.userId));
+    const customer = await this.customers.findByUserId(query.userId);
     if (!customer) {
       return null;
     }

@@ -1,9 +1,8 @@
 import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryBus, QueryHandler } from '@nestjs/cqrs';
-import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
-import { GetCustomerByUserIdQuery } from '../../../../customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { CustomerDirectory } from '../../ports/customer-directory.port';
 import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-query.port';
-import { WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
+import { CUSTOMER_DIRECTORY, WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetMyWorkOrdersQuery } from './get-my-work-orders.query';
 
 /** `GetMyVehiclesHandler`'s exact shape: resolve the customer, empty list when there is none. */
@@ -14,14 +13,11 @@ export class GetMyWorkOrdersHandler implements IQueryHandler<
 > {
   constructor(
     @Inject(WORK_ORDER_QUERY_PORT) private readonly workOrderQuery: WorkOrderQueryPort,
-    private readonly queryBus: QueryBus,
+    @Inject(CUSTOMER_DIRECTORY) private readonly customers: CustomerDirectory,
   ) {}
 
   async execute(query: GetMyWorkOrdersQuery): Promise<WorkOrderSummaryDto[]> {
-    const customer = await this.queryBus.execute<
-      GetCustomerByUserIdQuery,
-      CustomerSummaryDto | null
-    >(new GetCustomerByUserIdQuery(query.userId));
+    const customer = await this.customers.findByUserId(query.userId);
     // No customer record for this user - empty list, not an error (TAM-01's first edge case).
     if (!customer) {
       return [];
