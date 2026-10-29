@@ -371,13 +371,13 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] A malformed `document` filter answers 200 with `[]`; a well-formed one returns only that customer; a partial name in another letter case returns the matching customers, newest first
-- [ ] The shortage report lists each short item with its outstanding quantity and the work order numbers
-- [ ] `DELETE /inventory-items/:externalId` on an item planned on an open work order answers 409 `INVENTORY_ITEM_IN_USE`
-- [ ] A movement tied to a work order lists that work order's UUID and its actor's UUID
-- [ ] After a withdrawal above stock answers 422 `INVENTORY_INSUFFICIENT_STOCK`, the item's stock and the work order's withdrawn quantity are unchanged
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by the cases added
+- [x] A malformed `document` filter answers 200 with `[]`; a well-formed one returns only that customer; a partial name in another letter case returns the matching customers, newest first
+- [x] The shortage report lists each short item with its outstanding quantity and the work order numbers
+- [x] `DELETE /inventory-items/:externalId` on an item planned on an open work order answers 409 `INVENTORY_ITEM_IN_USE`
+- [x] A movement tied to a work order lists that work order's UUID and its actor's UUID
+- [x] After a withdrawal above stock answers 422 `INVENTORY_INSUFFICIENT_STOCK`, the item's stock and the work order's withdrawn quantity are unchanged
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by the cases added
 
 **Tests**: e2e
 **Gate**: full

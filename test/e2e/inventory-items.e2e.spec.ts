@@ -474,6 +474,123 @@ describe('Inventory items - stock shortages', () => {
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.some((candidate) => candidate.inventoryItemId === item.id)).toBe(false);
   });
+
+  /**
+   * Plans `quantity` of an existing item on a fresh work order, completes the diagnosis and
+   * approves the budget, which leaves the work order IN_EXECUTION with the part on an approved
+   * round.
+   */
+  async function planOnNewWorkOrder(inventoryItemId: string, quantity: number): Promise<string> {
+    const mechanic = await loginAs('MECHANIC');
+    const serviceAdvisor = await loginAs('SERVICE_ADVISOR');
+    const { customerId } = await registerCustomer();
+    const vehicleId = await registerVehicle(customerId);
+    const created = await api(app)
+      .post('/api/v1/work-orders')
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ customerId, vehicleId })
+      .expect(201);
+    const workOrderNumber = (created.body as { number: string }).number;
+
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/diagnosis`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/parts`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ inventoryItemId, quantity })
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/diagnosis/completion`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/budget/approval`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .expect(200);
+    return workOrderNumber;
+  }
+
+  async function shortageOf(inventoryItemId: string): Promise<{
+    quantityOnHand: number;
+    outstandingQuantity: number;
+    workOrderNumbers: string[];
+  }> {
+    const response = await api(app)
+      .get('/api/v1/inventory-items/shortages')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const rows = response.body as Array<{
+      inventoryItemId: string;
+      quantityOnHand: number;
+      outstandingQuantity: number;
+      workOrderNumbers: string[];
+    }>;
+    return rows.find((candidate) => candidate.inventoryItemId === inventoryItemId)!;
+  }
+
+  it('adds up the outstanding quantity of every work order in execution that plans the item, naming each of them', async () => {
+    const first = await createShortage(3, 2);
+    const secondNumber = await planOnNewWorkOrder(first.inventoryItemId, 4);
+
+    const row = await shortageOf(first.inventoryItemId);
+
+    expect(row).toMatchObject({ quantityOnHand: 2, outstandingQuantity: 7 });
+    expect([...row.workOrderNumbers].sort()).toEqual([first.workOrderNumber, secondNumber].sort());
+  });
+
+  async function withdrawFirstPart(
+    workOrderNumber: string,
+    quantity: number,
+    actor: AuthenticatedClient,
+  ): Promise<void> {
+    const detail = await api(app)
+      .get(`/api/v1/work-orders/${workOrderNumber}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    const partItemId = (detail.body as { partItems: Array<{ id: string }> }).partItems[0].id;
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrderNumber}/withdrawals`)
+      .set('Authorization', `Bearer ${actor.accessToken}`)
+      .send({ lines: [{ itemId: partItemId, quantity }] })
+      .expect(200);
+  }
+
+  it('counts planned minus withdrawn, and leaves out a work order that withdrew all it planned, a canceled one and a part on a round that is not approved', async () => {
+    const { workOrderNumber, inventoryItemId } = await createShortage(6, 3);
+    const mechanic = await loginAs('MECHANIC');
+    await withdrawFirstPart(workOrderNumber, 2, mechanic);
+    const fulfilledNumber = await planOnNewWorkOrder(inventoryItemId, 1);
+    await withdrawFirstPart(fulfilledNumber, 1, mechanic);
+    const canceledNumber = await planOnNewWorkOrder(inventoryItemId, 5);
+    await api(app)
+      .post(`/api/v1/work-orders/${canceledNumber}/cancellation`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ reason: 'Cliente desistiu do orcamento' })
+      .expect(200);
+    // Back in execution after the customer refused a supplementary round: the item is planned on
+    // that round, and the round is not approved.
+    const refusedNumber = await planOnNewWorkOrder((await createItem()).id, 1);
+    await api(app)
+      .post(`/api/v1/work-orders/${refusedNumber}/parts`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ inventoryItemId, quantity: 5 })
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${refusedNumber}/budget/supplementary`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${refusedNumber}/budget/rejection`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+
+    const row = await shortageOf(inventoryItemId);
+
+    expect(row).toMatchObject({ quantityOnHand: 0, outstandingQuantity: 4 });
+    expect(row.workOrderNumbers).toEqual([workOrderNumber]);
+  });
 });
 
 describe('Inventory item deactivation', () => {
