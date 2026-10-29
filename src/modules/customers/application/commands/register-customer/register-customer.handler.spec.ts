@@ -42,6 +42,7 @@ describe('RegisterCustomerHandler', () => {
       new RegisterCustomerCommand(USER_ID, undefined, undefined, undefined, undefined, undefined),
     );
 
+    expect(result.id).toBe(customers.customers[0].id.value);
     expect(result.temporaryPassword).toBeUndefined();
     expect(customers.customers[0].userId).toBe(USER_ID);
   });
@@ -93,6 +94,7 @@ describe('RegisterCustomerHandler', () => {
       ),
     );
 
+    expect(result.id).toBe(customers.customers[0].id.value);
     expect(result.temporaryPassword).toBe('aB3dE5fG7h9K');
     expect(customers.customers[0].userId).toBe(USER_ID);
     expect(accounts.opened).toMatchObject([

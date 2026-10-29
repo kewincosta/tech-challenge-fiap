@@ -1,21 +1,15 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
-import {
-  CUSTOMER_REPOSITORY,
-  CustomerRepository,
-} from '../../../domain/repositories/customer.repository';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
+import { CustomerRepository } from '../../ports/customer.repository';
 import { DeactivateCustomerCommand } from './deactivate-customer.command';
 
-@CommandHandler(DeactivateCustomerCommand)
-export class DeactivateCustomerHandler implements ICommandHandler<DeactivateCustomerCommand, void> {
+export class DeactivateCustomerHandler {
   constructor(
-    @Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly customers: CustomerRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: DeactivateCustomerCommand): Promise<void> {
@@ -29,6 +23,6 @@ export class DeactivateCustomerHandler implements ICommandHandler<DeactivateCust
     // User's ability to log in is untouched.
     customer.deactivate(this.clock.now());
     await this.customers.save(customer);
-    this.eventBus.publishAll(customer.pullDomainEvents());
+    this.events.publish(customer.pullDomainEvents());
   }
 }

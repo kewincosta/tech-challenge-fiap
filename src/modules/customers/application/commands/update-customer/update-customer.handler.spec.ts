@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryCustomerRepository } from '../../../../../../test/support/fakes/in-memory-customer.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Customer } from '../../../domain/entities/customer';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
 import { InvalidAddressError } from '../../../domain/errors/invalid-address.error';
+import { CustomerUpdated } from '../../../domain/events/customer-updated.event';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
 import { UpdateCustomerCommand } from './update-customer.command';
@@ -16,9 +17,9 @@ const USER_ID = '22222222-2222-4222-8222-222222222222';
 function makeHandler() {
   const customers = new InMemoryCustomerRepository();
   const clock = new FakeClock();
-  const eventBus = stubEventBus();
-  const handler = new UpdateCustomerHandler(customers, clock, eventBus.bus);
-  return { handler, customers, clock };
+  const events = new RecordingDomainEventPublisher();
+  const handler = new UpdateCustomerHandler(customers, clock, events);
+  return { handler, customers, clock, events };
 }
 
 async function seedCustomer(customers: InMemoryCustomerRepository) {
@@ -35,7 +36,7 @@ async function seedCustomer(customers: InMemoryCustomerRepository) {
 
 describe('UpdateCustomerHandler', () => {
   it('should update the address only, leaving the phone untouched', async () => {
-    const { handler, customers } = makeHandler();
+    const { handler, customers, clock, events } = makeHandler();
     const seeded = await seedCustomer(customers);
 
     await handler.execute(
@@ -52,6 +53,7 @@ describe('UpdateCustomerHandler', () => {
     const updated = customers.customers.find((c) => c.id.equals(CUSTOMER_ID))!;
     expect(updated.address?.city).toBe('São Paulo');
     expect(updated.phoneNumber).toBe(seeded.phoneNumber);
+    expect(events.published).toEqual([new CustomerUpdated(CUSTOMER_ID.value, clock.now())]);
   });
 
   it('should update the phone only, leaving the address untouched', async () => {

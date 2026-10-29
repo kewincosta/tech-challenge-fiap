@@ -1,6 +1,3 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, ID_GENERATOR, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
@@ -9,28 +6,20 @@ import { AmbiguousCustomerRegistrationError } from '../../../domain/errors/ambig
 import { CustomerAlreadyExistsForUserError } from '../../../domain/errors/customer-already-exists-for-user.error';
 import { TargetUserNotFoundError } from '../../../domain/errors/target-user-not-found.error';
 import { UserMissingCustomerRoleError } from '../../../domain/errors/user-missing-customer-role.error';
-import {
-  CUSTOMER_REPOSITORY,
-  CustomerRepository,
-} from '../../../domain/repositories/customer.repository';
 import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
-import { CUSTOMER_ACCOUNTS } from '../../../customers.tokens';
 import { CustomerAccounts, OpenedAccount } from '../../ports/customer-accounts.port';
+import { CustomerRepository } from '../../ports/customer.repository';
 import { RegisteredCustomerDto, RegisterCustomerCommand } from './register-customer.command';
 
-@CommandHandler(RegisterCustomerCommand)
-export class RegisterCustomerHandler implements ICommandHandler<
-  RegisterCustomerCommand,
-  RegisteredCustomerDto
-> {
+export class RegisterCustomerHandler {
   constructor(
-    @Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
-    @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
-    @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(TRANSACTION_RUNNER) private readonly transactionRunner: TransactionRunner,
-    @Inject(CUSTOMER_ACCOUNTS) private readonly accounts: CustomerAccounts,
+    private readonly customers: CustomerRepository,
+    private readonly idGenerator: IdGenerator,
+    private readonly clock: Clock,
+    private readonly transactionRunner: TransactionRunner,
+    private readonly accounts: CustomerAccounts,
   ) {}
 
   async execute(command: RegisterCustomerCommand): Promise<RegisteredCustomerDto> {

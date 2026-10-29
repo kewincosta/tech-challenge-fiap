@@ -8,6 +8,7 @@ import { GetCustomerQuery } from '../../src/modules/customers/application/querie
 import { ListCustomersHandler } from '../../src/modules/customers/application/queries/list-customers/list-customers.handler';
 import { ListCustomersQuery } from '../../src/modules/customers/application/queries/list-customers/list-customers.query';
 import { Customer } from '../../src/modules/customers/domain/entities/customer';
+import { CustomerNotFoundError } from '../../src/modules/customers/domain/errors/customer-not-found.error';
 import { CustomerId } from '../../src/modules/customers/domain/value-objects/customer-id';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerQueryAdapter } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer-query.adapter';
@@ -72,12 +73,16 @@ describe('Customer read queries', () => {
     expect(found?.id).toBe(customerId);
   });
 
-  it('should return null for a customer id that does not exist', async () => {
-    expect(await getCustomerHandler.execute(new GetCustomerQuery(randomUUID()))).toBeNull();
+  it('should refuse a customer id that does not exist with the customer not-found error', async () => {
+    await expect(getCustomerHandler.execute(new GetCustomerQuery(randomUUID()))).rejects.toThrow(
+      CustomerNotFoundError,
+    );
   });
 
-  it('should return null for a malformed customer id, not throw', async () => {
-    expect(await getCustomerHandler.execute(new GetCustomerQuery('not-a-uuid'))).toBeNull();
+  it('should refuse a malformed customer id with the customer not-found error, not a database error', async () => {
+    await expect(getCustomerHandler.execute(new GetCustomerQuery('not-a-uuid'))).rejects.toThrow(
+      CustomerNotFoundError,
+    );
   });
 
   it("should get a customer by its user's external id", async () => {

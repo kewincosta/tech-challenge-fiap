@@ -30,5 +30,3 @@ export interface CustomerQueryPort {
   getByUserId(userExternalId: string): Promise<CustomerSummaryDto | null>;
   listActive(filter: ListCustomersFilter): Promise<CustomerSummaryDto[]>;
 }
-
-export const CUSTOMER_QUERY_PORT = Symbol('CustomerQueryPort');

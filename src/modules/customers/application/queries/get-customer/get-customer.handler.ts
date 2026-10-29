@@ -1,26 +1,27 @@
-import { Inject } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import {
-  CUSTOMER_QUERY_PORT,
-  CustomerQueryPort,
-  CustomerSummaryDto,
-} from '../../ports/customer-query.port';
+import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
+import { CustomerQueryPort, CustomerSummaryDto } from '../../ports/customer-query.port';
 import { GetCustomerQuery } from './get-customer.query';
 
-@QueryHandler(GetCustomerQuery)
-export class GetCustomerHandler implements IQueryHandler<
-  GetCustomerQuery,
-  CustomerSummaryDto | null
-> {
-  constructor(@Inject(CUSTOMER_QUERY_PORT) private readonly customerQuery: CustomerQueryPort) {}
+/**
+ * Returns the customer whatever its status, so that "does not exist" (the not-found error) stays
+ * apart from "exists but deactivated" (status). Registering a vehicle answers 404 for the first
+ * and 422 for the second.
+ */
+export class GetCustomerHandler {
+  constructor(private readonly customerQuery: CustomerQueryPort) {}
 
-  async execute(query: GetCustomerQuery): Promise<CustomerSummaryDto | null> {
+  async execute(query: GetCustomerQuery): Promise<CustomerSummaryDto> {
     try {
       CustomerId.create(query.customerId);
     } catch {
-      return null;
+      // A malformed id matches nothing by construction, and a uuid column would throw on it.
+      throw new CustomerNotFoundError();
     }
-    return this.customerQuery.getById(query.customerId);
+    const customer = await this.customerQuery.getById(query.customerId);
+    if (!customer) {
+      throw new CustomerNotFoundError();
+    }
+    return customer;
   }
 }

@@ -1597,12 +1597,12 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The tokens live in `src/modules/customers/customers.tokens.ts`, the repository contract in `customers/application/ports`, and no file under `customers/domain` or `customers/application` declares a `Symbol`
-- [ ] Specs use fakes and assert outcomes; get and get by user each cover `CustomerNotFoundError`
-- [ ] The controller's `get*OrThrow` helpers are gone; the customer e2e cases, including `me` without a record, pass
-- [ ] `customers` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `customers` entry left in the baseline
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The tokens live in `src/modules/customers/customers.tokens.ts`, the repository contract in `customers/application/ports`, and no file under `customers/domain` or `customers/application` declares a `Symbol`
+- [x] Specs use fakes and assert outcomes; get and get by user each cover `CustomerNotFoundError`
+- [x] The controller's `get*OrThrow` helpers are gone; the customer e2e cases, including `me` without a record, pass
+- [x] `customers` is in `migrated-modules.json`; lint, the purity test and the dependency check pass with no `customers` entry left in the baseline
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: build

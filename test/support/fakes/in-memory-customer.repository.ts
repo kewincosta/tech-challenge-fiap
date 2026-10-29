@@ -1,5 +1,5 @@
+import { CustomerRepository } from '../../../src/modules/customers/application/ports/customer.repository';
 import { Customer } from '../../../src/modules/customers/domain/entities/customer';
-import { CustomerRepository } from '../../../src/modules/customers/domain/repositories/customer.repository';
 import { CustomerId } from '../../../src/modules/customers/domain/value-objects/customer-id';
 
 export class InMemoryCustomerRepository implements CustomerRepository {

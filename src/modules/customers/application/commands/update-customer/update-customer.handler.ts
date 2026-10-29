@@ -1,23 +1,17 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
-import {
-  CUSTOMER_REPOSITORY,
-  CustomerRepository,
-} from '../../../domain/repositories/customer.repository';
 import { Address } from '../../../domain/value-objects/address';
 import { CustomerId } from '../../../domain/value-objects/customer-id';
 import { PhoneNumber } from '../../../domain/value-objects/phone-number';
+import { CustomerRepository } from '../../ports/customer.repository';
 import { UpdateCustomerCommand } from './update-customer.command';
 
-@CommandHandler(UpdateCustomerCommand)
-export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerCommand, void> {
+export class UpdateCustomerHandler {
   constructor(
-    @Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly customers: CustomerRepository,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: UpdateCustomerCommand): Promise<void> {
@@ -33,6 +27,6 @@ export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerComm
 
     customer.updateProfile({ address, phoneNumber }, this.clock.now());
     await this.customers.save(customer);
-    this.eventBus.publishAll(customer.pullDomainEvents());
+    this.events.publish(customer.pullDomainEvents());
   }
 }

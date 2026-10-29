@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { CustomerNotFoundError } from '../../../domain/errors/customer-not-found.error';
 import { CustomerQueryPort, CustomerSummaryDto } from '../../ports/customer-query.port';
 import { GetCustomerByUserIdHandler } from './get-customer-by-user-id.handler';
 import { GetCustomerByUserIdQuery } from './get-customer-by-user-id.query';
@@ -37,14 +38,16 @@ describe('GetCustomerByUserIdHandler', () => {
     expect(port.getByUserId).toHaveBeenCalledWith(USER_ID);
   });
 
-  it('returns null for a user with no customer record, not an error', async () => {
+  it('refuses a user with no customer record with the customer not-found error', async () => {
     const handler = new GetCustomerByUserIdHandler(fakePort(null));
 
-    await expect(handler.execute(new GetCustomerByUserIdQuery(USER_ID))).resolves.toBeNull();
+    await expect(handler.execute(new GetCustomerByUserIdQuery(USER_ID))).rejects.toThrow(
+      CustomerNotFoundError,
+    );
   });
 
   it('passes a malformed id straight through - every caller supplies a verified JWT subject', async () => {
-    const port = fakePort(null);
+    const port = fakePort(customer());
     const handler = new GetCustomerByUserIdHandler(port);
 
     await handler.execute(new GetCustomerByUserIdQuery('not-a-uuid'));
