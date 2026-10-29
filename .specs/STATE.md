@@ -213,10 +213,10 @@ entry. They apply to every feature.
 ## Handoff
 
 - **Feature**: `.specs/features/clean-architecture`
-- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done up to T11 (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`); its worker continues with T61, T12 and T13.
-- **Completed**: T1 to T11. Totals after T11: unit 980, integration 240, e2e 243 (baseline 955, 239, 203).
+- **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 (T14 to T19) dispatched.
+- **Completed**: T1 to T13 and T61. Totals after batch 2: unit 992, integration 240, e2e 243 (baseline 955, 239, 203). Baselines: 361 dependency violations, 17 table findings.
 - **In-progress** (file:line): none yet
-- **Next step**: read batch 2's compact summary, then dispatch batch 3 (T14 to T19).
+- **Next step**: read batch 3's compact summary, then dispatch batch 4 (T20 to T25).
 - **Blockers**: none
 - **Uncommitted files**: none
 - **Branch**: feat/tech-challenge-2
@@ -233,6 +233,9 @@ entry. They apply to every feature.
 - T24 adds `sm.id` as the tie-breaker of the movement history (`typeorm-inventory-query.adapter.ts:125`), the same defect as the trail.
 - T9 maps 19 relations: the 18 tables the migrations create and TypeORM's `migrations` table, owned by `shared`.
 - Installing dependency-cruiser in T8 moved two transitive dev packages in `package-lock.json`: acorn 8.18.0 to 8.19.0, enhanced-resolve 5.24.5 to 5.26.0.
+- The `EventBus` of `@nestjs/cqrs` 11.0.3 logs `"InstanceWrapper" has thrown an unhandled exception.`, because it reads the name from Nest's provider wrapper. The T12 dispatcher keeps the wording, the call shape and the `EventBus` context and prints the subscriber's class name, as CA-02 AC6 asks. The spec's Assumptions row and design C8 now say so.
+- T43 binds `DOMAIN_EVENT_PUBLISHER` to an `InMemoryDomainEventDispatcher` class provider with `useExisting`, so the identity root can inject the class and call `subscribe`. Today `SharedModule` provides the token with `useClass` only.
+- The Full gate skips lint, so a worker also runs `npm run lint` before committing a Full-gate task that adds or moves imports.
 
 **Notes for later batches** (from batch 1):
 

@@ -1436,7 +1436,7 @@ T58 → T59 → T60
 #### T43: Authorization commands and the access cache subscriber
 
 **What**: Assign, revoke, create, update, delete and set-permissions become framework-free use cases publishing through the `DomainEventPublisher`; the access cache subscriber is registered on the dispatcher by the identity composition root.
-**Where**: `src/modules/identity/authorization/application/` (commands and subscriber)
+**Where**: `src/modules/identity/authorization/application/` (commands and subscriber), `src/shared/shared.module.ts` (the dispatcher binding)
 **Depends on**: T42
 **Reuses**: `AccessCacheInvalidationSubscriber`'s logic unchanged
 **Requirement**: CA-01, CA-03, CA-05
@@ -1449,6 +1449,7 @@ T58 → T59 → T60
 **Done when**:
 
 - [ ] Specs use fakes and the recording publisher and assert outcomes; the escalation rule keeps its cases
+- [ ] `SharedModule` provides `InMemoryDomainEventDispatcher` and binds `DOMAIN_EVENT_PUBLISHER` to the same instance with `useExisting`, exporting both; the identity root injects the class and subscribes on module init
 - [ ] A role assigned or revoked through the API is visible in the next effective access read (e2e)
 - [ ] `role-escalation.e2e.spec.ts` passes
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
