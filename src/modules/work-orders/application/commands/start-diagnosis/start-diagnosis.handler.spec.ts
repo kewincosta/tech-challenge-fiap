@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { DiagnosisStarted } from '../../../domain/events/diagnosis-started.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
@@ -18,7 +19,7 @@ const MECHANIC_ID = '55555555-5555-4555-8555-555555555555';
 const NUMBER = 'A1B090-2026';
 
 function buildReceivedWorkOrder(): WorkOrder {
-  return WorkOrder.open({
+  const workOrder = WorkOrder.open({
     id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
     number: WorkOrderNumber.create(NUMBER),
     customerId: CUSTOMER_ID,
@@ -31,6 +32,9 @@ function buildReceivedWorkOrder(): WorkOrder {
     vehicleYear: 2020,
     now: new Date('2026-08-31T12:00:00.000Z'),
   });
+  // A work order read back from the repository carries no pending events.
+  workOrder.pullDomainEvents();
+  return workOrder;
 }
 
 function buildDeliveredWorkOrder(): WorkOrder {
@@ -62,30 +66,34 @@ function buildDeliveredWorkOrder(): WorkOrder {
 
 function makeHandler() {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
-  const handler = new StartDiagnosisHandler(workOrders, new FakeClock(), eventBus.bus);
-  return { handler, workOrders, eventBus };
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const handler = new StartDiagnosisHandler(workOrders, clock, events);
+  return { handler, workOrders, clock, events };
 }
 
 describe('StartDiagnosisHandler', () => {
   it('starts the diagnosis, saves, and publishes the recorded event', async () => {
-    const { handler, workOrders, eventBus } = makeHandler();
+    const { handler, workOrders, clock, events } = makeHandler();
     await workOrders.save(buildReceivedWorkOrder());
 
     await handler.execute(new StartDiagnosisCommand(NUMBER, MECHANIC_ID));
 
     const updated = workOrders.workOrders[0];
     expect(updated.status).toBe(WorkOrderStatus.InDiagnosis);
-    expect(eventBus.publishAll).toHaveBeenCalledTimes(1);
+    expect(events.published).toEqual([
+      new DiagnosisStarted(updated.id.value, MECHANIC_ID, clock.now()),
+    ]);
   });
 
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
 
     await expect(
       handler.execute(new StartDiagnosisCommand('ZZZZZZ-2026', MECHANIC_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it("lets the aggregate's state error travel out untouched", async () => {
@@ -98,10 +106,11 @@ describe('StartDiagnosisHandler', () => {
   });
 
   it('saves nothing when the aggregate refuses', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(buildDeliveredWorkOrder());
 
     await expect(handler.execute(new StartDiagnosisCommand(NUMBER, MECHANIC_ID))).rejects.toThrow();
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Delivered);
+    expect(events.published).toHaveLength(0);
   });
 });

@@ -1,34 +1,6 @@
 [
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/add-requested-service/add-requested-service.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/apply-discount/apply-discount.handler.ts",
     "to": "node_modules/@nestjs/common/index.js",
     "unresolvedTo": "@nestjs/common",
@@ -85,34 +57,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/assign-mechanic/assign-mechanic.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.ts",
     "to": "node_modules/@nestjs/common/index.js",
     "unresolvedTo": "@nestjs/common",
@@ -128,34 +72,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/complete-diagnosis/complete-diagnosis.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/complete-diagnosis/complete-diagnosis.handler.ts",
     "to": "node_modules/@nestjs/cqrs/index.js",
     "unresolvedTo": "@nestjs/cqrs",
     "dependencyTypes": [
@@ -225,34 +141,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/plan-part/plan-part.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/reject-budget/reject-budget.handler.ts",
     "to": "node_modules/@nestjs/common/index.js",
     "unresolvedTo": "@nestjs/common",
@@ -281,34 +169,6 @@
   },
   {
     "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/remove-work-order-item/remove-work-order-item.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/remove-work-order-item/remove-work-order-item.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
     "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.ts",
     "to": "node_modules/@nestjs/common/index.js",
     "unresolvedTo": "@nestjs/common",
@@ -324,34 +184,6 @@
   {
     "type": "dependency",
     "from": "src/modules/work-orders/application/commands/return-parts/return-parts.handler.ts",
-    "to": "node_modules/@nestjs/cqrs/index.js",
-    "unresolvedTo": "@nestjs/cqrs",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/start-diagnosis/start-diagnosis.handler.ts",
-    "to": "node_modules/@nestjs/common/index.js",
-    "unresolvedTo": "@nestjs/common",
-    "dependencyTypes": [
-      "npm",
-      "import"
-    ],
-    "rule": {
-      "severity": "error",
-      "name": "core-no-frameworks"
-    }
-  },
-  {
-    "type": "dependency",
-    "from": "src/modules/work-orders/application/commands/start-diagnosis/start-diagnosis.handler.ts",
     "to": "node_modules/@nestjs/cqrs/index.js",
     "unresolvedTo": "@nestjs/cqrs",
     "dependencyTypes": [

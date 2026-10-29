@@ -1,23 +1,19 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { AssignedMechanicNotFoundError } from '../../../domain/errors/assigned-mechanic-not-found.error';
 import { AssignedUserNotMechanicError } from '../../../domain/errors/assigned-user-not-mechanic.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderActors } from '../../ports/work-order-actors.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
-import { WORK_ORDER_ACTORS, WORK_ORDER_REPOSITORY } from '../../../work-orders.tokens';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { AssignMechanicCommand } from './assign-mechanic.command';
 
-@CommandHandler(AssignMechanicCommand)
-export class AssignMechanicHandler implements ICommandHandler<AssignMechanicCommand, void> {
+export class AssignMechanicHandler {
   constructor(
-    @Inject(WORK_ORDER_REPOSITORY) private readonly workOrders: WorkOrderRepository,
-    @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(WORK_ORDER_ACTORS) private readonly actors: WorkOrderActors,
-    private readonly eventBus: EventBus,
+    private readonly workOrders: WorkOrderRepository,
+    private readonly clock: Clock,
+    private readonly actors: WorkOrderActors,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: AssignMechanicCommand): Promise<void> {
@@ -44,6 +40,6 @@ export class AssignMechanicHandler implements ICommandHandler<AssignMechanicComm
       now: this.clock.now(),
     });
     await this.workOrders.save(workOrder);
-    this.eventBus.publishAll(workOrder.pullDomainEvents());
+    this.events.publish(workOrder.pullDomainEvents());
   }
 }

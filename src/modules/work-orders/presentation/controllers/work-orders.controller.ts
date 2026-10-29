@@ -32,20 +32,26 @@ import { Principal } from '../../../identity/authentication/presentation/princip
 import { AppPermission } from '../../../identity/authorization/application/contracts/app-permissions';
 import { RequirePermissions } from '../../../identity/authorization/presentation/decorators/require-permissions.decorator';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
+import { AddRequestedServiceHandler } from '../../application/commands/add-requested-service/add-requested-service.handler';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
+import { AssignMechanicHandler } from '../../application/commands/assign-mechanic/assign-mechanic.handler';
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
+import { CompleteDiagnosisHandler } from '../../application/commands/complete-diagnosis/complete-diagnosis.handler';
 import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
 import { CreateWorkOrderCommand } from '../../application/commands/create-work-order/create-work-order.command';
 import { CreateWorkOrderUseCase } from '../../application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
+import { PlanPartHandler } from '../../application/commands/plan-part/plan-part.handler';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
+import { RemoveWorkOrderItemHandler } from '../../application/commands/remove-work-order-item/remove-work-order-item.handler';
 import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
+import { StartDiagnosisHandler } from '../../application/commands/start-diagnosis/start-diagnosis.handler';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
 import {
@@ -79,7 +85,13 @@ import {
 @Controller('work-orders')
 export class WorkOrdersController {
   constructor(
-    private readonly createWorkOrder: CreateWorkOrderUseCase,
+    private readonly createWorkOrderUseCase: CreateWorkOrderUseCase,
+    private readonly addRequestedServiceUseCase: AddRequestedServiceHandler,
+    private readonly planPartUseCase: PlanPartHandler,
+    private readonly removeWorkOrderItemUseCase: RemoveWorkOrderItemHandler,
+    private readonly assignMechanicUseCase: AssignMechanicHandler,
+    private readonly startDiagnosisUseCase: StartDiagnosisHandler,
+    private readonly completeDiagnosisUseCase: CompleteDiagnosisHandler,
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}
@@ -98,7 +110,7 @@ export class WorkOrdersController {
     @Body() body: CreateWorkOrderRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<CreatedWorkOrderResponseDto> {
-    return this.createWorkOrder.execute(
+    return this.createWorkOrderUseCase.execute(
       new CreateWorkOrderCommand(body.customerId, body.vehicleId, principal.userId),
     );
   }
@@ -222,7 +234,7 @@ export class WorkOrdersController {
     @Body() body: AddRequestedServiceRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<AddRequestedServiceCommand, void>(
+    await this.addRequestedServiceUseCase.execute(
       new AddRequestedServiceCommand(number, body.serviceId, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -243,7 +255,7 @@ export class WorkOrdersController {
     @Body() body: PlanPartRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<PlanPartCommand, void>(
+    await this.planPartUseCase.execute(
       new PlanPartCommand(number, body.inventoryItemId, body.quantity, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -262,7 +274,7 @@ export class WorkOrdersController {
     @Param('itemExternalId', ParseUUIDPipe) itemExternalId: string,
     @CurrentUser() principal: Principal,
   ): Promise<void> {
-    await this.commandBus.execute<RemoveWorkOrderItemCommand, void>(
+    await this.removeWorkOrderItemUseCase.execute(
       new RemoveWorkOrderItemCommand(number, itemExternalId, principal.userId),
     );
   }
@@ -280,7 +292,7 @@ export class WorkOrdersController {
     @Body() body: AssignMechanicRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<AssignMechanicCommand, void>(
+    await this.assignMechanicUseCase.execute(
       new AssignMechanicCommand(number, body.mechanicUserId, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);
@@ -299,9 +311,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<StartDiagnosisCommand, void>(
-      new StartDiagnosisCommand(number, principal.userId),
-    );
+    await this.startDiagnosisUseCase.execute(new StartDiagnosisCommand(number, principal.userId));
     return this.getWorkOrderOrThrow(number);
   }
 
@@ -318,7 +328,7 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CompleteDiagnosisCommand, void>(
+    await this.completeDiagnosisUseCase.execute(
       new CompleteDiagnosisCommand(number, principal.userId),
     );
     return this.getWorkOrderOrThrow(number);

@@ -38,7 +38,10 @@ import {
   WORK_ORDER_REPOSITORY,
 } from './work-orders.tokens';
 import { CustomerDirectory } from './application/ports/customer-directory.port';
+import { PartCatalog } from './application/ports/part-catalog.port';
+import { ServiceCatalog } from './application/ports/service-catalog.port';
 import { VehicleDirectory } from './application/ports/vehicle-directory.port';
+import { WorkOrderActors } from './application/ports/work-order-actors.port';
 import { WorkOrderNumberGenerator } from './application/ports/work-order-number-generator.port';
 import { WorkOrderRepository } from './application/ports/work-order.repository';
 import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
@@ -114,12 +117,60 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         DOMAIN_EVENT_PUBLISHER,
       ],
     },
-    AddRequestedServiceHandler,
-    PlanPartHandler,
-    RemoveWorkOrderItemHandler,
-    AssignMechanicHandler,
-    StartDiagnosisHandler,
-    CompleteDiagnosisHandler,
+    {
+      provide: AddRequestedServiceHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        serviceCatalog: ServiceCatalog,
+        events: DomainEventPublisher,
+      ) => new AddRequestedServiceHandler(workOrders, idGenerator, clock, serviceCatalog, events),
+      inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, SERVICE_CATALOG, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: PlanPartHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        partCatalog: PartCatalog,
+        events: DomainEventPublisher,
+      ) => new PlanPartHandler(workOrders, idGenerator, clock, partCatalog, events),
+      inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, PART_CATALOG, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: RemoveWorkOrderItemHandler,
+      useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
+        new RemoveWorkOrderItemHandler(workOrders, clock, events),
+      inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: AssignMechanicHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        clock: Clock,
+        actors: WorkOrderActors,
+        events: DomainEventPublisher,
+      ) => new AssignMechanicHandler(workOrders, clock, actors, events),
+      inject: [WORK_ORDER_REPOSITORY, CLOCK, WORK_ORDER_ACTORS, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: StartDiagnosisHandler,
+      useFactory: (workOrders: WorkOrderRepository, clock: Clock, events: DomainEventPublisher) =>
+        new StartDiagnosisHandler(workOrders, clock, events),
+      inject: [WORK_ORDER_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
+      provide: CompleteDiagnosisHandler,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new CompleteDiagnosisHandler(workOrders, idGenerator, clock, events),
+      inject: [WORK_ORDER_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
     SubmitSupplementaryBudgetHandler,
     ApproveBudgetHandler,
     RejectBudgetHandler,

@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakePartCatalog } from '../../../../../../test/support/fakes/fake-part-catalog';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { InvalidPlannedQuantityError } from '../../../domain/errors/invalid-planned-quantity.error';
 import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { PartPlannedForWorkOrder } from '../../../domain/events/part-planned-for-work-order.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
@@ -36,7 +37,7 @@ const INACTIVE_ITEM: PartRef = { ...ACTIVE_ITEM, active: false };
 
 function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
   if (status === WorkOrderStatus.Received) {
-    return WorkOrder.open({
+    const workOrder = WorkOrder.open({
       id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
       number: WorkOrderNumber.create(NUMBER),
       customerId: CUSTOMER_ID,
@@ -49,6 +50,9 @@ function buildWorkOrder(status: WorkOrderStatus): WorkOrder {
       vehicleYear: 2020,
       now: NOW,
     });
+    // A work order read back from the repository carries no pending events.
+    workOrder.pullDomainEvents();
+    return workOrder;
   }
   return WorkOrder.restore({
     id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
@@ -82,26 +86,28 @@ function makeHandler(inventoryItem: PartRef | null) {
   if (inventoryItem) {
     partCatalog.add(inventoryItem);
   }
-  const eventBus = stubEventBus();
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
   const handler = new PlanPartHandler(
     workOrders,
     new FakeIdGenerator(),
-    new FakeClock(),
+    clock,
     partCatalog,
-    eventBus.bus,
+    events,
   );
-  return { handler, workOrders, partCatalog };
+  return { handler, workOrders, partCatalog, clock, events };
 }
 
 describe('PlanPartHandler', () => {
   it('should refuse a deactivated item with InventoryItemInactiveError, planning nothing', async () => {
-    const { handler, workOrders } = makeHandler(INACTIVE_ITEM);
+    const { handler, workOrders, events } = makeHandler(INACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
 
     await expect(
       handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID)),
     ).rejects.toThrow(InventoryItemInactiveError);
     expect(workOrders.workOrders[0].partItems).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('should plan a part on a work order in IN_DIAGNOSIS, snapshotting the SKU, name and unit price', async () => {
@@ -118,6 +124,17 @@ describe('PlanPartHandler', () => {
     expect(updated.partItems[0].plannedQuantity.units).toBe(2);
   });
 
+  it('should publish the part-planned event of the work order, with the acting user', async () => {
+    const { handler, workOrders, clock, events } = makeHandler(ACTIVE_ITEM);
+    await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
+
+    await handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID));
+
+    expect(events.published).toEqual([
+      new PartPlannedForWorkOrder(workOrders.workOrders[0].id.value, CREATOR_ID, clock.now()),
+    ]);
+  });
+
   it('should plan the part without withdrawing it, the single catalog read being all that reaches inventory', async () => {
     const { handler, workOrders, partCatalog } = makeHandler(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
@@ -130,40 +147,44 @@ describe('PlanPartHandler', () => {
   });
 
   it('should refuse a part planned on a work order in RECEIVED with WorkOrderStateError (L-003, second layer)', async () => {
-    const { handler, workOrders } = makeHandler(ACTIVE_ITEM);
+    const { handler, workOrders, events } = makeHandler(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.Received));
 
     await expect(
       handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID)),
     ).rejects.toThrow(WorkOrderStateError);
     expect(workOrders.workOrders[0].partItems).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('should refuse a zero or negative quantity with InvalidPlannedQuantityError', async () => {
-    const { handler, workOrders } = makeHandler(ACTIVE_ITEM);
+    const { handler, workOrders, events } = makeHandler(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
 
     await expect(
       handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 0, CREATOR_ID)),
     ).rejects.toThrow(InvalidPlannedQuantityError);
     expect(workOrders.workOrders[0].partItems).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('should refuse an inventory item the catalog does not know, with ReferencedInventoryItemNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler(null);
+    const { handler, workOrders, events } = makeHandler(null);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
 
     await expect(
       handler.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID)),
     ).rejects.toThrow(ReferencedInventoryItemNotFoundError);
     expect(workOrders.workOrders[0].partItems).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
   });
 
   it('should refuse an unknown work order with WorkOrderNotFoundError', async () => {
-    const { handler } = makeHandler(ACTIVE_ITEM);
+    const { handler, events } = makeHandler(ACTIVE_ITEM);
 
     await expect(
       handler.execute(new PlanPartCommand('ZZZZZZ-2026', ITEM_ID, 2, CREATOR_ID)),
     ).rejects.toThrow(WorkOrderNotFoundError);
+    expect(events.published).toHaveLength(0);
   });
 });

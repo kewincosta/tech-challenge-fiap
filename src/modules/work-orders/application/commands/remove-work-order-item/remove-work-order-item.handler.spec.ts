@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderItemNotFoundError } from '../../../domain/errors/work-order-item-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { ItemRemovedFromWorkOrder } from '../../../domain/events/item-removed-from-work-order.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
@@ -48,14 +49,17 @@ function buildWorkOrderWithTwoServices(): WorkOrder {
     actorUserId: CREATOR_ID,
     now: new Date(),
   });
+  // A work order read back from the repository carries no pending events.
+  workOrder.pullDomainEvents();
   return workOrder;
 }
 
 function makeHandler() {
   const workOrders = new InMemoryWorkOrderRepository();
-  const eventBus = stubEventBus();
-  const handler = new RemoveWorkOrderItemHandler(workOrders, new FakeClock(), eventBus.bus);
-  return { handler, workOrders };
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const handler = new RemoveWorkOrderItemHandler(workOrders, clock, events);
+  return { handler, workOrders, clock, events };
 }
 
 describe('RemoveWorkOrderItemHandler', () => {
@@ -72,8 +76,21 @@ describe('RemoveWorkOrderItemHandler', () => {
     expect(updated.serviceItems[0].serviceName).toBe('Alinhamento');
   });
 
+  it('should publish the item-removed event of the work order, with the acting user', async () => {
+    const { handler, workOrders, clock, events } = makeHandler();
+    await workOrders.save(buildWorkOrderWithTwoServices());
+
+    await handler.execute(
+      new RemoveWorkOrderItemCommand(NUMBER, '66666666-6666-4666-8666-666666666666', CREATOR_ID),
+    );
+
+    expect(events.published).toEqual([
+      new ItemRemovedFromWorkOrder(workOrders.workOrders[0].id.value, CREATOR_ID, clock.now()),
+    ]);
+  });
+
   it('should refuse an item identifier the addressed work order does not hold, with WorkOrderItemNotFoundError', async () => {
-    const { handler, workOrders } = makeHandler();
+    const { handler, workOrders, events } = makeHandler();
     await workOrders.save(buildWorkOrderWithTwoServices());
 
     await expect(
@@ -82,10 +99,11 @@ describe('RemoveWorkOrderItemHandler', () => {
       ),
     ).rejects.toThrow(WorkOrderItemNotFoundError);
     expect(workOrders.workOrders[0].serviceItems).toHaveLength(2);
+    expect(events.published).toHaveLength(0);
   });
 
   it('should refuse an unknown work order with WorkOrderNotFoundError (L-003)', async () => {
-    const { handler } = makeHandler();
+    const { handler, events } = makeHandler();
 
     await expect(
       handler.execute(
@@ -96,5 +114,6 @@ describe('RemoveWorkOrderItemHandler', () => {
         ),
       ),
     ).rejects.toThrow(WorkOrderNotFoundError);
+    expect(events.published).toHaveLength(0);
   });
 });

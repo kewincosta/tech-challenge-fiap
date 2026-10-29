@@ -1711,10 +1711,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Specs use fakes and the recording publisher and assert outcomes
-- [ ] The work order and budget e2e specs pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] Specs use fakes and the recording publisher and assert outcomes
+- [x] The work order and budget e2e specs pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full
