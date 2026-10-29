@@ -4,7 +4,7 @@ import {
   InventoryItemRepository,
   MovementClosureInput,
   PendingConsumptionDto,
-} from '../../../src/modules/inventory/domain/repositories/inventory-item.repository';
+} from '../../../src/modules/inventory/application/ports/inventory-item.repository';
 import { StockMovementKind } from '../../../src/modules/inventory/domain/stock-movement-kind';
 import { StockMovementStatus } from '../../../src/modules/inventory/domain/stock-movement-status';
 import { InventoryItemId } from '../../../src/modules/inventory/domain/value-objects/inventory-item-id';

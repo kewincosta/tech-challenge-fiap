@@ -6,14 +6,14 @@ import {
   runInNewTransaction,
 } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { UserKeyResolver } from '../../../identity';
-import { InventoryItem } from '../../domain/entities/inventory-item';
-import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
-import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
 import {
   InventoryItemRepository,
   MovementClosureInput,
   PendingConsumptionDto,
-} from '../../domain/repositories/inventory-item.repository';
+} from '../../application/ports/inventory-item.repository';
+import { InventoryItem } from '../../domain/entities/inventory-item';
+import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
+import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
 import { StockMovementKind } from '../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../domain/value-objects/sku';

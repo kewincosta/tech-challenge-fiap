@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
+import { InventoryItemUpdated } from '../../../domain/events/inventory-item-updated.event';
 import { InventoryItemKind } from '../../../domain/inventory-item-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
@@ -15,12 +16,15 @@ const ITEM_ID = InventoryItemId.create('11111111-1111-4111-8111-111111111111');
 
 function makeHandler() {
   const items = new InMemoryInventoryItemRepository();
-  const handler = new UpdateInventoryItemHandler(items, new FakeClock(), stubEventBus().bus);
-  return { handler, items };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new UpdateInventoryItemHandler(items, clock, events);
+  return { handler, items, events, clock };
 }
 
+// A stored item has no pending events, like one the repository loaded.
 function buildItem(sku = 'FLT-001'): InventoryItem {
-  return InventoryItem.create({
+  const item = InventoryItem.create({
     id: ITEM_ID,
     sku: Sku.create(sku),
     name: 'Filtro de oleo',
@@ -29,11 +33,13 @@ function buildItem(sku = 'FLT-001'): InventoryItem {
     unitPrice: Money.fromCents(2500),
     now: new Date('2026-08-31T12:00:00.000Z'),
   });
+  item.pullDomainEvents();
+  return item;
 }
 
 describe('UpdateInventoryItemHandler', () => {
   it('should replace only the supplied fields, leaving the others untouched', async () => {
-    const { handler, items } = makeHandler();
+    const { handler, items, events, clock } = makeHandler();
     await items.save(buildItem());
 
     await handler.execute(
@@ -44,6 +50,7 @@ describe('UpdateInventoryItemHandler', () => {
     expect(updated.unitPrice.cents).toBe(3000);
     expect(updated.name).toBe('Filtro de oleo');
     expect(updated.description).toBe('Filtro padrao');
+    expect(events.published).toEqual([new InventoryItemUpdated(ITEM_ID.value, clock.now())]);
   });
 
   it('should refuse an unknown item and persist nothing', async () => {

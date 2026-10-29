@@ -1,16 +1,11 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { InventoryItemInUseError } from '../../../domain/errors/inventory-item-in-use.error';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
 import { InventoryItemStatus } from '../../../domain/inventory-item-status';
-import {
-  INVENTORY_ITEM_REPOSITORY,
-  InventoryItemRepository,
-} from '../../../domain/repositories/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
-import { INVENTORY_QUERY_PORT, InventoryQueryPort } from '../../ports/inventory-query.port';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
+import { InventoryQueryPort } from '../../ports/inventory-query.port';
 import { DeactivateInventoryItemCommand } from './deactivate-inventory-item.command';
 
 /**
@@ -19,16 +14,12 @@ import { DeactivateInventoryItemCommand } from './deactivate-inventory-item.comm
  * or canceled cannot leave the catalog, because the work order would then hold a line nobody can
  * price or withdraw again.
  */
-@CommandHandler(DeactivateInventoryItemCommand)
-export class DeactivateInventoryItemHandler implements ICommandHandler<
-  DeactivateInventoryItemCommand,
-  void
-> {
+export class DeactivateInventoryItemHandler {
   constructor(
-    @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
-    @Inject(INVENTORY_QUERY_PORT) private readonly inventoryQuery: InventoryQueryPort,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly items: InventoryItemRepository,
+    private readonly inventoryQuery: InventoryQueryPort,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: DeactivateInventoryItemCommand): Promise<void> {
@@ -51,6 +42,6 @@ export class DeactivateInventoryItemHandler implements ICommandHandler<
 
     item.deactivate(this.clock.now());
     await this.items.save(item);
-    this.eventBus.publishAll(item.pullDomainEvents());
+    this.events.publish(item.pullDomainEvents());
   }
 }

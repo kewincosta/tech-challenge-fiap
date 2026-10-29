@@ -49,5 +49,3 @@ export interface InventoryQueryPort {
    */
   listOpenWorkOrderNumbersUsing(externalId: string): Promise<string[]>;
 }
-
-export const INVENTORY_QUERY_PORT = Symbol('InventoryQueryPort');

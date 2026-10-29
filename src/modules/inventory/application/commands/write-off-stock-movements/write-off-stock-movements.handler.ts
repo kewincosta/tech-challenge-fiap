@@ -2,10 +2,8 @@ import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CLOCK } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
-import {
-  INVENTORY_ITEM_REPOSITORY,
-  InventoryItemRepository,
-} from '../../../domain/repositories/inventory-item.repository';
+import { INVENTORY_ITEM_REPOSITORY } from '../../../inventory.tokens';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { WriteOffStockMovementsCommand } from './write-off-stock-movements.command';
 
 /**

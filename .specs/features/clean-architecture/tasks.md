@@ -1367,11 +1367,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The tokens live in `src/modules/inventory/inventory.tokens.ts`, the repository contract in `inventory/application/ports`, and no file under `inventory/domain` or `inventory/application` declares a `Symbol`
-- [ ] Specs use fakes and assert outcomes; get and history each cover `InventoryItemNotFoundError`; deactivation covers `InventoryItemInUseError`
-- [ ] The controller's `getItemOrThrow` is gone; the not-found, in-use and history e2e cases pass
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The tokens live in `src/modules/inventory/inventory.tokens.ts`, the repository contract in `inventory/application/ports`, and no file under `inventory/domain` or `inventory/application` declares a `Symbol`
+- [x] Specs use fakes and assert outcomes; get and history each cover `InventoryItemNotFoundError`; deactivation covers `InventoryItemInUseError`
+- [x] The controller's `getItemOrThrow` is gone; the not-found, in-use and history e2e cases pass
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

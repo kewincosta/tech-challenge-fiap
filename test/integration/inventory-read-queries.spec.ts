@@ -9,6 +9,7 @@ import { GetItemMovementHistoryQuery } from '../../src/modules/inventory/applica
 import { ListInventoryItemsHandler } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.handler';
 import { ListInventoryItemsQuery } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.query';
 import { InventoryItem } from '../../src/modules/inventory/domain/entities/inventory-item';
+import { InventoryItemNotFoundError } from '../../src/modules/inventory/domain/errors/inventory-item-not-found.error';
 import { InventoryItemKind } from '../../src/modules/inventory/domain/inventory-item-kind';
 import { InventoryItemId } from '../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../src/modules/inventory/domain/value-objects/sku';
@@ -85,8 +86,10 @@ describe('Inventory read queries', () => {
     expect(found?.sku).toBe(item.sku.value);
   });
 
-  it('should return null for a malformed id, not throw', async () => {
-    expect(await getItemHandler.execute(new GetInventoryItemQuery('not-a-uuid'))).toBeNull();
+  it('should refuse a malformed id with the inventory item not-found error, not a database error', async () => {
+    await expect(getItemHandler.execute(new GetInventoryItemQuery('not-a-uuid'))).rejects.toThrow(
+      InventoryItemNotFoundError,
+    );
   });
 
   it('should list every active item', async () => {

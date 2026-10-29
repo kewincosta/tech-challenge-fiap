@@ -3,7 +3,7 @@ import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import {
   InventoryItemRepository,
   MovementClosureInput,
-} from '../../../domain/repositories/inventory-item.repository';
+} from '../../ports/inventory-item.repository';
 import { SettleStockMovementsCommand } from './settle-stock-movements.command';
 import { SettleStockMovementsHandler } from './settle-stock-movements.handler';
 

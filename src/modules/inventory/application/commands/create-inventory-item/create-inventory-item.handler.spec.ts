@@ -1,28 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { InvalidMoneyAmountError } from '../../../../../shared/domain/errors/invalid-money-amount.error';
 import { InventoryItemStatus } from '../../../domain/inventory-item-status';
 import { SkuAlreadyInUseError } from '../../../domain/errors/sku-already-in-use.error';
+import { InventoryItemCreated } from '../../../domain/events/inventory-item-created.event';
 import { CreateInventoryItemCommand } from './create-inventory-item.command';
 import { CreateInventoryItemHandler } from './create-inventory-item.handler';
 
 function makeHandler() {
   const items = new InMemoryInventoryItemRepository();
-  const handler = new CreateInventoryItemHandler(
-    items,
-    new FakeIdGenerator(),
-    new FakeClock(),
-    stubEventBus().bus,
-  );
-  return { handler, items };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new CreateInventoryItemHandler(items, new FakeIdGenerator(), clock, events);
+  return { handler, items, events, clock };
 }
 
 describe('CreateInventoryItemHandler', () => {
   it('should create an active item with a quantity of zero and return its external id', async () => {
-    const { handler, items } = makeHandler();
+    const { handler, items, events, clock } = makeHandler();
 
     const result = await handler.execute(
       new CreateInventoryItemCommand('FLT-001', 'Filtro de oleo', 'PART', 2500, 'Filtro padrao'),
@@ -33,6 +31,7 @@ describe('CreateInventoryItemHandler', () => {
     expect(created.status).toBe(InventoryItemStatus.Active);
     expect(created.quantityOnHand.units).toBe(0);
     expect(created.unitPrice.cents).toBe(2500);
+    expect(events.published).toEqual([new InventoryItemCreated(created.id.value, clock.now())]);
   });
 
   it('should refuse a negative unit price through the shared kernel Money', async () => {

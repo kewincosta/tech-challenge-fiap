@@ -1,6 +1,6 @@
-import { InventoryItem } from '../entities/inventory-item';
-import { InventoryItemId } from '../value-objects/inventory-item-id';
-import { Sku } from '../value-objects/sku';
+import { InventoryItem } from '../../domain/entities/inventory-item';
+import { InventoryItemId } from '../../domain/value-objects/inventory-item-id';
+import { Sku } from '../../domain/value-objects/sku';
 
 export interface PendingConsumptionDto {
   /** The consumption's own external id - what a RETURN's `undoes_movement_id` points at. */
@@ -60,5 +60,3 @@ export interface InventoryItemRepository {
    */
   writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
 }
-
-export const INVENTORY_ITEM_REPOSITORY = Symbol('InventoryItemRepository');

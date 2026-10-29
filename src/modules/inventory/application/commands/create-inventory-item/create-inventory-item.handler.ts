@@ -1,33 +1,24 @@
-import { Inject } from '@nestjs/common';
-import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { SkuAlreadyInUseError } from '../../../domain/errors/sku-already-in-use.error';
 import { InventoryItemKind } from '../../../domain/inventory-item-kind';
-import {
-  INVENTORY_ITEM_REPOSITORY,
-  InventoryItemRepository,
-} from '../../../domain/repositories/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import {
   CreatedInventoryItemDto,
   CreateInventoryItemCommand,
 } from './create-inventory-item.command';
 
-@CommandHandler(CreateInventoryItemCommand)
-export class CreateInventoryItemHandler implements ICommandHandler<
-  CreateInventoryItemCommand,
-  CreatedInventoryItemDto
-> {
+export class CreateInventoryItemHandler {
   constructor(
-    @Inject(INVENTORY_ITEM_REPOSITORY) private readonly items: InventoryItemRepository,
-    @Inject(ID_GENERATOR) private readonly idGenerator: IdGenerator,
-    @Inject(CLOCK) private readonly clock: Clock,
-    private readonly eventBus: EventBus,
+    private readonly items: InventoryItemRepository,
+    private readonly idGenerator: IdGenerator,
+    private readonly clock: Clock,
+    private readonly events: DomainEventPublisher,
   ) {}
 
   async execute(command: CreateInventoryItemCommand): Promise<CreatedInventoryItemDto> {
@@ -52,7 +43,7 @@ export class CreateInventoryItemHandler implements ICommandHandler<
       now: this.clock.now(),
     });
     await this.items.save(item);
-    this.eventBus.publishAll(item.pullDomainEvents());
+    this.events.publish(item.pullDomainEvents());
 
     return { id: item.id.value };
   }

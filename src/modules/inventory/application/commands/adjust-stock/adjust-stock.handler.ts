@@ -4,10 +4,8 @@ import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
-import {
-  INVENTORY_ITEM_REPOSITORY,
-  InventoryItemRepository,
-} from '../../../domain/repositories/inventory-item.repository';
+import { INVENTORY_ITEM_REPOSITORY } from '../../../inventory.tokens';
+import { InventoryItemRepository } from '../../ports/inventory-item.repository';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
 import { AdjustStockCommand } from './adjust-stock.command';

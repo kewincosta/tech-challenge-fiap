@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { stubEventBus } from '../../../../../../test/support/fakes/bus.stubs';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { InventoryItemDeactivated } from '../../../domain/events/inventory-item-deactivated.event';
@@ -32,18 +32,15 @@ function fakePort(openWorkOrders: string[] = []): InventoryQueryPort {
 function makeHandler(openWorkOrders: string[] = []) {
   const items = new InMemoryInventoryItemRepository();
   const inventoryQuery = fakePort(openWorkOrders);
-  const events = stubEventBus();
-  const handler = new DeactivateInventoryItemHandler(
-    items,
-    inventoryQuery,
-    new FakeClock(),
-    events.bus,
-  );
-  return { handler, items, inventoryQuery, events };
+  const events = new RecordingDomainEventPublisher();
+  const clock = new FakeClock();
+  const handler = new DeactivateInventoryItemHandler(items, inventoryQuery, clock, events);
+  return { handler, items, inventoryQuery, events, clock };
 }
 
+// A stored item has no pending events, like one the repository loaded.
 function buildItem(): InventoryItem {
-  return InventoryItem.create({
+  const item = InventoryItem.create({
     id: ITEM_ID,
     sku: Sku.create('FLT-001'),
     name: 'Filtro de oleo',
@@ -52,6 +49,8 @@ function buildItem(): InventoryItem {
     unitPrice: Money.fromCents(2500),
     now: new Date('2026-08-31T12:00:00.000Z'),
   });
+  item.pullDomainEvents();
+  return item;
 }
 
 describe('DeactivateInventoryItemHandler', () => {
@@ -114,28 +113,25 @@ describe('DeactivateInventoryItemHandler', () => {
     const { handler, items, inventoryQuery } = makeHandler();
     await items.save(buildItem());
     await handler.execute(new DeactivateInventoryItemCommand(ITEM_ID.value));
+    // A work order planned after the deactivation would turn the second call into a 409 for a
+    // state that never changed, if that call ran the in-use check again.
+    vi.mocked(inventoryQuery.listOpenWorkOrderNumbersUsing).mockResolvedValue(['A1B090-2026']);
 
     await expect(
       handler.execute(new DeactivateInventoryItemCommand(ITEM_ID.value)),
     ).resolves.toBeUndefined();
     expect(items.items[0].status).toBe(InventoryItemStatus.Inactive);
-    // The second call must not consult the port: a work order planned after the deactivation
-    // would otherwise turn a no-op into a 409 for a state that never changed.
-    expect(inventoryQuery.listOpenWorkOrderNumbersUsing).toHaveBeenCalledTimes(1);
   });
 
   it('should publish the deactivation once, and nothing on the second call', async () => {
-    const { handler, items, events } = makeHandler();
+    const { handler, items, events, clock } = makeHandler();
     await items.save(buildItem());
 
     await handler.execute(new DeactivateInventoryItemCommand(ITEM_ID.value));
-    // The creation event rides along because the in-memory repository never pulls what it saves,
-    // so the assertion is on the deactivation being there exactly once, not on the batch size.
-    const first = events.publishAll.mock.calls.at(-1)?.[0] as unknown[];
-    expect(first.filter((event) => event instanceof InventoryItemDeactivated)).toHaveLength(1);
+    expect(events.published).toEqual([new InventoryItemDeactivated(ITEM_ID.value, clock.now())]);
 
     await handler.execute(new DeactivateInventoryItemCommand(ITEM_ID.value));
-    expect(events.publishAll.mock.calls.at(-1)?.[0]).toHaveLength(0);
+    expect(events.published).toHaveLength(1);
   });
 
   it('should refuse an unknown item', async () => {
