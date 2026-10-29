@@ -1,0 +1,5722 @@
+{
+  "components": {
+    "schemas": {
+      "AddRequestedServiceRequestDto": {
+        "properties": {
+          "serviceId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["serviceId"],
+        "type": "object"
+      },
+      "AddressRequestDto": {
+        "properties": {
+          "city": {
+            "example": "São Paulo",
+            "type": "string"
+          },
+          "complement": {
+            "example": "Apto 45",
+            "type": "string"
+          },
+          "district": {
+            "example": "Centro",
+            "type": "string"
+          },
+          "number": {
+            "example": "123",
+            "type": "string"
+          },
+          "state": {
+            "example": "SP",
+            "maxLength": 2,
+            "minLength": 2,
+            "type": "string"
+          },
+          "street": {
+            "example": "Rua das Flores",
+            "type": "string"
+          },
+          "zipCode": {
+            "example": "01001-000",
+            "type": "string"
+          }
+        },
+        "required": ["street", "number", "district", "city", "state", "zipCode"],
+        "type": "object"
+      },
+      "AddressResponseDto": {
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "complement": {
+            "nullable": true,
+            "type": "object"
+          },
+          "district": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "zipCode": {
+            "type": "string"
+          }
+        },
+        "required": ["street", "number", "district", "city", "state", "zipCode"],
+        "type": "object"
+      },
+      "AdjustStockRequestDto": {
+        "properties": {
+          "note": {
+            "example": "Contagem divergente",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "quantity": {
+            "example": 3,
+            "type": "number"
+          }
+        },
+        "required": ["quantity"],
+        "type": "object"
+      },
+      "ApplyDiscountRequestDto": {
+        "properties": {
+          "amountCents": {
+            "description": "Integer BRL cents",
+            "example": 1000,
+            "type": "number"
+          },
+          "note": {
+            "example": "Cliente reclamou do prazo",
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "required": ["amountCents", "note"],
+        "type": "object"
+      },
+      "AssignMechanicRequestDto": {
+        "properties": {
+          "mechanicUserId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["mechanicUserId"],
+        "type": "object"
+      },
+      "AuthResponseDto": {
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "example": 900,
+            "type": "number"
+          },
+          "refreshToken": {
+            "description": "Opaque single use refresh token",
+            "format": "uuid",
+            "type": "string"
+          },
+          "refreshTokenExpiresAt": {
+            "example": "2026-09-02T12:00:00.000Z",
+            "type": "string"
+          },
+          "sessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tokenType": {
+            "example": "Bearer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresInSeconds",
+          "refreshToken",
+          "refreshTokenExpiresAt",
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "AverageExecutionTimeResponseDto": {
+        "properties": {
+          "approximated": {
+            "description": "True only when a service filter was given. A work order carrying several services contributes its whole elapsed time to each, so the figure is not a decomposition of the total.",
+            "example": false,
+            "type": "boolean"
+          },
+          "averageSeconds": {
+            "description": "Whole seconds between execution start and completion",
+            "example": 259200,
+            "type": "number"
+          },
+          "workOrderCount": {
+            "description": "How many work orders the average was computed over",
+            "example": 12,
+            "type": "number"
+          }
+        },
+        "required": ["averageSeconds", "workOrderCount", "approximated"],
+        "type": "object"
+      },
+      "CancellationRequestDto": {
+        "properties": {
+          "reason": {
+            "example": "Cliente desistiu do servico",
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "required": ["reason"],
+        "type": "object"
+      },
+      "ChangePasswordRequestDto": {
+        "properties": {
+          "currentPassword": {
+            "example": "CurrentPassword1",
+            "type": "string"
+          },
+          "newPassword": {
+            "example": "NewStrongerPassword2",
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": ["currentPassword", "newPassword"],
+        "type": "object"
+      },
+      "CreateInventoryItemRequestDto": {
+        "properties": {
+          "description": {
+            "example": "Filtro padrao",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["PART", "SUPPLY"],
+            "example": "PART",
+            "type": "string"
+          },
+          "name": {
+            "example": "Filtro de oleo",
+            "maxLength": 120,
+            "type": "string"
+          },
+          "sku": {
+            "example": "FLT-001",
+            "maxLength": 40,
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 2500,
+            "type": "number"
+          }
+        },
+        "required": ["sku", "name", "kind", "unitPriceCents"],
+        "type": "object"
+      },
+      "CreateRoleRequestDto": {
+        "properties": {
+          "description": {
+            "example": "Manages workshop operations",
+            "type": "string"
+          },
+          "name": {
+            "example": "WORKSHOP_MANAGER",
+            "type": "string"
+          },
+          "permissions": {
+            "example": ["users:read", "roles:read"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["name"],
+        "type": "object"
+      },
+      "CreateServiceRequestDto": {
+        "properties": {
+          "description": {
+            "example": "Inclui filtro",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "estimatedDurationMinutes": {
+            "example": 60,
+            "type": "number"
+          },
+          "name": {
+            "example": "Troca de oleo",
+            "maxLength": 120,
+            "type": "string"
+          },
+          "priceCents": {
+            "description": "Price in integer BRL cents",
+            "example": 15099,
+            "type": "number"
+          }
+        },
+        "required": ["name", "priceCents", "estimatedDurationMinutes"],
+        "type": "object"
+      },
+      "CreateStaffAccountRequestDto": {
+        "properties": {
+          "document": {
+            "description": "CPF or CNPJ, with or without punctuation",
+            "example": "111.444.777-35",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "maxLength": 320,
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "maxLength": 120,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "required": ["email", "name", "document"],
+        "type": "object"
+      },
+      "CreateWorkOrderRequestDto": {
+        "properties": {
+          "customerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "vehicleId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["customerId", "vehicleId"],
+        "type": "object"
+      },
+      "CreatedInventoryItemResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "CreatedServiceResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "CreatedWorkOrderResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "A1B090-2026",
+            "type": "string"
+          }
+        },
+        "required": ["id", "number"],
+        "type": "object"
+      },
+      "CurrentUserResponseDto": {
+        "properties": {
+          "createdAt": {
+            "example": "2026-08-26T12:00:00.000Z",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "example": false,
+            "type": "boolean"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "permissions": {
+            "example": ["users:read"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "roles": {
+            "example": ["CUSTOMER"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "name",
+          "status",
+          "mustChangePassword",
+          "createdAt",
+          "roles",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "CustomerResponseDto": {
+        "properties": {
+          "address": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AddressResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "document": {
+            "example": "11144477735",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "example": "11987654321",
+            "nullable": true,
+            "type": "object"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "email",
+          "document",
+          "address",
+          "phoneNumber",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ErrorResponseDto": {
+        "properties": {
+          "code": {
+            "example": "AUTH_INVALID_CREDENTIALS",
+            "type": "string"
+          },
+          "details": {
+            "example": ["email must be an email"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "example": "Invalid credentials.",
+            "type": "string"
+          },
+          "reference": {
+            "example": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+            "type": "string"
+          }
+        },
+        "required": ["code", "message", "reference"],
+        "type": "object"
+      },
+      "InventoryItemResponseDto": {
+        "properties": {
+          "description": {
+            "example": "Filtro padrao",
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["PART", "SUPPLY"],
+            "example": "PART",
+            "type": "string"
+          },
+          "name": {
+            "example": "Filtro de oleo",
+            "type": "string"
+          },
+          "quantityOnHand": {
+            "example": 7,
+            "type": "number"
+          },
+          "sku": {
+            "example": "FLT-001",
+            "type": "string"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 2500,
+            "type": "number"
+          }
+        },
+        "required": ["id", "sku", "name", "kind", "unitPriceCents", "quantityOnHand", "status"],
+        "type": "object"
+      },
+      "LoginRequestDto": {
+        "properties": {
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "password": {
+            "example": "Str0ngPassword",
+            "type": "string"
+          }
+        },
+        "required": ["email", "password"],
+        "type": "object"
+      },
+      "LogoutAllResponseDto": {
+        "properties": {
+          "revokedSessions": {
+            "example": 2,
+            "type": "number"
+          }
+        },
+        "required": ["revokedSessions"],
+        "type": "object"
+      },
+      "PermissionResponseDto": {
+        "properties": {
+          "code": {
+            "example": "users:read",
+            "type": "string"
+          },
+          "description": {
+            "example": "Read any user account",
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id", "code", "description"],
+        "type": "object"
+      },
+      "PlanPartRequestDto": {
+        "properties": {
+          "inventoryItemId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "quantity": {
+            "example": 2,
+            "type": "number"
+          }
+        },
+        "required": ["inventoryItemId", "quantity"],
+        "type": "object"
+      },
+      "RefreshTokenRequestDto": {
+        "properties": {
+          "refreshToken": {
+            "description": "Opaque single use refresh token",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["refreshToken"],
+        "type": "object"
+      },
+      "RegisterCustomerRequestDto": {
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/AddressRequestDto"
+          },
+          "document": {
+            "example": "111.444.777-35",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "phoneNumber": {
+            "example": "(11) 98765-4321",
+            "type": "string"
+          },
+          "userId": {
+            "description": "External id of an existing user. Mutually exclusive with email/name/document.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RegisterUserRequestDto": {
+        "properties": {
+          "document": {
+            "description": "CPF or CNPJ, with or without punctuation",
+            "example": "111.444.777-35",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "maxLength": 320,
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "maxLength": 120,
+            "minLength": 2,
+            "type": "string"
+          },
+          "password": {
+            "example": "Str0ngPassword",
+            "maxLength": 128,
+            "minLength": 8,
+            "type": "string"
+          }
+        },
+        "required": ["email", "name", "password", "document"],
+        "type": "object"
+      },
+      "RegisterVehicleRequestDto": {
+        "properties": {
+          "brand": {
+            "example": "Toyota",
+            "type": "string"
+          },
+          "customerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "model": {
+            "example": "Corolla",
+            "type": "string"
+          },
+          "plate": {
+            "example": "ABC-1234",
+            "type": "string"
+          },
+          "year": {
+            "example": 2020,
+            "type": "number"
+          }
+        },
+        "required": ["customerId", "plate", "brand", "model", "year"],
+        "type": "object"
+      },
+      "RegisteredCustomerResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "temporaryPassword": {
+            "description": "Present only when a new account was created. Shown once.",
+            "example": "aB3dE5fG7h9K",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "RegisteredUserResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "RegisteredVehicleResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "type": "object"
+      },
+      "ReplenishStockRequestDto": {
+        "properties": {
+          "note": {
+            "example": "Reposicao mensal",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "quantity": {
+            "example": 10,
+            "type": "number"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 2500,
+            "type": "number"
+          }
+        },
+        "required": ["quantity", "unitPriceCents"],
+        "type": "object"
+      },
+      "RoleResponseDto": {
+        "properties": {
+          "description": {
+            "example": "Manages workshop operations",
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "example": false,
+            "type": "boolean"
+          },
+          "name": {
+            "example": "WORKSHOP_MANAGER",
+            "type": "string"
+          },
+          "permissions": {
+            "example": ["users:read"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["id", "name", "description", "isSystem", "permissions"],
+        "type": "object"
+      },
+      "ServiceResponseDto": {
+        "properties": {
+          "description": {
+            "example": "Inclui filtro",
+            "nullable": true,
+            "type": "object"
+          },
+          "estimatedDurationMinutes": {
+            "example": 60,
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "Troca de oleo",
+            "type": "string"
+          },
+          "priceCents": {
+            "description": "Price in integer BRL cents",
+            "example": 15099,
+            "type": "number"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "priceCents", "estimatedDurationMinutes", "status"],
+        "type": "object"
+      },
+      "SessionResponseDto": {
+        "properties": {
+          "createdAt": {
+            "example": "2026-08-26T12:00:00.000Z",
+            "type": "string"
+          },
+          "current": {
+            "description": "True when this session issued the current access token",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ip": {
+            "example": "203.0.113.10",
+            "nullable": true,
+            "type": "object"
+          },
+          "lastUsedAt": {
+            "example": "2026-08-26T12:30:00.000Z",
+            "type": "string"
+          },
+          "userAgent": {
+            "example": "Mozilla/5.0",
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["id", "ip", "userAgent", "createdAt", "lastUsedAt", "current"],
+        "type": "object"
+      },
+      "SetRolePermissionsRequestDto": {
+        "properties": {
+          "permissions": {
+            "example": ["users:read", "roles:read"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["permissions"],
+        "type": "object"
+      },
+      "StaffAccountResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "temporaryPassword": {
+            "description": "Shown once. Hand it to the account holder; it cannot be retrieved again.",
+            "example": "aB3dE5fG7h9K",
+            "type": "string"
+          }
+        },
+        "required": ["id", "temporaryPassword"],
+        "type": "object"
+      },
+      "StockMovementResponseDto": {
+        "properties": {
+          "actorUserId": {
+            "description": "The acting user's external id",
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "example": "INBOUND",
+            "type": "string"
+          },
+          "note": {
+            "example": "Reposicao mensal",
+            "nullable": true,
+            "type": "object"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "quantity": {
+            "example": 10,
+            "type": "number"
+          },
+          "status": {
+            "description": "Only a CONSUMPTION carries a lifecycle status. Null for every other kind.",
+            "example": "PENDING",
+            "nullable": true,
+            "type": "object"
+          },
+          "undoesMovementId": {
+            "description": "The consumption a RETURN points at. Null for every other kind.",
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 2500,
+            "type": "number"
+          },
+          "workOrderId": {
+            "description": "Set on a CONSUMPTION or a RETURN",
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["id", "kind", "quantity", "unitPriceCents", "actorUserId", "occurredAt"],
+        "type": "object"
+      },
+      "StockShortageResponseDto": {
+        "properties": {
+          "inventoryItemId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "Filtro de oleo",
+            "type": "string"
+          },
+          "outstandingQuantity": {
+            "description": "Sum, over approved planned parts of work orders in execution, of planned minus withdrawn",
+            "example": 4,
+            "type": "number"
+          },
+          "quantityOnHand": {
+            "example": 1,
+            "type": "number"
+          },
+          "sku": {
+            "example": "FLT-001",
+            "type": "string"
+          },
+          "workOrderNumbers": {
+            "example": ["A1B090-2026"],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "inventoryItemId",
+          "sku",
+          "name",
+          "quantityOnHand",
+          "outstandingQuantity",
+          "workOrderNumbers"
+        ],
+        "type": "object"
+      },
+      "UpdateCustomerRequestDto": {
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/AddressRequestDto"
+          },
+          "phoneNumber": {
+            "example": "(11) 98765-4321",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateInventoryItemRequestDto": {
+        "properties": {
+          "description": {
+            "description": "Send null to clear it; omit the field to leave it untouched.",
+            "example": "Filtro padrao",
+            "nullable": true,
+            "type": "object"
+          },
+          "name": {
+            "example": "Filtro de oleo",
+            "maxLength": 120,
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 3000,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateRoleRequestDto": {
+        "properties": {
+          "description": {
+            "example": "Manages workshop operations",
+            "type": "string"
+          },
+          "name": {
+            "example": "WORKSHOP_MANAGER",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateServiceRequestDto": {
+        "properties": {
+          "description": {
+            "description": "Send null to clear it; omit the field to leave it untouched.",
+            "example": "Inclui filtro",
+            "nullable": true,
+            "type": "object"
+          },
+          "estimatedDurationMinutes": {
+            "example": 90,
+            "type": "number"
+          },
+          "name": {
+            "example": "Troca de oleo",
+            "maxLength": 120,
+            "type": "string"
+          },
+          "priceCents": {
+            "example": 17500,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateUserRequestDto": {
+        "properties": {
+          "document": {
+            "description": "CPF or CNPJ, with or without punctuation",
+            "example": "111.444.777-35",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "maxLength": 320,
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "maxLength": 120,
+            "minLength": 2,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateVehicleRequestDto": {
+        "properties": {
+          "brand": {
+            "example": "Toyota",
+            "type": "string"
+          },
+          "customerId": {
+            "description": "Transfers ownership when supplied.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "model": {
+            "example": "Corolla",
+            "type": "string"
+          },
+          "year": {
+            "example": 2020,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "UserAccessResponseDto": {
+        "properties": {
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/UserAccessRoleResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["roles"],
+        "type": "object"
+      },
+      "UserAccessRoleResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "CUSTOMER",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "UserResponseDto": {
+        "properties": {
+          "createdAt": {
+            "example": "2026-08-26T12:00:00.000Z",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "example": false,
+            "type": "boolean"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          }
+        },
+        "required": ["id", "email", "name", "status", "mustChangePassword", "createdAt"],
+        "type": "object"
+      },
+      "UserSummaryResponseDto": {
+        "properties": {
+          "document": {
+            "example": "11144477735",
+            "type": "string"
+          },
+          "email": {
+            "example": "jane.doe@example.com",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "status": {
+            "example": "ACTIVE",
+            "type": "string"
+          }
+        },
+        "required": ["id", "email", "name", "document", "status"],
+        "type": "object"
+      },
+      "VehicleResponseDto": {
+        "properties": {
+          "brand": {
+            "example": "Toyota",
+            "type": "string"
+          },
+          "customerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "model": {
+            "example": "Corolla",
+            "type": "string"
+          },
+          "plate": {
+            "example": "ABC1234",
+            "type": "string"
+          },
+          "year": {
+            "example": 2020,
+            "type": "number"
+          }
+        },
+        "required": ["id", "customerId", "plate", "brand", "model", "year"],
+        "type": "object"
+      },
+      "WithdrawPartsLineRequestDto": {
+        "properties": {
+          "itemId": {
+            "description": "The work order item's own external id",
+            "format": "uuid",
+            "type": "string"
+          },
+          "quantity": {
+            "example": 2,
+            "type": "number"
+          }
+        },
+        "required": ["itemId", "quantity"],
+        "type": "object"
+      },
+      "WithdrawPartsRequestDto": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/WithdrawPartsLineRequestDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["lines"],
+        "type": "object"
+      },
+      "WorkOrderBudgetResponseDto": {
+        "properties": {
+          "decidedAt": {
+            "nullable": true,
+            "type": "object"
+          },
+          "decidedByUserId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "round": {
+            "example": 1,
+            "type": "number"
+          },
+          "status": {
+            "example": "PENDING",
+            "type": "string"
+          },
+          "totalCents": {
+            "description": "Total in integer BRL cents",
+            "example": 20099,
+            "type": "number"
+          }
+        },
+        "required": ["id", "round", "totalCents", "status", "generatedAt"],
+        "type": "object"
+      },
+      "WorkOrderPartItemResponseDto": {
+        "properties": {
+          "budgetRound": {
+            "description": "Null while still a draft",
+            "example": 1,
+            "nullable": true,
+            "type": "object"
+          },
+          "budgetedUnitPriceCents": {
+            "description": "Frozen at generation, in integer BRL cents. Null while still a draft",
+            "example": 2500,
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "inventoryItemId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "itemName": {
+            "example": "Filtro de oleo",
+            "type": "string"
+          },
+          "plannedQuantity": {
+            "example": 2,
+            "type": "number"
+          },
+          "sku": {
+            "example": "FLT-001",
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 2500,
+            "type": "number"
+          },
+          "withdrawnQuantity": {
+            "example": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "inventoryItemId",
+          "sku",
+          "itemName",
+          "plannedQuantity",
+          "withdrawnQuantity",
+          "unitPriceCents"
+        ],
+        "type": "object"
+      },
+      "WorkOrderResponseDto": {
+        "properties": {
+          "assignedMechanicUserId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "budgets": {
+            "description": "Ordered by round",
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderBudgetResponseDto"
+            },
+            "type": "array"
+          },
+          "canceledAt": {
+            "nullable": true,
+            "type": "object"
+          },
+          "cancellationReason": {
+            "nullable": true,
+            "type": "object"
+          },
+          "chargedTotalCents": {
+            "description": "Services plus withdrawn parts minus the discount, in integer BRL cents. Null before completion",
+            "example": 20099,
+            "nullable": true,
+            "type": "object"
+          },
+          "completedAt": {
+            "nullable": true,
+            "type": "object"
+          },
+          "createdByUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "customerId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "customerName": {
+            "example": "Jane Doe",
+            "type": "string"
+          },
+          "deliveredAt": {
+            "nullable": true,
+            "type": "object"
+          },
+          "discountCents": {
+            "description": "Integer BRL cents",
+            "example": 0,
+            "type": "number"
+          },
+          "discountNote": {
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "example": "A1B090-2026",
+            "type": "string"
+          },
+          "partItems": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderPartItemResponseDto"
+            },
+            "type": "array"
+          },
+          "serviceItems": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderServiceItemResponseDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "example": "RECEIVED",
+            "type": "string"
+          },
+          "vehicleBrand": {
+            "example": "Toyota",
+            "type": "string"
+          },
+          "vehicleId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "vehicleModel": {
+            "example": "Corolla",
+            "type": "string"
+          },
+          "vehiclePlate": {
+            "example": "ABC1234",
+            "type": "string"
+          },
+          "vehicleYear": {
+            "example": 2020,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "customerId",
+          "vehicleId",
+          "createdByUserId",
+          "status",
+          "customerName",
+          "vehiclePlate",
+          "vehicleBrand",
+          "vehicleModel",
+          "vehicleYear",
+          "serviceItems",
+          "partItems",
+          "budgets",
+          "discountCents"
+        ],
+        "type": "object"
+      },
+      "WorkOrderServiceItemResponseDto": {
+        "properties": {
+          "budgetRound": {
+            "description": "Null while still a draft",
+            "example": 1,
+            "nullable": true,
+            "type": "object"
+          },
+          "budgetedUnitPriceCents": {
+            "description": "Frozen at generation, in integer BRL cents. Null while still a draft",
+            "example": 15099,
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "serviceId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "serviceName": {
+            "example": "Troca de oleo",
+            "type": "string"
+          },
+          "unitPriceCents": {
+            "description": "Unit price in integer BRL cents",
+            "example": 15099,
+            "type": "number"
+          }
+        },
+        "required": ["id", "serviceId", "serviceName", "unitPriceCents"],
+        "type": "object"
+      },
+      "WorkOrderTrailEntryResponseDto": {
+        "properties": {
+          "actorUserId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "eventType": {
+            "example": "WORK_ORDER_CREATED",
+            "type": "string"
+          },
+          "fromStatus": {
+            "example": "RECEIVED",
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "nullable": true,
+            "type": "object"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "toStatus": {
+            "example": "RECEIVED",
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["id", "eventType", "occurredAt"],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "Identity and access foundation for the workshop management system",
+    "title": "Workshop Management API",
+    "version": "1.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/auth/sessions": {
+      "delete": {
+        "operationId": "AuthController_logout_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutAllResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout: revoke every active session of the authenticated user",
+        "tags": ["authentication"]
+      },
+      "get": {
+        "operationId": "AuthController_listSessions_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the active sessions of the authenticated user",
+        "tags": ["authentication"]
+      },
+      "post": {
+        "operationId": "AuthController_login_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Login: create a session and issue an access and refresh token pair",
+        "tags": ["authentication"]
+      }
+    },
+    "/api/v1/auth/sessions/{id}": {
+      "delete": {
+        "operationId": "AuthController_revokeSession_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a session by id (owner or sessions:revoke-any permission)",
+        "tags": ["authentication"]
+      }
+    },
+    "/api/v1/auth/tokens": {
+      "post": {
+        "operationId": "AuthController_refresh_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Refresh: rotate the refresh token and issue a new token pair",
+        "tags": ["authentication"]
+      }
+    },
+    "/api/v1/customers": {
+      "get": {
+        "operationId": "CustomersController_list_v1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "example": "Jane",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document",
+            "required": false,
+            "schema": {
+              "example": "11144477735",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active customers, filtered by name and by document",
+        "tags": ["customers"]
+      },
+      "post": {
+        "operationId": "CustomersController_register_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCustomerRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredCustomerResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a customer, over an existing user or creating one",
+        "tags": ["customers"]
+      }
+    },
+    "/api/v1/customers/me": {
+      "get": {
+        "operationId": "CustomersController_me_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the authenticated user own customer record",
+        "tags": ["customers"]
+      },
+      "patch": {
+        "operationId": "CustomersController_updateMe_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update the authenticated user own customer record",
+        "tags": ["customers"]
+      }
+    },
+    "/api/v1/customers/{externalId}": {
+      "delete": {
+        "operationId": "CustomersController_deactivate_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deactivate a customer (soft delete)",
+        "tags": ["customers"]
+      },
+      "get": {
+        "operationId": "CustomersController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a customer by id",
+        "tags": ["customers"]
+      },
+      "patch": {
+        "operationId": "CustomersController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a customer record",
+        "tags": ["customers"]
+      }
+    },
+    "/api/v1/inventory-items": {
+      "get": {
+        "operationId": "InventoryItemsController_list_v1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "enum": ["PART", "SUPPLY"],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryItemResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the active catalog, filtered by kind",
+        "tags": ["inventory-items"]
+      },
+      "post": {
+        "operationId": "InventoryItemsController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInventoryItemRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedInventoryItemResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a catalog item",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/inventory-items/shortages": {
+      "get": {
+        "operationId": "InventoryItemsController_shortages_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StockShortageResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List items whose demand from work orders in execution exceeds the shelf",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/inventory-items/{externalId}": {
+      "delete": {
+        "description": "Refused with 409 while any work order that planned the item has not been delivered or canceled. The quantity on hand is left untouched - only a movement moves the count.",
+        "operationId": "InventoryItemsController_deactivate_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deactivate a catalog item (the record and its movement history are kept)",
+        "tags": ["inventory-items"]
+      },
+      "get": {
+        "operationId": "InventoryItemsController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryItemResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a catalog item by id",
+        "tags": ["inventory-items"]
+      },
+      "patch": {
+        "operationId": "InventoryItemsController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInventoryItemRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryItemResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update an item's name, description or unit price",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/inventory-items/{externalId}/adjustments": {
+      "post": {
+        "operationId": "InventoryItemsController_adjust_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustStockRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryItemResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Adjust an item down, lowering its quantity on hand",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/inventory-items/{externalId}/movements": {
+      "get": {
+        "operationId": "InventoryItemsController_movements_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StockMovementResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read an item's movement history, in chronological order",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/inventory-items/{externalId}/replenishments": {
+      "post": {
+        "operationId": "InventoryItemsController_replenish_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplenishStockRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryItemResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replenish an item, raising its quantity on hand",
+        "tags": ["inventory-items"]
+      }
+    },
+    "/api/v1/permissions": {
+      "get": {
+        "operationId": "PermissionsController_list_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the permission catalog",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "operationId": "RolesController_list_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List roles",
+        "tags": ["authorization"]
+      },
+      "post": {
+        "operationId": "RolesController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a role",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/roles/{id}": {
+      "delete": {
+        "operationId": "RolesController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a role",
+        "tags": ["authorization"]
+      },
+      "get": {
+        "operationId": "RolesController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a role by id",
+        "tags": ["authorization"]
+      },
+      "patch": {
+        "operationId": "RolesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update role name or description",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/roles/{id}/permissions": {
+      "put": {
+        "operationId": "RolesController_setPermissions_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRolePermissionsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the permissions of a role",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "operationId": "ServicesController_list_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the active catalog services",
+        "tags": ["services"]
+      },
+      "post": {
+        "operationId": "ServicesController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedServiceResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a catalog service",
+        "tags": ["services"]
+      }
+    },
+    "/api/v1/services/{externalId}": {
+      "delete": {
+        "operationId": "ServicesController_deactivate_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deactivate a catalog service (the record is kept)",
+        "tags": ["services"]
+      },
+      "get": {
+        "operationId": "ServicesController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a catalog service by id, active or deactivated",
+        "tags": ["services"]
+      },
+      "patch": {
+        "operationId": "ServicesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a catalog service",
+        "tags": ["services"]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_list_v1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "example": "MECHANIC",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document",
+            "required": false,
+            "schema": {
+              "example": "11144477735",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserSummaryResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active users, filtered by role and by document",
+        "tags": ["users"]
+      },
+      "post": {
+        "operationId": "UsersController_register_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterUserRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredUserResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Register a new user account",
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "operationId": "UsersController_me_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the authenticated user with effective roles and permissions",
+        "tags": ["users"]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update the authenticated user own personal data",
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/me/password": {
+      "post": {
+        "operationId": "UsersController_changePassword_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the authenticated user own password, revoking every session",
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/staff": {
+      "post": {
+        "description": "The workshop never invents a password for someone else (IDENT-07). The response carries the generated password once; the account must change it before using any other route.",
+        "operationId": "UsersController_createStaffAccount_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStaffAccountRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAccountResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create an account with a system-generated temporary password",
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/{externalId}": {
+      "delete": {
+        "operationId": "UsersController_deactivate_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deactivate an account (soft delete)",
+        "tags": ["users"]
+      },
+      "get": {
+        "operationId": "UsersController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a user by id",
+        "tags": ["users"]
+      },
+      "patch": {
+        "operationId": "UsersController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a staff or customer account",
+        "tags": ["users"]
+      }
+    },
+    "/api/v1/users/{userId}/access": {
+      "get": {
+        "operationId": "UserAccessController_getUserAccess_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAccessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the roles assigned to a user",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/users/{userId}/roles/{roleId}": {
+      "delete": {
+        "operationId": "UserAccessController_revokeRole_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a role from a user (idempotent)",
+        "tags": ["authorization"]
+      },
+      "put": {
+        "operationId": "UserAccessController_assignRole_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "roleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a role to a user (idempotent)",
+        "tags": ["authorization"]
+      }
+    },
+    "/api/v1/vehicles": {
+      "get": {
+        "operationId": "VehiclesController_list_v1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "customerId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VehicleResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a customer's active vehicles",
+        "tags": ["vehicles"]
+      },
+      "post": {
+        "operationId": "VehiclesController_register_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterVehicleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredVehicleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register a vehicle for an active customer",
+        "tags": ["vehicles"]
+      }
+    },
+    "/api/v1/vehicles/me": {
+      "get": {
+        "operationId": "VehiclesController_myVehicles_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VehicleResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the authenticated person own vehicles",
+        "tags": ["vehicles"]
+      }
+    },
+    "/api/v1/vehicles/{externalId}": {
+      "delete": {
+        "operationId": "VehiclesController_remove_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a vehicle (soft delete)",
+        "tags": ["vehicles"]
+      },
+      "get": {
+        "operationId": "VehiclesController_getById_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a vehicle by id",
+        "tags": ["vehicles"]
+      },
+      "patch": {
+        "operationId": "VehiclesController_update_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "externalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVehicleRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a vehicle's details, or transfer its ownership",
+        "tags": ["vehicles"]
+      }
+    },
+    "/api/v1/work-orders": {
+      "get": {
+        "operationId": "WorkOrdersController_list_v1",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkOrderResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the work order board, filtered by status",
+        "tags": ["work-orders"]
+      },
+      "post": {
+        "operationId": "WorkOrdersController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkOrderRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedWorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open a work order for a customer and their vehicle",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/me": {
+      "get": {
+        "operationId": "WorkOrdersController_myWorkOrders_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkOrderResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the authenticated customer's own work orders",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/me/{number}": {
+      "get": {
+        "operationId": "WorkOrdersController_myWorkOrder_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one of the authenticated customer's own work orders by number",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/metrics/average-execution-time": {
+      "get": {
+        "operationId": "WorkOrdersController_averageExecutionTime_v1",
+        "parameters": [
+          {
+            "description": "A catalog service's external id",
+            "in": "query",
+            "name": "serviceId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive, filters on completedAt",
+            "in": "query",
+            "name": "completedFrom",
+            "required": false,
+            "schema": {
+              "example": "2026-01-01",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive, filters on completedAt",
+            "in": "query",
+            "name": "completedTo",
+            "required": false,
+            "schema": {
+              "example": "2026-01-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AverageExecutionTimeResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Average elapsed time between execution start and completion",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}": {
+      "get": {
+        "operationId": "WorkOrdersController_getByNumber_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a work order by its number",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/budget/approval": {
+      "post": {
+        "description": "Allowed to the owning customer or to a holder of work-orders:decide. The route carries no permission decorator because that rule is an either-of-two, which the permissions guard cannot express; the handler enforces it and answers 404, not 403, to anyone else.",
+        "operationId": "WorkOrdersController_approveBudget_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve the pending budget round",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/budget/rejection": {
+      "post": {
+        "description": "Allowed to the owning customer or to a holder of work-orders:decide. The route carries no permission decorator because that rule is an either-of-two, which the permissions guard cannot express; the handler enforces it and answers 404, not 403, to anyone else.",
+        "operationId": "WorkOrdersController_rejectBudget_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject the pending budget round",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/budget/supplementary": {
+      "post": {
+        "operationId": "WorkOrdersController_submitSupplementaryBudget_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Submit a supplementary budget over the draft items added during execution",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/cancellation": {
+      "post": {
+        "operationId": "WorkOrdersController_cancelWorkOrder_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancellationRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a work order, writing off any parts already withdrawn",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/completion": {
+      "post": {
+        "operationId": "WorkOrdersController_completeWorkOrder_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete a work order in execution, charging what was withdrawn",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/delivery": {
+      "post": {
+        "operationId": "WorkOrdersController_deliverVehicle_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deliver a completed work order, settling its consumptions",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/diagnosis": {
+      "post": {
+        "operationId": "WorkOrdersController_startDiagnosis_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start the diagnosis of a work order that arrived",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/diagnosis/completion": {
+      "post": {
+        "operationId": "WorkOrdersController_completeDiagnosis_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete the diagnosis and generate the first budget round",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/discount": {
+      "post": {
+        "operationId": "WorkOrdersController_applyDiscount_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyDiscountRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply a discount to the charged total, with a mandatory reason",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/items/{itemExternalId}": {
+      "delete": {
+        "operationId": "WorkOrdersController_removeItem_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "itemExternalId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a requested service or a planned part from a work order",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/mechanic": {
+      "put": {
+        "operationId": "WorkOrdersController_assignMechanic_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignMechanicRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a mechanic to a work order",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/parts": {
+      "post": {
+        "operationId": "WorkOrdersController_planPart_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanPartRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Plan a part on a work order, without touching the stock",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/returns": {
+      "post": {
+        "operationId": "WorkOrdersController_returnParts_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawPartsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Return a batch of previously withdrawn parts to stock",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/services": {
+      "post": {
+        "operationId": "WorkOrdersController_addService_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddRequestedServiceRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a requested service to a work order",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/trail": {
+      "get": {
+        "operationId": "WorkOrdersController_getTrail_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkOrderTrailEntryResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read a work order's trail, in chronological order",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/withdrawals": {
+      "post": {
+        "operationId": "WorkOrdersController_withdrawParts_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawPartsRequestDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw a batch of approved planned parts from stock",
+        "tags": ["work-orders"]
+      }
+    }
+  },
+  "servers": [],
+  "tags": []
+}

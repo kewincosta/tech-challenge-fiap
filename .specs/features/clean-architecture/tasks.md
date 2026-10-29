@@ -48,9 +48,9 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 
 | Suite | Tests passing |
 | --- | --- |
-| unit | to be recorded by T1 |
-| integration | to be recorded by T1 |
-| e2e | to be recorded by T1 |
+| unit | 955 |
+| integration | 239 |
+| e2e | 203 |
 
 ---
 
@@ -233,13 +233,13 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The baseline JSON is generated from the code as it is before this task, with the current `DocumentBuilder` settings
-- [ ] `main.ts` serves `/api/docs` from `buildOpenApiDocument(app)`
-- [ ] The contract test sorts object keys recursively, keeps array order, and passes against the baseline
-- [ ] Changing one response status in a scratch copy makes the contract test fail (checked by hand, scratch discarded)
-- [ ] The Baseline section of this file holds the three suite totals of the untouched tree
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total is the baseline plus 1
+- [x] The baseline JSON is generated from the code as it is before this task, with the current `DocumentBuilder` settings
+- [x] `main.ts` serves `/api/docs` from `buildOpenApiDocument(app)`
+- [x] The contract test sorts object keys recursively, keeps array order, and passes against the baseline
+- [x] Changing one response status in a scratch copy makes the contract test fail (checked by hand, scratch discarded)
+- [x] The Baseline section of this file holds the three suite totals of the untouched tree
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total is the baseline plus 1
 
 **Tests**: e2e
 **Gate**: full
