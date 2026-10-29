@@ -319,9 +319,9 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] Both cases assert status 404 and code `WORK_ORDER_NOT_FOUND`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: e2e total grows by 2 at most
+- [x] Both cases assert status 404 and code `WORK_ORDER_NOT_FOUND`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: e2e total grows by 2 at most
 
 **Tests**: e2e
 **Gate**: full

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
@@ -330,5 +331,36 @@ describe('Work order tracking - the average execution time metric', () => {
 
   it('answers 401 without a token', async () => {
     await api(app).get('/api/v1/work-orders/metrics/average-execution-time').expect(401);
+  });
+});
+
+describe('Work order tracking - the not-found answers', () => {
+  // Well formed, so the 404 comes from the lookup and not from the 400 a malformed number gets.
+  // Year 0000 is never issued, so no work order carries the number.
+  function unissuedNumber(): string {
+    return `${randomUUID().slice(0, 6).toUpperCase()}-0000`;
+  }
+
+  it('answers 404 WORK_ORDER_NOT_FOUND on /work-orders/:number for a number nobody carries', async () => {
+    const response = await api(app)
+      .get(`/api/v1/work-orders/${unissuedNumber()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'WORK_ORDER_NOT_FOUND' });
+  });
+
+  it("answers 404 WORK_ORDER_NOT_FOUND on /work-orders/me/:number for another customer's work order", async () => {
+    const owner = await registerCustomer();
+    const stranger = await registerCustomer();
+    const strangerClient = await loginAsCustomer(stranger);
+    const workOrder = await createReceivedWorkOrder(owner);
+
+    const response = await api(app)
+      .get(`/api/v1/work-orders/me/${workOrder.number}`)
+      .set('Authorization', `Bearer ${strangerClient.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'WORK_ORDER_NOT_FOUND' });
   });
 });
