@@ -858,13 +858,13 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The use case has no decorator, no framework import and no bus
-- [ ] The spec uses the directory fakes, the in-memory repository and the recording publisher, and asserts outcomes, never calls
-- [ ] Five drawn numbers all taken end in `WorkOrderNumberTakenError`, asserted in the spec
-- [ ] `POST /work-orders` e2e cases and the OpenAPI contract pass unchanged
-- [ ] Any change the pilot forced on the pattern is written into `design.md`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit total unchanged or larger; e2e unchanged
+- [x] The use case has no decorator, no framework import and no bus
+- [x] The spec uses the directory fakes, the in-memory repository and the recording publisher, and asserts outcomes, never calls
+- [x] Five drawn numbers all taken end in `WorkOrderNumberTakenError`, asserted in the spec
+- [x] `POST /work-orders` e2e cases and the OpenAPI contract pass unchanged
+- [x] Any change the pilot forced on the pattern is written into `design.md`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit total unchanged or larger; e2e unchanged
 
 **Tests**: e2e
 **Gate**: full

@@ -38,10 +38,8 @@ import { AssignMechanicCommand } from '../../application/commands/assign-mechani
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
 import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
-import {
-  CreatedWorkOrderDto,
-  CreateWorkOrderCommand,
-} from '../../application/commands/create-work-order/create-work-order.command';
+import { CreateWorkOrderCommand } from '../../application/commands/create-work-order/create-work-order.command';
+import { CreateWorkOrderUseCase } from '../../application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
@@ -81,6 +79,7 @@ import {
 @Controller('work-orders')
 export class WorkOrdersController {
   constructor(
+    private readonly createWorkOrder: CreateWorkOrderUseCase,
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}
@@ -99,7 +98,7 @@ export class WorkOrdersController {
     @Body() body: CreateWorkOrderRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<CreatedWorkOrderResponseDto> {
-    return this.commandBus.execute<CreateWorkOrderCommand, CreatedWorkOrderDto>(
+    return this.createWorkOrder.execute(
       new CreateWorkOrderCommand(body.customerId, body.vehicleId, principal.userId),
     );
   }

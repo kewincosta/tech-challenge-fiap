@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Clock } from '../../shared/application/ports/clock.port';
+import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
+import { IdGenerator } from '../../shared/application/ports/id-generator.port';
+import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { CustomersModule } from '../customers';
 import { VehiclesModule } from '../vehicles';
 import { AddRequestedServiceHandler } from './application/commands/add-requested-service/add-requested-service.handler';
@@ -9,7 +13,7 @@ import { AssignMechanicHandler } from './application/commands/assign-mechanic/as
 import { CancelWorkOrderHandler } from './application/commands/cancel-work-order/cancel-work-order.handler';
 import { CompleteDiagnosisHandler } from './application/commands/complete-diagnosis/complete-diagnosis.handler';
 import { CompleteWorkOrderHandler } from './application/commands/complete-work-order/complete-work-order.handler';
-import { CreateWorkOrderHandler } from './application/commands/create-work-order/create-work-order.handler';
+import { CreateWorkOrderUseCase } from './application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleHandler } from './application/commands/deliver-vehicle/deliver-vehicle.handler';
 import { PlanPartHandler } from './application/commands/plan-part/plan-part.handler';
 import { RejectBudgetHandler } from './application/commands/reject-budget/reject-budget.handler';
@@ -26,6 +30,10 @@ import {
   WORK_ORDER_QUERY_PORT,
   WORK_ORDER_REPOSITORY,
 } from './work-orders.tokens';
+import { CustomerDirectory } from './application/ports/customer-directory.port';
+import { VehicleDirectory } from './application/ports/vehicle-directory.port';
+import { WorkOrderNumberGenerator } from './application/ports/work-order-number-generator.port';
+import { WorkOrderRepository } from './application/ports/work-order.repository';
 import { GetAverageExecutionTimeHandler } from './application/queries/get-average-execution-time/get-average-execution-time.handler';
 import { GetMyWorkOrderHandler } from './application/queries/get-my-work-order/get-my-work-order.handler';
 import { GetMyWorkOrdersHandler } from './application/queries/get-my-work-orders/get-my-work-orders.handler';
@@ -62,7 +70,36 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
   ],
   controllers: [WorkOrdersController],
   providers: [
-    CreateWorkOrderHandler,
+    {
+      provide: CreateWorkOrderUseCase,
+      useFactory: (
+        workOrders: WorkOrderRepository,
+        customers: CustomerDirectory,
+        vehicles: VehicleDirectory,
+        idGenerator: IdGenerator,
+        numberGenerator: WorkOrderNumberGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) =>
+        new CreateWorkOrderUseCase(
+          workOrders,
+          customers,
+          vehicles,
+          idGenerator,
+          numberGenerator,
+          clock,
+          events,
+        ),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        CUSTOMER_DIRECTORY,
+        VEHICLE_DIRECTORY,
+        ID_GENERATOR,
+        WORK_ORDER_NUMBER_GENERATOR,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
+    },
     AddRequestedServiceHandler,
     PlanPartHandler,
     RemoveWorkOrderItemHandler,

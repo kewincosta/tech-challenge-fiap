@@ -1,6 +1,11 @@
 import { WorkOrder } from '../../../src/modules/work-orders/domain/entities/work-order';
+import { VehicleAlreadyHasActiveWorkOrderError } from '../../../src/modules/work-orders/domain/errors/vehicle-already-has-active-work-order.error';
+import { WorkOrderNumberTakenError } from '../../../src/modules/work-orders/domain/errors/work-order-number-taken.error';
 import { WorkOrderRepository } from '../../../src/modules/work-orders/application/ports/work-order.repository';
 import { WorkOrderNumber } from '../../../src/modules/work-orders/domain/value-objects/work-order-number';
+import { WorkOrderStatus } from '../../../src/modules/work-orders/domain/work-order-status';
+
+const CLOSED_STATUSES: WorkOrderStatus[] = [WorkOrderStatus.Delivered, WorkOrderStatus.Canceled];
 
 export class InMemoryWorkOrderRepository implements WorkOrderRepository {
   workOrders: WorkOrder[] = [];
@@ -11,9 +16,25 @@ export class InMemoryWorkOrderRepository implements WorkOrderRepository {
     );
   }
 
+  // Refuses what the unique indexes of the table refuse: a number held by another work order
+  // (`ux_work_orders_number`), and a second work order not yet delivered or canceled on a vehicle
+  // (`ux_work_orders_active_vehicle`).
   async save(workOrder: WorkOrder): Promise<void> {
-    this.workOrders = this.workOrders.filter((existing) => !existing.id.equals(workOrder.id));
-    this.workOrders.push(workOrder);
+    const others = this.workOrders.filter((existing) => !existing.id.equals(workOrder.id));
+    if (others.some((existing) => existing.number.equals(workOrder.number))) {
+      throw new WorkOrderNumberTakenError();
+    }
+    const isActive = !CLOSED_STATUSES.includes(workOrder.status);
+    if (
+      isActive &&
+      others.some(
+        (existing) =>
+          existing.vehicleId === workOrder.vehicleId && !CLOSED_STATUSES.includes(existing.status),
+      )
+    ) {
+      throw new VehicleAlreadyHasActiveWorkOrderError();
+    }
+    this.workOrders = [...others, workOrder];
     return Promise.resolve();
   }
 }

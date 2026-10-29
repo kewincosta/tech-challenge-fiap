@@ -2,7 +2,7 @@ import { DomainError } from '../../../../shared/domain/errors/domain.error';
 import { ErrorKind } from '../../../../shared/domain/errors/error-kind';
 
 /**
- * Never surfaced over HTTP: `CreateWorkOrderHandler` catches this and draws another number
+ * Never surfaced over HTTP: `CreateWorkOrderUseCase` catches this and draws another number
  * (design.md's Error Handling). A collision is expected, not exceptional - the number is random.
  */
 export class WorkOrderNumberTakenError extends DomainError {
