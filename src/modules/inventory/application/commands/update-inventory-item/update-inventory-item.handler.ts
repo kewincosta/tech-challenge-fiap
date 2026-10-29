@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
 import {

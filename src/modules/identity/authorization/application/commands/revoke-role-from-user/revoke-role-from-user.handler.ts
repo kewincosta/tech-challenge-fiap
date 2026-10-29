@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { RoleRevokedFromUser } from '../../../domain/events/role-revoked-from-user.event';
 import { RoleId } from '../../../domain/value-objects/role-id';
 import { ASSIGNMENT_REPOSITORY, AssignmentRepository } from '../../ports/assignment.repository';

@@ -1,10 +1,8 @@
 import { Inject } from '@nestjs/common';
 import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import {
-  TRANSACTION_RUNNER,
-  TransactionRunner,
-} from '../../../../../shared/application/ports/transaction-runner.port';
+import { CLOCK, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { RestoreStockBatchCommand } from '../../../../inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import {

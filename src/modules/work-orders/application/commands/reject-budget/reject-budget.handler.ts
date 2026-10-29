@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import {
   WORK_ORDER_REPOSITORY,

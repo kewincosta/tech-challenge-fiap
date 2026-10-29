@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { LogoutAllSessionsCommand } from '../../../../authentication/application/commands/logout-all-sessions/logout-all-sessions.command';
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error';
 import { USER_REPOSITORY, UserRepository } from '../../../domain/repositories/user.repository';

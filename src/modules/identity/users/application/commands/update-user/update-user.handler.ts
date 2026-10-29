@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { DocumentAlreadyInUseError } from '../../../domain/errors/document-already-in-use.error';
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error';
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error';

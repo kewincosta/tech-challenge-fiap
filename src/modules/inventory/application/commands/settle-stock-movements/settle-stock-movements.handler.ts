@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
 import {
   INVENTORY_ITEM_REPOSITORY,
   InventoryItemRepository,

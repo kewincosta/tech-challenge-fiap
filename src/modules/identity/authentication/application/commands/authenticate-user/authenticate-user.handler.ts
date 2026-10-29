@@ -2,11 +2,9 @@ import { Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
 import { authConfig } from '../../../../../../config/auth.config';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
-import {
-  ID_GENERATOR,
-  IdGenerator,
-} from '../../../../../../shared/application/ports/id-generator.port';
+import { CLOCK, ID_GENERATOR } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { IdGenerator } from '../../../../../../shared/application/ports/id-generator.port';
 import { UserDto } from '../../../../users/application/dtos/user.dto';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import {

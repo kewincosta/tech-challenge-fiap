@@ -1,10 +1,8 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import {
-  ID_GENERATOR,
-  IdGenerator,
-} from '../../../../../shared/application/ports/id-generator.port';
+import { CLOCK, ID_GENERATOR } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { SkuAlreadyInUseError } from '../../../domain/errors/sku-already-in-use.error';

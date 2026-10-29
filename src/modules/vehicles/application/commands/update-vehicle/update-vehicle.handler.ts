@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { CustomerSummaryDto } from '../../../../customers/application/ports/customer-query.port';
 import { GetCustomerQuery } from '../../../../customers/application/queries/get-customer/get-customer.query';
 import { OwningCustomerInactiveError } from '../../../domain/errors/owning-customer-inactive.error';

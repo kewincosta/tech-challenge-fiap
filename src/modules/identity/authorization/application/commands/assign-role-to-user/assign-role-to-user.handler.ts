@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, EventBus, ICommandHandler, QueryBus } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { UserDto } from '../../../../users/application/dtos/user.dto';
 import { GetUserByIdQuery } from '../../../../users/application/queries/get-user-by-id/get-user-by-id.query';
 import { Role } from '../../../domain/entities/role';

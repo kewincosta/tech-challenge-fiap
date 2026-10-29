@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
 import { RoleNotFoundError } from '../../../domain/errors/role-not-found.error';
 import { ROLE_REPOSITORY, RoleRepository } from '../../../domain/repositories/role.repository';
 import { RoleId } from '../../../domain/value-objects/role-id';

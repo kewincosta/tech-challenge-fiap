@@ -2,10 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { authConfig } from '../../../../../config/auth.config';
-import {
-  ID_GENERATOR,
-  IdGenerator,
-} from '../../../../../shared/application/ports/id-generator.port';
+import { ID_GENERATOR } from '../../../../../shared/shared.tokens';
+import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import {
   AccessTokenPayload,
   AccessTokenService,

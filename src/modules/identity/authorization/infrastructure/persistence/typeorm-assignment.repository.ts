@@ -1,7 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
+import { CLOCK } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { currentEntityManager } from '../../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { AssignmentRepository } from '../../application/ports/assignment.repository';
 import { RoleOrmEntity } from './role.orm-entity';

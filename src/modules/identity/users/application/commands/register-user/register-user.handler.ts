@@ -1,14 +1,9 @@
 import { Inject } from '@nestjs/common';
 import { CommandBus, CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../../shared/application/ports/clock.port';
-import {
-  ID_GENERATOR,
-  IdGenerator,
-} from '../../../../../../shared/application/ports/id-generator.port';
-import {
-  TRANSACTION_RUNNER,
-  TransactionRunner,
-} from '../../../../../../shared/application/ports/transaction-runner.port';
+import { CLOCK, ID_GENERATOR, TRANSACTION_RUNNER } from '../../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../../shared/application/ports/clock.port';
+import { IdGenerator } from '../../../../../../shared/application/ports/id-generator.port';
+import { TransactionRunner } from '../../../../../../shared/application/ports/transaction-runner.port';
 import { AssignRoleToUserCommand } from '../../../../authorization/application/commands/assign-role-to-user/assign-role-to-user.command';
 import { SystemRole } from '../../../../authorization/application/contracts/system-roles';
 import { User } from '../../../domain/entities/user';

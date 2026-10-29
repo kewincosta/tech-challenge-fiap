@@ -1,12 +1,9 @@
 import { Global, Module } from '@nestjs/common';
-import { CLOCK } from './application/ports/clock.port';
-import { ID_GENERATOR } from './application/ports/id-generator.port';
-import { TRANSACTION_RUNNER } from './application/ports/transaction-runner.port';
 import { CryptoIdGenerator } from './infrastructure/ids/crypto-id-generator';
 import { TypeOrmTransactionRunner } from './infrastructure/database/typeorm-transaction-runner';
 import { InMemoryDomainEventDispatcher } from './infrastructure/events/in-memory-domain-event-dispatcher';
 import { SystemClock } from './infrastructure/time/system-clock';
-import { DOMAIN_EVENT_PUBLISHER } from './shared.tokens';
+import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR, TRANSACTION_RUNNER } from './shared.tokens';
 
 @Global()
 @Module({

@@ -1,14 +1,9 @@
 import { Inject } from '@nestjs/common';
 import { CommandBus, CommandHandler, ICommandHandler, QueryBus } from '@nestjs/cqrs';
-import { CLOCK, Clock } from '../../../../../shared/application/ports/clock.port';
-import {
-  ID_GENERATOR,
-  IdGenerator,
-} from '../../../../../shared/application/ports/id-generator.port';
-import {
-  TRANSACTION_RUNNER,
-  TransactionRunner,
-} from '../../../../../shared/application/ports/transaction-runner.port';
+import { CLOCK, ID_GENERATOR, TRANSACTION_RUNNER } from '../../../../../shared/shared.tokens';
+import { Clock } from '../../../../../shared/application/ports/clock.port';
+import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
+import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { EffectiveAccessDto } from '../../../../identity/authorization/application/dtos/effective-access.dto';
 import { GetUserEffectiveAccessQuery } from '../../../../identity/authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { SystemRole } from '../../../../identity/authorization/application/contracts/system-roles';

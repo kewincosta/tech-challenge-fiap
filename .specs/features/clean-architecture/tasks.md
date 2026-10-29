@@ -608,10 +608,10 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] No file under `src/shared/application` or `src/shared/domain` declares a `Symbol`
-- [ ] `shared` is in `scripts/architecture/migrated-modules.json` and lint passes with it
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: all three totals unchanged
+- [x] No file under `src/shared/application` or `src/shared/domain` declares a `Symbol`
+- [x] `shared` is in `scripts/architecture/migrated-modules.json` and lint passes with it
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: all three totals unchanged
 
 **Tests**: none
 **Gate**: build
