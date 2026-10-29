@@ -2,7 +2,7 @@ import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { GetMyVehiclesQuery } from './get-my-vehicles.query';
 
-export class GetMyVehiclesHandler {
+export class GetMyVehiclesUseCase {
   constructor(
     private readonly vehicleQuery: VehicleQueryPort,
     private readonly owners: VehicleOwners,

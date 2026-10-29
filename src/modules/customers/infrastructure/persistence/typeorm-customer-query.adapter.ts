@@ -44,8 +44,8 @@ export class TypeOrmCustomerQueryAdapter implements CustomerQueryPort {
   ) {}
 
   // Deliberately NOT filtered by deleted_at IS NULL, unlike getByUserId and listActive: this is
-  // the staff/cross-module lookup (GET /customers/:externalId, and RegisterVehicleHandler /
-  // UpdateVehicleHandler resolving the owning customer). Those callers need to tell "does not
+  // the staff/cross-module lookup (GET /customers/:externalId, and RegisterVehicleUseCase /
+  // UpdateVehicleUseCase resolving the owning customer). Those callers need to tell "does not
   // exist" (404, this method returns null) apart from "exists but deactivated" (422, the caller
   // checks .status) - a filtered query collapses both into null and made every deactivated
   // customer register as 404, not 422, discovered by T20's own e2e gate.

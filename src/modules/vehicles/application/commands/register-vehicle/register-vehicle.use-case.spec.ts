@@ -11,13 +11,13 @@ import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenc
 import { VehicleRegistered } from '../../../domain/events/vehicle-registered.event';
 import { OwnerRef } from '../../ports/vehicle-owners.port';
 import { RegisterVehicleCommand } from './register-vehicle.command';
-import { RegisterVehicleHandler } from './register-vehicle.handler';
+import { RegisterVehicleUseCase } from './register-vehicle.use-case';
 
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const ACTIVE_OWNER: OwnerRef = { id: CUSTOMER_ID, active: true };
 
 /** `null` leaves the customer out of the fake, so the customers module does not know it. */
-function makeHandler(owner: OwnerRef | null = ACTIVE_OWNER) {
+function makeUseCase(owner: OwnerRef | null = ACTIVE_OWNER) {
   const vehicles = new InMemoryVehicleRepository();
   const owners = new FakeVehicleOwners();
   if (owner) {
@@ -25,21 +25,21 @@ function makeHandler(owner: OwnerRef | null = ACTIVE_OWNER) {
   }
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const handler = new RegisterVehicleHandler(
+  const useCase = new RegisterVehicleUseCase(
     vehicles,
     new FakeIdGenerator(),
     clock,
     owners,
     events,
   );
-  return { handler, vehicles, clock, events };
+  return { useCase, vehicles, clock, events };
 }
 
-describe('RegisterVehicleHandler', () => {
+describe('RegisterVehicleUseCase', () => {
   it('should register a vehicle for an active customer', async () => {
-    const { handler, vehicles, clock, events } = makeHandler();
+    const { useCase, vehicles, clock, events } = makeUseCase();
 
-    const result = await handler.execute(
+    const result = await useCase.execute(
       new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020),
     );
 
@@ -50,10 +50,10 @@ describe('RegisterVehicleHandler', () => {
   });
 
   it('should refuse a deactivated customer', async () => {
-    const { handler, vehicles } = makeHandler({ ...ACTIVE_OWNER, active: false });
+    const { useCase, vehicles } = makeUseCase({ ...ACTIVE_OWNER, active: false });
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020),
       ),
     ).rejects.toThrow(OwningCustomerInactiveError);
@@ -61,10 +61,10 @@ describe('RegisterVehicleHandler', () => {
   });
 
   it('should refuse a customer that does not exist', async () => {
-    const { handler, vehicles } = makeHandler(null);
+    const { useCase, vehicles } = makeUseCase(null);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2020),
       ),
     ).rejects.toThrow(ReferencedCustomerNotFoundError);
@@ -72,20 +72,20 @@ describe('RegisterVehicleHandler', () => {
   });
 
   it('should propagate InvalidLicensePlateError for a malformed plate', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterVehicleCommand(CUSTOMER_ID, 'INVALID', 'Toyota', 'Corolla', 2020),
       ),
     ).rejects.toThrow(InvalidLicensePlateError);
   });
 
   it('should propagate InvalidVehicleYearError for an implausible year', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 1900),
       ),
     ).rejects.toThrow(InvalidVehicleYearError);

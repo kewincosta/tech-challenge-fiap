@@ -11,7 +11,7 @@ import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import { VehicleRepository } from '../../ports/vehicle.repository';
 import { RegisteredVehicleDto, RegisterVehicleCommand } from './register-vehicle.command';
 
-export class RegisterVehicleHandler {
+export class RegisterVehicleUseCase {
   constructor(
     private readonly vehicles: VehicleRepository,
     private readonly idGenerator: IdGenerator,

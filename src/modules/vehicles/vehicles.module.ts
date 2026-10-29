@@ -5,15 +5,15 @@ import { DomainEventPublisher } from '../../shared/application/ports/domain-even
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
 import { CustomersModule } from '../customers';
-import { RegisterVehicleHandler } from './application/commands/register-vehicle/register-vehicle.handler';
-import { RemoveVehicleHandler } from './application/commands/remove-vehicle/remove-vehicle.handler';
-import { UpdateVehicleHandler } from './application/commands/update-vehicle/update-vehicle.handler';
+import { RegisterVehicleUseCase } from './application/commands/register-vehicle/register-vehicle.use-case';
+import { RemoveVehicleUseCase } from './application/commands/remove-vehicle/remove-vehicle.use-case';
+import { UpdateVehicleUseCase } from './application/commands/update-vehicle/update-vehicle.use-case';
 import { VehicleOwners } from './application/ports/vehicle-owners.port';
 import { VehicleQueryPort } from './application/ports/vehicle-query.port';
 import { VehicleRepository } from './application/ports/vehicle.repository';
-import { GetMyVehiclesHandler } from './application/queries/get-my-vehicles/get-my-vehicles.handler';
-import { GetVehicleHandler } from './application/queries/get-vehicle/get-vehicle.handler';
-import { ListVehiclesByCustomerHandler } from './application/queries/list-vehicles-by-customer/list-vehicles-by-customer.handler';
+import { GetMyVehiclesUseCase } from './application/queries/get-my-vehicles/get-my-vehicles.use-case';
+import { GetVehicleUseCase } from './application/queries/get-vehicle/get-vehicle.use-case';
+import { ListVehiclesByCustomerUseCase } from './application/queries/list-vehicles-by-customer/list-vehicles-by-customer.use-case';
 import { VehicleOwnersGateway } from './infrastructure/gateways/vehicle-owners.gateway';
 import { TypeOrmVehicleQueryAdapter } from './infrastructure/persistence/typeorm-vehicle-query.adapter';
 import { TypeOrmVehicleRepository } from './infrastructure/persistence/typeorm-vehicle.repository';
@@ -27,47 +27,47 @@ import { VEHICLE_OWNERS, VEHICLE_QUERY_PORT, VEHICLE_REPOSITORY } from './vehicl
   controllers: [VehiclesController],
   providers: [
     {
-      provide: RegisterVehicleHandler,
+      provide: RegisterVehicleUseCase,
       useFactory: (
         vehicles: VehicleRepository,
         idGenerator: IdGenerator,
         clock: Clock,
         owners: VehicleOwners,
         events: DomainEventPublisher,
-      ) => new RegisterVehicleHandler(vehicles, idGenerator, clock, owners, events),
+      ) => new RegisterVehicleUseCase(vehicles, idGenerator, clock, owners, events),
       inject: [VEHICLE_REPOSITORY, ID_GENERATOR, CLOCK, VEHICLE_OWNERS, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: UpdateVehicleHandler,
+      provide: UpdateVehicleUseCase,
       useFactory: (
         vehicles: VehicleRepository,
         clock: Clock,
         owners: VehicleOwners,
         events: DomainEventPublisher,
-      ) => new UpdateVehicleHandler(vehicles, clock, owners, events),
+      ) => new UpdateVehicleUseCase(vehicles, clock, owners, events),
       inject: [VEHICLE_REPOSITORY, CLOCK, VEHICLE_OWNERS, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: RemoveVehicleHandler,
+      provide: RemoveVehicleUseCase,
       useFactory: (vehicles: VehicleRepository, clock: Clock, events: DomainEventPublisher) =>
-        new RemoveVehicleHandler(vehicles, clock, events),
+        new RemoveVehicleUseCase(vehicles, clock, events),
       inject: [VEHICLE_REPOSITORY, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
-      provide: GetVehicleHandler,
-      useFactory: (vehicleQuery: VehicleQueryPort) => new GetVehicleHandler(vehicleQuery),
+      provide: GetVehicleUseCase,
+      useFactory: (vehicleQuery: VehicleQueryPort) => new GetVehicleUseCase(vehicleQuery),
       inject: [VEHICLE_QUERY_PORT],
     },
     {
-      provide: ListVehiclesByCustomerHandler,
+      provide: ListVehiclesByCustomerUseCase,
       useFactory: (vehicleQuery: VehicleQueryPort) =>
-        new ListVehiclesByCustomerHandler(vehicleQuery),
+        new ListVehiclesByCustomerUseCase(vehicleQuery),
       inject: [VEHICLE_QUERY_PORT],
     },
     {
-      provide: GetMyVehiclesHandler,
+      provide: GetMyVehiclesUseCase,
       useFactory: (vehicleQuery: VehicleQueryPort, owners: VehicleOwners) =>
-        new GetMyVehiclesHandler(vehicleQuery, owners),
+        new GetMyVehiclesUseCase(vehicleQuery, owners),
       inject: [VEHICLE_QUERY_PORT, VEHICLE_OWNERS],
     },
     { provide: VEHICLE_REPOSITORY, useClass: TypeOrmVehicleRepository },
@@ -75,6 +75,6 @@ import { VEHICLE_OWNERS, VEHICLE_QUERY_PORT, VEHICLE_REPOSITORY } from './vehicl
     { provide: VEHICLE_OWNERS, useClass: VehicleOwnersGateway },
     VehicleKeyResolver,
   ],
-  exports: [GetVehicleHandler, VehicleKeyResolver],
+  exports: [GetVehicleUseCase, VehicleKeyResolver],
 })
 export class VehiclesModule {}

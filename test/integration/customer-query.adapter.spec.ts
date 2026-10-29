@@ -206,7 +206,7 @@ describe('TypeOrmCustomerQueryAdapter', () => {
 
   it('should still return a deactivated customer by external id, unlike the list and getByUserId', async () => {
     // getById is the staff/cross-module lookup (GET /customers/:externalId,
-    // RegisterVehicleHandler/UpdateVehicleHandler resolving the owning customer). Those callers
+    // RegisterVehicleUseCase/UpdateVehicleUseCase resolving the owning customer). Those callers
     // need to tell "does not exist" (null) apart from "exists but deactivated" (status field) -
     // found and fixed while implementing T20, which needs exactly this distinction to answer 422
     // instead of a misleading 404 for a deactivated owning customer.

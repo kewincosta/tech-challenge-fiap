@@ -9,7 +9,7 @@ import { VehicleOwners } from '../../ports/vehicle-owners.port';
 import { VehicleRepository } from '../../ports/vehicle.repository';
 import { UpdateVehicleCommand } from './update-vehicle.command';
 
-export class UpdateVehicleHandler {
+export class UpdateVehicleUseCase {
   constructor(
     private readonly vehicles: VehicleRepository,
     private readonly clock: Clock,

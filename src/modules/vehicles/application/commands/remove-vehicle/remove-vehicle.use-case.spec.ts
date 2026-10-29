@@ -9,22 +9,22 @@ import { LicensePlate } from '../../../domain/value-objects/license-plate';
 import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
 import { RemoveVehicleCommand } from './remove-vehicle.command';
-import { RemoveVehicleHandler } from './remove-vehicle.handler';
+import { RemoveVehicleUseCase } from './remove-vehicle.use-case';
 
 const VEHICLE_ID = VehicleId.create('11111111-1111-4111-8111-111111111111');
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 
-function makeHandler() {
+function makeUseCase() {
   const vehicles = new InMemoryVehicleRepository();
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const handler = new RemoveVehicleHandler(vehicles, clock, events);
-  return { handler, vehicles, clock, events };
+  const useCase = new RemoveVehicleUseCase(vehicles, clock, events);
+  return { useCase, vehicles, clock, events };
 }
 
-describe('RemoveVehicleHandler', () => {
+describe('RemoveVehicleUseCase', () => {
   it('should set the soft-delete marker', async () => {
-    const { handler, vehicles, clock, events } = makeHandler();
+    const { useCase, vehicles, clock, events } = makeUseCase();
     const vehicle = Vehicle.register({
       id: VEHICLE_ID,
       customerId: CUSTOMER_ID,
@@ -37,14 +37,14 @@ describe('RemoveVehicleHandler', () => {
     vehicle.pullDomainEvents();
     await vehicles.save(vehicle);
 
-    await handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value));
+    await useCase.execute(new RemoveVehicleCommand(VEHICLE_ID.value));
 
     expect(vehicles.vehicles[0].deletedAt).not.toBeNull();
     expect(events.published).toEqual([new VehicleRemoved(VEHICLE_ID.value, clock.now())]);
   });
 
   it('should be idempotent when removed twice', async () => {
-    const { handler, vehicles, clock, events } = makeHandler();
+    const { useCase, vehicles, clock, events } = makeUseCase();
     const vehicle = Vehicle.register({
       id: VEHICLE_ID,
       customerId: CUSTOMER_ID,
@@ -56,19 +56,19 @@ describe('RemoveVehicleHandler', () => {
     });
     vehicle.pullDomainEvents();
     await vehicles.save(vehicle);
-    await handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value));
+    await useCase.execute(new RemoveVehicleCommand(VEHICLE_ID.value));
 
     await expect(
-      handler.execute(new RemoveVehicleCommand(VEHICLE_ID.value)),
+      useCase.execute(new RemoveVehicleCommand(VEHICLE_ID.value)),
     ).resolves.not.toThrow();
     expect(events.published).toEqual([new VehicleRemoved(VEHICLE_ID.value, clock.now())]);
   });
 
   it('should refuse when the vehicle does not exist', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new RemoveVehicleCommand('00000000-0000-4000-8000-000000000001')),
+      useCase.execute(new RemoveVehicleCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(VehicleNotFoundError);
   });
 });

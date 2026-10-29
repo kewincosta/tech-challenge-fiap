@@ -5,7 +5,7 @@ import { WorkOrderQueryPort, WorkOrderSummaryDto } from '../../ports/work-order-
 import { CUSTOMER_DIRECTORY, WORK_ORDER_QUERY_PORT } from '../../../work-orders.tokens';
 import { GetMyWorkOrdersQuery } from './get-my-work-orders.query';
 
-/** `GetMyVehiclesHandler`'s exact shape: resolve the customer, empty list when there is none. */
+/** `GetMyVehiclesUseCase`'s exact shape: resolve the customer, empty list when there is none. */
 @QueryHandler(GetMyWorkOrdersQuery)
 export class GetMyWorkOrdersHandler implements IQueryHandler<
   GetMyWorkOrdersQuery,

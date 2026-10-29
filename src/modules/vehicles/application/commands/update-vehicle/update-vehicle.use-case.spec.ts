@@ -13,14 +13,14 @@ import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleYear } from '../../../domain/value-objects/vehicle-year';
 import { OwnerRef } from '../../ports/vehicle-owners.port';
 import { UpdateVehicleCommand } from './update-vehicle.command';
-import { UpdateVehicleHandler } from './update-vehicle.handler';
+import { UpdateVehicleUseCase } from './update-vehicle.use-case';
 
 const VEHICLE_ID = VehicleId.create('11111111-1111-4111-8111-111111111111');
 const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const OTHER_CUSTOMER_ID = '33333333-3333-4333-8333-333333333333';
 
 /** `newOwner` seeds the customer the vehicle is transferred to; leaving it out, the customers module knows none. */
-function makeHandler(newOwner?: OwnerRef) {
+function makeUseCase(newOwner?: OwnerRef) {
   const vehicles = new InMemoryVehicleRepository();
   const owners = new FakeVehicleOwners();
   if (newOwner) {
@@ -28,8 +28,8 @@ function makeHandler(newOwner?: OwnerRef) {
   }
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const handler = new UpdateVehicleHandler(vehicles, clock, owners, events);
-  return { handler, vehicles, clock, events };
+  const useCase = new UpdateVehicleUseCase(vehicles, clock, owners, events);
+  return { useCase, vehicles, clock, events };
 }
 
 async function seedVehicle(vehicles: InMemoryVehicleRepository) {
@@ -46,12 +46,12 @@ async function seedVehicle(vehicles: InMemoryVehicleRepository) {
   await vehicles.save(vehicle);
 }
 
-describe('UpdateVehicleHandler', () => {
+describe('UpdateVehicleUseCase', () => {
   it('should update brand, model and year', async () => {
-    const { handler, vehicles, clock, events } = makeHandler();
+    const { useCase, vehicles, clock, events } = makeUseCase();
     await seedVehicle(vehicles);
 
-    await handler.execute(new UpdateVehicleCommand(VEHICLE_ID.value, 'Honda', 'Civic', 2021));
+    await useCase.execute(new UpdateVehicleCommand(VEHICLE_ID.value, 'Honda', 'Civic', 2021));
 
     const updated = vehicles.vehicles[0];
     expect(updated.brand).toBe('Honda');
@@ -61,10 +61,10 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should transfer ownership to a new active customer', async () => {
-    const { handler, vehicles } = makeHandler({ id: OTHER_CUSTOMER_ID, active: true });
+    const { useCase, vehicles } = makeUseCase({ id: OTHER_CUSTOMER_ID, active: true });
     await seedVehicle(vehicles);
 
-    await handler.execute(
+    await useCase.execute(
       new UpdateVehicleCommand(
         VEHICLE_ID.value,
         undefined,
@@ -78,11 +78,11 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should refuse transferring to a deactivated customer', async () => {
-    const { handler, vehicles } = makeHandler({ id: OTHER_CUSTOMER_ID, active: false });
+    const { useCase, vehicles } = makeUseCase({ id: OTHER_CUSTOMER_ID, active: false });
     await seedVehicle(vehicles);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new UpdateVehicleCommand(
           VEHICLE_ID.value,
           undefined,
@@ -96,11 +96,11 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should refuse transferring to a customer that does not exist', async () => {
-    const { handler, vehicles } = makeHandler();
+    const { useCase, vehicles } = makeUseCase();
     await seedVehicle(vehicles);
 
     await expect(
-      handler.execute(
+      useCase.execute(
         new UpdateVehicleCommand(
           VEHICLE_ID.value,
           undefined,
@@ -114,10 +114,10 @@ describe('UpdateVehicleHandler', () => {
   });
 
   it('should refuse when the vehicle does not exist', async () => {
-    const { handler } = makeHandler();
+    const { useCase } = makeUseCase();
 
     await expect(
-      handler.execute(new UpdateVehicleCommand('00000000-0000-4000-8000-000000000001')),
+      useCase.execute(new UpdateVehicleCommand('00000000-0000-4000-8000-000000000001')),
     ).rejects.toThrow(VehicleNotFoundError);
   });
 });

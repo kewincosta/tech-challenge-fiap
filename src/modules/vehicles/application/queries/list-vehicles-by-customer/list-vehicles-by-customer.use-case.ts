@@ -1,7 +1,7 @@
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { ListVehiclesByCustomerQuery } from './list-vehicles-by-customer.query';
 
-export class ListVehiclesByCustomerHandler {
+export class ListVehiclesByCustomerUseCase {
   constructor(private readonly vehicleQuery: VehicleQueryPort) {}
 
   async execute(query: ListVehiclesByCustomerQuery): Promise<VehicleSummaryDto[]> {

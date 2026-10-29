@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVehicleOwners } from '../../../../../../test/support/fakes/fake-vehicle-owners';
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
-import { GetMyVehiclesHandler } from './get-my-vehicles.handler';
+import { GetMyVehiclesUseCase } from './get-my-vehicles.use-case';
 import { GetMyVehiclesQuery } from './get-my-vehicles.query';
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
@@ -23,13 +23,13 @@ function fakePort(result: VehicleSummaryDto[]): VehicleQueryPort {
   };
 }
 
-describe('GetMyVehiclesHandler', () => {
+describe('GetMyVehiclesUseCase', () => {
   it("resolves the customer through the vehicle owners, by the caller's user id", async () => {
     const port = fakePort([]);
     const owners = ownersWhere(true);
-    const handler = new GetMyVehiclesHandler(port, owners);
+    const useCase = new GetMyVehiclesUseCase(port, owners);
 
-    await handler.execute(new GetMyVehiclesQuery(USER_ID));
+    await useCase.execute(new GetMyVehiclesQuery(USER_ID));
 
     expect(owners.userLookups).toEqual([USER_ID]);
     expect(port.listByCustomerId).toHaveBeenCalledWith(CUSTOMER_ID);
@@ -37,9 +37,9 @@ describe('GetMyVehiclesHandler', () => {
 
   it('returns an empty list for a user backing no customer record, not an error', async () => {
     const port = fakePort([]);
-    const handler = new GetMyVehiclesHandler(port, ownersWhere(false));
+    const useCase = new GetMyVehiclesUseCase(port, ownersWhere(false));
 
-    const result = await handler.execute(new GetMyVehiclesQuery(USER_ID));
+    const result = await useCase.execute(new GetMyVehiclesQuery(USER_ID));
 
     expect(result).toEqual([]);
     expect(port.listByCustomerId).not.toHaveBeenCalled();
@@ -48,8 +48,8 @@ describe('GetMyVehiclesHandler', () => {
   it('returns exactly what the port answers for the resolved customer', async () => {
     const rows = [{ id: '33333333-3333-4333-8333-333333333333' } as VehicleSummaryDto];
     const port = fakePort(rows);
-    const handler = new GetMyVehiclesHandler(port, ownersWhere(true));
+    const useCase = new GetMyVehiclesUseCase(port, ownersWhere(true));
 
-    await expect(handler.execute(new GetMyVehiclesQuery(USER_ID))).resolves.toBe(rows);
+    await expect(useCase.execute(new GetMyVehiclesQuery(USER_ID))).resolves.toBe(rows);
   });
 });

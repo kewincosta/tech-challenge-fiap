@@ -14,11 +14,11 @@ import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehic
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
 import { GetCustomerByUserIdUseCase } from '../../src/modules/customers/application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
 import { GetCustomerUseCase } from '../../src/modules/customers/application/queries/get-customer/get-customer.use-case';
-import { GetMyVehiclesHandler } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.handler';
+import { GetMyVehiclesUseCase } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.use-case';
 import { GetMyVehiclesQuery } from '../../src/modules/vehicles/application/queries/get-my-vehicles/get-my-vehicles.query';
-import { GetVehicleHandler } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.handler';
+import { GetVehicleUseCase } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.use-case';
 import { GetVehicleQuery } from '../../src/modules/vehicles/application/queries/get-vehicle/get-vehicle.query';
-import { ListVehiclesByCustomerHandler } from '../../src/modules/vehicles/application/queries/list-vehicles-by-customer/list-vehicles-by-customer.handler';
+import { ListVehiclesByCustomerUseCase } from '../../src/modules/vehicles/application/queries/list-vehicles-by-customer/list-vehicles-by-customer.use-case';
 import { ListVehiclesByCustomerQuery } from '../../src/modules/vehicles/application/queries/list-vehicles-by-customer/list-vehicles-by-customer.query';
 import { VehicleOwnersGateway } from '../../src/modules/vehicles/infrastructure/gateways/vehicle-owners.gateway';
 import { TypeOrmVehicleQueryAdapter } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle-query.adapter';
@@ -34,9 +34,9 @@ import { buildUser } from '../support/factories/user.factory';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
-let getVehicleHandler: GetVehicleHandler;
-let listVehiclesByCustomerHandler: ListVehiclesByCustomerHandler;
-let getMyVehiclesHandler: GetMyVehiclesHandler;
+let getVehicle: GetVehicleUseCase;
+let listVehiclesByCustomer: ListVehiclesByCustomerUseCase;
+let getMyVehicles: GetMyVehiclesUseCase;
 let vehicleRepository: TypeOrmVehicleRepository;
 let customerRepository: TypeOrmCustomerRepository;
 let userRepository: TypeOrmUserRepository;
@@ -55,17 +55,17 @@ beforeAll(async () => {
     ),
     new UserKeyResolver(dataSource),
   );
-  getVehicleHandler = new GetVehicleHandler(vehicleQueryAdapter);
-  listVehiclesByCustomerHandler = new ListVehiclesByCustomerHandler(vehicleQueryAdapter);
+  getVehicle = new GetVehicleUseCase(vehicleQueryAdapter);
+  listVehiclesByCustomer = new ListVehiclesByCustomerUseCase(vehicleQueryAdapter);
 
-  // GetMyVehiclesHandler reaches the customers module through the real gateway and the real
-  // customers handlers over the test database, proving the cross-module contract, not a stub
+  // GetMyVehiclesUseCase reaches the customers module through the real gateway and the real
+  // customers use cases over the test database, proving the cross-module contract, not a stub
   // standing in for it.
   const vehicleOwners = new VehicleOwnersGateway(
     new GetCustomerUseCase(customerQueryAdapter),
     new GetCustomerByUserIdUseCase(customerQueryAdapter),
   );
-  getMyVehiclesHandler = new GetMyVehiclesHandler(vehicleQueryAdapter, vehicleOwners);
+  getMyVehicles = new GetMyVehiclesUseCase(vehicleQueryAdapter, vehicleOwners);
 
   vehicleRepository = new TypeOrmVehicleRepository(
     dataSource.getRepository(VehicleOrmEntity),
@@ -113,13 +113,13 @@ describe('Vehicle read queries', () => {
     const { customerId } = await registerCustomer();
     const vehicle = await registerVehicle(customerId);
 
-    const found = await getVehicleHandler.execute(new GetVehicleQuery(vehicle.id.value));
+    const found = await getVehicle.execute(new GetVehicleQuery(vehicle.id.value));
 
     expect(found?.id).toBe(vehicle.id.value);
   });
 
   it('should refuse a vehicle id that does not exist with the vehicle not-found error', async () => {
-    await expect(getVehicleHandler.execute(new GetVehicleQuery(randomUUID()))).rejects.toThrow(
+    await expect(getVehicle.execute(new GetVehicleQuery(randomUUID()))).rejects.toThrow(
       VehicleNotFoundError,
     );
   });
@@ -128,9 +128,7 @@ describe('Vehicle read queries', () => {
     const { customerId } = await registerCustomer();
     const vehicle = await registerVehicle(customerId);
 
-    const found = await listVehiclesByCustomerHandler.execute(
-      new ListVehiclesByCustomerQuery(customerId),
-    );
+    const found = await listVehiclesByCustomer.execute(new ListVehiclesByCustomerQuery(customerId));
 
     expect(found.map((v) => v.id)).toContain(vehicle.id.value);
   });
@@ -139,13 +137,13 @@ describe('Vehicle read queries', () => {
     const { customerId, userId } = await registerCustomer();
     const vehicle = await registerVehicle(customerId);
 
-    const found = await getMyVehiclesHandler.execute(new GetMyVehiclesQuery(userId));
+    const found = await getMyVehicles.execute(new GetMyVehiclesQuery(userId));
 
     expect(found.map((v) => v.id)).toEqual([vehicle.id.value]);
   });
 
   it('should return an empty list when the principal has no customer record', async () => {
-    const found = await getMyVehiclesHandler.execute(new GetMyVehiclesQuery(randomUUID()));
+    const found = await getMyVehicles.execute(new GetMyVehiclesQuery(randomUUID()));
 
     expect(found).toEqual([]);
   });

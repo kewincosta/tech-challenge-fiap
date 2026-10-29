@@ -5,7 +5,7 @@ import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleRepository } from '../../ports/vehicle.repository';
 import { RemoveVehicleCommand } from './remove-vehicle.command';
 
-export class RemoveVehicleHandler {
+export class RemoveVehicleUseCase {
   constructor(
     private readonly vehicles: VehicleRepository,
     private readonly clock: Clock,

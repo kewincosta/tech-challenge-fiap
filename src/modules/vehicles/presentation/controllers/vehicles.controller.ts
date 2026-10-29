@@ -28,17 +28,17 @@ import {
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
 import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { RegisterVehicleCommand } from '../../application/commands/register-vehicle/register-vehicle.command';
-import { RegisterVehicleHandler } from '../../application/commands/register-vehicle/register-vehicle.handler';
+import { RegisterVehicleUseCase } from '../../application/commands/register-vehicle/register-vehicle.use-case';
 import { RemoveVehicleCommand } from '../../application/commands/remove-vehicle/remove-vehicle.command';
-import { RemoveVehicleHandler } from '../../application/commands/remove-vehicle/remove-vehicle.handler';
+import { RemoveVehicleUseCase } from '../../application/commands/remove-vehicle/remove-vehicle.use-case';
 import { UpdateVehicleCommand } from '../../application/commands/update-vehicle/update-vehicle.command';
-import { UpdateVehicleHandler } from '../../application/commands/update-vehicle/update-vehicle.handler';
+import { UpdateVehicleUseCase } from '../../application/commands/update-vehicle/update-vehicle.use-case';
 import { VehicleSummaryDto } from '../../application/ports/vehicle-query.port';
-import { GetMyVehiclesHandler } from '../../application/queries/get-my-vehicles/get-my-vehicles.handler';
+import { GetMyVehiclesUseCase } from '../../application/queries/get-my-vehicles/get-my-vehicles.use-case';
 import { GetMyVehiclesQuery } from '../../application/queries/get-my-vehicles/get-my-vehicles.query';
-import { GetVehicleHandler } from '../../application/queries/get-vehicle/get-vehicle.handler';
+import { GetVehicleUseCase } from '../../application/queries/get-vehicle/get-vehicle.use-case';
 import { GetVehicleQuery } from '../../application/queries/get-vehicle/get-vehicle.query';
-import { ListVehiclesByCustomerHandler } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.handler';
+import { ListVehiclesByCustomerUseCase } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.use-case';
 import { ListVehiclesByCustomerQuery } from '../../application/queries/list-vehicles-by-customer/list-vehicles-by-customer.query';
 import { RegisterVehicleRequestDto } from '../dtos/register-vehicle.request.dto';
 import { UpdateVehicleRequestDto } from '../dtos/update-vehicle.request.dto';
@@ -48,12 +48,12 @@ import { RegisteredVehicleResponseDto, VehicleResponseDto } from '../dtos/vehicl
 @Controller('vehicles')
 export class VehiclesController {
   constructor(
-    private readonly registerVehicle: RegisterVehicleHandler,
-    private readonly updateVehicle: UpdateVehicleHandler,
-    private readonly removeVehicle: RemoveVehicleHandler,
-    private readonly getVehicle: GetVehicleHandler,
-    private readonly listVehiclesByCustomer: ListVehiclesByCustomerHandler,
-    private readonly getMyVehicles: GetMyVehiclesHandler,
+    private readonly registerVehicle: RegisterVehicleUseCase,
+    private readonly updateVehicle: UpdateVehicleUseCase,
+    private readonly removeVehicle: RemoveVehicleUseCase,
+    private readonly getVehicle: GetVehicleUseCase,
+    private readonly listVehiclesByCustomer: ListVehiclesByCustomerUseCase,
+    private readonly getMyVehicles: GetMyVehiclesUseCase,
   ) {}
 
   @Post()

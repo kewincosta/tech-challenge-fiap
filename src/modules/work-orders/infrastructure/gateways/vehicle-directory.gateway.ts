@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GetVehicleHandler, GetVehicleQuery, VehicleNotFoundError } from '../../../vehicles';
+import { GetVehicleUseCase, GetVehicleQuery, VehicleNotFoundError } from '../../../vehicles';
 import { VehicleDirectory, VehicleRef } from '../../application/ports/vehicle-directory.port';
 
 /**
@@ -8,7 +8,7 @@ import { VehicleDirectory, VehicleRef } from '../../application/ports/vehicle-di
  */
 @Injectable()
 export class VehicleDirectoryGateway implements VehicleDirectory {
-  constructor(private readonly getVehicle: GetVehicleHandler) {}
+  constructor(private readonly getVehicle: GetVehicleUseCase) {}
 
   async findById(vehicleId: string): Promise<VehicleRef | null> {
     try {

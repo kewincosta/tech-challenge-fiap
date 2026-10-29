@@ -3,7 +3,7 @@ import { VehicleId } from '../../../domain/value-objects/vehicle-id';
 import { VehicleQueryPort, VehicleSummaryDto } from '../../ports/vehicle-query.port';
 import { GetVehicleQuery } from './get-vehicle.query';
 
-export class GetVehicleHandler {
+export class GetVehicleUseCase {
   constructor(private readonly vehicleQuery: VehicleQueryPort) {}
 
   async execute(query: GetVehicleQuery): Promise<VehicleSummaryDto> {

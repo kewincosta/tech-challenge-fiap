@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GetVehicleHandler,
+  GetVehicleUseCase,
   GetVehicleQuery,
   VehicleNotFoundError,
   VehicleSummaryDto,
@@ -19,7 +19,7 @@ const VEHICLE: VehicleSummaryDto = {
   year: 2020,
 };
 
-// The gateway uses only `execute` of the vehicles module's handler. The stand-in answers for the
+// The gateway uses only `execute` of the vehicles module's use case. The stand-in answers for the
 // one id it is asked about, so a gateway that sends the wrong identifier gets `null`.
 function gatewayOver(result: VehicleSummaryDto | null | Error): VehicleDirectoryGateway {
   const getVehicle = {
@@ -29,7 +29,7 @@ function gatewayOver(result: VehicleSummaryDto | null | Error): VehicleDirectory
       }
       return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
     },
-  } as unknown as GetVehicleHandler;
+  } as unknown as GetVehicleUseCase;
   return new VehicleDirectoryGateway(getVehicle);
 }
 
