@@ -28,10 +28,5 @@
     "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter.ts",
     "kind": "foreign-table",
     "table": "vehicles"
-  },
-  {
-    "file": "src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository.ts",
-    "kind": "runtime-table",
-    "table": "${table}"
   }
 ]

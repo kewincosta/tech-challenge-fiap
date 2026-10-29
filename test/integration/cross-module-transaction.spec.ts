@@ -14,14 +14,11 @@ import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastruct
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
-import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
-import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
-import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
-import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
+import { buildWorkOrderRepository } from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let inventoryRepository: TypeOrmInventoryItemRepository;
@@ -37,13 +34,7 @@ beforeAll(async () => {
     new TypeOrmWorkOrderReads(dataSource),
     new UserKeyResolver(dataSource),
   );
-  workOrderRepository = new TypeOrmWorkOrderRepository(
-    dataSource.getRepository(WorkOrderOrmEntity),
-    dataSource.getRepository(WorkOrderServiceOrmEntity),
-    dataSource.getRepository(WorkOrderPartOrmEntity),
-    dataSource.getRepository(WorkOrderBudgetOrmEntity),
-    dataSource,
-  );
+  workOrderRepository = buildWorkOrderRepository(dataSource);
   mechanicExternalId = await insertUser();
 });
 

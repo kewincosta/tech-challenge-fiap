@@ -3,8 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { ConcurrentModificationError } from '../../../../shared/application/errors/concurrent-modification.error';
-import { DomainEvent } from '../../../../shared/domain/domain-event';
 import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import { CustomerKeyResolver } from '../../../customers';
+import { UserKeyResolver } from '../../../identity';
+import { InventoryItemKeyResolver } from '../../../inventory';
+import { ServiceKeyResolver } from '../../../services';
+import { VehicleKeyResolver } from '../../../vehicles';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../domain/errors/vehicle-already-has-active-work-order.error';
 import { WorkOrderNumberTakenError } from '../../domain/errors/work-order-number-taken.error';
@@ -22,6 +26,15 @@ const UNIQUE_VIOLATION = '23505';
 const ACTIVE_VEHICLE_CONSTRAINT = 'ux_work_orders_active_vehicle';
 const NUMBER_CONSTRAINT = 'ux_work_orders_number';
 
+/** Keyed by external id, valued by internal key, one map per owner. */
+interface InternalKeys {
+  customers: Map<string, string>;
+  vehicles: Map<string, string>;
+  users: Map<string, string>;
+  services: Map<string, string>;
+  inventoryItems: Map<string, string>;
+}
+
 @Injectable()
 export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
   constructor(
@@ -34,6 +47,11 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     @InjectRepository(WorkOrderBudgetOrmEntity)
     private readonly budgets: Repository<WorkOrderBudgetOrmEntity>,
     private readonly dataSource: DataSource,
+    private readonly customerKeys: CustomerKeyResolver,
+    private readonly vehicleKeys: VehicleKeyResolver,
+    private readonly userKeys: UserKeyResolver,
+    private readonly serviceKeys: ServiceKeyResolver,
+    private readonly inventoryItemKeys: InventoryItemKeyResolver,
   ) {}
 
   /** Never attaches the trail - it is a read model, not part of this aggregate (T11). */
@@ -48,83 +66,66 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     const partRows = await this.partItems.find({ where: { workOrderInternalId: row.id } });
     const budgetRows = await this.budgets.find({ where: { workOrderInternalId: row.id } });
 
-    const [
-      customerExternalId,
-      vehicleExternalId,
-      createdByExternalId,
-      assignedMechanicExternalId,
-      budgetDecidedByExternalId,
-      discountAppliedByExternalId,
-      deliveredByExternalId,
-      canceledByExternalId,
-    ] = await Promise.all([
-      this.resolveExternalId(this.dataSource, 'customers', row.customerInternalId),
-      this.resolveExternalId(this.dataSource, 'vehicles', row.vehicleInternalId),
-      this.resolveExternalId(this.dataSource, 'users', row.createdByInternalId),
-      row.assignedMechanicInternalId
-        ? this.resolveExternalId(this.dataSource, 'users', row.assignedMechanicInternalId)
-        : Promise.resolve(null),
-      row.budgetDecidedByInternalId
-        ? this.resolveExternalId(this.dataSource, 'users', row.budgetDecidedByInternalId)
-        : Promise.resolve(null),
-      row.discountAppliedByInternalId
-        ? this.resolveExternalId(this.dataSource, 'users', row.discountAppliedByInternalId)
-        : Promise.resolve(null),
-      row.deliveredByInternalId
-        ? this.resolveExternalId(this.dataSource, 'users', row.deliveredByInternalId)
-        : Promise.resolve(null),
-      row.canceledByInternalId
-        ? this.resolveExternalId(this.dataSource, 'users', row.canceledByInternalId)
-        : Promise.resolve(null),
-    ]);
-    const serviceExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
-      this.dataSource,
-      'services',
+    // One batch call per owner: the users are read once for every user column and budget decider.
+    const userInternalIds = [
+      row.createdByInternalId,
+      row.assignedMechanicInternalId,
+      row.budgetDecidedByInternalId,
+      row.discountAppliedByInternalId,
+      row.deliveredByInternalId,
+      row.canceledByInternalId,
+      ...budgetRows.map((budgetRow) => budgetRow.decidedByInternalId),
+    ].filter((internalId): internalId is string => internalId !== null);
+    const customers = await this.customerKeys.toExternalIds([row.customerInternalId]);
+    const vehicles = await this.vehicleKeys.toExternalIds([row.vehicleInternalId]);
+    const users = await this.userKeys.toExternalIds(userInternalIds);
+    const services = await this.serviceKeys.toExternalIds(
       serviceRows.map((serviceRow) => serviceRow.serviceInternalId),
     );
-    const inventoryItemExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
-      this.dataSource,
-      'inventory_items',
+    const inventoryItems = await this.inventoryItemKeys.toExternalIds(
       partRows.map((partRow) => partRow.inventoryItemInternalId),
     );
-    const budgetDeciderExternalIdByInternalId = await this.resolveExternalIdsByInternalId(
-      this.dataSource,
-      'users',
-      budgetRows
-        .map((budgetRow) => budgetRow.decidedByInternalId)
-        .filter((internalId): internalId is string => internalId !== null),
-    );
+    const userExternalId = (internalId: string | null): string | null =>
+      internalId ? this.externalKey(users, 'users', internalId) : null;
 
     return WorkOrderMapper.toDomain(row, serviceRows, partRows, budgetRows, {
-      customerExternalId,
-      vehicleExternalId,
-      createdByExternalId,
-      assignedMechanicExternalId,
-      budgetDecidedByExternalId,
-      discountAppliedByExternalId,
-      deliveredByExternalId,
-      canceledByExternalId,
-      serviceExternalIdByInternalId,
-      inventoryItemExternalIdByInternalId,
-      budgetDeciderExternalIdByInternalId,
+      customerExternalId: this.externalKey(customers, 'customers', row.customerInternalId),
+      vehicleExternalId: this.externalKey(vehicles, 'vehicles', row.vehicleInternalId),
+      createdByExternalId: this.externalKey(users, 'users', row.createdByInternalId),
+      assignedMechanicExternalId: userExternalId(row.assignedMechanicInternalId),
+      budgetDecidedByExternalId: userExternalId(row.budgetDecidedByInternalId),
+      discountAppliedByExternalId: userExternalId(row.discountAppliedByInternalId),
+      deliveredByExternalId: userExternalId(row.deliveredByInternalId),
+      canceledByExternalId: userExternalId(row.canceledByInternalId),
+      serviceExternalIdByInternalId: services,
+      inventoryItemExternalIdByInternalId: inventoryItems,
+      budgetDeciderExternalIdByInternalId: users,
     });
   }
 
   /**
-   * Opens one transaction (copying `TypeOrmSessionRepository.save`), resolves every external id
-   * to its internal key, writes the work order row, replaces its item rows (rows whose external
-   * id is no longer on the aggregate are deleted, the rest are written - design.md's Tech
-   * Decisions), and appends one trail row per event read from `workOrder.domainEvents` - a
-   * non-draining read, so the handler's own `pullDomainEvents()` after `save` still sees them
-   * (AD-007, H39). A violation of `ux_work_orders_number` maps to `WorkOrderNumberTakenError`,
-   * which the handler retries with a fresh number; a violation of `ux_work_orders_active_vehicle`
-   * maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is never retried. The row write
-   * itself is version-guarded (AD-009): an update only lands if the row's version still matches
-   * what this aggregate was loaded at, or `ConcurrentModificationError` (409) is thrown instead.
+   * Resolves every external id to its internal key through the owners' key resolvers, then opens
+   * one transaction (copying `TypeOrmSessionRepository.save`), writes the work order row,
+   * replaces its item rows (rows whose external id is no longer on the aggregate are deleted, the
+   * rest are written - design.md's Tech Decisions), and appends one trail row per event read from
+   * `workOrder.domainEvents` - a non-draining read, so the handler's own `pullDomainEvents()`
+   * after `save` still sees them (AD-007, H39). A violation of `ux_work_orders_number` maps to
+   * `WorkOrderNumberTakenError`, which the handler retries with a fresh number; a violation of
+   * `ux_work_orders_active_vehicle` maps to `VehicleAlreadyHasActiveWorkOrderError` (409) and is
+   * never retried. The row write itself is version-guarded (AD-009): an update only lands if the
+   * row's version still matches what this aggregate was loaded at, or
+   * `ConcurrentModificationError` (409) is thrown instead.
    */
   async save(workOrder: WorkOrder): Promise<void> {
     const { workOrderRow, serviceRows, partRows, budgetRows } = WorkOrderMapper.toOrm(workOrder);
-    const events = workOrder.domainEvents;
+    const trailEvents = workOrder.domainEvents.filter(
+      (event): event is WorkOrderTrailEvent => event instanceof WorkOrderTrailEvent,
+    );
+    // Read before the transaction opens: outside an ambient transaction a resolver reads on a
+    // connection of its own, so asking it from inside the repository's own transaction would hold
+    // two connections at once. Inside an ambient transaction it joins that transaction either way.
+    const keys = await this.resolveInternalKeys(workOrder, trailEvents);
+    const userKey = (userId: string): string => this.internalKey(keys.users, 'users', userId);
 
     try {
       await this.inTransaction(async (manager) => {
@@ -136,35 +137,31 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           workOrderRow.id = existing.id;
           workOrderRow.createdAt = existing.createdAt;
         }
-        workOrderRow.customerInternalId = await this.resolveInternalId(
-          manager,
+        workOrderRow.customerInternalId = this.internalKey(
+          keys.customers,
           'customers',
           workOrder.customerId,
         );
-        workOrderRow.vehicleInternalId = await this.resolveInternalId(
-          manager,
+        workOrderRow.vehicleInternalId = this.internalKey(
+          keys.vehicles,
           'vehicles',
           workOrder.vehicleId,
         );
-        workOrderRow.createdByInternalId = await this.resolveInternalId(
-          manager,
-          'users',
-          workOrder.createdByUserId,
-        );
+        workOrderRow.createdByInternalId = userKey(workOrder.createdByUserId);
         workOrderRow.assignedMechanicInternalId = workOrder.assignedMechanicUserId
-          ? await this.resolveInternalId(manager, 'users', workOrder.assignedMechanicUserId)
+          ? userKey(workOrder.assignedMechanicUserId)
           : null;
         workOrderRow.budgetDecidedByInternalId = workOrder.budgetDecidedByUserId
-          ? await this.resolveInternalId(manager, 'users', workOrder.budgetDecidedByUserId)
+          ? userKey(workOrder.budgetDecidedByUserId)
           : null;
         workOrderRow.discountAppliedByInternalId = workOrder.discountAppliedByUserId
-          ? await this.resolveInternalId(manager, 'users', workOrder.discountAppliedByUserId)
+          ? userKey(workOrder.discountAppliedByUserId)
           : null;
         workOrderRow.deliveredByInternalId = workOrder.deliveredByUserId
-          ? await this.resolveInternalId(manager, 'users', workOrder.deliveredByUserId)
+          ? userKey(workOrder.deliveredByUserId)
           : null;
         workOrderRow.canceledByInternalId = workOrder.canceledByUserId
-          ? await this.resolveInternalId(manager, 'users', workOrder.canceledByUserId)
+          ? userKey(workOrder.canceledByUserId)
           : null;
 
         // AD-009: an update is guarded by the version this aggregate was loaded at, bumped in the
@@ -197,6 +194,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           workOrderRow.id,
           workOrder,
           budgetRows,
+          keys.users,
         );
         await this.replaceServiceItems(
           manager,
@@ -204,6 +202,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           workOrder,
           serviceRows,
           internalIdByRound,
+          keys.services,
         );
         await this.replacePartItems(
           manager,
@@ -211,8 +210,9 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
           workOrder,
           partRows,
           internalIdByRound,
+          keys.inventoryItems,
         );
-        await this.appendTrail(manager, workOrderRow.id, events);
+        await this.appendTrail(manager, workOrderRow.id, trailEvents, keys.users);
       });
     } catch (error) {
       if (this.isViolation(error, ACTIVE_VEHICLE_CONSTRAINT)) {
@@ -228,20 +228,11 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
   private async appendTrail(
     manager: EntityManager,
     workOrderInternalId: string,
-    events: readonly DomainEvent[],
+    trailEvents: readonly WorkOrderTrailEvent[],
+    userKeys: Map<string, string>,
   ): Promise<void> {
-    const trailEvents = events.filter(
-      (event): event is WorkOrderTrailEvent => event instanceof WorkOrderTrailEvent,
-    );
     if (trailEvents.length === 0) {
       return;
-    }
-    const actorInternalIdByExternalId = new Map<string, string>();
-    for (const actorExternalId of new Set(trailEvents.map((event) => event.actorUserId))) {
-      actorInternalIdByExternalId.set(
-        actorExternalId,
-        await this.resolveInternalId(manager, 'users', actorExternalId),
-      );
     }
     const rows = trailEvents.map((event) => {
       const row = new WorkOrderEventOrmEntity();
@@ -252,7 +243,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       row.eventType = event.eventType;
       row.fromStatus = event.fromStatus;
       row.toStatus = event.toStatus;
-      row.actorInternalId = actorInternalIdByExternalId.get(event.actorUserId) ?? null;
+      row.actorInternalId = this.internalKey(userKeys, 'users', event.actorUserId);
       row.occurredAt = event.occurredAt;
       row.note = null;
       return row;
@@ -270,6 +261,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     workOrderInternalId: string,
     workOrder: WorkOrder,
     budgetRows: WorkOrderBudgetOrmEntity[],
+    userKeys: Map<string, string>,
   ): Promise<Map<number, string>> {
     const existingRows = await manager.find(WorkOrderBudgetOrmEntity, {
       where: { workOrderInternalId },
@@ -280,7 +272,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       const previous = existingRows.find((candidate) => candidate.externalId === row.externalId);
       row.workOrderInternalId = workOrderInternalId;
       row.decidedByInternalId = budget.decidedByUserId
-        ? await this.resolveInternalId(manager, 'users', budget.decidedByUserId)
+        ? this.internalKey(userKeys, 'users', budget.decidedByUserId)
         : null;
       if (previous) {
         row.id = previous.id;
@@ -298,6 +290,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     workOrder: WorkOrder,
     serviceRows: WorkOrderServiceOrmEntity[],
     internalIdByRound: Map<number, string>,
+    serviceKeys: Map<string, string>,
   ): Promise<void> {
     const existingRows = await manager.find(WorkOrderServiceOrmEntity, {
       where: { workOrderInternalId },
@@ -312,7 +305,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       const item = workOrder.serviceItems[index];
       const previous = existingRows.find((candidate) => candidate.externalId === row.externalId);
       row.workOrderInternalId = workOrderInternalId;
-      row.serviceInternalId = await this.resolveInternalId(manager, 'services', item.serviceId);
+      row.serviceInternalId = this.internalKey(serviceKeys, 'services', item.serviceId);
       row.budgetInternalId =
         item.budgetRound !== null ? (internalIdByRound.get(item.budgetRound) ?? null) : null;
       if (previous) {
@@ -333,6 +326,7 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     workOrder: WorkOrder,
     partRows: WorkOrderPartOrmEntity[],
     internalIdByRound: Map<number, string>,
+    inventoryItemKeys: Map<string, string>,
   ): Promise<void> {
     const existingRows = await manager.find(WorkOrderPartOrmEntity, {
       where: { workOrderInternalId },
@@ -347,8 +341,8 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
       const item = workOrder.partItems[index];
       const previous = existingRows.find((candidate) => candidate.externalId === row.externalId);
       row.workOrderInternalId = workOrderInternalId;
-      row.inventoryItemInternalId = await this.resolveInternalId(
-        manager,
+      row.inventoryItemInternalId = this.internalKey(
+        inventoryItemKeys,
         'inventory_items',
         item.inventoryItemId,
       );
@@ -379,48 +373,49 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
     return ambient ? work(ambient) : this.dataSource.transaction(work);
   }
 
-  /** `table` is always a literal this file controls, never external input. */
-  private async resolveInternalId(
-    manager: EntityManager | DataSource,
-    table: string,
-    externalId: string,
-  ): Promise<string> {
-    const rows: Array<{ id: string }> = await manager.query(
-      `SELECT id FROM ${table} WHERE external_id = $1`,
-      [externalId],
-    );
-    if (rows.length === 0) {
-      throw new Error(`${table} row for external id ${externalId} not found`);
-    }
-    return rows[0].id;
+  /** Every key a save writes, from one batch call per owner. */
+  private async resolveInternalKeys(
+    workOrder: WorkOrder,
+    trailEvents: readonly WorkOrderTrailEvent[],
+  ): Promise<InternalKeys> {
+    const userIds = [
+      workOrder.createdByUserId,
+      workOrder.assignedMechanicUserId,
+      workOrder.budgetDecidedByUserId,
+      workOrder.discountAppliedByUserId,
+      workOrder.deliveredByUserId,
+      workOrder.canceledByUserId,
+      ...workOrder.budgets.map((budget) => budget.decidedByUserId),
+      ...trailEvents.map((event) => event.actorUserId),
+    ].filter((userId): userId is string => userId !== null);
+    return {
+      customers: await this.customerKeys.toInternalIds([workOrder.customerId]),
+      vehicles: await this.vehicleKeys.toInternalIds([workOrder.vehicleId]),
+      users: await this.userKeys.toInternalIds(userIds),
+      services: await this.serviceKeys.toInternalIds(
+        workOrder.serviceItems.map((item) => item.serviceId),
+      ),
+      inventoryItems: await this.inventoryItemKeys.toInternalIds(
+        workOrder.partItems.map((item) => item.inventoryItemId),
+      ),
+    };
   }
 
-  private async resolveExternalId(
-    manager: EntityManager | DataSource,
-    table: string,
-    internalId: string,
-  ): Promise<string> {
-    const rows: Array<{ external_id: string }> = await manager.query(
-      `SELECT external_id FROM ${table} WHERE id = $1`,
-      [internalId],
-    );
-    return rows[0].external_id;
+  /** `owner` only names the row in the message. A key an owner does not know is an inconsistency. */
+  private internalKey(keys: Map<string, string>, owner: string, externalId: string): string {
+    const internalId = keys.get(externalId);
+    if (internalId === undefined) {
+      throw new Error(`${owner} row for external id ${externalId} not found`);
+    }
+    return internalId;
   }
 
-  private async resolveExternalIdsByInternalId(
-    manager: EntityManager | DataSource,
-    table: string,
-    internalIds: string[],
-  ): Promise<Map<string, string>> {
-    const uniqueIds = [...new Set(internalIds)];
-    if (uniqueIds.length === 0) {
-      return new Map();
+  private externalKey(keys: Map<string, string>, owner: string, internalId: string): string {
+    const externalId = keys.get(internalId);
+    if (externalId === undefined) {
+      throw new Error(`${owner} row for internal id ${internalId} not found`);
     }
-    const rows: Array<{ id: string; external_id: string }> = await manager.query(
-      `SELECT id, external_id FROM ${table} WHERE id = ANY($1::bigint[])`,
-      [uniqueIds],
-    );
-    return new Map(rows.map((row) => [row.id, row.external_id]));
+    return externalId;
   }
 
   private isViolation(error: unknown, constraint: string): boolean {

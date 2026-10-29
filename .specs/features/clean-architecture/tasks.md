@@ -1225,11 +1225,11 @@ T58 → T59 → T60
 
 **Done when**:
 
-- [ ] The repository's SQL names only work-orders tables, and its entries leave the known table findings
-- [ ] `work-order.repository.spec.ts`, `work-order-budgets.repository.spec.ts` and `cross-module-transaction.spec.ts` pass
-- [ ] `work-order-concurrency.e2e.spec.ts` still answers one of two concurrent changes with 409 `CONCURRENT_MODIFICATION`
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: integration total unchanged or larger
+- [x] The repository's SQL names only work-orders tables, and its entries leave the known table findings
+- [x] `work-order.repository.spec.ts`, `work-order-budgets.repository.spec.ts` and `cross-module-transaction.spec.ts` pass
+- [x] `work-order-concurrency.e2e.spec.ts` still answers one of two concurrent changes with 409 `CONCURRENT_MODIFICATION`
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: integration total unchanged or larger
 
 **Tests**: integration
 **Gate**: full

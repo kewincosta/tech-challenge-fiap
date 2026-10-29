@@ -13,13 +13,10 @@ import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
-import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
-import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
-import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
-import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
+import { buildWorkOrderRepository } from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
@@ -30,13 +27,7 @@ let trailHandler: GetWorkOrderTrailHandler;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  repository = new TypeOrmWorkOrderRepository(
-    dataSource.getRepository(WorkOrderOrmEntity),
-    dataSource.getRepository(WorkOrderServiceOrmEntity),
-    dataSource.getRepository(WorkOrderPartOrmEntity),
-    dataSource.getRepository(WorkOrderBudgetOrmEntity),
-    dataSource,
-  );
+  repository = buildWorkOrderRepository(dataSource);
   const queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);
   listHandler = new ListWorkOrdersHandler(queryAdapter);
   getHandler = new GetWorkOrderHandler(queryAdapter);
