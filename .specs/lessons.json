@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 23,
+  "next_id": 26,
   "lessons": [
     {
       "id": "L-002",
@@ -157,6 +157,60 @@
       ],
       "created": "2026-10-29T23:29:55Z",
       "last_seen": "2026-10-29T23:29:55Z"
+    },
+    {
+      "id": "L-023",
+      "key": "ac_gap::when an outbox retries a failed step make it still apply after a later step of the same aggregate has landed or apply each aggregate s steps in the order they were recorded and test a retry that follows a later step",
+      "text": "When an outbox retries a failed step, make it still apply after a later step of the same aggregate has landed, or apply each aggregate's steps in the order they were recorded, and test a retry that follows a later step.",
+      "signal": "ac_gap",
+      "scope": "outbox",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "CA-02 AC5 and spec.md:279 edge case, round 2 probe on src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:117 (outbox)"
+      ],
+      "created": "2026-10-31T19:53:15Z",
+      "last_seen": "2026-10-31T19:53:15Z"
+    },
+    {
+      "id": "L-024",
+      "key": "surviving_mutant::apply every idempotent operation twice through the real adapter in a test so a dropped status guard on the repeat fails a suite",
+      "text": "Apply every idempotent operation twice through the real adapter in a test, so a dropped status guard on the repeat fails a suite.",
+      "signal": "surviving_mutant",
+      "scope": "integration-tests",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "S22 src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:198 (integration-tests)"
+      ],
+      "created": "2026-10-31T19:53:15Z",
+      "last_seen": "2026-10-31T19:53:15Z"
+    },
+    {
+      "id": "L-025",
+      "key": "spec_precision_gap::when a spec moves writes into retried steps state the order in which the steps of one aggregate apply after a failure",
+      "text": "When a spec moves writes into retried steps, state the order in which the steps of one aggregate apply after a failure.",
+      "signal": "spec_precision_gap",
+      "scope": "planning",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "spec.md:71 Concurrency / ordering row, round 2 spec-precision gap 1 (planning)"
+      ],
+      "created": "2026-10-31T19:53:15Z",
+      "last_seen": "2026-10-31T19:53:15Z"
     }
   ]
 }

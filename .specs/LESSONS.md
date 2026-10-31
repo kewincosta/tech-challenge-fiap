@@ -60,6 +60,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: CA-07 AC1 .specs/STATE.md:70 (decisions)
 - last seen: 2026-10-29T23:29:55Z
 
+### L-023 - When an outbox retries a failed step, make it still apply after a later step of the same aggregate has landed, or apply each aggregate's steps in the order they were recorded, and test a retry that follows a later step.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: CA-02 AC5 and spec.md:279 edge case, round 2 probe on src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:117 (outbox)
+- last seen: 2026-10-31T19:53:15Z
+
+### L-024 - Apply every idempotent operation twice through the real adapter in a test, so a dropped status guard on the repeat fails a suite.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: S22 src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:198 (integration-tests)
+- last seen: 2026-10-31T19:53:15Z
+
+### L-025 - When a spec moves writes into retried steps, state the order in which the steps of one aggregate apply after a failure.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: spec.md:71 Concurrency / ordering row, round 2 spec-precision gap 1 (planning)
+- last seen: 2026-10-31T19:53:15Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
