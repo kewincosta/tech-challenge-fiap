@@ -236,6 +236,28 @@ describe('Work orders', () => {
       .expect(204);
   });
 
+  it('should no longer list an item after its removal answers 204', async () => {
+    const { number } = await createWorkOrder();
+    const serviceId = await createCatalogService();
+    const added = await api(app)
+      .post(`/api/v1/work-orders/${number}/services`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ serviceId })
+      .expect(200);
+    const itemId = (added.body as { serviceItems: Array<{ id: string }> }).serviceItems[0].id;
+
+    await api(app)
+      .delete(`/api/v1/work-orders/${number}/items/${itemId}`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .expect(204);
+
+    const response = await api(app)
+      .get(`/api/v1/work-orders/${number}`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .expect(200);
+    expect(response.body).toMatchObject({ serviceItems: [] });
+  });
+
   it('should assign a mechanic, refusing an actor without work-orders:manage with 403, and refuse a target user without the role with 422', async () => {
     const { number } = await createWorkOrder();
     const mechanicCredentials = await registerUser(app);

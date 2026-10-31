@@ -168,6 +168,16 @@ describe('PlanPartUseCase', () => {
     expect(events.published).toHaveLength(0);
   });
 
+  it('should check the quantity before reading the catalog, so an invalid quantity for an unknown item answers the quantity error', async () => {
+    const { useCase, workOrders, partCatalog } = makeUseCase(null);
+    await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));
+
+    await expect(
+      useCase.execute(new PlanPartCommand(NUMBER, ITEM_ID, 0, CREATOR_ID)),
+    ).rejects.toThrow(InvalidPlannedQuantityError);
+    expect(partCatalog.lookups).toEqual([]);
+  });
+
   it('should refuse an inventory item the catalog does not know, with ReferencedInventoryItemNotFoundError', async () => {
     const { useCase, workOrders, events } = makeUseCase(null);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.InDiagnosis));

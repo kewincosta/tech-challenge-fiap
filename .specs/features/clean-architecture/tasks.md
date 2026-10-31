@@ -2105,11 +2105,11 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 **Done when**:
 
-- [ ] After `DELETE /work-orders/:number/items/:itemExternalId` answers 204, `GET /work-orders/:number` no longer lists the item
-- [ ] The plan-part spec sends an invalid quantity for an item the catalog does not know and expects the quantity error
-- [ ] Checked by hand in a scratch worktree: dropping `save` from `RemoveWorkOrderItemUseCase` (W1) and checking the quantity after the catalog read (W2) each fail a suite
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit and e2e totals each grow by 1
+- [x] After `DELETE /work-orders/:number/items/:itemExternalId` answers 204, `GET /work-orders/:number` no longer lists the item
+- [x] The plan-part spec sends an invalid quantity for an item the catalog does not know and expects the quantity error
+- [x] Checked by hand in a scratch worktree: dropping `save` from `RemoveWorkOrderItemUseCase` (W1) and checking the quantity after the catalog read (W2) each fail a suite
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit and e2e totals each grow by 1
 
 **Tests**: e2e
 **Gate**: full
