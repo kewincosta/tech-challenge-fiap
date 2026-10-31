@@ -1,11 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DataSource } from 'typeorm';
 import { runSeed } from '../../scripts/seed';
+import { runMigrations } from '../support/global-setup';
 import { createTestDataSource } from '../support/db';
 
-// The demo data the seed writes, as the README and the Postman collection rely on it. The test
-// database is never truncated: the first run of this spec writes these rows and every later run
-// finds them already there. Both leave each one exactly once.
+// The demo data the seed writes, as the README and the Postman collection rely on it. The seed
+// skips every demo row it finds, so on a database that already holds them a broken seed still
+// passes. The spec therefore seeds a database of its own, created empty for each run and dropped
+// at the end, and expects each demo row exactly once after two runs.
 const ADMIN_EMAIL = 'admin@oficina.local';
 const CUSTOMER_EMAIL = 'cliente@oficina.local';
 
@@ -74,10 +77,38 @@ const VEHICLES = [
   { plate: 'QNM4321', brand: 'Honda', model: 'Civic', year: 2018 },
 ];
 
+// The suffix keeps the global setup's guard satisfied.
+const SEED_DATABASE = `workshop_seed_${randomUUID().replaceAll('-', '').slice(0, 16)}_test`;
+const originalDatabase = process.env.DATABASE_NAME;
+
 let dataSource: DataSource;
+
+function createMaintenanceDataSource(): DataSource {
+  return new DataSource({
+    type: 'postgres',
+    host: process.env.DATABASE_HOST,
+    port: Number(process.env.DATABASE_PORT),
+    username: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PASSWORD,
+    database: 'postgres',
+  });
+}
+
+async function runOnMaintenanceDatabase(statement: string): Promise<void> {
+  const maintenance = createMaintenanceDataSource();
+  await maintenance.initialize();
+  try {
+    await maintenance.query(statement);
+  } finally {
+    await maintenance.destroy();
+  }
+}
 
 beforeAll(async () => {
   vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  await runOnMaintenanceDatabase(`CREATE DATABASE "${SEED_DATABASE}"`);
+  await runMigrations(SEED_DATABASE);
+  process.env.DATABASE_NAME = SEED_DATABASE;
   dataSource = createTestDataSource();
   await dataSource.initialize();
   await runSeed();
@@ -85,8 +116,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  vi.restoreAllMocks();
-  await dataSource.destroy();
+  try {
+    vi.restoreAllMocks();
+    await dataSource?.destroy();
+  } finally {
+    process.env.DATABASE_NAME = originalDatabase;
+    await runOnMaintenanceDatabase(`DROP DATABASE IF EXISTS "${SEED_DATABASE}" WITH (FORCE)`);
+  }
 });
 
 describe('seed script', () => {

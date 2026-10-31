@@ -119,6 +119,23 @@ describe('RegisterCustomerUseCase', () => {
     ).rejects.toThrow(InvalidAddressError);
   });
 
+  it('should store the phone number it was given on the registered customer', async () => {
+    const { useCase, customers } = makeUseCase();
+
+    await useCase.execute(
+      new RegisterCustomerCommand(
+        undefined,
+        'jane@example.com',
+        'Jane Doe',
+        '11144477735',
+        undefined,
+        '11987654321',
+      ),
+    );
+
+    expect(customers.customers[0].phoneNumber?.value).toBe('11987654321');
+  });
+
   it('should reject a malformed phone number', async () => {
     const { useCase } = makeUseCase();
 

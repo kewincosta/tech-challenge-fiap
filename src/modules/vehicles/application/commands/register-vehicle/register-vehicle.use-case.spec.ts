@@ -49,6 +49,16 @@ describe('RegisterVehicleUseCase', () => {
     expect(events.published).toEqual([new VehicleRegistered(result.id, CUSTOMER_ID, clock.now())]);
   });
 
+  it('should store the year it was given on the registered vehicle', async () => {
+    const { useCase, vehicles } = makeUseCase();
+
+    await useCase.execute(
+      new RegisterVehicleCommand(CUSTOMER_ID, 'ABC1234', 'Toyota', 'Corolla', 2018),
+    );
+
+    expect(vehicles.vehicles[0].year.value).toBe(2018);
+  });
+
   it('should refuse a deactivated customer', async () => {
     const { useCase, vehicles } = makeUseCase({ ...ACTIVE_OWNER, active: false });
 

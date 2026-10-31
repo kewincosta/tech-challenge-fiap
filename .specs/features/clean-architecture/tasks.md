@@ -2023,11 +2023,11 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 **Done when**:
 
-- [ ] The spec creates a database whose name ends in `_test`, migrates it, runs `runSeed()` twice against it, asserts, then drops it and restores `DATABASE_NAME`, also when an assertion fails
-- [ ] The register-customer use case spec asserts the stored phone and the register-vehicle use case spec the stored year
-- [ ] Checked by hand in a scratch worktree whose database already holds the demo rows: a seed that books no opening stock (M12), a vehicle stored with the year before (W3b) and a phone not stored (W3c) each fail a suite
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: unit grows by the new cases; integration unchanged or larger
+- [x] The spec creates a database whose name ends in `_test`, migrates it, runs `runSeed()` twice against it, asserts, then drops it and restores `DATABASE_NAME`, also when an assertion fails
+- [x] The register-customer use case spec asserts the stored phone and the register-vehicle use case spec the stored year
+- [x] Checked by hand in a scratch worktree whose database already holds the demo rows: a seed that books no opening stock (M12), a vehicle stored with the year before (W3b) and a phone not stored (W3c) each fail a suite
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: unit grows by the new cases; integration unchanged or larger
 
 **Tests**: integration
 **Gate**: full

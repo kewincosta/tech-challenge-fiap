@@ -49,14 +49,15 @@ async function assertStandaloneRedis(): Promise<void> {
   }
 }
 
-async function runMigrations(): Promise<void> {
+/** `database` defaults to the one `.env.test` names; a spec that creates its own passes its name. */
+export async function runMigrations(database = process.env.DATABASE_NAME): Promise<void> {
   const dataSource = new DataSource({
     type: 'postgres',
     host: process.env.DATABASE_HOST,
     port: Number(process.env.DATABASE_PORT),
     username: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE_NAME,
+    database,
     migrations: [
       CreateIdentityAndAccessSchema1787702400000,
       SeedRbacCatalog1787702400001,
