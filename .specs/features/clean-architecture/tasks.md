@@ -212,6 +212,12 @@ T56 → T57
 T58 → T59 → T60
 ```
 
+### Phase 18: Fixes from the first validation
+
+```
+T63 → T64 → T65 → T66 → T67
+```
+
 ---
 
 ## Task Breakdown
@@ -1971,6 +1977,147 @@ T58 → T59 → T60
 
 ---
 
+### Phase 18: Fixes from the first validation
+
+The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps and confirmed two survivors outside the spec. The user chose the fixes on 2026-10-31. CA-03 AC7 was amended in `spec.md` to allow `runInNewTransaction`; AD-008 names ADR 0032 in `.specs/STATE.md`.
+
+#### T63: Metrics days from a span the suite cannot fill
+
+**What**: `randomDay()` draws from a span the suite's own runs cannot fill, and `pickClearDay` gives up after a bounded number of draws with an error that names the reason, so the never-truncated test database cannot turn the spec into timeouts.
+**Where**: `test/integration/work-order-metrics-query.adapter.spec.ts`
+**Depends on**: T60
+**Reuses**: The spec's own helpers
+**Requirement**: CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] Days come from the years 2100 to 3099, and `pickClearDay` stops after 200 draws with an error that says no free window was found
+- [ ] The spec passes on `workshop_test` as it is today and on an empty scratch database
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: all three totals unchanged
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `test(work-orders): draw metrics days from a span the suite cannot fill`
+
+---
+
+#### T64: Seed spec on a database of its own
+
+**What**: The seed spec creates, migrates and drops a database of its own, so a broken seed fails it whatever `workshop_test` already holds; the register-customer and register-vehicle use case specs assert the stored phone and year.
+**Where**: `test/integration/seed.script.spec.ts`, `register-customer.use-case.spec.ts`, `register-vehicle.use-case.spec.ts`
+**Depends on**: T63
+**Reuses**: `runSeed()`; the migration run of the integration global setup
+**Requirement**: CA-06
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The spec creates a database whose name ends in `_test`, migrates it, runs `runSeed()` twice against it, asserts, then drops it and restores `DATABASE_NAME`, also when an assertion fails
+- [ ] The register-customer use case spec asserts the stored phone and the register-vehicle use case spec the stored year
+- [ ] Checked by hand in a scratch worktree whose database already holds the demo rows: a seed that books no opening stock (M12), a vehicle stored with the year before (W3b) and a phone not stored (W3c) each fail a suite
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: unit grows by the new cases; integration unchanged or larger
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `test(scripts): run the seed spec on a database of its own`
+
+---
+
+#### T65: Public API rule on a module root file
+
+**What**: The `through-public-api` fixture gains a module root file other than `index.ts`, imported from another module, and the rule spec expects that import as a violation.
+**Where**: `test/architecture/fixtures/dependency-rules/through-public-api/`, `test/architecture/dependency-rules.spec.ts`
+**Depends on**: T64
+**Reuses**: The existing fixture tree
+**Requirement**: CA-04
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The fixture has `beta/beta.tokens.ts`, a file in `alpha/infrastructure` imports it, and the spec expects that import as a `through-public-api` violation
+- [ ] Checked by hand in a scratch copy: a rule that accepts any file at a module's root (M07) fails the unit suite
+- [ ] Gate check passes: `npm run test:unit`
+- [ ] Test count: unit total grows by the new case
+
+**Tests**: unit
+**Gate**: quick
+
+**Commit**: `test(lint): pin the public API rule on a module root file`
+
+---
+
+#### T66: ADR 0032 and the amended status of ADR 0023
+
+**What**: ADR 0032 records the rule T62 added, ADR 0023's status becomes `Amended by 0032`, and the ADR index lists both.
+**Where**: `docs/adr/` (ADR 0032 new, ADR 0023, `README.md`)
+**Depends on**: T65
+**Reuses**: The format of ADRs 0026 to 0031; the `Amended by NNNN` status of T60
+**Requirement**: CA-07
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] ADR 0032 states the context (two concurrent stock saves exhausted a pool of two connections, batch 6), the decision (a repository opens its own transaction through `runInNewTransaction`, which publishes its manager as the ambient one), the alternative T35 uses (resolving every key before the transaction) and the consequences, with a `Source` line naming AD-008
+- [ ] Only the Status line of ADR 0023 changes, to `Amended by 0032` in the link form ADR 0001 uses
+- [ ] The index lists ADR 0032 and shows 0023 as amended
+- [ ] Gate check passes: `npx prettier --check README.md docs`
+
+**Tests**: none
+**Gate**: docs
+
+**Commit**: `docs(adr): record that a repository's own transaction is the ambient one`
+
+---
+
+#### T67: Item removal and plan-part check order
+
+**What**: An e2e case reads the work order back after an item removal, and a plan-part use case case pins that the quantity is checked before the catalog read.
+**Where**: `test/e2e/work-orders.e2e.spec.ts`, `plan-part.use-case.spec.ts`
+**Depends on**: T66
+**Reuses**: The work order e2e fixtures; the `PartCatalog` fake
+**Requirement**: CA-05
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] After `DELETE /work-orders/:number/items/:itemExternalId` answers 204, `GET /work-orders/:number` no longer lists the item
+- [ ] The plan-part spec sends an invalid quantity for an item the catalog does not know and expects the quantity error
+- [ ] Checked by hand in a scratch worktree: dropping `save` from `RemoveWorkOrderItemUseCase` (W1) and checking the quantity after the catalog read (W2) each fail a suite
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [ ] Test count: unit and e2e totals each grow by 1
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `test(work-orders): pin the item removal and the plan-part check order`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -1993,6 +2140,7 @@ Phase 14: T49 → T50
 Phase 15: T51 → T52 → T53 → T54 → T55
 Phase 16: T56 → T57
 Phase 17: T58 → T59 → T60
+Phase 18: T63 → T64 → T65 → T66 → T67
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2065,6 +2213,11 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T58 | T57 (phase 16) | Phase 17 start | ✅ Match |
 | T59 | T58 | T58 → T59 | ✅ Match |
 | T60 | T59 | T59 → T60 | ✅ Match |
+| T63 | T60 (phase 17) | Phase 18 start | ✅ Match |
+| T64 | T63 | T63 → T64 | ✅ Match |
+| T65 | T64 | T64 → T65 | ✅ Match |
+| T66 | T65 | T65 → T66 | ✅ Match |
+| T67 | T66 | T66 → T67 | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2132,3 +2285,8 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T58: README | Documentation | none | none | ✅ OK |
 | T59: Low-level designs | Documentation | none | none | ✅ OK |
 | T60: C4 and overviews | Documentation | none | none | ✅ OK |
+| T63: Metrics days | Integration spec | integration | integration | ✅ OK |
+| T64: Seed spec database | Integration spec, use case specs | integration (highest) | integration | ✅ OK |
+| T65: Root file fixture | Architecture checks | unit | unit | ✅ OK |
+| T66: ADR 0032 | Documentation | none | none | ✅ OK |
+| T67: Removal and check order | Route, use case spec | e2e (highest) | e2e | ✅ OK |

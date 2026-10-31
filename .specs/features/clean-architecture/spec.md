@@ -126,7 +126,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 4. WHEN a use case needs data or an action owned by another module THEN the system SHALL reach it through a port declared in the consuming module's `application/ports` and implemented in the consuming module's `infrastructure`.
 5. The system SHALL hold `users`, `authentication` and `authorization` under `src/modules/identity`, wired by one Nest module.
 6. The system SHALL contain no reference to `CommandBus`, `QueryBus` or `@nestjs/cqrs` in `src`, `test` or `scripts`, and no `@nestjs/cqrs` dependency in `package.json`.
-7. The system SHALL add to `src/shared` only the domain event publisher port, its in-memory dispatcher, their specs, and the file that receives the shared injection tokens moved out of `shared/application`.
+7. The system SHALL add to `src/shared` only the domain event publisher port, its in-memory dispatcher, their specs, the file that receives the shared injection tokens moved out of `shared/application`, and `runInNewTransaction`, which opens a repository's own transaction and publishes it as the ambient one (amended on 2026-10-31 after T62).
 8. The system SHALL write only to tables owned by the module whose adapter issues the write.
 9. The system SHALL run no query, in any module's adapter, that reads a table another module owns.
 10. WHEN an adapter needs to translate between the UUID and the internal key of a row another module owns THEN the system SHALL obtain the translation from that module's key resolver.
