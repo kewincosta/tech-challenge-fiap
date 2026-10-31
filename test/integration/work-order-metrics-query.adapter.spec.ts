@@ -115,9 +115,12 @@ async function seedRefs(): Promise<Fixture> {
   return { customerId, vehicleId, creatorId };
 }
 
+// Years 2100 to 3099: no run of this suite or of the others writes work orders that far out.
+const MAX_DAY_DRAWS = 200;
+
 function randomDay(): Date {
-  const base = Date.UTC(2000, 0, 1);
-  const span = Date.UTC(2020, 0, 1) - base;
+  const base = Date.UTC(2100, 0, 1);
+  const span = Date.UTC(3100, 0, 1) - base;
   const day = base + Math.floor((Math.random() * span) / 86400000) * 86400000;
   return new Date(day);
 }
@@ -140,13 +143,14 @@ function addSeconds(date: Date, seconds: number): Date {
  * no longer depends on how many times this file has already run.
  */
 async function pickClearDay(buildFilter: (day: Date) => AverageExecutionTimeFilter): Promise<Date> {
-  for (;;) {
+  for (let draw = 0; draw < MAX_DAY_DRAWS; draw += 1) {
     const day = randomDay();
     const probe = await adapter.averageExecutionTime(buildFilter(day));
     if (probe.workOrderCount === 0) {
       return day;
     }
   }
+  throw new Error(`No free window was found for the metrics filter after ${MAX_DAY_DRAWS} draws`);
 }
 
 describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {

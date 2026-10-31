@@ -1996,10 +1996,10 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 **Done when**:
 
-- [ ] Days come from the years 2100 to 3099, and `pickClearDay` stops after 200 draws with an error that says no free window was found
-- [ ] The spec passes on `workshop_test` as it is today and on an empty scratch database
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
-- [ ] Test count: all three totals unchanged
+- [x] Days come from the years 2100 to 3099, and `pickClearDay` stops after 200 draws with an error that says no free window was found
+- [x] The spec passes on `workshop_test` as it is today and on an empty scratch database
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] Test count: all three totals unchanged
 
 **Tests**: integration
 **Gate**: full
