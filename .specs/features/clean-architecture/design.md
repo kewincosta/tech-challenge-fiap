@@ -299,9 +299,39 @@ export class CreateWorkOrderUseCase {
 
 ---
 
+### C16. Steps across modules with a durable outbox
+
+- **Purpose**: Replace the five transactions that wrote two modules with steps each module commits on its own, completed by compensation or retry (CA-10). Decided by the user on 2026-10-31.
+- **Location**:
+  - `work-orders`: port `application/ports/pending-stock-steps.port.ts`; application service `application/services/stock-step-applier.ts`, which applies one step through `StockLedger`; adapter `infrastructure/persistence/typeorm-pending-stock-steps.ts` over `work_order_stock_steps`; processor `infrastructure/outbox/stock-step-processor.ts`
+  - `customers`: port `application/ports/pending-account-steps.port.ts`; service `application/services/account-step-applier.ts`; adapter over `customer_account_steps`; processor `infrastructure/outbox/account-step-processor.ts`
+  - `inventory`: column `stock_movements.operation_id`; a consumption tags its movements; a restore applies once per operation id; new `UndoConsumptionUseCase`
+  - `identity`: `RegisterUserCommand` takes the user id the caller chose; new `DiscardOpenedAccountUseCase`
+- **Interfaces**:
+  - `PendingStockSteps`: `arm(step, dueAt)` in its own transaction; `enqueue(step)` and `complete(operationId)` inside the caller's transaction; `release(operationId)`, which makes an armed step due now; `claimDue(now, limit)`; `recordFailure(operationId, error, nextDueAt)`; `markFailed(operationId, error)`
+  - A stock step is `{ operationId, kind: 'UNDO_CONSUMPTION' | 'RESTORE' | 'SETTLE' | 'WRITE_OFF', workOrderId, actorUserId, lines? }`
+  - `StockLedger`: `consume(workOrderId, lines, actorUserId, operationId)`, `restore(workOrderId, lines, actorUserId, operationId)`, `undoConsumption(operationId, actorUserId)`, `settle` and `writeOff` (these two act on pending consumptions only, so a repeat changes nothing)
+  - `CustomerAccounts`: `open(userId, email, name, document)` and `discard(userId)`; `PendingAccountSteps` mirrors `PendingStockSteps` with the kind `DISCARD_ACCOUNT` and a `userId`
+- **Flows**:
+
+| Flow | First step | Last step | When a step fails |
+| --- | --- | --- | --- |
+| Withdraw | arm `UNDO_CONSUMPTION` (work-orders transaction), then consume with the operation id (inventory transaction) | save the work order and complete the step (one work-orders transaction) | the save fails: release the step, apply the undo now and answer the save's error; the process stops: the processor applies the undo once the grace period passes |
+| Return | save the work order and enqueue `RESTORE` (one work-orders transaction) | apply the step after the commit: restore with the operation id (inventory transaction) | the step stays pending and the processor retries it |
+| Deliver | save the work order and enqueue `SETTLE` | settle | retry |
+| Cancel | save the work order and enqueue `WRITE_OFF` | write off | retry |
+| Register customer with a new account | choose the user id and arm `DISCARD_ACCOUNT` (customers transaction), then open the account with that id (identity transaction, user and role together) | save the customer and complete the step (one customers transaction) | the save fails: release the step, discard now and answer the save's error; the process stops: the processor discards once the grace period passes |
+
+  A registration with an existing user writes nothing in `identity` and arms no step.
+- **Idempotency**: an undo returns the net remaining units of every consumption the operation tagged and tags its returns with the same id, so a second run finds nothing left; a restore whose operation id already tags a return does nothing; settle and write-off act on pending consumptions only; a discard of a missing user does nothing, and a discard of a user with a session or a customer is refused.
+- **Processor**: runs at application bootstrap and every `OUTBOX_POLL_INTERVAL_MS` (0 turns it off; the test suites drain it on demand); claims due steps with `FOR UPDATE SKIP LOCKED`; applies each through its applier; on success completes it; on failure records the error and the next due time (1 s, 5 s, 30 s, 2 min, 10 min, then 1 h); at `OUTBOX_MAX_ATTEMPTS` (default 10) marks it failed and logs at error level. An armed step becomes due after `OUTBOX_GRACE_SECONDS` (default 300). The request's own immediate attempt claims the step the same way, so the processor and the request never apply it twice.
+- **Dependencies**: `Clock` for due times; `IdGenerator` for operation ids and the chosen user id; `TransactionRunner` for writes within one module
+- **Reuses**: the ambient transaction within one module (AD-008 within one module, ADR 0032); the error mapping of `GlobalExceptionFilter`
+- **Why one outbox per module**: each module owns its step table and the steps it orchestrates, so the table check keeps one owner per table and `src/shared` does not grow (CA-03 AC7)
+
 ## Data Models
 
-No schema change. The new contracts are TypeScript types:
+One migration, added for C16 (`1787702400009-add-cross-module-steps.ts`): `work_order_stock_steps` (owner `work-orders`) and `customer_account_steps` (owner `customers`), each with `id bigserial`, `operation_id uuid` unique, `kind`, `payload jsonb`, `status` (`ARMED`, `PENDING`, `DONE`, `FAILED`), `attempts`, `due_at`, `last_error`, `created_at` and `completed_at`, plus `work_order_id bigint` or `user_id uuid`; and a nullable, indexed `stock_movements.operation_id uuid`. The other new contracts are TypeScript types:
 
 ```ts
 // src/modules/work-orders/application/ports
@@ -339,6 +369,7 @@ Each phase leaves lint, build and the three suites green. Tasks refine the phase
 | 7. Modules | `services`, `inventory`, `identity`, `customers`, `vehicles`, then the rest of `work-orders`: use cases, tokens, repository contracts, not-found, gateways, adapters on own tables, specs on fakes, ESLint ratchet, baseline entries removed; the rename to `UseCase` in its own commit per module | Each module's baseline entries gone |
 | 8. Bus removal and enforcement | `CqrsModule`, `@nestjs/cqrs` and the bus stubs removed; seed on use cases; empty baselines; acceptance checks | All Success Criteria of the spec |
 | 9. Documentation | README circles and module graph; low-level designs, C4 diagrams and the architecture overview updated | CA-09 greps clean |
+| 10. Steps across modules | The step tables, idempotent inventory and identity steps, the two outboxes and their processors, then the five flows; ADR 0033 | CA-10 cases green; no transaction writes two modules |
 
 ---
 
@@ -391,6 +422,8 @@ Each phase leaves lint, build and the three suites green. Tasks refine the phase
 | Table ownership source | Explicit map, cross-checked against migrations | `stock_movement_transitions` has no ORM entity, so entities alone miss it |
 | ESLint rollout | Bans listed per migrated module, then `src/**` | Each module turns them on when it migrates |
 | Rename to `UseCase` | Right after each module migrates, in its own commit | Mechanical diffs stay apart from behavior changes |
+| Consistency of writes across modules | Steps per module with a durable outbox, compensation for the withdrawal and the registration, retry for the rest (C16) | The user's decision of 2026-10-31; an outbox keeps the guarantee of the shared transaction across a crash |
+| Where the outbox lives | One table and one processor per orchestrating module | One owner per table, and `src/shared` does not grow; about 60 similar lines in the two processors accepted |
 
 **Project-level decisions** appended to `.specs/STATE.md` as AD-011 to AD-016, superseding AD-003. Their ADRs, 0026 to 0031, are written in phase 0, and ADR 0008 gets the status `Superseded by 0027`.
 
@@ -409,3 +442,4 @@ Each phase leaves lint, build and the three suites green. Tasks refine the phase
 | CA-07 | ADRs 0026 to 0031, AD-011 to AD-016 |
 | CA-08 | Phase 7 renames |
 | CA-09 | Phase 9 |
+| CA-10 | C16, AD-017, ADR 0033 |

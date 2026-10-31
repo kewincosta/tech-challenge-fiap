@@ -22,6 +22,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 | Domain (entities, value objects) | unit | Unchanged by this feature; every existing domain spec passes with its assertions untouched | `src/modules/**/domain/**/*.spec.ts` | `npm run test:unit` |
 | Use case | unit | Every branch the use case owns and each error-producing call site (L-003); cross-module collaborations through in-memory fakes of the consumer ports, asserted on the fake's state (CA-05) | `src/modules/**/application/**/*.spec.ts` | `npm run test:unit` |
 | Gateway to another module | unit | Mapping of the provider's output into the port's type, and the provider's not-found turned into `null` | `src/modules/**/infrastructure/gateways/*.spec.ts` | `npm run test:unit` |
+| Outbox of steps across modules | unit and integration | The applier on fakes (every kind, the delay schedule, the attempt limit); the adapter and the processor on the database (claims, idempotent repeats, crash recovery past the grace period) | `src/modules/**/application/services/*-step-applier.spec.ts`, `test/integration/*-steps*.spec.ts` | `npm run test:unit`, `npm run test:integration` |
 | Domain event dispatcher | unit | Immediate start, no await, a synchronous throw and a rejected promise both logged with the subscriber's name | `src/shared/infrastructure/events/*.spec.ts` | `npm run test:unit` |
 | Architecture checks | unit | Each rule fires on its own fixture and the real tree passes | `test/architecture/*.spec.ts` | `npm run test:unit` |
 | Key resolver, repository, query adapter | integration | Both translation directions, batch, unknown key as `null`, a row written earlier in the same transaction; adapters: key query paths and composed results | `test/integration/*.spec.ts` | `npm run test:integration` |
@@ -82,8 +83,10 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 | Five drawn work order numbers taken, 409 `WORK_ORDER_NUMBER_TAKEN` | T22 | unit |
 | Two concurrent changes to one work order, one 409 `CONCURRENT_MODIFICATION` | T35, T53 | e2e (`work-order-concurrency.e2e.spec.ts`) |
 | A withdrawal above stock, 422 `INVENTORY_INSUFFICIENT_STOCK`, nothing changed | T6, T25, T27 | e2e, integration, unit |
-| The shared transaction fails after both writes, neither persists | T25, T27, T35 | integration (`cross-module-transaction.spec.ts`) |
-| `POST /customers` links the user created earlier in the same transaction | T14, T32 | integration, e2e |
+| The work order save fails with 409 after a withdrawal consumed stock, the units come back | T72 | unit, integration, e2e |
+| The inventory step of a return, a delivery or a cancellation fails, it applies on a later attempt | T73 | unit, integration |
+| The customer save fails after the account opened, no user with that email or document is left | T70, T74 | integration |
+| `POST /customers` links the user `identity` opened earlier in the same registration | T14, T32, T74 | integration, e2e |
 | A subscriber throws, the caller keeps its result and the error is logged | T12 | unit |
 
 ---
@@ -98,7 +101,7 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 
 ## Database actions
 
-None. No migration is added, changed or run.
+T68 adds one migration, `1787702400009-add-cross-module-steps.ts`. It runs against the development and test databases only; no other database is touched.
 
 ## Commit rules
 
@@ -216,6 +219,12 @@ T58 → T59 → T60
 
 ```
 T63 → T64 → T65 → T66 → T67
+```
+
+### Phase 19: Steps across modules
+
+```
+T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 ```
 
 ---
@@ -2118,6 +2127,241 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 ---
 
+### Phase 19: Steps across modules
+
+On 2026-10-31 the user moved the five flows that wrote two modules in one transaction to steps completed through a durable outbox (CA-10, design C16). Batch A is T68 to T71, batch B is T72 to T75.
+
+#### T68: Step tables and the operation id column
+
+**What**: One migration creates `work_order_stock_steps` and `customer_account_steps` and adds `stock_movements.operation_id` with an index; the table owner map and the test entity list gain the two tables.
+**Where**: `src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps.ts` (new)
+**Depends on**: T67
+**Reuses**: The style of the existing migrations and of their integration specs
+**Requirement**: CA-10, CA-04
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The migration creates both tables with the columns of design C16's data model, a unique `operation_id` each and a check on `status`, adds the nullable `stock_movements.operation_id` with an index, and its `down` removes all three
+- [ ] `scripts/architecture/table-owners.ts` maps `work_order_stock_steps` to `work-orders` and `customer_account_steps` to `customers`, and the table check passes
+- [ ] `test/integration/cross-module-steps-schema.migration.spec.ts` proves the columns, the unique operation ids and the status check
+- [ ] The ORM entities of the two tables exist in their modules and `test/support/db.ts` lists them
+- [ ] Test count: integration total grows by the migration cases
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `feat(database): add the tables for steps across modules`
+
+---
+
+#### T69: Inventory applies stock steps once
+
+**What**: A consumption tags its movements with the caller's operation id, a restore with an operation id applies once, and `UndoConsumptionUseCase` returns the net remaining units of every consumption an operation tagged, as returns tagged with the same id; `StockLedger` and its gateway carry the operation id and the undo. The four work-orders use cases pass a generated operation id until T72 and T73 restructure them.
+**Where**: `src/modules/inventory/application/commands/` (consume, restore, new undo-consumption), the inventory repository, `work-orders/application/ports/stock-ledger.port.ts`, `work-orders/infrastructure/gateways/stock-ledger.gateway.ts`
+**Depends on**: T68
+**Reuses**: The pending-consumption logic of `RestoreStockBatchUseCase`, newest first
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] An undo leaves every stock level as it was before the consumption and lists the returns in the item's movement history, linked to the work order (integration)
+- [ ] A second undo, and a second restore with the same operation id, change nothing (integration)
+- [ ] Use case specs on the in-memory repository cover the undo, its repeat and an operation that consumed nothing
+- [ ] The ledger gateway spec proves the operation id reaches each call and the undo reaches the new use case
+- [ ] Test count: unit and integration totals grow by the new cases
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `feat(inventory): apply stock steps once per operation`
+
+---
+
+#### T70: Identity opens an account with a chosen id and discards it
+
+**What**: `RegisterUserCommand` takes an optional user id the caller chose; `DiscardOpenedAccountUseCase` deletes a user and its role assignments, does nothing for a missing user, and refuses a user with a session or a customer; `CustomerAccounts` and its gateway carry the chosen id and the discard.
+**Where**: `src/modules/identity/users/application/commands/` (register-user, new discard-opened-account), the user repository, `customers/application/ports/customer-accounts.port.ts`, `customers/infrastructure/gateways/customer-accounts.gateway.ts`
+**Depends on**: T69
+**Reuses**: Registration's transaction within `identity` (the user and its role together)
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A user registered with a chosen id carries that id, and without one registration keeps generating it
+- [ ] After a discard, a registration with the same email and document succeeds (integration); a discard of a missing user does nothing; a user with a session or a customer is refused and kept
+- [ ] The customer accounts gateway spec proves `open` passes the id and `discard` reaches the use case
+- [ ] Test count: unit and integration totals grow by the new cases
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `feat(identity): open an account with a chosen id and discard it`
+
+---
+
+#### T71: work-orders pending stock steps and their processor
+
+**What**: The `PendingStockSteps` port, its adapter over `work_order_stock_steps`, the `StockStepApplier` application service that applies one step through `StockLedger`, and the processor that claims due steps at bootstrap and on an interval, with the settings `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_GRACE_SECONDS` and `OUTBOX_MAX_ATTEMPTS`.
+**Where**: `src/modules/work-orders/application/ports/pending-stock-steps.port.ts`, `application/services/stock-step-applier.ts`, `infrastructure/persistence/typeorm-pending-stock-steps.ts`, `infrastructure/outbox/stock-step-processor.ts` (all new)
+**Depends on**: T70
+**Reuses**: `Clock`, `IdGenerator`, `runInNewTransaction`; the config module
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The adapter arms, enqueues, completes, releases, claims due steps with `FOR UPDATE SKIP LOCKED`, records failures with the next due time and marks steps failed; two concurrent claims never return the same step (integration)
+- [ ] The applier spec, on fakes, applies each kind through the ledger, completes on success, follows the delay schedule on failure (1 s, 5 s, 30 s, 2 min, 10 min, then 1 h), and at the attempt limit marks the step failed and logs the line CA-10 AC9 defines
+- [ ] The processor runs at bootstrap and on the interval, stays off when the interval is 0, and the test support drains it on demand
+- [ ] `.env.example` and `.env.test` carry the three settings; outside tests the defaults are 5000, 300 and 10, and `.env.test` sets the interval to 0
+- [ ] Test count: unit and integration totals grow by the new cases
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `feat(work-orders): keep pending stock steps in an outbox`
+
+---
+
+#### T72: Withdrawal as compensated steps
+
+**What**: `WithdrawPartsUseCase` arms an undo step, consumes the stock, then saves the work order and completes the step in one work-orders transaction; when the save fails it releases the step, applies the undo and rethrows.
+**Where**: `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts`
+**Depends on**: T71
+**Reuses**: The aggregate's validation before any write, unchanged
+**Requirement**: CA-10, CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] No transaction of the withdrawal writes inventory and work-orders tables together
+- [ ] The spec on fakes proves that a 422 from the ledger leaves the work order unsaved with nothing to undo, that a failed save applies the undo and rethrows, and that a success completes the step
+- [ ] An integration case stops a withdrawal after its consumption, moves the clock past the grace period, drains the processor and finds every stock level as before
+- [ ] An e2e case runs two concurrent withdrawals on one work order and finds one 409, the other withdrawal applied once and the stock lower by that withdrawal only; the 422 withdrawal still changes nothing
+- [ ] The withdrawal cases of `cross-module-transaction.spec.ts` become compensation cases, and every changed assertion is reported
+- [ ] Test count: unit and integration totals grow; e2e grows by the new case
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: e2e
+**Gate**: full
+
+**Commit**: `refactor(work-orders): withdraw parts as compensated steps`
+
+---
+
+#### T73: Return, delivery and cancellation as retried steps
+
+**What**: The three use cases save the work order and enqueue the restore, settle or write-off step in one work-orders transaction, apply the step after the commit, and leave a failed step to the processor.
+**Where**: `src/modules/work-orders/application/commands/` (return-parts, deliver-vehicle, cancel-work-order)
+**Depends on**: T72
+**Reuses**: The aggregate rules of the three transitions, unchanged
+**Requirement**: CA-10, CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] No transaction of the three use cases writes inventory tables
+- [ ] Specs on fakes prove the step enqueued in the save's transaction, its application after the commit, and on a ledger failure the request's success with the step left pending
+- [ ] An integration case fails the inventory step once, drains the processor and finds the stock restored, settled or written off exactly once
+- [ ] The return, delivery and cancellation e2e cases pass unchanged
+- [ ] `cross-module-transaction.spec.ts` keeps no case of a shared transaction, and every changed assertion is reported
+- [ ] Test count: unit and integration totals unchanged or larger; e2e unchanged
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `refactor(work-orders): return, deliver and cancel through retried steps`
+
+---
+
+#### T74: Customer registration as compensated steps
+
+**What**: The customers `PendingAccountSteps` port, adapter, applier and processor, in the shape of T71; `RegisterCustomerUseCase` with a new account chooses the user id, arms a discard step, opens the account, then saves the customer and completes the step in one customers transaction; a failed save releases the step, discards the account and rethrows.
+**Where**: `src/modules/customers/` (port, applier, adapter, processor, register-customer use case)
+**Depends on**: T73
+**Reuses**: The shape of T71's outbox; `CustomerAccounts` from T70
+**Requirement**: CA-10, CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] No transaction of the registration writes identity and customers tables together
+- [ ] The spec on fakes proves the order of the steps, the discard on a failed save, and that a registration with an existing user arms no step
+- [ ] An integration case stops a registration after the account opened, drains the processor past the grace period and finds no user with that email or document
+- [ ] `POST /customers` e2e cases pass unchanged, for a new account and for an existing user
+- [ ] Test count: unit and integration totals grow; e2e unchanged
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `refactor(customers): register customers through compensated steps`
+
+---
+
+#### T75: Records and documentation of the steps
+
+**What**: ADR 0033 records the steps across modules, ADR 0023 becomes `Superseded by 0033`, and the README, the low-level designs and the C4 diagrams describe the steps where they describe the shared transaction.
+**Where**: `docs/adr/` (0033 new, 0023, `README.md`), `README.md`, `docs/architecture/`
+**Depends on**: T74
+**Reuses**: The format of ADRs 0026 to 0032
+**Requirement**: CA-07, CA-09
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] ADR 0033 states the context (five flows wrote two modules in one transaction), the decision (design C16), the alternatives (the shared transaction, compensation without an outbox) and the consequences, with a `Source` line naming AD-017
+- [ ] Only the Status line of ADR 0023 changes, to `Superseded by 0033` in the link form ADR 0001 uses; the index lists 0033 and the new status of 0023
+- [ ] `grep -rniE "same transaction|shared transaction" README.md docs/architecture` finds only text about writes within one module
+- [ ] Gate check passes: `npx prettier --check README.md docs`
+
+**Tests**: none
+**Gate**: docs
+
+**Commit**: `docs(adr): record the steps across modules`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -2141,6 +2385,7 @@ Phase 15: T51 → T52 → T53 → T54 → T55
 Phase 16: T56 → T57
 Phase 17: T58 → T59 → T60
 Phase 18: T63 → T64 → T65 → T66 → T67
+Phase 19: T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2218,6 +2463,14 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T65 | T64 | T64 → T65 | ✅ Match |
 | T66 | T65 | T65 → T66 | ✅ Match |
 | T67 | T66 | T66 → T67 | ✅ Match |
+| T68 | T67 (phase 18) | Phase 19 start | ✅ Match |
+| T69 | T68 | T68 → T69 | ✅ Match |
+| T70 | T69 | T69 → T70 | ✅ Match |
+| T71 | T70 | T70 → T71 | ✅ Match |
+| T72 | T71 | T71 → T72 | ✅ Match |
+| T73 | T72 | T72 → T73 | ✅ Match |
+| T74 | T73 | T73 → T74 | ✅ Match |
+| T75 | T74 | T74 → T75 | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2290,3 +2543,11 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T65: Root file fixture | Architecture checks | unit | unit | ✅ OK |
 | T66: ADR 0032 | Documentation | none | none | ✅ OK |
 | T67: Removal and check order | Route, use case spec | e2e (highest) | e2e | ✅ OK |
+| T68: Step tables | Migration, ORM entities | integration | integration | ✅ OK |
+| T69: Inventory steps once | Use cases, repository, gateway | integration (highest) | integration | ✅ OK |
+| T70: Account with a chosen id | Use cases, repository, gateway | integration (highest) | integration | ✅ OK |
+| T71: Stock step outbox | Port, adapter, applier, processor | integration (highest) | integration | ✅ OK |
+| T72: Withdrawal steps | Use case, route | e2e (highest) | e2e | ✅ OK |
+| T73: Retried steps | Use cases | integration (highest) | integration | ✅ OK |
+| T74: Registration steps | Port, adapter, applier, processor, use case | integration (highest) | integration | ✅ OK |
+| T75: ADR 0033 and docs | Documentation | none | none | ✅ OK |

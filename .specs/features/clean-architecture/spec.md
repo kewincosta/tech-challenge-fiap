@@ -28,6 +28,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Database schema changes, including one schema per module | Read isolation (D7) works on the current schema: the foreign keys stay, and each module queries only its own tables |
 | Replacing the `vi.fn` stubs of query ports in query use case specs with fakes | They stub a port at the boundary, which the study allows; the bus stubs are what this feature removes |
 | Formatting the ~148 files `npm run format:check` already flags | Pre-existing and unrelated to the architecture |
+| A screen or an endpoint that lists failed steps | A failed step is logged at error level and stays in its table for an operator |
 
 ---
 
@@ -40,6 +41,7 @@ Every ambiguity is resolved or recorded here, so nothing is left silently unclea
 | How "the API is unchanged" is measured | Capture the OpenAPI document and run the e2e suite on the commit before the first change; after each migrated flow the document must still match and no e2e assertion may change | The OpenAPI document carries every route, payload shape and status code, and the e2e suite pins the behavior behind them | y |
 | Routes no e2e test exercises today | Each one gets a characterization e2e test before its flow migrates | The study's refactoring sequence records the current behavior first | y |
 | Event dispatch semantics | Keep today's timing: the publisher does not wait for subscribers, and a subscriber error is logged at error level under the `EventBus` context and never reaches the caller. The log line names the subscriber's class | That is how the `EventBus` of `@nestjs/cqrs` 11.0.3 behaves today, except for the name: its line reads `"InstanceWrapper" has thrown an unhandled exception.`, because it reads the name from Nest's provider wrapper (checked on 2026-10-29). Naming the subscriber is the one change, and it touches no route answer | y |
+| Cross-module write consistency | Steps committed per module and completed through a durable outbox the orchestrating module owns: compensation for the withdrawal and the registration, retry for the return, the delivery and the cancellation | The user's decision of 2026-10-31 | y |
 | Cross-module table access (D7): nine adapters read tables another module owns. The repositories of `customers`, `vehicles`, `inventory` and `work-orders` translate identifiers (a UUID into an internal key and back), mostly through standalone lookups such as `SELECT id FROM customers WHERE external_id = $1`. The five read adapters (the query adapters of `customers`, `vehicles`, `inventory` and `work-orders`, and the work order metrics adapter) join foreign tables to assemble listings, details and reports. AD-001 is the root: foreign keys use internal ids | Every module queries only its own tables. Identifier translation goes through a key resolver each owner offers, running inside the caller's transaction. Data owned by another module comes from that module's public API, in batch, and the consumer composes it in memory. The shared schema and its foreign keys stay, and a module writes only its own tables | The user's decision (2026-10-28): it avoids coupling between modules, avoids dependency cycles and keeps each module responsible for its own data | y |
 | How `inventory` reaches work order data without a cycle: it needs the internal key of a work order, the outstanding demand per item for the shortage report, and the open work orders that plan an item before a deactivation | `inventory` declares these needs as interfaces of its own; `work-orders` implements them, and the root module binds the implementation | `work-orders` already calls `inventory` to move stock, so a call in the other direction would close a cycle; with the inversion, every dependency between the two points from `work-orders` to `inventory` | y |
 | Costs of composing reads in memory | Accepted: a request that ran one query now runs several batch queries (the work order detail gains five), and a read composed from two modules no longer comes from one database snapshot | Batch calls keep the query count bounded, with no N+1, and no rule in this system depends on reading two modules in the same snapshot | y |
@@ -63,7 +65,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 | Dimension | Resolution |
 | --- | --- |
 | Input validation & bounds | Real: validation responses stay identical, including the CPF/CNPJ filter of `GET /customers`, whose parsing leaves the `customers` application layer. CA-02 and the Edge Cases. |
-| Failure / partial-failure states | Real: a write spanning two modules still rolls back as a whole, a key resolver sees rows written earlier in the caller's transaction, and a failing subscriber never fails the request. CA-02, CA-03. |
+| Failure / partial-failure states | Real: a write spanning two modules runs as steps, each committed by its own module, and a durable outbox completes a later step by retry or undoes an earlier one by compensation; a key resolver sees rows written earlier in the caller's transaction; a failing subscriber never fails the request. CA-02, CA-03, CA-10. |
 | Idempotency / retry / duplicate handling | Real: the five-attempt retry on a taken work order number survives the pilot. Edge Cases. |
 | Auth boundaries & rate limits | Real for auth: route permissions stay in the HTTP guard and data-dependent rules stay in the use cases, both pinned by the unchanged e2e suite. CA-02, CA-07. Rate limits: N/A because the throttler and its configuration are untouched. |
 | Concurrency / ordering | Real: the optimistic version guard (AD-009) and the inventory batch lock keep their behavior. A read composed from two modules no longer comes from one snapshot, accepted in the Assumptions table. Edge Cases. |
@@ -106,7 +108,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 2. WHEN `npm run test:e2e` runs THEN the system SHALL pass every e2e test that existed before this feature, with no assertion changed.
 3. The system SHALL exercise each HTTP route in at least one e2e test written before that route's flow migrates.
 4. IF a query use case finds no record for the identifier it receives THEN the system SHALL raise the owning module's not-found error from inside the use case.
-5. IF a write that spans two modules fails in the second module THEN the system SHALL roll back the first module's write.
+5. IF a write that spans two modules fails in a later step THEN the system SHALL compensate or retry it as CA-10 defines, so that no operation stays half applied (amended on 2026-10-31; it asked for a rollback of a shared transaction).
 6. IF a domain event subscriber throws THEN the system SHALL return the use case's result to the caller and log the error at error level with the subscriber's name.
 
 **Independent Test**: On the commit before the first change, save the OpenAPI document and run `npm run test:e2e`; repeat on the final commit, compare the two documents and check that both runs pass.
@@ -203,6 +205,27 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 
 ---
 
+### P1: Writes across modules run as steps an outbox completes (CA-10, MVP)
+
+**User Story**: As a maintainer, I want each module to commit only its own tables, and the operations that touch two modules to complete through compensation or retry, so that no module's transaction reaches into another module's data.
+
+**Why P1**: On 2026-10-31 the user moved the five flows that wrote two modules in one transaction (withdraw, return, deliver and cancel between `work-orders` and `inventory`; customer registration between `customers` and `identity`) to compensation inside this feature, with a durable outbox, so that a crash between two steps leaves no operation half applied.
+
+**Acceptance Criteria**:
+1. The system SHALL open no transaction that writes the tables of two modules; `TransactionRunner.run` wraps writes to the calling module's own tables only.
+2. WHEN a parts withdrawal is accepted THEN the system SHALL consume the stock before it saves the work order; IF the stock falls short THEN the system SHALL answer 422 `INVENTORY_INSUFFICIENT_STOCK` and change neither the work order nor any stock level.
+3. IF the work order save fails after a withdrawal consumed stock THEN the system SHALL return every consumed unit, record each return in the item's movement history linked to the work order, and answer the save's error.
+4. WHEN a parts return, a delivery or a cancellation is saved THEN the system SHALL record, in the same transaction, a pending step that restores, settles or writes off the work order's stock, and apply that step after the commit.
+5. IF a pending step fails THEN the system SHALL keep it pending and retry it with a growing delay, and the answer to the request SHALL reflect the saved work order.
+6. WHEN a pending step is applied more than once THEN the system SHALL change the stock or the accounts once.
+7. WHEN `POST /customers` opens a new account THEN the system SHALL open it in `identity` before it saves the customer; IF the customer save fails THEN the system SHALL discard that account, its role included, and answer the save's error.
+8. IF the process stops after the first step of a withdrawal or of a registration and before its last step THEN the system SHALL compensate the first step once the grace period of its pending step has passed.
+9. WHEN a pending step reaches the attempt limit THEN the system SHALL mark it failed and log at error level the step kind, its operation id, the work order or the user, and the last error.
+
+**Independent Test**: Run two concurrent withdrawals on one work order and find one 409, the other withdrawal applied once, and the stock lower by that withdrawal only; in an integration test, stop a withdrawal after its consumption, move the clock past the grace period, run the processor, and find the units returned.
+
+---
+
 ### P2: Use cases carry the use case name (CA-08)
 
 **User Story**: As a reader of the code, I want every application operation named `<Name>UseCase`, so that the use case layer is visible in the file tree.
@@ -252,8 +275,10 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 - WHEN all five work order numbers drawn for `POST /work-orders` are already taken THEN the system SHALL answer 409 with code `WORK_ORDER_NUMBER_TAKEN`.
 - WHEN two requests change the same work order at the same time THEN the system SHALL answer one of them 409 with code `CONCURRENT_MODIFICATION`.
 - IF a parts withdrawal asks for more units than the stock holds THEN the system SHALL answer 422 with code `INVENTORY_INSUFFICIENT_STOCK` and change neither the work order nor any stock level.
-- IF the shared transaction fails after the work order and inventory writes were applied THEN the system SHALL leave neither write in the database.
-- WHEN `POST /customers` registers a new customer THEN the system SHALL link the customer to the user created earlier in the same transaction, whose internal key the identity key resolver returns.
+- IF the work order save fails with 409 `CONCURRENT_MODIFICATION` after a withdrawal consumed stock THEN the system SHALL return the consumed units, leaving every stock level as it was before the withdrawal.
+- IF the inventory step of a return, a delivery or a cancellation fails THEN the system SHALL keep the work order's change and apply the inventory step on a later attempt.
+- IF the customer save fails after `identity` opened the account THEN the system SHALL leave no user with that email or document, so that the same registration can be sent again.
+- WHEN `POST /customers` registers a new customer THEN the system SHALL link the customer to the user `identity` opened earlier in the same registration, whose internal key the identity key resolver returns.
 - IF a domain event subscriber throws THEN the caller SHALL receive the use case's result, and the system SHALL log the error with the subscriber's name.
 
 ---
@@ -273,6 +298,7 @@ Each requirement gets a unique ID for tracking across design, tasks, and validat
 | CA-07 | P1: The decisions and extra choices are recorded | Tasks | In Tasks |
 | CA-08 | P2: Use cases carry the use case name | Tasks | In Tasks |
 | CA-09 | P2: The documentation matches the new structure | Tasks | In Tasks |
+| CA-10 | P1: Writes across modules run as steps an outbox completes | Tasks | In Tasks |
 
 **ID format:** `CA-NN`
 

@@ -72,7 +72,7 @@
 - **Trade-off**: Every such repository carries a small branch on the ambient manager, and a row lock taken inside one is held until the outer transaction commits rather than until its own write finishes.
 - **Scope**: `shared/infrastructure/database/typeorm-transaction-runner.ts`, and every repository reachable from a cross-module write - today `users`, `authorization`, `inventory` and `work-orders`.
 - **Date**: 2026-09-01
-- **Status**: active
+- **Status**: active within one module; superseded by AD-017 for writes across modules (2026-10-31)
 
 ### AD-009
 
@@ -146,6 +146,15 @@
 - **Date**: 2026-10-28
 - **Status**: active
 
+### AD-017
+
+- **Decision**: No transaction writes the tables of two modules. The five flows that did (withdraw, return, deliver and cancel between `work-orders` and `inventory`; customer registration between `customers` and `identity`) run as steps each module commits on its own. The orchestrating module records each pending step in its own outbox table, in the transaction of the step before it, and a processor applies it, retries it with a growing delay, and marks it failed at the attempt limit. The withdrawal and the registration compensate their first step when a later one fails (return the consumed units, discard the opened account); the return, the delivery and the cancellation retry their inventory step. Every receiving step is idempotent by operation id. A compensation stays visible in the movement history.
+- **Reason**: The user's decision of 2026-10-31. A shared transaction couples two modules through the database connection and the transaction context, and the pool starvation T62 fixed came from that coupling. An outbox keeps the guarantee of the shared transaction across a crash, which compensation done in memory would lose.
+- **Trade-off**: Two step tables, two processors, idempotent operations in `inventory` and `identity`, and a short delay before a retried step lands. A step that keeps failing needs an operator.
+- **Scope**: `work-orders`, `customers`, `inventory`, `identity`; design C16; ADR 0033.
+- **Date**: 2026-10-31
+- **Status**: active (T68 to T75). Supersedes AD-008 for writes across modules.
+
 ---
 
 ## Feature Roadmap
@@ -216,7 +225,7 @@ entry. They apply to every feature.
 - **Phase / Task**: Execute. Batch 1 done (T1 to T7, `709eb27` to `61984b9`). Batch 2 done (fix `6cdf869`, T8 `f59344b`, T9 `2da307d`, T10 `80c3044`, T11 `87b9fb7`, T61 `837dcea`, T12 `b6375ec`, T13 `ee289a7`). Batch 3 done (T14 `7b1c697`, T15 `0fbedc0`, T16 `a468f19`, T17 `d3b592f`, T18 `5957853`, T19 `4709cc9`). Batch 4 done (T20 `2d02293`, T21 `0c9fa97`, T22 `7b85b02`, T23 `1909490`, T24 `47138b5`, T25 `9eaa3ad`). Batch 5 done (T26 `39bab4a`, T27 `78f69e7`, T28 `f6d5617`, T29 `b8e5339`, T30 `53dbe36`, T31 `41033d9`). Batch 6 done (T32 `671f070`, T33 `897003b`, T34 `8942059`, T35 `f05968d`, T36 `8c700d7`, T37 `44bc81b`, T38 `f866dbe`). Batch 7 done (T62 `9b32389`, T39 `29e63d7`, T40 `4e77a49`, T41 `9d44089`). Batch 8 done (T42 `38c76af`, T43 `799bdf4`, T44 `ae9b89f`, T45 `0bcdacf`, T46 `094d9ca`). Batch 9 done (T47 `581c011`, T48 `0802f21`, T49 `43d04d2`, T50 `b2aba59`). Batch 10 done (T51 `55b1b4e`, T52 `4122a7f`, T53 `2592644`, T54 `f4cda90`, T55 `c8bde6b`). Batch 11 done (T56 `7bd7c20`, T57 `7c5aaab`, T58 `dc86dce`, T59 `1c02df5`, T60 `ccd3861`). Every task of `tasks.md` is done. The Verifier is dispatched.
 - **Completed**: T1 to T62. Totals after batch 11: unit 1114, integration 342, e2e 244 (baseline 955, 239, 203). Baselines: no dependency violation, no table finding (both files are `[]`), no module cycle. Diff range of the feature: `51a3a8a..ccd3861`.
 - **In-progress** (file:line): none yet
-- **Next step**: the first validation failed (`e47f852`). Fix round 1 (phase 18, T63 to T67) is dispatched to a Sonnet worker. Then the compensation work the user asked for on 2026-10-31 gets its own spec, design and tasks for approval, and the Verifier runs again over everything.
+- **Next step**: fix round 1 is done (T63 `482ad0d`, T64 `d2dae75`, T65 `724eb1b`, T66 `98f05b1`, T67 `552a112`; unit 1118, integration 342, e2e 245; M07, M12, W1, W2, W3b and W3c now fail a suite). Phase 19 (steps across modules, T68 to T75, design C16, CA-10) waits for the user's approval; then batch A (T68 to T71) and batch B (T72 to T75) run on Sonnet, and the Verifier runs again over everything.
 
 **Decisions of 2026-10-31 after the first validation**: ADR 0032 records T62's refinement and ADR 0023 becomes `Amended by 0032`; CA-03 AC7 is amended to allow `runInNewTransaction`; the survivors W1 and W2 get tests only. The five flows that write two modules in one shared transaction (withdraw, return, deliver and cancel between work-orders and inventory; register customer between customers and identity) move to compensation inside this feature, with a durable outbox per module and idempotent receiving steps. A compensation shows in the movement history as what happened (a consumption followed by its return).
 - **Blockers**: none
