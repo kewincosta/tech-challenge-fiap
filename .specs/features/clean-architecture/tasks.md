@@ -2175,12 +2175,12 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] An undo leaves every stock level as it was before the consumption and lists the returns in the item's movement history, linked to the work order (integration)
-- [ ] A second undo, and a second restore with the same operation id, change nothing (integration)
-- [ ] Use case specs on the in-memory repository cover the undo, its repeat and an operation that consumed nothing
-- [ ] The ledger gateway spec proves the operation id reaches each call and the undo reaches the new use case
-- [ ] Test count: unit and integration totals grow by the new cases
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] An undo leaves every stock level as it was before the consumption and lists the returns in the item's movement history, linked to the work order (integration)
+- [x] A second undo, and a second restore with the same operation id, change nothing (integration)
+- [x] Use case specs on the in-memory repository cover the undo, its repeat and an operation that consumed nothing
+- [x] The ledger gateway spec proves the operation id reaches each call and the undo reaches the new use case
+- [x] Test count: unit and integration totals grow by the new cases
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full

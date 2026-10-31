@@ -8,6 +8,7 @@ import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { InsufficientStockError } from '../../../domain/errors/insufficient-stock.error';
 import { InventoryItemNotFoundError } from '../../../domain/errors/inventory-item-not-found.error';
 import { InventoryItemKind } from '../../../domain/inventory-item-kind';
+import { StockMovementKind } from '../../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
@@ -18,6 +19,7 @@ const ITEM_A_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_B_ID = '22222222-2222-4222-8222-222222222222';
 const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 const WORK_ORDER_ID = '44444444-4444-4444-8444-444444444444';
+const OPERATION_ID = '66666666-6666-4666-8666-666666666666';
 
 function buildStockedItem(id: string, quantity: number, priceCents = 2500): InventoryItem {
   const item = InventoryItem.create({
@@ -64,6 +66,7 @@ describe('ConsumeStockBatchUseCase', () => {
         ],
         WORK_ORDER_ID,
         ACTOR_ID,
+        OPERATION_ID,
       ),
     );
 
@@ -85,6 +88,7 @@ describe('ConsumeStockBatchUseCase', () => {
         [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
         WORK_ORDER_ID,
         ACTOR_ID,
+        OPERATION_ID,
       ),
     );
 
@@ -107,6 +111,7 @@ describe('ConsumeStockBatchUseCase', () => {
           ],
           WORK_ORDER_ID,
           ACTOR_ID,
+          OPERATION_ID,
         ),
       ),
     ).rejects.toThrow(InsufficientStockError);
@@ -122,6 +127,7 @@ describe('ConsumeStockBatchUseCase', () => {
           [{ inventoryItemId: ITEM_B_ID, quantity: 1 }],
           WORK_ORDER_ID,
           ACTOR_ID,
+          OPERATION_ID,
         ),
       ),
     ).rejects.toThrow(InventoryItemNotFoundError);
@@ -141,11 +147,38 @@ describe('ConsumeStockBatchUseCase', () => {
           ],
           WORK_ORDER_ID,
           ACTOR_ID,
+          OPERATION_ID,
         ),
       ),
     ).rejects.toThrow(InsufficientStockError);
 
     const untouchedA = items.items.find((item) => item.id.value === ITEM_A_ID);
     expect(untouchedA?.quantityOnHand.units).toBe(5);
+  });
+
+  it('tags every consumption it writes with the operation id of the command', async () => {
+    const { useCase, items } = makeUseCase();
+    await items.save(buildStockedItem(ITEM_A_ID, 5));
+    await items.save(buildStockedItem(ITEM_B_ID, 5));
+
+    await useCase.execute(
+      new ConsumeStockBatchCommand(
+        [
+          { inventoryItemId: ITEM_A_ID, quantity: 2 },
+          { inventoryItemId: ITEM_B_ID, quantity: 1 },
+        ],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    const consumptions = items.ledgerEntries.filter(
+      (entry) => entry.kind === StockMovementKind.Consumption,
+    );
+    expect(consumptions.map((entry) => [entry.inventoryItemId, entry.operationId])).toEqual([
+      [ITEM_A_ID, OPERATION_ID],
+      [ITEM_B_ID, OPERATION_ID],
+    ]);
   });
 });

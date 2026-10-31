@@ -8,6 +8,12 @@ export interface PendingConsumptionDto {
   quantity: number;
 }
 
+/** A pending consumption of one stock operation, with the item and the work order it belongs to. */
+export interface OperationConsumptionDto extends PendingConsumptionDto {
+  inventoryItemId: string;
+  workOrderId: string;
+}
+
 export interface MovementClosureInput {
   workOrderId: string;
   actorUserId: string;
@@ -43,6 +49,15 @@ export interface InventoryItemRepository {
     inventoryItemId: InventoryItemId,
     workOrderId: string,
   ): Promise<PendingConsumptionDto[]>;
+  /**
+   * The `PENDING` consumptions that one stock operation wrote and that still hold units, newest
+   * first, each carrying what is left on it after the returns that point at it: the figure
+   * `findPendingConsumptions` reports. Empty when the operation consumed nothing, or when an earlier
+   * undo returned everything. This is what an undo of the operation gives back.
+   */
+  findPendingConsumptionsOfOperation(operationId: string): Promise<OperationConsumptionDto[]>;
+  /** Whether a `RETURN` that one stock operation wrote is already on the ledger. */
+  hasReturnOfOperation(operationId: string): Promise<boolean>;
   /**
    * Every `PENDING` consumption of that work order moves to `SETTLED`, regardless of whether a
    * later return already drained it - a fully returned consumption is still settled like any

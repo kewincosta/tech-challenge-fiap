@@ -12,6 +12,7 @@ import { DeactivateInventoryItemUseCase } from './application/commands/deactivat
 import { ReplenishStockUseCase } from './application/commands/replenish-stock/replenish-stock.use-case';
 import { RestoreStockBatchUseCase } from './application/commands/restore-stock-batch/restore-stock-batch.use-case';
 import { SettleStockMovementsUseCase } from './application/commands/settle-stock-movements/settle-stock-movements.use-case';
+import { UndoConsumptionUseCase } from './application/commands/undo-consumption/undo-consumption.use-case';
 import { UpdateInventoryItemUseCase } from './application/commands/update-inventory-item/update-inventory-item.use-case';
 import { WriteOffStockMovementsUseCase } from './application/commands/write-off-stock-movements/write-off-stock-movements.use-case';
 import { InventoryItemRepository } from './application/ports/inventory-item.repository';
@@ -126,6 +127,16 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
       inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
     },
     {
+      provide: UndoConsumptionUseCase,
+      useFactory: (
+        items: InventoryItemRepository,
+        idGenerator: IdGenerator,
+        clock: Clock,
+        events: DomainEventPublisher,
+      ) => new UndoConsumptionUseCase(items, idGenerator, clock, events),
+      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+    },
+    {
       provide: SettleStockMovementsUseCase,
       useFactory: (items: InventoryItemRepository, clock: Clock) =>
         new SettleStockMovementsUseCase(items, clock),
@@ -145,6 +156,7 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     GetInventoryItemUseCase,
     ConsumeStockBatchUseCase,
     RestoreStockBatchUseCase,
+    UndoConsumptionUseCase,
     SettleStockMovementsUseCase,
     WriteOffStockMovementsUseCase,
     InventoryItemKeyResolver,

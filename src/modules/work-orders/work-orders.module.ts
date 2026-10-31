@@ -215,13 +215,23 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
+        idGenerator: IdGenerator,
         clock: Clock,
         stockLedger: StockLedger,
         events: DomainEventPublisher,
-      ) => new WithdrawPartsUseCase(workOrders, transactionRunner, clock, stockLedger, events),
+      ) =>
+        new WithdrawPartsUseCase(
+          workOrders,
+          transactionRunner,
+          idGenerator,
+          clock,
+          stockLedger,
+          events,
+        ),
       inject: [
         WORK_ORDER_REPOSITORY,
         TRANSACTION_RUNNER,
+        ID_GENERATOR,
         CLOCK,
         STOCK_LEDGER,
         DOMAIN_EVENT_PUBLISHER,
@@ -232,13 +242,23 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
       useFactory: (
         workOrders: WorkOrderRepository,
         transactionRunner: TransactionRunner,
+        idGenerator: IdGenerator,
         clock: Clock,
         stockLedger: StockLedger,
         events: DomainEventPublisher,
-      ) => new ReturnPartsUseCase(workOrders, transactionRunner, clock, stockLedger, events),
+      ) =>
+        new ReturnPartsUseCase(
+          workOrders,
+          transactionRunner,
+          idGenerator,
+          clock,
+          stockLedger,
+          events,
+        ),
       inject: [
         WORK_ORDER_REPOSITORY,
         TRANSACTION_RUNNER,
+        ID_GENERATOR,
         CLOCK,
         STOCK_LEDGER,
         DOMAIN_EVENT_PUBLISHER,

@@ -38,4 +38,7 @@ export class StockMovementOrmEntity {
 
   @Column({ name: 'note', type: 'varchar', length: 255, nullable: true })
   note!: string | null;
+
+  @Column({ name: 'operation_id', type: 'uuid', nullable: true })
+  operationId!: string | null;
 }

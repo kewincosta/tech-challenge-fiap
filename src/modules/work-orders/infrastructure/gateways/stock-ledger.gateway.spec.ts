@@ -6,6 +6,8 @@ import {
   RestoreStockBatchUseCase,
   SettleStockMovementsCommand,
   SettleStockMovementsUseCase,
+  UndoConsumptionCommand,
+  UndoConsumptionUseCase,
   WriteOffStockMovementsCommand,
   WriteOffStockMovementsUseCase,
 } from '../../../inventory';
@@ -14,20 +16,22 @@ import { StockLedgerGateway } from './stock-ledger.gateway';
 const WORK_ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_ID = '77777777-7777-4777-8777-777777777777';
 const ACTOR_ID = '55555555-5555-4555-8555-555555555555';
+const OPERATION_ID = '88888888-8888-4888-8888-888888888888';
 const LINES = [{ inventoryItemId: ITEM_ID, quantity: 2 }];
 
 interface Received {
   consume: unknown[];
   restore: unknown[];
+  undo: unknown[];
   settle: unknown[];
   writeOff: unknown[];
 }
 
-// The gateway uses only `execute` of the inventory module's four stock use cases. Each stand-in
+// The gateway uses only `execute` of the inventory module's five stock use cases. Each stand-in
 // keeps what it was handed, so a gateway that sends a command to the wrong use case shows up as
 // state, and `failure` makes every one of them reject like inventory does when stock falls short.
 function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: Received } {
-  const received: Received = { consume: [], restore: [], settle: [], writeOff: [] };
+  const received: Received = { consume: [], restore: [], undo: [], settle: [], writeOff: [] };
   const standIn = (into: unknown[]) => ({
     execute: (command: unknown) => {
       into.push(command);
@@ -39,32 +43,49 @@ function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: 
     standIn(received.restore) as unknown as RestoreStockBatchUseCase,
     standIn(received.settle) as unknown as SettleStockMovementsUseCase,
     standIn(received.writeOff) as unknown as WriteOffStockMovementsUseCase,
+    standIn(received.undo) as unknown as UndoConsumptionUseCase,
   );
   return { gateway, received };
 }
 
 describe('StockLedgerGateway', () => {
-  it('should hand the lines, the work order and the actor of a withdrawal to the consume use case alone', async () => {
+  it('should hand the lines, the work order, the actor and the operation id of a withdrawal to the consume use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
-    await gateway.consume(WORK_ORDER_ID, LINES, ACTOR_ID);
+    await gateway.consume(WORK_ORDER_ID, LINES, ACTOR_ID, OPERATION_ID);
 
     expect(received).toStrictEqual({
-      consume: [new ConsumeStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID)],
+      consume: [new ConsumeStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID, OPERATION_ID)],
       restore: [],
+      undo: [],
       settle: [],
       writeOff: [],
     });
   });
 
-  it('should hand the lines, the work order and the actor of a return to the restore use case alone', async () => {
+  it('should hand the lines, the work order, the actor and the operation id of a return to the restore use case alone', async () => {
     const { gateway, received } = gatewayOver();
 
-    await gateway.restore(WORK_ORDER_ID, LINES, ACTOR_ID);
+    await gateway.restore(WORK_ORDER_ID, LINES, ACTOR_ID, OPERATION_ID);
 
     expect(received).toStrictEqual({
       consume: [],
-      restore: [new RestoreStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID)],
+      restore: [new RestoreStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID, OPERATION_ID)],
+      undo: [],
+      settle: [],
+      writeOff: [],
+    });
+  });
+
+  it('should hand the operation id and the actor of an undo to the undo use case alone', async () => {
+    const { gateway, received } = gatewayOver();
+
+    await gateway.undoConsumption(OPERATION_ID, ACTOR_ID);
+
+    expect(received).toStrictEqual({
+      consume: [],
+      restore: [],
+      undo: [new UndoConsumptionCommand(OPERATION_ID, ACTOR_ID)],
       settle: [],
       writeOff: [],
     });
@@ -78,6 +99,7 @@ describe('StockLedgerGateway', () => {
     expect(received).toStrictEqual({
       consume: [],
       restore: [],
+      undo: [],
       settle: [new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)],
       writeOff: [],
     });
@@ -91,14 +113,27 @@ describe('StockLedgerGateway', () => {
     expect(received).toStrictEqual({
       consume: [],
       restore: [],
+      undo: [],
       settle: [],
       writeOff: [new WriteOffStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)],
     });
   });
 
   it.each([
-    ['consume', (gateway: StockLedgerGateway) => gateway.consume(WORK_ORDER_ID, LINES, ACTOR_ID)],
-    ['restore', (gateway: StockLedgerGateway) => gateway.restore(WORK_ORDER_ID, LINES, ACTOR_ID)],
+    [
+      'consume',
+      (gateway: StockLedgerGateway) =>
+        gateway.consume(WORK_ORDER_ID, LINES, ACTOR_ID, OPERATION_ID),
+    ],
+    [
+      'restore',
+      (gateway: StockLedgerGateway) =>
+        gateway.restore(WORK_ORDER_ID, LINES, ACTOR_ID, OPERATION_ID),
+    ],
+    [
+      'undoConsumption',
+      (gateway: StockLedgerGateway) => gateway.undoConsumption(OPERATION_ID, ACTOR_ID),
+    ],
     ['settle', (gateway: StockLedgerGateway) => gateway.settle(WORK_ORDER_ID, ACTOR_ID)],
     ['writeOff', (gateway: StockLedgerGateway) => gateway.writeOff(WORK_ORDER_ID, ACTOR_ID)],
   ])('should let the error of the inventory module through on %s', async (_operation, call) => {

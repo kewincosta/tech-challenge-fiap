@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
 import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
@@ -30,6 +31,8 @@ const NUMBER = 'A1B090-2026';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 const WITHDRAWN_ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-666666666666');
 const WITHDRAWN_INVENTORY_ITEM_ID = '77777777-7777-4777-8777-777777777777';
+// The first id `FakeIdGenerator` hands out, which the use case draws as the return's operation id.
+const OPERATION_ID = '00000000-0000-4000-8000-000000000001';
 
 function withdrawnPart(withdrawnQuantity = 2): WorkOrderPartItem {
   return WorkOrderPartItem.restore({
@@ -90,7 +93,14 @@ function makeUseCase(refusal?: Error) {
   }
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const useCase = new ReturnPartsUseCase(workOrders, transactionRunner, clock, stockLedger, events);
+  const useCase = new ReturnPartsUseCase(
+    workOrders,
+    transactionRunner,
+    new FakeIdGenerator(),
+    clock,
+    stockLedger,
+    events,
+  );
   return { useCase, workOrders, transactionRunner, stockLedger, clock, events };
 }
 
@@ -168,6 +178,7 @@ describe('ReturnPartsUseCase', () => {
         workOrderId: updated.id.value,
         lines: [{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }],
         actorUserId: MECHANIC_ID,
+        operationId: OPERATION_ID,
         insideTransaction: true,
       },
     ]);

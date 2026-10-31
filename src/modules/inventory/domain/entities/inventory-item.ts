@@ -71,6 +71,8 @@ interface ConsumeStockInput {
   workOrderId: string;
   actorUserId: string;
   movementId: StockMovementId;
+  /** The stock operation the movement belongs to, kept on the ledger to apply it once. */
+  operationId?: string;
   now: Date;
 }
 
@@ -80,6 +82,7 @@ interface RestoreStockInput {
   actorUserId: string;
   movementId: StockMovementId;
   undoesMovementId: string;
+  operationId?: string;
   now: Date;
 }
 
@@ -204,6 +207,7 @@ export class InventoryItem extends AggregateRoot {
       unitPrice: this.props.unitPrice,
       actorUserId: input.actorUserId,
       workOrderId: input.workOrderId,
+      operationId: input.operationId,
       now: input.now,
     });
     const quantityOnHand = this.props.quantityOnHand.minus(input.quantity);
@@ -226,6 +230,7 @@ export class InventoryItem extends AggregateRoot {
       actorUserId: input.actorUserId,
       workOrderId: input.workOrderId,
       undoesMovementId: input.undoesMovementId,
+      operationId: input.operationId,
       now: input.now,
     });
     this.props.quantityOnHand = this.props.quantityOnHand.plus(input.quantity);

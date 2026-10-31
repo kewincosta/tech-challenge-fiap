@@ -40,6 +40,7 @@ export class ConsumeStockBatchUseCase {
         workOrderId: command.workOrderId,
         actorUserId: command.actorUserId,
         movementId,
+        operationId: command.operationId,
         now,
       });
       results.push({ inventoryItemId: item.id.value, movementId: movementId.value });

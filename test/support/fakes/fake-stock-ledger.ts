@@ -7,6 +7,15 @@ export interface RecordedStockMovement {
   workOrderId: string;
   lines: StockLine[];
   actorUserId: string;
+  /** The operation id the call carried. */
+  operationId: string;
+  /** Whether the transaction was open when the call arrived. */
+  insideTransaction: boolean;
+}
+
+export interface RecordedUndo {
+  operationId: string;
+  actorUserId: string;
   /** Whether the transaction was open when the call arrived. */
   insideTransaction: boolean;
 }
@@ -24,6 +33,7 @@ export interface RecordedWorkOrderClosing {
 export class FakeStockLedger implements StockLedger {
   readonly consumed: RecordedStockMovement[] = [];
   readonly restored: RecordedStockMovement[] = [];
+  readonly undone: RecordedUndo[] = [];
   readonly settled: RecordedWorkOrderClosing[] = [];
   readonly writtenOff: RecordedWorkOrderClosing[] = [];
   private refusal: Error | null = null;
@@ -37,25 +47,43 @@ export class FakeStockLedger implements StockLedger {
     return this;
   }
 
-  async consume(workOrderId: string, lines: StockLine[], actorUserId: string): Promise<void> {
+  async consume(
+    workOrderId: string,
+    lines: StockLine[],
+    actorUserId: string,
+    operationId: string,
+  ): Promise<void> {
     this.throwIfRefusing();
     this.consumed.push({
       workOrderId,
       lines,
       actorUserId,
+      operationId,
       insideTransaction: this.insideTransaction(),
     });
     return Promise.resolve();
   }
 
-  async restore(workOrderId: string, lines: StockLine[], actorUserId: string): Promise<void> {
+  async restore(
+    workOrderId: string,
+    lines: StockLine[],
+    actorUserId: string,
+    operationId: string,
+  ): Promise<void> {
     this.throwIfRefusing();
     this.restored.push({
       workOrderId,
       lines,
       actorUserId,
+      operationId,
       insideTransaction: this.insideTransaction(),
     });
+    return Promise.resolve();
+  }
+
+  async undoConsumption(operationId: string, actorUserId: string): Promise<void> {
+    this.throwIfRefusing();
+    this.undone.push({ operationId, actorUserId, insideTransaction: this.insideTransaction() });
     return Promise.resolve();
   }
 

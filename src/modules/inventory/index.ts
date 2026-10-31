@@ -2,6 +2,8 @@ export { ConsumeStockBatchCommand } from './application/commands/consume-stock-b
 export { ConsumeStockBatchUseCase } from './application/commands/consume-stock-batch/consume-stock-batch.use-case';
 export { RestoreStockBatchCommand } from './application/commands/restore-stock-batch/restore-stock-batch.command';
 export { RestoreStockBatchUseCase } from './application/commands/restore-stock-batch/restore-stock-batch.use-case';
+export { UndoConsumptionCommand } from './application/commands/undo-consumption/undo-consumption.command';
+export { UndoConsumptionUseCase } from './application/commands/undo-consumption/undo-consumption.use-case';
 export { SettleStockMovementsCommand } from './application/commands/settle-stock-movements/settle-stock-movements.command';
 export { SettleStockMovementsUseCase } from './application/commands/settle-stock-movements/settle-stock-movements.use-case';
 export { WriteOffStockMovementsCommand } from './application/commands/write-off-stock-movements/write-off-stock-movements.command';

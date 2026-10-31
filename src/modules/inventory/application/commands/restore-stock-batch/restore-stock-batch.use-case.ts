@@ -29,6 +29,11 @@ export class RestoreStockBatchUseCase {
   async execute(command: RestoreStockBatchCommand): Promise<void> {
     const ids = command.lines.map((line) => InventoryItemId.create(line.inventoryItemId));
     const loaded = await this.items.findAllByIdsForUpdate(ids);
+    // A repeat of a restore that was applied changes nothing. The check follows the lock, so a
+    // concurrent run of the same operation has committed by the time it is made.
+    if (await this.items.hasReturnOfOperation(command.operationId)) {
+      return;
+    }
     const now = this.clock.now();
 
     for (const line of command.lines) {
@@ -49,6 +54,7 @@ export class RestoreStockBatchUseCase {
           actorUserId: command.actorUserId,
           movementId: StockMovementId.create(this.idGenerator.generate()),
           undoesMovementId: consumption.movementId,
+          operationId: command.operationId,
           now,
         });
         remaining -= draw;

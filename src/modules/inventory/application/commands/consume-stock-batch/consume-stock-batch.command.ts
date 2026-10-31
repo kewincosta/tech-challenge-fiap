@@ -8,6 +8,8 @@ export class ConsumeStockBatchCommand {
     readonly lines: ConsumeStockBatchLine[],
     readonly workOrderId: string,
     readonly actorUserId: string,
+    /** Tags every movement the command writes, so an undo can find them. */
+    readonly operationId: string,
   ) {}
 }
 

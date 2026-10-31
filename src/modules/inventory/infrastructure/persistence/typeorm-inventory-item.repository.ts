@@ -9,6 +9,7 @@ import { UserKeyResolver } from '../../../identity';
 import {
   InventoryItemRepository,
   MovementClosureInput,
+  OperationConsumptionDto,
   PendingConsumptionDto,
 } from '../../application/ports/inventory-item.repository';
 import { InventoryItem } from '../../domain/entities/inventory-item';
@@ -120,6 +121,61 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
       [inventoryItemId.value, workOrderInternalId],
     );
     return rows.map((row) => ({ movementId: row.external_id, quantity: row.remaining }));
+  }
+
+  /**
+   * What an undo gives back: the operation's pending consumptions with units left, newest first, on
+   * the same net-remaining figure as `findPendingConsumptions` and the write-off. The consumptions
+   * carry the work order's internal key, so the external id comes from its owner in one batch.
+   */
+  async findPendingConsumptionsOfOperation(
+    operationId: string,
+  ): Promise<OperationConsumptionDto[]> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows: Array<{
+      external_id: string;
+      item_external_id: string;
+      work_order_id: string;
+      remaining: number;
+    }> = await manager.query(
+      `SELECT sm.external_id, ii.external_id AS item_external_id, sm.work_order_id,
+              ${NET_REMAINING_EXPR} AS remaining
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         ${RETURNED_TOTALS_JOIN}
+        WHERE sm.operation_id = $1
+          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${NET_REMAINING_EXPR} > 0
+        ORDER BY sm.occurred_at DESC, sm.id DESC`,
+      [operationId],
+    );
+    if (rows.length === 0) {
+      return [];
+    }
+    const workOrders = await this.workOrderReads.externalIdsOf([
+      ...new Set(rows.map((row) => row.work_order_id)),
+    ]);
+    return rows.map((row) => {
+      const workOrderId = workOrders.get(row.work_order_id);
+      if (workOrderId === undefined) {
+        throw new Error(`work_orders row for internal key ${row.work_order_id} not found`);
+      }
+      return {
+        movementId: row.external_id,
+        inventoryItemId: row.item_external_id,
+        workOrderId,
+        quantity: row.remaining,
+      };
+    });
+  }
+
+  async hasReturnOfOperation(operationId: string): Promise<boolean> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows: unknown[] = await manager.query(
+      `SELECT 1 FROM stock_movements WHERE operation_id = $1 AND kind = 'RETURN' LIMIT 1`,
+      [operationId],
+    );
+    return rows.length > 0;
   }
 
   /** Rule 23: every `PENDING` consumption of the work order, whatever its remaining balance,

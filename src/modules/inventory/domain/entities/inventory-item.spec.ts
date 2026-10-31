@@ -231,6 +231,7 @@ describe('InventoryItem', () => {
 });
 
 const WORK_ORDER_ID = '44444444-4444-4444-8444-444444444444';
+const OPERATION_ID = '55555555-5555-4555-8555-555555555555';
 
 function buildStockedItem(unitPriceCents = 2500): InventoryItem {
   const item = InventoryItem.create({
@@ -432,5 +433,34 @@ describe('InventoryItem.consume and restoreUnits', () => {
 
     expect(item.quantityOnHand.units).toBe(10);
     expect(item.newMovements).toHaveLength(3);
+  });
+
+  it('should tag a consumption and a return with the operation id they were given, and the inbound movement with none', () => {
+    const item = buildStockedItem();
+    item.consume({
+      quantity: 3,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('2'),
+      operationId: OPERATION_ID,
+      now: NOW,
+    });
+    const consumptionId = item.newMovements[1].id.value;
+
+    item.restoreUnits({
+      quantity: 1,
+      workOrderId: WORK_ORDER_ID,
+      actorUserId: ACTOR_ID,
+      movementId: movementId('3'),
+      undoesMovementId: consumptionId,
+      operationId: OPERATION_ID,
+      now: NOW,
+    });
+
+    expect(item.newMovements.map((movement) => [movement.kind, movement.operationId])).toEqual([
+      [StockMovementKind.Inbound, null],
+      [StockMovementKind.Consumption, OPERATION_ID],
+      [StockMovementKind.Return, OPERATION_ID],
+    ]);
   });
 });

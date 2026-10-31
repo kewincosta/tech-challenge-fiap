@@ -130,4 +130,40 @@ describe('StockMovement', () => {
     expect(movement.status).toBe(StockMovementStatus.Pending);
     expect(movement.workOrderId).toBe(props.workOrderId);
   });
+
+  it('should carry the operation id of a consumption and of a return, and none when it is not given', () => {
+    const operationId = '44444444-4444-4444-8444-444444444444';
+    const workOrderId = '33333333-3333-4333-8333-333333333333';
+    const tagged = StockMovement.consume({
+      id: MOVEMENT_ID,
+      quantity: 2,
+      unitPrice: Money.fromCents(1000),
+      actorUserId: ACTOR_ID,
+      workOrderId,
+      operationId,
+      now: NOW,
+    });
+    const returned = StockMovement.undo({
+      id: MOVEMENT_ID,
+      quantity: 1,
+      unitPrice: Money.fromCents(1000),
+      actorUserId: ACTOR_ID,
+      workOrderId,
+      undoesMovementId: '55555555-5555-4555-8555-555555555555',
+      operationId,
+      now: NOW,
+    });
+    const untagged = StockMovement.consume({
+      id: MOVEMENT_ID,
+      quantity: 2,
+      unitPrice: Money.fromCents(1000),
+      actorUserId: ACTOR_ID,
+      workOrderId,
+      now: NOW,
+    });
+
+    expect(tagged.operationId).toBe(operationId);
+    expect(returned.operationId).toBe(operationId);
+    expect(untagged.operationId).toBeNull();
+  });
 });

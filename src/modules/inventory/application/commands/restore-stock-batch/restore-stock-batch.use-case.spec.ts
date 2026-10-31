@@ -18,6 +18,7 @@ const ITEM_A_ID = '11111111-1111-4111-8111-111111111111';
 const ITEM_B_ID = '22222222-2222-4222-8222-222222222222';
 const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 const WORK_ORDER_ID = '44444444-4444-4444-8444-444444444444';
+const OPERATION_ID = '66666666-6666-4666-8666-666666666666';
 
 function buildItem(id: string): InventoryItem {
   return InventoryItem.create({
@@ -81,6 +82,7 @@ describe('RestoreStockBatchUseCase', () => {
         [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
         WORK_ORDER_ID,
         ACTOR_ID,
+        OPERATION_ID,
       ),
     );
 
@@ -102,6 +104,7 @@ describe('RestoreStockBatchUseCase', () => {
         [{ inventoryItemId: ITEM_A_ID, quantity: 4 }],
         WORK_ORDER_ID,
         ACTOR_ID,
+        OPERATION_ID,
       ),
     );
 
@@ -134,6 +137,7 @@ describe('RestoreStockBatchUseCase', () => {
         [{ inventoryItemId: ITEM_A_ID, quantity: 2 }],
         WORK_ORDER_ID,
         ACTOR_ID,
+        OPERATION_ID,
       ),
     );
 
@@ -154,6 +158,7 @@ describe('RestoreStockBatchUseCase', () => {
           [{ inventoryItemId: ITEM_B_ID, quantity: 1 }],
           WORK_ORDER_ID,
           ACTOR_ID,
+          OPERATION_ID,
         ),
       ),
     ).rejects.toThrow(InventoryItemNotFoundError);
@@ -172,11 +177,69 @@ describe('RestoreStockBatchUseCase', () => {
           ],
           WORK_ORDER_ID,
           ACTOR_ID,
+          OPERATION_ID,
         ),
       ),
     ).rejects.toThrow(InventoryItemNotFoundError);
 
     const untouchedA = items.items.find((item) => item.id.value === ITEM_A_ID);
     expect(untouchedA?.quantityOnHand.units).toBe(8);
+  });
+
+  it('tags every return it writes with the operation id of the command', async () => {
+    const { useCase, items } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2, 3]);
+
+    await useCase.execute(
+      new RestoreStockBatchCommand(
+        [{ inventoryItemId: ITEM_A_ID, quantity: 4 }],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    const returns = items.ledgerEntries.filter((entry) => entry.kind === StockMovementKind.Return);
+    expect(returns.map((entry) => entry.operationId)).toEqual([OPERATION_ID, OPERATION_ID]);
+  });
+
+  it('changes nothing when it is repeated with the operation id of a restore already applied', async () => {
+    const { useCase, items } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2]);
+    const command = new RestoreStockBatchCommand(
+      [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
+      WORK_ORDER_ID,
+      ACTOR_ID,
+      OPERATION_ID,
+    );
+    await useCase.execute(command);
+    const ledgerAfterFirst = items.ledgerEntries;
+
+    await useCase.execute(command);
+
+    expect(items.items.find((item) => item.id.value === ITEM_A_ID)?.quantityOnHand.units).toBe(9);
+    expect(items.ledgerEntries).toEqual(ledgerAfterFirst);
+  });
+
+  it('applies a second restore that carries another operation id', async () => {
+    const { useCase, items } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2]);
+    const restoreOne = (operationId: string) =>
+      useCase.execute(
+        new RestoreStockBatchCommand(
+          [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
+          WORK_ORDER_ID,
+          ACTOR_ID,
+          operationId,
+        ),
+      );
+
+    await restoreOne(OPERATION_ID);
+    await restoreOne('77777777-7777-4777-8777-777777777777');
+
+    expect(items.items.find((item) => item.id.value === ITEM_A_ID)?.quantityOnHand.units).toBe(10);
+    expect(
+      items.ledgerEntries.filter((entry) => entry.kind === StockMovementKind.Return),
+    ).toHaveLength(2);
   });
 });

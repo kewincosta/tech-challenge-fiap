@@ -6,6 +6,8 @@ import {
   RestoreStockBatchUseCase,
   SettleStockMovementsCommand,
   SettleStockMovementsUseCase,
+  UndoConsumptionCommand,
+  UndoConsumptionUseCase,
   WriteOffStockMovementsCommand,
   WriteOffStockMovementsUseCase,
 } from '../../../inventory';
@@ -23,14 +25,33 @@ export class StockLedgerGateway implements StockLedger {
     private readonly restoreStock: RestoreStockBatchUseCase,
     private readonly settleMovements: SettleStockMovementsUseCase,
     private readonly writeOffMovements: WriteOffStockMovementsUseCase,
+    private readonly undoStock: UndoConsumptionUseCase,
   ) {}
 
-  async consume(workOrderId: string, lines: StockLine[], actorUserId: string): Promise<void> {
-    await this.consumeStock.execute(new ConsumeStockBatchCommand(lines, workOrderId, actorUserId));
+  async consume(
+    workOrderId: string,
+    lines: StockLine[],
+    actorUserId: string,
+    operationId: string,
+  ): Promise<void> {
+    await this.consumeStock.execute(
+      new ConsumeStockBatchCommand(lines, workOrderId, actorUserId, operationId),
+    );
   }
 
-  async restore(workOrderId: string, lines: StockLine[], actorUserId: string): Promise<void> {
-    await this.restoreStock.execute(new RestoreStockBatchCommand(lines, workOrderId, actorUserId));
+  async restore(
+    workOrderId: string,
+    lines: StockLine[],
+    actorUserId: string,
+    operationId: string,
+  ): Promise<void> {
+    await this.restoreStock.execute(
+      new RestoreStockBatchCommand(lines, workOrderId, actorUserId, operationId),
+    );
+  }
+
+  async undoConsumption(operationId: string, actorUserId: string): Promise<void> {
+    await this.undoStock.execute(new UndoConsumptionCommand(operationId, actorUserId));
   }
 
   async settle(workOrderId: string, actorUserId: string): Promise<void> {

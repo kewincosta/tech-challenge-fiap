@@ -3,6 +3,7 @@ import { InventoryItemStatus } from '../../../src/modules/inventory/domain/inven
 import {
   InventoryItemRepository,
   MovementClosureInput,
+  OperationConsumptionDto,
   PendingConsumptionDto,
 } from '../../../src/modules/inventory/application/ports/inventory-item.repository';
 import { StockMovementKind } from '../../../src/modules/inventory/domain/stock-movement-kind';
@@ -10,7 +11,7 @@ import { StockMovementStatus } from '../../../src/modules/inventory/domain/stock
 import { InventoryItemId } from '../../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../../src/modules/inventory/domain/value-objects/sku';
 
-interface LedgerEntry {
+export interface LedgerEntry {
   inventoryItemId: string;
   workOrderId: string | null;
   movementId: string;
@@ -18,6 +19,9 @@ interface LedgerEntry {
   kind: StockMovementKind;
   status: StockMovementStatus | null;
   undoesMovementId: string | null;
+  operationId: string | null;
+  /** The actor of the movement, so a spec can tell who a return is attributed to. */
+  actorUserId: string;
 }
 
 export class InMemoryInventoryItemRepository implements InventoryItemRepository {
@@ -29,6 +33,11 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
    * the same role `stock_movements` plays for the real repository.
    */
   private ledger: LedgerEntry[] = [];
+  /** Every movement saved so far, in the order it was written: the ledger the specs read. */
+  get ledgerEntries(): readonly LedgerEntry[] {
+    return this.ledger.map((entry) => ({ ...entry }));
+  }
+
   /** What each settlement and each write-off was asked to do, in call order. */
   readonly settlements: MovementClosureInput[] = [];
   readonly writeOffs: MovementClosureInput[] = [];
@@ -55,6 +64,8 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         kind: movement.kind,
         status: movement.status,
         undoesMovementId: movement.undoesMovementId,
+        operationId: movement.operationId,
+        actorUserId: movement.actorUserId,
       });
     }
     return Promise.resolve();
@@ -119,6 +130,51 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         .filter((entry) => entry.quantity > 0)
         .reverse(),
     );
+  }
+
+  /** Newest first, net of the returns that point at each consumption the operation wrote. */
+  async findPendingConsumptionsOfOperation(
+    operationId: string,
+  ): Promise<OperationConsumptionDto[]> {
+    const returnedByConsumption = this.returnedTotals();
+    return Promise.resolve(
+      this.ledger
+        .filter(
+          (entry) =>
+            entry.operationId === operationId &&
+            entry.kind === StockMovementKind.Consumption &&
+            entry.status === StockMovementStatus.Pending,
+        )
+        .map((entry) => ({
+          movementId: entry.movementId,
+          inventoryItemId: entry.inventoryItemId,
+          workOrderId: entry.workOrderId!,
+          quantity: entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0),
+        }))
+        .filter((entry) => entry.quantity > 0)
+        .reverse(),
+    );
+  }
+
+  async hasReturnOfOperation(operationId: string): Promise<boolean> {
+    return Promise.resolve(
+      this.ledger.some(
+        (entry) => entry.kind === StockMovementKind.Return && entry.operationId === operationId,
+      ),
+    );
+  }
+
+  private returnedTotals(): Map<string, number> {
+    const returnedByConsumption = new Map<string, number>();
+    for (const entry of this.ledger) {
+      if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {
+        returnedByConsumption.set(
+          entry.undoesMovementId,
+          (returnedByConsumption.get(entry.undoesMovementId) ?? 0) + entry.quantity,
+        );
+      }
+    }
+    return returnedByConsumption;
   }
 
   /** Every ledger entry is mutated in place, matching what a real UPDATE does to the row it

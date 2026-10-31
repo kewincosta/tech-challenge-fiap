@@ -1,5 +1,6 @@
 import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
+import { IdGenerator } from '../../../../../shared/application/ports/id-generator.port';
 import { TransactionRunner } from '../../../../../shared/application/ports/transaction-runner.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { StockLedger } from '../../ports/stock-ledger.port';
@@ -19,6 +20,7 @@ export class WithdrawPartsUseCase {
   constructor(
     private readonly workOrders: WorkOrderRepository,
     private readonly transactionRunner: TransactionRunner,
+    private readonly idGenerator: IdGenerator,
     private readonly clock: Clock,
     private readonly stockLedger: StockLedger,
     private readonly events: DomainEventPublisher,
@@ -41,6 +43,7 @@ export class WithdrawPartsUseCase {
       now: this.clock.now(),
     });
 
+    const operationId = this.idGenerator.generate();
     await this.transactionRunner.run(async () => {
       await this.workOrders.save(workOrder);
       await this.stockLedger.consume(
@@ -50,6 +53,7 @@ export class WithdrawPartsUseCase {
           quantity: line.quantity,
         })),
         command.actorUserId,
+        operationId,
       );
     });
     this.events.publish(workOrder.pullDomainEvents());
