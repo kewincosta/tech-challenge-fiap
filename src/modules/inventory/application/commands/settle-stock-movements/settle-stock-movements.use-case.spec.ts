@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
@@ -56,7 +57,11 @@ describe('SettleStockMovementsUseCase', () => {
   it("settles the work order's pending consumptions and no other work order's, with the actor and the clock's moment", async () => {
     const items = new InMemoryInventoryItemRepository();
     await seedConsumptions(items);
-    const useCase = new SettleStockMovementsUseCase(items, new FakeClock(NOW));
+    const useCase = new SettleStockMovementsUseCase(
+      items,
+      new FakeTransactionRunner(),
+      new FakeClock(NOW),
+    );
 
     await useCase.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID));
 
@@ -72,7 +77,11 @@ describe('SettleStockMovementsUseCase', () => {
   it('settles nothing and does not throw for a work order with no pending consumption', async () => {
     const items = new InMemoryInventoryItemRepository();
     await seedConsumptions(items);
-    const useCase = new SettleStockMovementsUseCase(items, new FakeClock(NOW));
+    const useCase = new SettleStockMovementsUseCase(
+      items,
+      new FakeTransactionRunner(),
+      new FakeClock(NOW),
+    );
 
     await expect(
       useCase.execute(
@@ -90,10 +99,31 @@ describe('SettleStockMovementsUseCase', () => {
         return Promise.reject(new Error('boom'));
       }
     }
-    const useCase = new SettleStockMovementsUseCase(new FailingItems(), new FakeClock());
+    const useCase = new SettleStockMovementsUseCase(
+      new FailingItems(),
+      new FakeTransactionRunner(),
+      new FakeClock(),
+    );
 
     await expect(
       useCase.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)),
     ).rejects.toThrow('boom');
+  });
+
+  it('runs the repository call inside a transaction of its own', async () => {
+    const items = new InMemoryInventoryItemRepository();
+    await seedConsumptions(items);
+    const transactionRunner = new FakeTransactionRunner();
+    const useCase = new SettleStockMovementsUseCase(
+      transactionRunner.watch('items', items),
+      transactionRunner,
+      new FakeClock(NOW),
+    );
+
+    await useCase.execute(new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID));
+
+    expect(transactionRunner.runCalls).toBe(1);
+    expect(transactionRunner.calls).toEqual(['items.settleWorkOrderConsumptions']);
+    expect(transactionRunner.callsInside).toEqual(['items.settleWorkOrderConsumptions']);
   });
 });

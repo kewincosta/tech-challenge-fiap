@@ -3,12 +3,13 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { TransactionRunner } from '../../application/ports/transaction-runner.port';
 
-// A module reaches another through a port that carries identifiers and DTOs only (AD-012), so a
-// write that spans two modules, such as a withdrawal that saves the work order and then moves
-// stock through the stock ledger port, cannot hand a manager across that port. AsyncLocalStorage
-// carries the active transaction's EntityManager through those calls instead, so a repository or
-// a key resolver in another module joins the same Postgres transaction without either module
-// knowing about the other's persistence details.
+// A transaction writes the tables of one module only (AD-017). A use case reaches its repositories
+// through ports that carry no database handle, so it cannot pass the manager of its transaction
+// down as an argument. AsyncLocalStorage carries the active transaction's EntityManager through
+// those calls instead: the module's repositories join the transaction, and so do the key resolvers
+// and the reads of other modules that run inside it, which see the rows written earlier and hold
+// no second connection (ADR 0032). Another module's use case that writes opens a transaction of
+// its own.
 const transactionContext = new AsyncLocalStorage<EntityManager>();
 
 /**

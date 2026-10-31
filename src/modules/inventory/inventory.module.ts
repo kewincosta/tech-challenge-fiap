@@ -133,11 +133,18 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
       provide: RestoreStockBatchUseCase,
       useFactory: (
         items: InventoryItemRepository,
+        transactionRunner: TransactionRunner,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new RestoreStockBatchUseCase(items, idGenerator, clock, events),
-      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+      ) => new RestoreStockBatchUseCase(items, transactionRunner, idGenerator, clock, events),
+      inject: [
+        INVENTORY_ITEM_REPOSITORY,
+        TRANSACTION_RUNNER,
+        ID_GENERATOR,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
     },
     {
       provide: UndoConsumptionUseCase,
@@ -158,15 +165,21 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     },
     {
       provide: SettleStockMovementsUseCase,
-      useFactory: (items: InventoryItemRepository, clock: Clock) =>
-        new SettleStockMovementsUseCase(items, clock),
-      inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
+      useFactory: (
+        items: InventoryItemRepository,
+        transactionRunner: TransactionRunner,
+        clock: Clock,
+      ) => new SettleStockMovementsUseCase(items, transactionRunner, clock),
+      inject: [INVENTORY_ITEM_REPOSITORY, TRANSACTION_RUNNER, CLOCK],
     },
     {
       provide: WriteOffStockMovementsUseCase,
-      useFactory: (items: InventoryItemRepository, clock: Clock) =>
-        new WriteOffStockMovementsUseCase(items, clock),
-      inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
+      useFactory: (
+        items: InventoryItemRepository,
+        transactionRunner: TransactionRunner,
+        clock: Clock,
+      ) => new WriteOffStockMovementsUseCase(items, transactionRunner, clock),
+      inject: [INVENTORY_ITEM_REPOSITORY, TRANSACTION_RUNNER, CLOCK],
     },
     { provide: INVENTORY_ITEM_REPOSITORY, useClass: TypeOrmInventoryItemRepository },
     { provide: INVENTORY_QUERY_PORT, useClass: TypeOrmInventoryQueryAdapter },

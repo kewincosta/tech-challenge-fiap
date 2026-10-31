@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
@@ -33,13 +34,15 @@ function buildItem(id: string): InventoryItem {
 
 function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
+  const transactionRunner = new FakeTransactionRunner();
   const useCase = new RestoreStockBatchUseCase(
-    items,
+    transactionRunner.watch('items', items),
+    transactionRunner,
     new FakeIdGenerator(),
     new FakeClock(),
     new RecordingDomainEventPublisher(),
   );
-  return { useCase, items };
+  return { useCase, items, transactionRunner };
 }
 
 async function replenishAndConsume(
@@ -241,5 +244,28 @@ describe('RestoreStockBatchUseCase', () => {
     expect(
       items.ledgerEntries.filter((entry) => entry.kind === StockMovementKind.Return),
     ).toHaveLength(2);
+  });
+
+  it('opens a transaction of its own and locks the items, checks the operation and saves them inside it', async () => {
+    const { useCase, items, transactionRunner } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2]);
+
+    await useCase.execute(
+      new RestoreStockBatchCommand(
+        [{ inventoryItemId: ITEM_A_ID, quantity: 1 }],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    expect(transactionRunner.runCalls).toBe(1);
+    expect(transactionRunner.calls).toEqual([
+      'items.findAllByIdsForUpdate',
+      'items.hasReturnOfOperation',
+      'items.findPendingConsumptions',
+      'items.save',
+    ]);
+    expect(transactionRunner.callsInside).toEqual(transactionRunner.calls);
   });
 });

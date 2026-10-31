@@ -65,7 +65,8 @@ export interface InventoryItemRepository {
    * later return already drained it - a fully returned consumption is still settled like any
    * other, since delivery closes the book on every movement the work order caused (rule 23,
    * spec.md's edge case). Never touches `quantity_on_hand`: the units already left at withdrawal.
-   * Returns how many it moved.
+   * Returns how many it moved. Must run in one transaction, because it writes more than one
+   * statement.
    */
   settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
   /**
@@ -73,7 +74,9 @@ export interface InventoryItemRepository {
    * `WRITTEN_OFF`, the transition row carrying the net lost quantity - `quantity` minus every
    * `RETURN` pointing at it, the same expression `findPendingConsumptions` uses (rule 24). A
    * consumption already drained to zero by prior returns is skipped: nothing was lost from it.
-   * Never touches `quantity_on_hand`. Returns how many it wrote off.
+   * Only the rows still pending are updated and only those get a transition, so two runs that read
+   * the same consumptions record each transition once. Never touches `quantity_on_hand`. Returns
+   * how many it wrote off. Must run in one transaction, because it writes more than one statement.
    */
   writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
 }

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakePendingStockSteps } from '../../../../../../test/support/fakes/fake-pending-stock-steps';
 import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock-ledger';
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { RecordingStockStepLog } from '../../../../../../test/support/fakes/recording-stock-step-log';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
@@ -20,6 +22,9 @@ import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
+import { OutboxSettings } from '../../outbox-settings';
+import { StockStepKind } from '../../ports/pending-stock-steps.port';
+import { StockStepApplier } from '../../services/stock-step-applier';
 import { ReturnPartsCommand } from './return-parts.command';
 import { ReturnPartsUseCase } from './return-parts.use-case';
 
@@ -84,6 +89,10 @@ function restoreInExecution(status: WorkOrderStatus = WorkOrderStatus.InExecutio
   });
 }
 
+// The use case reaches the work order repository, the outbox and the event publisher through
+// `transactionRunner.watch`, which records the calls in order and tells which of them ran while the
+// transaction was open. The applier works on the plain fakes, so the ledger call it makes shows
+// whether it ran inside the transaction.
 function makeUseCase(refusal?: Error) {
   const transactionRunner = new FakeTransactionRunner();
   const workOrders = new InMemoryWorkOrderRepository(() => transactionRunner.active);
@@ -92,21 +101,37 @@ function makeUseCase(refusal?: Error) {
     stockLedger.refuseWith(refusal);
   }
   const clock = new FakeClock();
+  const steps = new FakePendingStockSteps(clock);
+  const settings: OutboxSettings = { pollIntervalMs: 5000, graceSeconds: 300, maxAttempts: 10 };
+  const applier = new StockStepApplier(
+    steps,
+    stockLedger,
+    clock,
+    new RecordingStockStepLog(),
+    settings,
+  );
   const events = new RecordingDomainEventPublisher();
   const useCase = new ReturnPartsUseCase(
-    workOrders,
+    transactionRunner.watch('workOrders', workOrders),
     transactionRunner,
     new FakeIdGenerator(),
     clock,
-    stockLedger,
-    events,
+    transactionRunner.watch('steps', steps),
+    applier,
+    transactionRunner.watch('events', events),
   );
-  return { useCase, workOrders, transactionRunner, stockLedger, clock, events };
+  return { useCase, workOrders, transactionRunner, stockLedger, steps, clock, events };
 }
+
+const RETURN_TWO = new ReturnPartsCommand(
+  NUMBER,
+  [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 2 }],
+  MECHANIC_ID,
+);
 
 describe('ReturnPartsUseCase', () => {
   it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
-    const { useCase, workOrders, events } = makeUseCase();
+    const { useCase, workOrders, events, steps } = makeUseCase();
 
     await expect(
       useCase.execute(
@@ -119,10 +144,11 @@ describe('ReturnPartsUseCase', () => {
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(workOrders.workOrders).toHaveLength(0);
     expect(events.published).toHaveLength(0);
+    expect(steps.stored.size).toBe(0);
   });
 
   it('validates on the aggregate before opening the transaction, so a rejected batch never starts one', async () => {
-    const { useCase, workOrders, transactionRunner, stockLedger, events } = makeUseCase();
+    const { useCase, workOrders, transactionRunner, stockLedger, steps, events } = makeUseCase();
     await workOrders.save(restoreInExecution(WorkOrderStatus.AwaitingApproval));
 
     await expect(
@@ -136,11 +162,12 @@ describe('ReturnPartsUseCase', () => {
     ).rejects.toThrow(WorkOrderStateError);
     expect(transactionRunner.runCalls).toBe(0);
     expect(stockLedger.restored).toHaveLength(0);
+    expect(steps.stored.size).toBe(0);
     expect(events.published).toHaveLength(0);
   });
 
   it('lets ReturnExceedsWithdrawnError travel out untouched, before any transaction', async () => {
-    const { useCase, workOrders, transactionRunner, stockLedger, events } = makeUseCase();
+    const { useCase, workOrders, transactionRunner, stockLedger, steps, events } = makeUseCase();
     await workOrders.save(restoreInExecution());
 
     await expect(
@@ -154,38 +181,50 @@ describe('ReturnPartsUseCase', () => {
     ).rejects.toThrow(ReturnExceedsWithdrawnError);
     expect(transactionRunner.runCalls).toBe(0);
     expect(stockLedger.restored).toHaveLength(0);
+    expect(steps.stored.size).toBe(0);
     expect(events.published).toHaveLength(0);
   });
 
-  it('opens exactly one transaction, saves the work order, then restores the stock through the ledger with plain lines', async () => {
-    const { useCase, workOrders, transactionRunner, stockLedger } = makeUseCase();
+  it('saves the work order and records the restore step in one transaction, with plain lines and the actor', async () => {
+    const { useCase, workOrders, transactionRunner, steps } = makeUseCase();
     await workOrders.save(restoreInExecution());
 
-    await useCase.execute(
-      new ReturnPartsCommand(
-        NUMBER,
-        [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 2 }],
-        MECHANIC_ID,
-      ),
-    );
+    await useCase.execute(RETURN_TWO);
 
     expect(transactionRunner.runCalls).toBe(1);
+    expect(transactionRunner.callsInside).toEqual(['workOrders.save', 'steps.enqueue']);
     const updated = workOrders.workOrders[0];
     expect(updated.partItems[0].withdrawnQuantity).toBe(0);
     expect(workOrders.savedInsideTransaction).toEqual([NUMBER]);
+    expect(steps.stateOf(OPERATION_ID).step).toEqual({
+      operationId: OPERATION_ID,
+      kind: StockStepKind.Restore,
+      workOrderId: updated.id.value,
+      actorUserId: MECHANIC_ID,
+      lines: [{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }],
+    });
+  });
+
+  it('applies the step after the commit: restores the stock under the step operation id, outside the transaction, and completes the step', async () => {
+    const { useCase, workOrders, stockLedger, steps } = makeUseCase();
+    await workOrders.save(restoreInExecution());
+
+    await useCase.execute(RETURN_TWO);
+
     expect(stockLedger.restored).toEqual([
       {
-        workOrderId: updated.id.value,
+        workOrderId: workOrders.workOrders[0].id.value,
         lines: [{ inventoryItemId: WITHDRAWN_INVENTORY_ITEM_ID, quantity: 2 }],
         actorUserId: MECHANIC_ID,
         operationId: OPERATION_ID,
-        insideTransaction: true,
+        insideTransaction: false,
       },
     ]);
+    expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'DONE', attempts: 1 });
   });
 
   it('publishes the recorded events after the transaction', async () => {
-    const { useCase, workOrders, clock, events } = makeUseCase();
+    const { useCase, workOrders, clock, events, transactionRunner } = makeUseCase();
     await workOrders.save(restoreInExecution());
 
     await useCase.execute(
@@ -199,24 +238,61 @@ describe('ReturnPartsUseCase', () => {
     expect(events.published).toEqual([
       new PartReturned(workOrders.workOrders[0].id.value, MECHANIC_ID, clock.now()),
     ]);
+    expect(transactionRunner.callsInside).not.toContain('events.publish');
   });
 
-  it('lets an error raised by the inventory side travel out untouched', async () => {
-    const { useCase, workOrders, stockLedger, events } = makeUseCase(
+  it('answers with the saved work order when the ledger fails, leaving the step pending with the error and the wait for the processor', async () => {
+    const { useCase, workOrders, steps, clock, events } = makeUseCase(
       new Error('no pending consumption covers this return'),
     );
     await workOrders.save(restoreInExecution());
 
-    await expect(
-      useCase.execute(
-        new ReturnPartsCommand(
-          NUMBER,
-          [{ itemId: WITHDRAWN_ITEM_ID.value, quantity: 1 }],
-          MECHANIC_ID,
-        ),
-      ),
-    ).rejects.toThrow('no pending consumption covers this return');
-    expect(stockLedger.restored).toHaveLength(0);
-    expect(events.published).toHaveLength(0);
+    await expect(useCase.execute(RETURN_TWO)).resolves.toBeUndefined();
+
+    expect(workOrders.workOrders[0].partItems[0].withdrawnQuantity).toBe(0);
+    expect(steps.stateOf(OPERATION_ID)).toMatchObject({
+      status: 'PENDING',
+      attempts: 1,
+      lastError: 'no pending consumption covers this return',
+      dueAt: new Date(clock.now().getTime() + 1000),
+    });
+    expect(events.published).toEqual([
+      new PartReturned(workOrders.workOrders[0].id.value, MECHANIC_ID, clock.now()),
+    ]);
+  });
+
+  it('answers with the saved work order when the claim of the step fails, leaving the step pending', async () => {
+    const { useCase, workOrders, stockLedger, steps, events } = makeUseCase();
+    await workOrders.save(restoreInExecution());
+    steps.claimDue = () => Promise.reject(new Error('the database is down'));
+
+    await expect(useCase.execute(RETURN_TWO)).resolves.toBeUndefined();
+
+    expect(workOrders.workOrders[0].partItems[0].withdrawnQuantity).toBe(0);
+    expect(stockLedger.restored).toEqual([]);
+    expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 0 });
+    expect(events.published).toHaveLength(1);
+  });
+
+  it('applies the step on a later attempt once the ledger answers again, restoring the stock once', async () => {
+    const { useCase, workOrders, stockLedger, steps, clock } = makeUseCase(new Error('busy'));
+    await workOrders.save(restoreInExecution());
+    await useCase.execute(RETURN_TWO);
+    const recovered = new FakeStockLedger();
+    const retrying = new StockStepApplier(steps, recovered, clock, new RecordingStockStepLog(), {
+      pollIntervalMs: 5000,
+      graceSeconds: 300,
+      maxAttempts: 10,
+    });
+    clock.advanceSeconds(1);
+
+    await retrying.applyDue();
+    await retrying.applyDue();
+
+    expect(stockLedger.restored).toEqual([]);
+    expect(recovered.restored).toMatchObject([
+      { operationId: OPERATION_ID, lines: [{ quantity: 2 }] },
+    ]);
+    expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'DONE', attempts: 2 });
   });
 });

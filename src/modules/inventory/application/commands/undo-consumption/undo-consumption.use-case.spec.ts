@@ -68,7 +68,7 @@ async function makeUseCases() {
       new ConsumeStockBatchCommand(lines, WORK_ORDER_ID, WITHDRAWER_ID, operationId),
     );
   const restore = (inventoryItemId: string, quantity: number, operationId: string) =>
-    new RestoreStockBatchUseCase(items, idGenerator, clock, events).execute(
+    new RestoreStockBatchUseCase(items, transactionRunner, idGenerator, clock, events).execute(
       new RestoreStockBatchCommand(
         [{ inventoryItemId, quantity }],
         WORK_ORDER_ID,

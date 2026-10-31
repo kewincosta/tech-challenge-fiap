@@ -2295,15 +2295,15 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] No transaction of the three use cases writes inventory tables
-- [ ] The three inventory use cases run in a transaction of their own: called with no transaction open, each commits all its statements together (integration); the comments of the `StockLedger` port, the inventory repository and the five stock use cases describe the transactions as they now are
-- [ ] Two write-offs of one work order, interleaved so that the second reads the consumptions while the first holds its update uncommitted, record one transition per consumption (integration)
-- [ ] Specs on fakes prove the step enqueued in the save's transaction, its application after the commit, and the request's success with the step left pending when the ledger fails or the claim itself fails
-- [ ] An integration case fails the inventory step once, drains the processor and finds the stock restored, settled or written off exactly once
-- [ ] The return, delivery and cancellation e2e cases pass unchanged
-- [ ] `cross-module-transaction.spec.ts` keeps no case of a transaction across modules: its two shared-transaction cases become a work order save and a stock step committed together and rolled back together in one work-orders transaction, the file takes a name for what it then tests, and every changed assertion is reported
-- [ ] Test count: unit and integration totals unchanged or larger; e2e unchanged
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] No transaction of the three use cases writes inventory tables
+- [x] The three inventory use cases run in a transaction of their own: called with no transaction open, each commits all its statements together (integration); the comments of the `StockLedger` port, the inventory repository and the five stock use cases describe the transactions as they now are
+- [x] Two write-offs of one work order, interleaved so that the second reads the consumptions while the first holds its update uncommitted, record one transition per consumption (integration)
+- [x] Specs on fakes prove the step enqueued in the save's transaction, its application after the commit, and the request's success with the step left pending when the ledger fails or the claim itself fails
+- [x] An integration case fails the inventory step once, drains the processor and finds the stock restored, settled or written off exactly once
+- [x] The return, delivery and cancellation e2e cases pass unchanged
+- [x] `cross-module-transaction.spec.ts` keeps no case of a transaction across modules: its two shared-transaction cases become a work order save and a stock step committed together and rolled back together in one work-orders transaction, the file takes a name for what it then tests, and every changed assertion is reported
+- [x] Test count: unit and integration totals unchanged or larger; e2e unchanged
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full

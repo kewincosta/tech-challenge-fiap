@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
 import { CryptoIdGenerator } from '../../src/shared/infrastructure/ids/crypto-id-generator';
+import { TransactionRunner } from '../../src/shared/application/ports/transaction-runner.port';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { SystemClock } from '../../src/shared/infrastructure/time/system-clock';
 import { ConsumeStockBatchCommand } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
@@ -59,10 +60,10 @@ beforeAll(async () => {
   const clock = new SystemClock();
   const events = new RecordingDomainEventPublisher();
   consumeStock = new ConsumeStockBatchUseCase(repository, runner, idGenerator, clock, events);
-  restoreStock = new RestoreStockBatchUseCase(repository, idGenerator, clock, events);
+  restoreStock = new RestoreStockBatchUseCase(repository, runner, idGenerator, clock, events);
   undoStock = new UndoConsumptionUseCase(repository, runner, idGenerator, clock, events);
-  settleStock = new SettleStockMovementsUseCase(repository, clock);
-  writeOffStock = new WriteOffStockMovementsUseCase(repository, clock);
+  settleStock = new SettleStockMovementsUseCase(repository, runner, clock);
+  writeOffStock = new WriteOffStockMovementsUseCase(repository, runner, clock);
   withdrawerId = await insertUser();
   undoerId = await insertUser();
 });
@@ -153,10 +154,8 @@ function returnParts(
   workOrderId: string,
   lines: Array<{ inventoryItemId: string; quantity: number }>,
 ): Promise<unknown> {
-  return runner.run(() =>
-    restoreStock.execute(
-      new RestoreStockBatchCommand(lines, workOrderId, withdrawerId, operationId),
-    ),
+  return restoreStock.execute(
+    new RestoreStockBatchCommand(lines, workOrderId, withdrawerId, operationId),
   );
 }
 
@@ -225,6 +224,42 @@ function movementsOf(itemId: string): Promise<MovementRow[]> {
        JOIN inventory_items ii ON ii.id = sm.inventory_item_id
       WHERE ii.external_id = $1
       ORDER BY sm.id`,
+    [itemId],
+  );
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+// A runner whose transaction stays open after the work is done, until `release` is resolved: the
+// statements the work ran are applied and uncommitted while the test starts another run.
+function holdingRunner(
+  reachedEnd: { resolve: () => void },
+  release: Promise<void>,
+): TransactionRunner {
+  return {
+    run: (work) =>
+      runner.run(async () => {
+        const result = await work();
+        reachedEnd.resolve();
+        await release;
+        return result;
+      }),
+  };
+}
+
+function transitionsOf(itemId: string): Promise<Array<{ to_status: string; quantity: number }>> {
+  return dataSource.query(
+    `SELECT t.to_status, t.quantity
+       FROM stock_movement_transitions t
+       JOIN stock_movements sm ON sm.id = t.stock_movement_id
+       JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+      WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
     [itemId],
   );
 }
@@ -405,9 +440,7 @@ describe('stock operations applied once', () => {
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
     await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
-    await runner.run(() =>
-      settleStock.execute(new SettleStockMovementsCommand(workOrderId, withdrawerId)),
-    );
+    await settleStock.execute(new SettleStockMovementsCommand(workOrderId, withdrawerId));
 
     await undo(operationId);
 
@@ -424,9 +457,7 @@ describe('stock operations applied once', () => {
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
     await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
-    await runner.run(() =>
-      writeOffStock.execute(new WriteOffStockMovementsCommand(workOrderId, withdrawerId)),
-    );
+    await writeOffStock.execute(new WriteOffStockMovementsCommand(workOrderId, withdrawerId));
     expect(await quantityOf(itemId)).toBe(7);
 
     await undo(operationId);
@@ -437,5 +468,48 @@ describe('stock operations applied once', () => {
       ['CONSUMPTION', 'WRITTEN_OFF'],
       ['RETURN', null],
     ]);
+  });
+
+  it('should record one transition per consumption when two write-offs of a work order interleave: the second reads the consumptions while the first holds its update uncommitted', async () => {
+    const itemA = await buildStockedItem(10);
+    const itemB = await buildStockedItem(6);
+    const workOrderId = await insertWorkOrder();
+    await withdraw(randomUUID(), workOrderId, [
+      { inventoryItemId: itemA, quantity: 3 },
+      { inventoryItemId: itemB, quantity: 2 },
+    ]);
+    const reachedEnd = deferred();
+    const release = deferred();
+    const holding = new WriteOffStockMovementsUseCase(
+      repository,
+      holdingRunner(reachedEnd, release.promise),
+      new SystemClock(),
+    );
+    const command = new WriteOffStockMovementsCommand(workOrderId, withdrawerId);
+
+    const first = holding.execute(command);
+    // The first run has updated the rows and recorded its transitions, and keeps them uncommitted.
+    await Promise.race([reachedEnd.promise, first]);
+    const second = writeOffStock.execute(command);
+    // The second run read both consumptions as pending and waits at its update for the row locks.
+    await Promise.race([waitForLockWaiters(1), second]);
+    release.resolve();
+    await Promise.all([first, second]);
+
+    expect(await transitionsOf(itemA)).toEqual([{ to_status: 'WRITTEN_OFF', quantity: 3 }]);
+    expect(await transitionsOf(itemB)).toEqual([{ to_status: 'WRITTEN_OFF', quantity: 2 }]);
+    expect((await movementsOf(itemA)).map((row) => row.status)).toEqual([null, 'WRITTEN_OFF']);
+    expect((await movementsOf(itemB)).map((row) => row.status)).toEqual([null, 'WRITTEN_OFF']);
+  });
+
+  it('should record one transition per consumption when two write-offs of a work order run together', async () => {
+    const itemId = await buildStockedItem(10);
+    const workOrderId = await insertWorkOrder();
+    await withdraw(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    const command = new WriteOffStockMovementsCommand(workOrderId, withdrawerId);
+
+    await Promise.all([writeOffStock.execute(command), writeOffStock.execute(command)]);
+
+    expect(await transitionsOf(itemId)).toEqual([{ to_status: 'WRITTEN_OFF', quantity: 3 }]);
   });
 });

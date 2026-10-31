@@ -1,14 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import { TransactionRunner } from '../../src/shared/application/ports/transaction-runner.port';
 import { Money } from '../../src/shared/domain/value-objects/money';
 import { CryptoIdGenerator } from '../../src/shared/infrastructure/ids/crypto-id-generator';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { SystemClock } from '../../src/shared/infrastructure/time/system-clock';
 import { ConsumeStockBatchCommand } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
 import { ConsumeStockBatchUseCase } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.use-case';
+import { RestoreStockBatchCommand } from '../../src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
+import { RestoreStockBatchUseCase } from '../../src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.use-case';
+import { SettleStockMovementsCommand } from '../../src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command';
+import { SettleStockMovementsUseCase } from '../../src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.use-case';
 import { UndoConsumptionCommand } from '../../src/modules/inventory/application/commands/undo-consumption/undo-consumption.command';
 import { UndoConsumptionUseCase } from '../../src/modules/inventory/application/commands/undo-consumption/undo-consumption.use-case';
+import { WriteOffStockMovementsCommand } from '../../src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
+import { WriteOffStockMovementsUseCase } from '../../src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.use-case';
 import { InventoryItem } from '../../src/modules/inventory/domain/entities/inventory-item';
 import { InventoryItemKind } from '../../src/modules/inventory/domain/inventory-item-kind';
 import { InventoryItemId } from '../../src/modules/inventory/domain/value-objects/inventory-item-id';
@@ -317,5 +324,131 @@ describe('UndoConsumptionUseCase with a transaction of its own', () => {
     await running;
 
     expect(await quantityOf(itemA)).toBe(10);
+  });
+});
+
+// The work is applied inside the transaction the runner opens, and the runner then fails before the
+// commit. When the use case runs all its statements in that transaction, none of them persists.
+describe('RestoreStockBatchUseCase, SettleStockMovementsUseCase and WriteOffStockMovementsUseCase with a transaction of their own', () => {
+  const rollingBack: TransactionRunner = {
+    run: (work) =>
+      runner.run(async () => {
+        await work();
+        throw new Error('forced rollback before the commit');
+      }),
+  };
+
+  async function withdrawn(): Promise<{ itemId: string; workOrderId: string }> {
+    const itemId = await buildStockedItem(10);
+    const workOrderId = await insertWorkOrder();
+    await consumeWith(repository).execute(
+      consumeCommand(workOrderId, randomUUID(), [{ inventoryItemId: itemId, quantity: 3 }]),
+    );
+    return { itemId, workOrderId };
+  }
+
+  async function transitionCount(itemId: string): Promise<number> {
+    const rows: Array<{ total: number }> = await dataSource.query(
+      `SELECT count(*)::int AS total
+         FROM stock_movement_transitions t
+         JOIN stock_movements sm ON sm.id = t.stock_movement_id
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1`,
+      [itemId],
+    );
+    return rows[0].total;
+  }
+
+  async function consumptionStatusOf(itemId: string): Promise<string | null> {
+    const rows: Array<{ status: string | null }> = await dataSource.query(
+      `SELECT sm.status
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'`,
+      [itemId],
+    );
+    return rows[0].status;
+  }
+
+  it('commits a restore through the runner: the return and the stock level persist together', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await new RestoreStockBatchUseCase(repository, runner, idGenerator, clock, events).execute(
+      new RestoreStockBatchCommand(
+        [{ inventoryItemId: itemId, quantity: 2 }],
+        workOrderId,
+        actorId,
+        randomUUID(),
+      ),
+    );
+
+    expect(await quantityOf(itemId)).toBe(9);
+    expect(await movementKindsOf(itemId)).toEqual(['INBOUND', 'CONSUMPTION', 'RETURN']);
+  });
+
+  it('writes nothing of a restore when its transaction does not commit', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await expect(
+      new RestoreStockBatchUseCase(repository, rollingBack, idGenerator, clock, events).execute(
+        new RestoreStockBatchCommand(
+          [{ inventoryItemId: itemId, quantity: 2 }],
+          workOrderId,
+          actorId,
+          randomUUID(),
+        ),
+      ),
+    ).rejects.toThrow('forced rollback before the commit');
+
+    expect(await quantityOf(itemId)).toBe(7);
+    expect(await movementKindsOf(itemId)).toEqual(['INBOUND', 'CONSUMPTION']);
+  });
+
+  it('commits a settlement through the runner: the status and its transition persist together', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await new SettleStockMovementsUseCase(repository, runner, clock).execute(
+      new SettleStockMovementsCommand(workOrderId, actorId),
+    );
+
+    expect(await consumptionStatusOf(itemId)).toBe('SETTLED');
+    expect(await transitionCount(itemId)).toBe(1);
+  });
+
+  it('writes nothing of a settlement when its transaction does not commit: neither the status nor the transition', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await expect(
+      new SettleStockMovementsUseCase(repository, rollingBack, clock).execute(
+        new SettleStockMovementsCommand(workOrderId, actorId),
+      ),
+    ).rejects.toThrow('forced rollback before the commit');
+
+    expect(await consumptionStatusOf(itemId)).toBe('PENDING');
+    expect(await transitionCount(itemId)).toBe(0);
+  });
+
+  it('commits a write-off through the runner: the status and its transition persist together', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await new WriteOffStockMovementsUseCase(repository, runner, clock).execute(
+      new WriteOffStockMovementsCommand(workOrderId, actorId),
+    );
+
+    expect(await consumptionStatusOf(itemId)).toBe('WRITTEN_OFF');
+    expect(await transitionCount(itemId)).toBe(1);
+  });
+
+  it('writes nothing of a write-off when its transaction does not commit: neither the status nor the transition', async () => {
+    const { itemId, workOrderId } = await withdrawn();
+
+    await expect(
+      new WriteOffStockMovementsUseCase(repository, rollingBack, clock).execute(
+        new WriteOffStockMovementsCommand(workOrderId, actorId),
+      ),
+    ).rejects.toThrow('forced rollback before the commit');
+
+    expect(await consumptionStatusOf(itemId)).toBe('PENDING');
+    expect(await transitionCount(itemId)).toBe(0);
   });
 });

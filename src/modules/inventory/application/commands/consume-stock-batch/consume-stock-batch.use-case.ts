@@ -29,8 +29,8 @@ export class ConsumeStockBatchUseCase {
       const loaded = await this.items.findAllByIdsForUpdate(ids);
       const now = this.clock.now();
 
-      // Every line applied to the in-memory aggregates first - a line that throws leaves every
-      // earlier line's `save()` call never reached, so nothing this command touched persists.
+      // Every line is applied to the in-memory aggregates first. A line that throws leaves the
+      // `save()` call of every earlier line unreached, so nothing this command touched persists.
       const results: ConsumedLineDto[] = [];
       for (const line of command.lines) {
         const item = loaded.find((candidate) => candidate.id.value === line.inventoryItemId);

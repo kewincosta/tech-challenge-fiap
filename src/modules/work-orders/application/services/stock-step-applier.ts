@@ -40,6 +40,19 @@ export class StockStepApplier {
     return this.claimAndApply(operationIds);
   }
 
+  /**
+   * The attempt a request makes at a step it enqueued, once the transaction that recorded the step
+   * has committed. It never fails the request: whatever goes wrong, the claim included, the step
+   * stays in the outbox and the processor applies it when it is due.
+   */
+  async applyAfterCommit(operationId: string): Promise<void> {
+    try {
+      await this.applyOperations([operationId]);
+    } catch {
+      // The step is still pending. The request already has what it needs, the saved work order.
+    }
+  }
+
   private async claimAndApply(operationIds?: string[]): Promise<void> {
     const now = this.clock.now();
     const leaseUntil = new Date(now.getTime() + this.settings.graceSeconds * 1000);

@@ -74,8 +74,8 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
    * The deadlock fix lives here, not in any caller: every batch, whatever order the client sent
    * its lines in, locks the same items in internal-id order in one query (design.md's Risks &
    * Concerns). Must run inside an open transaction, where the lock is held until that transaction
-   * commits and not released when this query alone finishes. `ConsumeStockBatchUseCase` and
-   * `UndoConsumptionUseCase` open that transaction themselves.
+   * commits and not released when this query alone finishes. `ConsumeStockBatchUseCase`,
+   * `RestoreStockBatchUseCase` and `UndoConsumptionUseCase` open that transaction themselves.
    */
   async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
     if (ids.length === 0) {
@@ -233,19 +233,32 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     if (candidates.length === 0) {
       return 0;
     }
-    const ids = candidates.map((row) => row.id);
-    await manager.query(
-      `UPDATE stock_movements SET status = 'WRITTEN_OFF' WHERE id = ANY($1::bigint[])`,
-      [ids],
+    // Only the rows still pending are updated, and only those get a transition. A run that read the
+    // same consumptions as another one waits at this update for the other's row locks, and once the
+    // other commits it finds the rows no longer pending, so each transition is recorded once.
+    const [written]: [Array<{ id: string }>, number] = await manager.query(
+      `UPDATE stock_movements SET status = 'WRITTEN_OFF'
+        WHERE id = ANY($1::bigint[]) AND status = 'PENDING'
+        RETURNING id`,
+      [candidates.map((row) => row.id)],
     );
+    if (written.length === 0) {
+      return 0;
+    }
+    const remainingById = new Map(candidates.map((row) => [row.id, row.remaining]));
     await manager.query(
       `INSERT INTO stock_movement_transitions
          (external_id, stock_movement_id, from_status, to_status, actor_user_id, occurred_at, quantity)
        SELECT gen_random_uuid(), t.movement_id, 'PENDING', 'WRITTEN_OFF', $3, $4, t.qty
          FROM unnest($1::bigint[], $2::integer[]) AS t(movement_id, qty)`,
-      [ids, candidates.map((row) => row.remaining), actorInternalId, input.now],
+      [
+        written.map((row) => row.id),
+        written.map((row) => remainingById.get(row.id)),
+        actorInternalId,
+        input.now,
+      ],
     );
-    return candidates.length;
+    return written.length;
   }
 
   /**

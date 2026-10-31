@@ -296,4 +296,55 @@ describe('StockStepApplier', () => {
       expect(ledger.undone.map((undo) => undo.operationId)).toEqual([OTHER_OPERATION_ID]);
     });
   });
+
+  describe('the attempt a request makes after its commit', () => {
+    it('applies the step it names and no other due step', async () => {
+      const { applier, steps, ledger } = makeApplier();
+      steps.seed(stepOf(StockStepKind.Settle, OTHER_OPERATION_ID));
+      steps.seed(stepOf(StockStepKind.Settle, OPERATION_ID));
+
+      await applier.applyAfterCommit(OPERATION_ID);
+
+      expect(ledger.settled).toHaveLength(1);
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'DONE', attempts: 1 });
+      expect(steps.stateOf(OTHER_OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 0 });
+    });
+
+    it('leaves the step pending, with the error and the wait, when the ledger refuses it, and does not throw', async () => {
+      const { applier, steps, ledger, clock } = makeApplier();
+      ledger.refuseWith(new Error('inventory is busy'));
+      steps.seed(stepOf(StockStepKind.WriteOff));
+
+      await expect(applier.applyAfterCommit(OPERATION_ID)).resolves.toBeUndefined();
+
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({
+        status: 'PENDING',
+        attempts: 1,
+        lastError: 'inventory is busy',
+        dueAt: new Date(clock.now().getTime() + 1000),
+      });
+    });
+
+    it('does not throw when the claim itself fails, and applies nothing', async () => {
+      const { applier, steps, ledger } = makeApplier();
+      steps.seed(stepOf(StockStepKind.Settle));
+      steps.claimDue = () => Promise.reject(new Error('the database is down'));
+
+      await expect(applier.applyAfterCommit(OPERATION_ID)).resolves.toBeUndefined();
+
+      expect(ledger.settled).toEqual([]);
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 0 });
+    });
+
+    it('does not throw when the failure of the attempt cannot be recorded either', async () => {
+      const { applier, steps, ledger } = makeApplier();
+      ledger.refuseWith(new Error('inventory is busy'));
+      steps.seed(stepOf(StockStepKind.Settle));
+      steps.recordFailure = () => Promise.reject(new Error('the database is down'));
+
+      await expect(applier.applyAfterCommit(OPERATION_ID)).resolves.toBeUndefined();
+
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 1 });
+    });
+  });
 });
