@@ -2051,10 +2051,10 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 **Done when**:
 
-- [ ] The fixture has `beta/beta.tokens.ts`, a file in `alpha/infrastructure` imports it, and the spec expects that import as a `through-public-api` violation
-- [ ] Checked by hand in a scratch copy: a rule that accepts any file at a module's root (M07) fails the unit suite
-- [ ] Gate check passes: `npm run test:unit`
-- [ ] Test count: unit total grows by the new case
+- [x] The fixture has `beta/beta.tokens.ts`, a file in `alpha/infrastructure` imports it, and the spec expects that import as a `through-public-api` violation
+- [x] Checked by hand in a scratch copy: a rule that accepts any file at a module's root (M07) fails the unit suite
+- [x] Gate check passes: `npm run test:unit`
+- [x] Test count: unit total grows by the new case
 
 **Tests**: unit
 **Gate**: quick

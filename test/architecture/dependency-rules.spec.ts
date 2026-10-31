@@ -94,7 +94,18 @@ describe('dependency-cruiser rules', () => {
   it('reports an import of another module that skips its index.ts, and accepts the index.ts', () => {
     expect(summarize(violationsOf.get('through-public-api')!)).toEqual([
       'through-public-api: src/modules/alpha/infrastructure/deep-gateway.ts -> src/modules/beta/application/run.ts',
+      'through-public-api: src/modules/alpha/infrastructure/tokens-gateway.ts -> src/modules/beta/beta.tokens.ts',
       'through-public-api: src/modules/alpha/presentation/deep-controller.ts -> src/modules/beta/application/run.ts',
+    ]);
+  });
+
+  it('reports an import of a file at the root of another module other than its index.ts', () => {
+    const rootImports = summarize(violationsOf.get('through-public-api')!).filter((line) =>
+      line.endsWith('-> src/modules/beta/beta.tokens.ts'),
+    );
+
+    expect(rootImports).toEqual([
+      'through-public-api: src/modules/alpha/infrastructure/tokens-gateway.ts -> src/modules/beta/beta.tokens.ts',
     ]);
   });
 
