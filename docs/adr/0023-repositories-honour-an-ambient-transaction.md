@@ -1,6 +1,6 @@
 # 0023. A repository reachable from a cross-module write honours an ambient transaction
 
-**Status**: Accepted
+**Status**: Amended by [0032](0032-a-repository-own-transaction-is-the-ambient-one.md)
 **Source**: AD-008 in `.specs/STATE.md`
 **Recorded**: 2026-09-02, from AD-008, taken during the `work-order-part-withdrawal` feature
 

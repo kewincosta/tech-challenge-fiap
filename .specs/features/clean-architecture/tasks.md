@@ -2078,10 +2078,10 @@ The first Verifier round (`validation.md`, commit `e47f852`) failed on five gaps
 
 **Done when**:
 
-- [ ] ADR 0032 states the context (two concurrent stock saves exhausted a pool of two connections, batch 6), the decision (a repository opens its own transaction through `runInNewTransaction`, which publishes its manager as the ambient one), the alternative T35 uses (resolving every key before the transaction) and the consequences, with a `Source` line naming AD-008
-- [ ] Only the Status line of ADR 0023 changes, to `Amended by 0032` in the link form ADR 0001 uses
-- [ ] The index lists ADR 0032 and shows 0023 as amended
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] ADR 0032 states the context (two concurrent stock saves exhausted a pool of two connections, batch 6), the decision (a repository opens its own transaction through `runInNewTransaction`, which publishes its manager as the ambient one), the alternative T35 uses (resolving every key before the transaction) and the consequences, with a `Source` line naming AD-008
+- [x] Only the Status line of ADR 0023 changes, to `Amended by 0032` in the link form ADR 0001 uses
+- [x] The index lists ADR 0032 and shows 0023 as amended
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs
