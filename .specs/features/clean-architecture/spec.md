@@ -278,6 +278,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 - IF the work order save fails with 409 `CONCURRENT_MODIFICATION` after a withdrawal consumed stock THEN the system SHALL return the consumed units, leaving every stock level as it was before the withdrawal.
 - IF the inventory step of a return, a delivery or a cancellation fails THEN the system SHALL keep the work order's change and apply the inventory step on a later attempt.
 - IF the customer save fails after `identity` opened the account THEN the system SHALL leave no user with that email or document, so that the same registration can be sent again.
+- IF a withdrawal or a registration reaches its last step after the processor claimed its armed step THEN the system SHALL answer 409 with code `CONCURRENT_MODIFICATION`, save neither the work order change nor the customer, and still undo the consumption or discard the account.
 - WHEN `POST /customers` registers a new customer THEN the system SHALL link the customer to the user `identity` opened earlier in the same registration, whose internal key the identity key resolver returns.
 - IF a domain event subscriber throws THEN the caller SHALL receive the use case's result, and the system SHALL log the error with the subscriber's name.
 

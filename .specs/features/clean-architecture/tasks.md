@@ -86,6 +86,7 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 | The work order save fails with 409 after a withdrawal consumed stock, the units come back | T72 | unit, integration, e2e |
 | The inventory step of a return, a delivery or a cancellation fails, it applies on a later attempt | T73 | unit, integration |
 | The customer save fails after the account opened, no user with that email or document is left | T70, T74 | integration |
+| A withdrawal or a registration reaches its last step after the processor claimed its step: 409, nothing saved, the compensation still applied | T72, T74 | unit, integration |
 | `POST /customers` links the user `identity` opened earlier in the same registration | T14, T32, T74 | integration, e2e |
 | A subscriber throws, the caller keeps its result and the error is logged | T12 | unit |
 
@@ -2248,10 +2249,10 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 #### T72: Withdrawal as compensated steps
 
-**What**: `WithdrawPartsUseCase` arms an undo step, consumes the stock, then saves the work order and completes the step in one work-orders transaction; when the save fails it releases the step, applies the undo and rethrows.
-**Where**: `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts`
+**What**: `WithdrawPartsUseCase` arms an undo step, consumes the stock, then disarms the step and saves the work order in one work-orders transaction. When the consumption or the last step fails, it applies the undo at once through the ledger, completes the step and rethrows the first error; an undo that fails leaves the step to the processor. `PendingStockSteps` gains `disarm`, and `ConsumeStockBatchUseCase` and `UndoConsumptionUseCase` open their own inventory transaction through `TransactionRunner` (design C16, Transactions).
+**Where**: `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts`, the `PendingStockSteps` port and its adapter, `src/modules/inventory/application/commands/` (consume-stock-batch, undo-consumption), `src/modules/inventory/inventory.module.ts`
 **Depends on**: T71
-**Reuses**: The aggregate's validation before any write, unchanged
+**Reuses**: The aggregate's validation before any write, unchanged; `ConcurrentModificationError`
 **Requirement**: CA-10, CA-02
 
 **Tools**:
@@ -2261,11 +2262,12 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] No transaction of the withdrawal writes inventory and work-orders tables together
-- [ ] The spec on fakes proves that a 422 from the ledger leaves the work order unsaved with nothing to undo, that a failed save applies the undo and rethrows, and that a success completes the step
+- [ ] No transaction of the withdrawal writes inventory and work-orders tables together: the spec on fakes proves that no ledger call happens inside the work-orders transaction
+- [ ] `ConsumeStockBatchUseCase` and `UndoConsumptionUseCase` run in a transaction of their own: called with no transaction open, each locks the items and commits its writes together (integration); their comments no longer say they run inside the caller's transaction
+- [ ] `disarm` marks an armed step done inside the caller's transaction and reports true, and reports false for a step a claim already took, a done step and a failed step (integration)
+- [ ] The spec on fakes proves that a 422 from the ledger leaves the work order unsaved and completes the step after an undo that finds nothing; that a failed save applies the undo and rethrows the save's error; that a step the processor already claimed answers 409 `CONCURRENT_MODIFICATION` with the work order unsaved and the undo applied; that an undo that fails leaves the step pending and still rethrows the first error; and that a success disarms the step
 - [ ] An integration case stops a withdrawal after its consumption, moves the clock past the grace period, drains the processor and finds every stock level as before
 - [ ] An e2e case runs two concurrent withdrawals on one work order and finds one 409, the other withdrawal applied once and the stock lower by that withdrawal only; the 422 withdrawal still changes nothing
-- [ ] The withdrawal cases of `cross-module-transaction.spec.ts` become compensation cases, and every changed assertion is reported
 - [ ] Test count: unit and integration totals grow; e2e grows by the new case
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
@@ -2278,8 +2280,8 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 #### T73: Return, delivery and cancellation as retried steps
 
-**What**: The three use cases save the work order and enqueue the restore, settle or write-off step in one work-orders transaction, apply the step after the commit, and leave a failed step to the processor.
-**Where**: `src/modules/work-orders/application/commands/` (return-parts, deliver-vehicle, cancel-work-order)
+**What**: The three use cases save the work order and enqueue the restore, settle or write-off step in one work-orders transaction, apply the step after the commit, and leave a failed step to the processor. `RestoreStockBatchUseCase`, `SettleStockMovementsUseCase` and `WriteOffStockMovementsUseCase` open their own inventory transaction through `TransactionRunner`, and the write-off updates only the consumptions still pending (design C16, Idempotency and Transactions).
+**Where**: `src/modules/work-orders/application/commands/` (return-parts, deliver-vehicle, cancel-work-order), `src/modules/inventory/application/commands/` (restore-stock-batch, settle-stock-movements, write-off-stock-movements), the inventory repository, `src/modules/inventory/inventory.module.ts`
 **Depends on**: T72
 **Reuses**: The aggregate rules of the three transitions, unchanged
 **Requirement**: CA-10, CA-02
@@ -2292,10 +2294,12 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 **Done when**:
 
 - [ ] No transaction of the three use cases writes inventory tables
-- [ ] Specs on fakes prove the step enqueued in the save's transaction, its application after the commit, and on a ledger failure the request's success with the step left pending
+- [ ] The three inventory use cases run in a transaction of their own: called with no transaction open, each commits all its statements together (integration); the comments of the `StockLedger` port, the inventory repository and the five stock use cases describe the transactions as they now are
+- [ ] Two write-offs of one work order, interleaved so that the second reads the consumptions while the first holds its update uncommitted, record one transition per consumption (integration)
+- [ ] Specs on fakes prove the step enqueued in the save's transaction, its application after the commit, and the request's success with the step left pending when the ledger fails or the claim itself fails
 - [ ] An integration case fails the inventory step once, drains the processor and finds the stock restored, settled or written off exactly once
 - [ ] The return, delivery and cancellation e2e cases pass unchanged
-- [ ] `cross-module-transaction.spec.ts` keeps no case of a shared transaction, and every changed assertion is reported
+- [ ] `cross-module-transaction.spec.ts` keeps no case of a transaction across modules: its two shared-transaction cases become a work order save and a stock step committed together and rolled back together in one work-orders transaction, the file takes a name for what it then tests, and every changed assertion is reported
 - [ ] Test count: unit and integration totals unchanged or larger; e2e unchanged
 - [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
@@ -2308,10 +2312,10 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 #### T74: Customer registration as compensated steps
 
-**What**: The customers `PendingAccountSteps` port, adapter, applier and processor, in the shape of T71; `RegisterCustomerUseCase` with a new account chooses the user id, arms a discard step, opens the account, then saves the customer and completes the step in one customers transaction; a failed save releases the step, discards the account and rethrows.
-**Where**: `src/modules/customers/` (port, applier, adapter, processor, register-customer use case)
+**What**: The customers `PendingAccountSteps` port, adapter, applier and processor, in the shape of T71 and T72 (`disarm` included). `RegisterCustomerUseCase` with a new account chooses the user id, arms a discard step, opens the account, then disarms the step and saves the customer in one customers transaction. When the opening or the last step fails, it discards the account at once, completes the step and rethrows the first error; a discard that fails leaves the step to the processor. With no flow nesting a transaction any more, `TypeOrmTransactionRunner.run` refuses to open inside another open transaction (design C16, Transactions).
+**Where**: `src/modules/customers/` (port, applier, adapter, processor, register-customer use case, accounts gateway comment), `src/shared/infrastructure/database/typeorm-transaction-runner.ts`
 **Depends on**: T73
-**Reuses**: The shape of T71's outbox; `CustomerAccounts` from T70
+**Reuses**: The shape of T71's outbox and T72's compensation; `CustomerAccounts` from T70
 **Requirement**: CA-10, CA-02
 
 **Tools**:
@@ -2321,9 +2325,11 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] No transaction of the registration writes identity and customers tables together
-- [ ] The spec on fakes proves the order of the steps, the discard on a failed save, and that a registration with an existing user arms no step
+- [ ] No transaction of the registration writes identity and customers tables together: the spec on fakes proves that `open` and `discard` run outside the customers transaction
+- [ ] The spec on fakes proves the order of the steps; the discard on a failed opening or a failed save, with the first error rethrown; the 409 `CONCURRENT_MODIFICATION` when the processor already claimed the step, with no customer saved and the account discarded; a discard that fails leaving the step pending; and that a registration with an existing user arms no step
 - [ ] An integration case stops a registration after the account opened, drains the processor past the grace period and finds no user with that email or document
+- [ ] `TypeOrmTransactionRunner.run` called while a transaction is open on the same async context rejects without opening a second one (integration spec in `test/integration/`, so `src/shared` gains no file), and every suite passes with the check in place
+- [ ] The comment of `CustomerAccountsGateway` no longer says the account joins the registration's transaction
 - [ ] `POST /customers` e2e cases pass unchanged, for a new account and for an existing user
 - [ ] Test count: unit and integration totals grow; e2e unchanged
 - [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
@@ -2350,9 +2356,10 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] ADR 0033 states the context (five flows wrote two modules in one transaction), the decision (design C16), the alternatives (the shared transaction, compensation without an outbox) and the consequences, with a `Source` line naming AD-017
+- [ ] ADR 0033 states the context (five flows wrote two modules inside one request: the four stock flows in one shared transaction, the registration in an `identity` transaction nested in the customers one and committed first), the decision (design C16, the request's own compensation and the 409 on a claimed step included), the alternatives (the shared transaction, compensation without an outbox) and the consequences, with a `Source` line naming AD-017
 - [ ] Only the Status line of ADR 0023 changes, to `Superseded by 0033` in the link form ADR 0001 uses; the index lists 0033 and the new status of 0023
 - [ ] `grep -rniE "same transaction|shared transaction" README.md docs/architecture` finds only text about writes within one module
+- [ ] The README counts 20 domain tables and ten migrations, and its environment table lists `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_GRACE_SECONDS` and `OUTBOX_MAX_ATTEMPTS` with their defaults
 - [ ] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
