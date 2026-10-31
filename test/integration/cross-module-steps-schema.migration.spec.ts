@@ -1,15 +1,30 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { AddCrossModuleSteps1787702400009 } from '../../src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps';
 import { runMigrations } from '../support/global-setup';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
+// The steps a test inserts are due, and the test database is never truncated, so a processor that
+// runs against it later would take them. Each test removes what it inserted.
+const insertedOperations: string[] = [];
 
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
+});
+
+afterEach(async () => {
+  const operationIds = insertedOperations.splice(0);
+  await dataSource.query(
+    `DELETE FROM work_order_stock_steps WHERE operation_id = ANY($1::uuid[])`,
+    [operationIds],
+  );
+  await dataSource.query(
+    `DELETE FROM customer_account_steps WHERE operation_id = ANY($1::uuid[])`,
+    [operationIds],
+  );
 });
 
 afterAll(async () => {
@@ -58,20 +73,24 @@ function insertStockStep(
   workOrderId: number,
   overrides: { operationId?: string; status?: string } = {},
 ): Promise<unknown> {
+  const operationId = overrides.operationId ?? randomUUID();
+  insertedOperations.push(operationId);
   return dataSource.query(
     `INSERT INTO work_order_stock_steps (operation_id, kind, work_order_id, status, due_at, created_at)
      VALUES ($1, 'UNDO_CONSUMPTION', $2, $3, now(), now())`,
-    [overrides.operationId ?? randomUUID(), workOrderId, overrides.status ?? 'ARMED'],
+    [operationId, workOrderId, overrides.status ?? 'ARMED'],
   );
 }
 
 function insertAccountStep(
   overrides: { operationId?: string; status?: string } = {},
 ): Promise<unknown> {
+  const operationId = overrides.operationId ?? randomUUID();
+  insertedOperations.push(operationId);
   return dataSource.query(
     `INSERT INTO customer_account_steps (operation_id, kind, user_id, status, due_at, created_at)
      VALUES ($1, 'DISCARD_ACCOUNT', $2, $3, now(), now())`,
-    [overrides.operationId ?? randomUUID(), randomUUID(), overrides.status ?? 'ARMED'],
+    [operationId, randomUUID(), overrides.status ?? 'ARMED'],
   );
 }
 
