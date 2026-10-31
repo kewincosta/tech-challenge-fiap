@@ -1,6 +1,6 @@
 %% C4 level 3, components - Inventory
-%% One module, inventory. Drawn because of the two arrows between it and work-orders: the four stock
-%% use cases that work-orders calls inside its own transaction, and the WorkOrderReads interface
+%% One module, inventory. Drawn because of the two arrows between it and work-orders: the five stock
+%% use cases that work-orders calls, each in a transaction of its own, and the WorkOrderReads interface
 %% that inventory declares and work-orders implements. Every import between the two points from
 %% work-orders to inventory.
 %% Detail: docs/architecture/low-level-design/inventory.md
@@ -20,6 +20,7 @@ C4Component
       Component(adjust, "AdjustStockUseCase", "Use case", "Appends an ADJUSTMENT, note required")
       Component(consume, "ConsumeStockBatchUseCase", "Use case", "Appends PENDING consumptions")
       Component(restore, "RestoreStockBatchUseCase", "Use case", "Draws down consumptions, appends RETURNs")
+      Component(undo, "UndoConsumptionUseCase", "Use case", "Returns the units of an operation, whatever the status of its consumptions")
       Component(settle, "SettleStockMovementsUseCase", "Use case", "PENDING to SETTLED")
       Component(writeOff, "WriteOffStockMovementsUseCase", "Use case", "PENDING to WRITTEN_OFF")
       Component(queries, "Query use cases", "Use cases", "Items, shortages, movement history; InventoryItemNotFoundError for an unknown item")
@@ -45,10 +46,11 @@ C4Component
   Rel(queries, invQuery, "Reads")
   Rel(deactivateItem, invQuery, "Asks which open work orders plan the item")
 
-  Rel(workOrders, consume, "Calls through index.ts: withdrawal, in the caller's transaction", "cross-module")
-  Rel(workOrders, restore, "Calls through index.ts: return, in the caller's transaction", "cross-module")
-  Rel(workOrders, settle, "Calls through index.ts: delivery, in the caller's transaction", "cross-module")
-  Rel(workOrders, writeOff, "Calls through index.ts: cancellation, in the caller's transaction", "cross-module")
+  Rel(workOrders, consume, "Calls through index.ts: withdrawal, in a transaction of its own", "cross-module")
+  Rel(workOrders, restore, "Calls through index.ts: return, in a transaction of its own", "cross-module")
+  Rel(workOrders, undo, "Calls through index.ts: undo of a withdrawal that did not complete, in a transaction of its own", "cross-module")
+  Rel(workOrders, settle, "Calls through index.ts: delivery, in a transaction of its own", "cross-module")
+  Rel(workOrders, writeOff, "Calls through index.ts: cancellation, in a transaction of its own", "cross-module")
   Rel(workOrders, itemKeys, "Calls through index.ts: item UUID to key", "cross-module")
   Rel(workOrders, readsPort, "Implements it with TypeOrmWorkOrderReads, bound by WorkOrderReadsModule", "cross-module")
   Rel(invQuery, readsPort, "Reads outstanding demand and open work orders")
@@ -58,6 +60,7 @@ C4Component
   Rel(consume, itemAgg, "Decrements under a row lock")
   Rel(consume, movementAgg, "Appends")
   Rel(restore, movementAgg, "Appends RETURNs")
+  Rel(undo, movementAgg, "Appends RETURNs")
   Rel(settle, movementAgg, "Appends a transition")
   Rel(writeOff, movementAgg, "Appends a transition")
   Rel(replenish, itemAgg, "Increments")

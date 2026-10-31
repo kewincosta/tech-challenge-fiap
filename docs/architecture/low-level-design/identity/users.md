@@ -30,17 +30,27 @@ Invariants it holds:
 
 ## Commands
 
-| Command                 | Use case                | What it does                                                                                                                                                    |
-| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RegisterUserCommand`   | `RegisterUserUseCase`   | Registers an account. Also assigns the `CUSTOMER` role by calling `AssignRoleToUserUseCase`, inside one transaction, so an account never exists without a role. |
-| `UpdateUserCommand`     | `UpdateUserUseCase`     | Changes name, email or document.                                                                                                                                |
-| `ChangePasswordCommand` | `ChangePasswordUseCase` | Replaces the hash, clears `mustChangePassword`, and ends every session of that user through `LogoutAllSessionsUseCase`.                                         |
-| `DeactivateUserCommand` | `DeactivateUserUseCase` | Soft-deletes the account and ends every session of that user.                                                                                                   |
+| Command                       | Use case                      | What it does                                                                                                                                                                                                          |
+| ----------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RegisterUserCommand`         | `RegisterUserUseCase`         | Registers an account, under the user id the caller chose when it chose one. Also assigns the `CUSTOMER` role by calling `AssignRoleToUserUseCase`, inside one transaction, so an account never exists without a role. |
+| `DiscardOpenedAccountCommand` | `DiscardOpenedAccountUseCase` | Removes an account another module opened and its role assignments. Does nothing for a missing user, and refuses a user with a session or a customer.                                                                  |
+| `UpdateUserCommand`           | `UpdateUserUseCase`           | Changes name, email or document.                                                                                                                                                                                      |
+| `ChangePasswordCommand`       | `ChangePasswordUseCase`       | Replaces the hash, clears `mustChangePassword`, and ends every session of that user through `LogoutAllSessionsUseCase`.                                                                                               |
+| `DeactivateUserCommand`       | `DeactivateUserUseCase`       | Soft-deletes the account and ends every session of that user.                                                                                                                                                         |
 
-`RegisterUserUseCase` is the one write of this area that spans another: it saves the user and the
-role assignment in a single transaction. It is why every account in the system carries `CUSTOMER`,
-which is a fact with consequences well outside this module. `customers` opens the account of a new
-customer through the same use case, from its `CustomerAccounts` gateway.
+`RegisterUserUseCase` is the one write of this area that spans another area: it saves the user and
+the role assignment in a single transaction, both inside `identity`. It is why every account in the
+system carries `CUSTOMER`, which is a fact with consequences well outside this module. `customers`
+opens the account of a new customer through the same use case, from its `CustomerAccounts` gateway,
+under an id it chose before the account existed, so that its outbox can name the account. The
+account commits in this transaction and not in the customers one. When the registration fails after
+that, `customers` calls `DiscardOpenedAccountUseCase`
+([0033](../../../adr/0033-writes-across-modules-run-as-steps.md)).
+
+`DiscardOpenedAccountUseCase` deletes a user and, through `ON DELETE CASCADE`, its role assignments,
+so that the email and the document can register again. A user that does not exist is already gone,
+so the call changes nothing. A user with a session, or one that another module's records point at,
+such as a customer, is in use: the use case refuses it with `ACCOUNT_IN_USE` (409) and keeps it.
 
 ## Queries and ports
 
@@ -120,3 +130,4 @@ From migration `1787702400000-create-identity-and-access-schema.ts`.
 | `UserNotFoundError`          | `USER_NOT_FOUND`               | 404    |
 | `EmailAlreadyInUseError`     | `USER_EMAIL_ALREADY_IN_USE`    | 409    |
 | `DocumentAlreadyInUseError`  | `USER_DOCUMENT_ALREADY_IN_USE` | 409    |
+| `AccountInUseError`          | `ACCOUNT_IN_USE`               | 409    |

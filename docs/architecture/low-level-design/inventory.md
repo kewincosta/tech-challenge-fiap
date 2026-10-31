@@ -34,21 +34,30 @@ Invariants they hold:
 
 ## Commands
 
-| Command                          | Use case                         | Called by                                                                                                                         |
-| -------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `CreateInventoryItemCommand`     | `CreateInventoryItemUseCase`     | The administrator, over HTTP.                                                                                                     |
-| `UpdateInventoryItemCommand`     | `UpdateInventoryItemUseCase`     | The administrator.                                                                                                                |
-| `DeactivateInventoryItemCommand` | `DeactivateInventoryItemUseCase` | The administrator. Refused with `INVENTORY_ITEM_IN_USE` while a work order that is neither delivered nor canceled plans the item. |
-| `ReplenishStockCommand`          | `ReplenishStockUseCase`          | The administrator. Appends an `INBOUND` movement.                                                                                 |
-| `AdjustStockCommand`             | `AdjustStockUseCase`             | The administrator. Appends an `ADJUSTMENT`, note required.                                                                        |
-| `ConsumeStockBatchCommand`       | `ConsumeStockBatchUseCase`       | `work-orders`, on withdrawal. Appends `CONSUMPTION` movements as `PENDING`.                                                       |
-| `RestoreStockBatchCommand`       | `RestoreStockBatchUseCase`       | `work-orders`, on a return. Draws down consumptions and appends one `RETURN` per consumption drawn.                               |
-| `SettleStockMovementsCommand`    | `SettleStockMovementsUseCase`    | `work-orders`, on delivery. Moves pending consumptions to `SETTLED`.                                                              |
-| `WriteOffStockMovementsCommand`  | `WriteOffStockMovementsUseCase`  | `work-orders`, on cancellation. Moves them to `WRITTEN_OFF` ([0016](../../adr/0016-cancellation-writes-movements-off.md)).        |
+| Command                          | Use case                         | Called by                                                                                                                                                  |
+| -------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CreateInventoryItemCommand`     | `CreateInventoryItemUseCase`     | The administrator, over HTTP.                                                                                                                              |
+| `UpdateInventoryItemCommand`     | `UpdateInventoryItemUseCase`     | The administrator.                                                                                                                                         |
+| `DeactivateInventoryItemCommand` | `DeactivateInventoryItemUseCase` | The administrator. Refused with `INVENTORY_ITEM_IN_USE` while a work order that is neither delivered nor canceled plans the item.                          |
+| `ReplenishStockCommand`          | `ReplenishStockUseCase`          | The administrator. Appends an `INBOUND` movement.                                                                                                          |
+| `AdjustStockCommand`             | `AdjustStockUseCase`             | The administrator. Appends an `ADJUSTMENT`, note required.                                                                                                 |
+| `ConsumeStockBatchCommand`       | `ConsumeStockBatchUseCase`       | `work-orders`, on withdrawal. Appends `CONSUMPTION` movements as `PENDING`, tagged with the caller's operation id.                                         |
+| `RestoreStockBatchCommand`       | `RestoreStockBatchUseCase`       | `work-orders`, on a return. Draws down consumptions and appends one `RETURN` per consumption drawn. A repeat of an operation changes nothing.              |
+| `UndoConsumptionCommand`         | `UndoConsumptionUseCase`         | `work-orders`, to undo a withdrawal that did not complete. Returns the net remaining units of every consumption the operation tagged, whatever its status. |
+| `SettleStockMovementsCommand`    | `SettleStockMovementsUseCase`    | `work-orders`, on delivery. Moves pending consumptions to `SETTLED`.                                                                                       |
+| `WriteOffStockMovementsCommand`  | `WriteOffStockMovementsUseCase`  | `work-orders`, on cancellation. Moves them to `WRITTEN_OFF` ([0016](../../adr/0016-cancellation-writes-movements-off.md)).                                 |
 
-The last four are called by `work-orders` through its `StockLedger` port. The gateway of that port
-calls these use cases, which `InventoryModule` exports and `index.ts` re-exports, and they run inside
-the caller's transaction ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)).
+The last five are called by `work-orders` through its `StockLedger` port. The gateway of that port
+calls these use cases, which `InventoryModule` exports and `index.ts` re-exports. Each opens a
+transaction of its own through the `TransactionRunner`, locks the items inside it where it needs to,
+and commits its writes together, so the caller never holds a transaction that writes stock
+([0033](../../adr/0033-writes-across-modules-run-as-steps.md)). The consume and the restore carry
+the caller's operation id, and the undo finds its work by that id. The undo, the restore, the
+settlement and the write-off are safe to repeat, because a step can run more than once: a restore
+whose operation id already tags a return does nothing, and the settlement and the write-off act on
+pending consumptions only. The write-off updates only the rows still pending, so two runs at once
+record each transition once. The undo returns a consumption that a write-off or a settlement closed
+meanwhile, because the operation it undoes never reached the work order.
 `ReplenishStockUseCase` is also what the seed script calls for the opening stock of each item.
 
 ## Queries and ports
@@ -79,8 +88,9 @@ that plan an item. `TypeOrmWorkOrderReads` in `work-orders` implements it, and t
 ## Persistence
 
 `TypeOrmInventoryItemRepository`, `TypeOrmInventoryQueryAdapter`, `InventoryItemMapper` and
-`InventoryItemKeyResolver` in `infrastructure/persistence`. The repository honours an ambient
-transaction ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)) and takes a row
+`InventoryItemKeyResolver` in `infrastructure/persistence`. The repository joins the transaction
+the stock use case opened ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md),
+[0032](../../adr/0032-a-repository-own-transaction-is-the-ambient-one.md)) and takes a row
 lock on the item, which is what actually prevents two concurrent withdrawals from both reading the
 same quantity.
 
@@ -127,6 +137,7 @@ negative.
 | `status`             | `varchar(20)`  | Nullable. `chk_stock_movements_status`: `PENDING`, `SETTLED`, `WRITTEN_OFF`. Only a consumption carries one.                                                                                                 |
 | `occurred_at`        | `timestamptz`  |                                                                                                                                                                                                              |
 | `actor_user_id`      | `bigint`       | References `users (id)`, `ON DELETE RESTRICT`. Who moved it.                                                                                                                                                 |
+| `operation_id`       | `uuid`         | Nullable. The operation that wrote a consumption or a return, from migration `1787702400009`. `ix_stock_movements_operation_id`. An undo and a repeated restore find their movements by it.                  |
 | `note`               | `varchar(255)` | Nullable. Required for an adjustment, by the aggregate.                                                                                                                                                      |
 
 Indexed by `ix_stock_movements_item_occurred` for the per-item history, and

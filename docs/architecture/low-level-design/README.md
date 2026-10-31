@@ -33,7 +33,7 @@ page links it rather than restating the reasoning. A page that argued a decision
 second copy of it, free to drift.
 
 **Anything the level above already carries.** The layering, the module boundary rule, the guard chain, the
-cross-module transaction rule, the identifier and money conventions and the error-kind mapping are
+rule for writes across modules, the identifier and money conventions and the error-kind mapping are
 in [the high level design](../high-level-design.md). A page cites it instead of repeating it.
 
 ## On the column tables

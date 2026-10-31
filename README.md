@@ -101,7 +101,7 @@ not cover invoicing, supplier management or scheduling.
 - Budget summed inside the aggregate, from the services and the planned parts
 - Numbered budget rounds, for extra work found during execution
 - Approval or rejection by the customer, or by whoever holds the permission to decide
-- Part withdrawal from stock, with the decrease and the movement in the same transaction as the order
+- Part withdrawal from stock, consumed first and given back when the order cannot be saved
 - Return of what was left over, cancellation with a definitive write-off, discount with a reason
 - Seven states, changed only as the consequence of an action:
 
@@ -239,6 +239,21 @@ Each module also queries only its own tables. A repository that has to turn anot
 into an internal key asks that module's key resolver, and data another module owns comes through its
 public API ([ADR 0028](docs/adr/0028-each-module-queries-only-its-own-tables.md)).
 
+### Writes across modules
+
+A transaction writes the tables of one module only. A flow that writes two modules runs as steps,
+and each module commits its own. The module that orchestrates the flow keeps an outbox table of its
+own, `work_order_stock_steps` in `work-orders` and `customer_account_steps` in `customers`, and a
+processor applies the steps that are due. Withdrawing a part arms an undo step, consumes the stock
+in `inventory`, and then saves the work order and closes the step in one transaction. When the save
+fails, the request gives the units back at once, and when the process stops in between, the
+processor gives them back after a grace period. A return, a delivery and a cancellation save the
+work order and record the stock step together, apply it after the commit, and leave a failed
+attempt to the processor, which retries it with a growing delay. The registration of a customer
+with a new account follows the withdrawal: it arms a discard step, opens the account in `identity`,
+and then saves the customer. Every receiving step is idempotent by operation id
+([ADR 0033](docs/adr/0033-writes-across-modules-run-as-steps.md)).
+
 ### What `npm run lint` enforces
 
 `npm run lint` runs ESLint and then `npm run lint:architecture`. It exits non-zero on any of these
@@ -359,6 +374,9 @@ brings the application down with the field's message, rather than failing later.
 | `RATE_LIMIT_TTL_SECONDS`       | No       | `60`             | Rate limit window                                                          |
 | `RATE_LIMIT_MAX_REQUESTS`      | No       | `100`            | Requests per window, global limit                                          |
 | `RATE_LIMIT_AUTH_MAX_REQUESTS` | No       | `10`             | Requests per window on the authentication routes                           |
+| `OUTBOX_POLL_INTERVAL_MS`      | No       | `5000`           | How often a processor looks for due steps, in ms; 0 turns it off           |
+| `OUTBOX_GRACE_SECONDS`         | No       | `300`            | How long an armed step waits before the processor compensates it           |
+| `OUTBOX_MAX_ATTEMPTS`          | No       | `10`             | Attempts before a step that keeps failing is marked failed                 |
 | `ADMIN_EMAIL`                  | No       | -                | Email of the `SUPER_ADMIN` the seeds create                                |
 | `ADMIN_PASSWORD`               | No       | -                | Password of the `SUPER_ADMIN`, at least 8 characters, read by `seed:admin` |
 | `ADMIN_DOCUMENT`               | No       | -                | CPF or CNPJ of the `SUPER_ADMIN`, read by `seed:admin`                     |
@@ -369,8 +387,8 @@ the `workshop_test` database and holds only local test credentials.
 
 ## Database
 
-PostgreSQL, reached through TypeORM with hand-written migrations. The schema has 18 domain tables,
-plus TypeORM's own bookkeeping table, created by nine migrations in
+PostgreSQL, reached through TypeORM with hand-written migrations. The schema has 20 domain tables,
+plus TypeORM's own bookkeeping table, created by ten migrations in
 [`src/shared/infrastructure/database/migrations/`](src/shared/infrastructure/database/migrations/).
 `synchronize` is off: nothing changes the schema outside a migration.
 
@@ -714,11 +732,13 @@ Four properties carry the choice:
    database, so a work order item cannot point at a non-existent order and a movement cannot
    reference an item that does not exist. The guarantee belongs to the schema, not to whichever
    code happens to write.
-2. **A transaction crossing two aggregates in two modules.** Withdrawing a part decreases the
-   stock, writes a movement in the ledger and updates the work order. If any part fails, all three
-   have to fail together, otherwise the shop ends up with a part written down and an order that
-   does not know about it. PostgreSQL delivers that as a single `COMMIT`
-   ([ADR 0023](docs/adr/0023-repositories-honour-an-ambient-transaction.md)).
+2. **A transaction for each module, and a durable outbox between them.** Withdrawing a part
+   decreases the stock and writes a movement in `inventory`, then updates the work order in
+   `work-orders`, and each module commits only its own tables. The step that gives the units back
+   is recorded in PostgreSQL before the first write, so a failed save, or a process that stops in
+   between, never leaves the shop with a part written down and an order that does not know about it.
+   The processors claim their steps with `FOR UPDATE SKIP LOCKED`
+   ([ADR 0033](docs/adr/0033-writes-across-modules-run-as-steps.md)).
 3. **Row locking for the concurrency this case actually has.** Two simultaneous withdrawals of the
    same item are resolved with `SELECT ... FOR UPDATE` ordered by id, which also prevents a
    deadlock between batches naming the same items in a different order.
@@ -729,9 +749,9 @@ Four properties carry the choice:
 **What was considered and set aside.** A document database would resolve the work order read with
 fewer joins, writing the whole order into a single document, and would pay for that in the
 consistency between stock and order, which is exactly where this domain cannot give: the two live
-in different aggregates and have to change together. MySQL covers points 1 to 3, but has no
-partial unique index, which is the basis of logical deletion across the whole project. SQLite
-would serve development and not the concurrency of point 3.
+in different aggregates and have to end consistent even when a request fails halfway. MySQL covers
+points 1 to 3, but has no partial unique index, which is the basis of logical deletion across the
+whole project. SQLite would serve development and not the concurrency of point 3.
 
 ### Why a modular monolith with use cases behind ports
 

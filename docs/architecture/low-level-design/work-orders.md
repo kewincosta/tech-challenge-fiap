@@ -5,7 +5,8 @@ what is charged, and who did each step. The whole of the Workshop Operations con
 largest module in the system.
 
 This is the module that spans others. It reads customers, vehicles, services and users through ports
-it declares itself, and it moves stock in `inventory` inside its own transaction.
+it declares itself, and it moves stock in `inventory` through steps of its own: it records each step
+in its outbox and `inventory` commits the stock side in a transaction of its own.
 
 Conventions this page does not repeat are in [the high level design](../high-level-design.md).
 
@@ -61,16 +62,16 @@ Sixteen command use cases, in lifecycle order. Each command is run by the use ca
 | `ApproveBudgetCommand`             | Approves the pending round and moves to `IN_EXECUTION`.                                  |
 | `RejectBudgetCommand`              | Rejects it and returns to the previous scope.                                            |
 | `SubmitSupplementaryBudgetCommand` | Prices the next round from execution and returns to `AWAITING_APPROVAL`.                 |
-| `WithdrawPartsCommand`             | Moves stock. Calls `StockLedger.consume`, which consumes the parts in `inventory`.       |
-| `ReturnPartsCommand`               | Returns unused parts. Calls `StockLedger.restore`.                                       |
+| `WithdrawPartsCommand`             | Consumes the parts in `inventory` and saves the work order, as compensated steps.        |
+| `ReturnPartsCommand`               | Returns unused parts. Saves the work order and records a restore step.                   |
 | `CompleteWorkOrderCommand`         | Computes the charged total and moves to `COMPLETED`.                                     |
-| `DeliverVehicleCommand`            | Moves to `DELIVERED` and calls `StockLedger.settle`.                                     |
-| `CancelWorkOrderCommand`           | Moves to `CANCELED` and calls `StockLedger.writeOff`.                                    |
+| `DeliverVehicleCommand`            | Moves to `DELIVERED` and records a settle step.                                          |
+| `CancelWorkOrderCommand`           | Moves to `CANCELED` and records a write-off step.                                        |
 | `ApplyDiscountCommand`             | Reduces the charged total, with an actor and a reason.                                   |
 
-Four of these open a transaction that spans into `inventory`: withdrawal, return, delivery and
-cancellation. They run under the `TransactionRunner`, so the work order and the stock movements
-commit together ([0023](../../adr/0023-repositories-honour-an-ambient-transaction.md)).
+Four of these move stock in `inventory`: withdrawal, return, delivery and cancellation. None of
+them holds a transaction that writes stock. Each module commits its own tables, and the stock side
+is completed by a step in this module's outbox (see [Stock steps](#stock-steps)).
 
 ## Authorizers
 
@@ -103,18 +104,48 @@ Ports, all in `application/ports`. Two are the usual ones for a module's own dat
 `infrastructure/gateways` implements each by calling the other module's public API
 ([0027](../../adr/0027-ports-between-modules.md)):
 
-| Port                | Gateway                    | Calls                                                                  |
-| ------------------- | -------------------------- | ---------------------------------------------------------------------- |
-| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`   |
-| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                      |
-| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                      |
-| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                               |
-| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, settle and write-off use cases of `inventory`    |
-| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity` |
+| Port                | Gateway                    | Calls                                                                     |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------- |
+| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`      |
+| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                         |
+| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                         |
+| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                                  |
+| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, undo, settle and write-off use cases of `inventory` |
+| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity`    |
+
+Two more ports belong to the stock steps: `PendingStockSteps`, the outbox, and `StockStepLog`, which
+logs a step that reached its attempt limit.
 
 A gateway turns the provider's not-found error into `null`, and the use case raises its own error,
 such as `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`. A customer that exists but is deactivated is still
 found, with `active` false, which is what separates a 404 from a 422.
+
+## Stock steps
+
+A step is `{ operationId, kind, workOrderId, actorUserId, lines? }`, with the kind `UNDO_CONSUMPTION`,
+`RESTORE`, `SETTLE` or `WRITE_OFF`. The `operationId` is the key `inventory` applies the step by, so a
+repeat changes nothing. The pieces ([0033](../../adr/0033-writes-across-modules-run-as-steps.md)):
+
+- `PendingStockSteps` (`application/ports`), implemented by `TypeOrmPendingStockSteps` over
+  `work_order_stock_steps`. `arm` records an armed step in a statement of its own. `enqueue` records a
+  pending step, and `disarm` closes an armed step only while it is still armed and says whether it
+  did; both join the transaction the caller has open. `complete`, `release`, `recordFailure` and
+  `markFailed` are statements of their own. `claimDue` takes the due steps with
+  `FOR UPDATE SKIP LOCKED` and leases them for the grace period, counting the attempt.
+- `StockStepApplier` (`application/services`) applies one claimed step through `StockLedger`,
+  completes it, or records the failure with the next due time (1 s, 5 s, 30 s, 2 min, 10 min, then
+  1 h). At the attempt limit it marks the step failed and logs it through `StockStepLog`.
+  `applyAfterCommit` is the attempt a request makes at its own step, and it never fails the request.
+- `StockStepProcessor` (`infrastructure/outbox`) runs the applier at application bootstrap and every
+  `OUTBOX_POLL_INTERVAL_MS`. An interval of 0 turns it off, which is how the test suites keep an
+  application from picking up steps older runs left behind.
+
+Withdrawal arms an `UNDO_CONSUMPTION` step due after `OUTBOX_GRACE_SECONDS`, consumes the stock,
+and then disarms the step and saves the work order in one transaction. When the consumption or that
+transaction fails, the request undoes the consumption through the ledger at once, completes the step
+and answers the first error. A step the processor claimed first answers 409
+`CONCURRENT_MODIFICATION`. Return, delivery and cancellation save the work order and enqueue their
+step in one transaction, and apply it after the commit.
 
 ## Persistence
 
@@ -259,6 +290,26 @@ The trail. Append only, written by the repository inside the aggregate's transac
 | `note`          | `varchar(255)` | Nullable.                                            |
 
 Indexed by `ix_work_order_events_work_order_occurred`.
+
+### `work_order_stock_steps`
+
+The outbox of the stock steps. From migration `1787702400009-add-cross-module-steps.ts`.
+
+| Column          | Type          | Notes                                                                                     |
+| --------------- | ------------- | ----------------------------------------------------------------------------------------- |
+| `id`            | `bigserial`   | Primary key, internal only.                                                               |
+| `operation_id`  | `uuid`        | `ux_work_order_stock_steps_operation_id` unique. The key `inventory` applies the step by. |
+| `kind`          | `varchar(30)` | `UNDO_CONSUMPTION`, `RESTORE`, `SETTLE` or `WRITE_OFF`.                                   |
+| `work_order_id` | `bigint`      | References `work_orders (id)`, `ON DELETE RESTRICT`.                                      |
+| `payload`       | `jsonb`       | The actor and, for a restore, the lines. Defaults to `{}`.                                |
+| `status`        | `varchar(20)` | `ARMED`, `PENDING`, `DONE` or `FAILED`, checked by `chk_work_order_stock_steps_status`.   |
+| `attempts`      | `integer`     | Claims so far. Defaults to 0.                                                             |
+| `due_at`        | `timestamptz` | When the step is next due. A claim pushes it to the end of its lease.                     |
+| `last_error`    | `text`        | Nullable. The error of the last failed attempt.                                           |
+| `created_at`    | `timestamptz` |                                                                                           |
+| `completed_at`  | `timestamptz` | Nullable. Set when the step is done.                                                      |
+
+A step stays in the table after it is done or failed. A failed one waits there for an operator.
 
 ## Endpoints
 

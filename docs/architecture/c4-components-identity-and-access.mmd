@@ -13,7 +13,8 @@ C4Component
 
     Boundary(users, "users") {
       Component(usersCtl, "UsersController", "Controller", "Registration, staff accounts, profile, administration")
-      Component(registerUser, "RegisterUserUseCase", "Use case", "Registers the account and assigns CUSTOMER in one transaction")
+      Component(registerUser, "RegisterUserUseCase", "Use case", "Registers the account, under the id the caller chose, and assigns CUSTOMER in one transaction")
+      Component(discardAccount, "DiscardOpenedAccountUseCase", "Use case", "Removes an account another module opened; refuses one with a session or a customer")
       Component(changePassword, "ChangePasswordUseCase", "Use case", "Rehashes, clears the pending flag, ends every session")
       Component(getUser, "GetUserByIdUseCase", "Use case", "One user by id, UserNotFoundError when there is none")
       Component(verifyCredentials, "VerifyCredentialsUseCase", "Use case", "Checks the email and the password")
@@ -60,6 +61,7 @@ C4Component
   Rel(usersCtl, changePassword, "Calls")
   Rel(registerUser, userAgg, "Creates")
   Rel(registerUser, userRepo, "Saves")
+  Rel(discardAccount, userRepo, "Deletes the user and its role assignments")
   Rel(registerUser, hasher, "Hashes")
   Rel(authCtl, authenticate, "Calls")
   Rel(authCtl, refresh, "Calls")
@@ -82,7 +84,8 @@ C4Component
   Rel(invalidator, accessCache, "Invalidates")
   Rel(reuseLog, sessionAgg, "Listens for RefreshTokenReuseDetected")
 
-  Rel(customers, registerUser, "Calls through index.ts: opens an account", "cross-module")
+  Rel(customers, registerUser, "Calls through index.ts: opens an account, in a transaction of its own", "cross-module")
+  Rel(customers, discardAccount, "Calls through index.ts: discards the account when the registration fails", "cross-module")
   Rel(customers, userKeys, "Calls through index.ts: user UUID to key", "cross-module")
   Rel(workOrders, effective, "Calls through index.ts: access of an actor", "cross-module")
   Rel(workOrders, getUser, "Calls through index.ts: the assigned mechanic", "cross-module")

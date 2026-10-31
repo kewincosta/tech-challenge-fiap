@@ -115,26 +115,39 @@ One consequence catches people: registration assigns `CUSTOMER` to every account
 account also carries the permissions of `CUSTOMER`. A permission that `CUSTOMER` holds is held by
 everyone.
 
-## Transactions across modules
+## Writes across modules
 
-Most writes touch one aggregate and get their transaction from their own repository. A write that
-spans two modules cannot, because the second module is reached through a port that carries
-identifiers and DTOs, and neither can carry a live `EntityManager`.
+A transaction writes the tables of one module only. Most writes touch one aggregate and get their
+transaction from their own repository. A use case that writes more than one aggregate of its module
+runs under the `TransactionRunner`, which opens the transaction and puts the manager in an
+`AsyncLocalStorage`. Any repository of that module resolves its manager through
+`currentEntityManager()` first, and opens its own only when there is none. A repository that does
+open its own does it through `runInNewTransaction`, which publishes that manager as the ambient
+one, so the key resolvers and the reads of other modules that it calls join the transaction and
+take no second connection
+([0032](../adr/0032-a-repository-own-transaction-is-the-ambient-one.md)). `run` rejects a call made
+inside a transaction that is already open.
 
-`TransactionRunner` opens the transaction and puts the manager in an `AsyncLocalStorage`. Any
-repository reachable from such a write resolves its manager through `currentEntityManager()`
-first, and opens its own only when there is none
-([0023](../adr/0023-repositories-honour-an-ambient-transaction.md)). A repository that does open its
-own does it through `runInNewTransaction`, which publishes that manager as the ambient one, so the
-key resolvers and the reads of other modules that it calls join the transaction and take no second
-connection.
+A flow that writes two modules runs as steps, and each module commits its own
+([0033](../adr/0033-writes-across-modules-run-as-steps.md)). The module that orchestrates the flow
+records each pending step in an outbox table of its own: `work_order_stock_steps` in `work-orders`
+and `customer_account_steps` in `customers`. A processor in each module claims the steps that are
+due at application bootstrap and every `OUTBOX_POLL_INTERVAL_MS`, applies them through an applier,
+and retries a failed step after 1 second, 5 seconds, 30 seconds, 2 minutes, 10 minutes and then
+every hour, until `OUTBOX_MAX_ATTEMPTS` marks it failed and logs it. Five flows work this way:
 
-Six use cases open a transaction this way today. Two are in Identity & Access and Customer
-Management: registering a user, which assigns the `CUSTOMER` role in the `authorization` area, and
-registering a customer, which opens an account in `identity` through its `CustomerAccounts`
-gateway. The other four are the work order commands that move stock in `inventory` while updating
-the work order: withdrawing parts, returning them, delivering the vehicle, which settles the
-consumptions, and cancelling, which writes them off.
+| Flow                                   | First step                                                                               | Last step                                                   | When a step fails                                                                                             |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Withdraw parts                         | Arm an undo step, then consume in `inventory`                                            | Disarm the step and save the work order, in one transaction | The request undoes the consumption at once and answers the first error; the processor undoes it after a crash |
+| Register a customer with a new account | Arm a discard step, then open the account in `identity`                                  | Disarm the step and save the customer, in one transaction   | The request discards the account at once and answers the first error; the processor discards it after a crash |
+| Return parts, deliver, cancel          | Save the work order and record the restore, settle or write-off step, in one transaction | Apply the step after the commit                             | The step stays pending and the processor retries it; the request still succeeds                               |
+
+When the processor claimed an armed step before the request reached its last transaction, the
+disarm finds the step taken, the request answers 409 `CONCURRENT_MODIFICATION`, saves nothing and
+applies its own compensation. Every receiving step is idempotent by operation id, so a repeat after
+a crash or a retry changes nothing. A registration over an existing user writes nothing in
+`identity` and arms no step. The `inventory` use cases that consume, restore, undo, settle and
+write off each open a transaction of their own.
 
 The work order aggregate additionally carries a `version` column, and its repository refuses a
 write whose loaded version no longer matches, answering 409
@@ -163,7 +176,7 @@ are never deleted and never rewritten beyond a movement's status
 [0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md)).
 
 **Persistence.** Hand-written SQL migrations under
-`src/shared/infrastructure/database/migrations`, nine of them. `CHECK` constraints for status
+`src/shared/infrastructure/database/migrations`, ten of them. `CHECK` constraints for status
 columns, partial unique indexes filtered by `deleted_at IS NULL` for the soft-delete rules.
 
 **Errors.** Each rule gets a `DomainError` subclass with a module-prefixed `code` and an
@@ -188,8 +201,10 @@ anything that must not be lost is written inside the transaction instead
 ([0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md)).
 
 **Cross-context work that must be able to fail the caller** is a synchronous call through a port,
-not a subscriber. Stock consumption, settlement and write-off go through the `StockLedger` port for
-exactly that reason.
+not a subscriber. Stock consumption and the opening of an account go through the `StockLedger` and
+`CustomerAccounts` ports for exactly that reason, and the request answers the error of the call.
+Work that must not fail the caller, such as the restore, the settlement and the write-off that
+follow a committed save, is a step in the outbox of the module that saved.
 
 ## The HTTP surface
 

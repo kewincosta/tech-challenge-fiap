@@ -2358,11 +2358,11 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] ADR 0033 states the context (five flows wrote two modules inside one request: the four stock flows in one shared transaction, the registration in an `identity` transaction nested in the customers one and committed first), the decision (design C16, the request's own compensation and the 409 on a claimed step included), the alternatives (the shared transaction, compensation without an outbox) and the consequences, with a `Source` line naming AD-017. The consequences name the race of a cancellation or a delivery with a withdrawal (the history shows the consumption closed, then returned), the e2e assertion the user amended on 2026-10-31, and the case left to an operator: a request that stalls past the grace period between arming and consuming, and whose own undo then fails, leaves no step to retry
-- [ ] Only the Status line of ADR 0023 changes, to `Superseded by 0033` in the link form ADR 0001 uses; the index lists 0033 and the new status of 0023
-- [ ] `grep -rniE "same transaction|shared transaction" README.md docs/architecture` finds only text about writes within one module
-- [ ] The README counts 20 domain tables and ten migrations, and its environment table lists `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_GRACE_SECONDS` and `OUTBOX_MAX_ATTEMPTS` with their defaults
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] ADR 0033 states the context (five flows wrote two modules inside one request: the four stock flows in one shared transaction, the registration in an `identity` transaction nested in the customers one and committed first), the decision (design C16, the request's own compensation and the 409 on a claimed step included), the alternatives (the shared transaction, compensation without an outbox) and the consequences, with a `Source` line naming AD-017. The consequences name the race of a cancellation or a delivery with a withdrawal (the history shows the consumption closed, then returned), the e2e assertion the user amended on 2026-10-31, and the case left to an operator: a request that stalls past the grace period between arming and consuming, and whose own undo then fails, leaves no step to retry
+- [x] Only the Status line of ADR 0023 changes, to `Superseded by 0033` in the link form ADR 0001 uses; the index lists 0033 and the new status of 0023
+- [x] `grep -rniE "same transaction|shared transaction" README.md docs/architecture` finds only text about writes within one module
+- [x] The README counts 20 domain tables and ten migrations, and its environment table lists `OUTBOX_POLL_INTERVAL_MS`, `OUTBOX_GRACE_SECONDS` and `OUTBOX_MAX_ATTEMPTS` with their defaults
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs

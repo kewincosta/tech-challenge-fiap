@@ -14,7 +14,7 @@ C4Component
 
     Boundary(customers, "customers") {
       Component(custCtl, "CustomersController", "Controller", "Registration, own record, administration")
-      Component(registerCust, "RegisterCustomerUseCase", "Use case", "Creates over an existing identity, or person and customer together, in one transaction")
+      Component(registerCust, "RegisterCustomerUseCase", "Use case", "Creates over an existing identity, or opens the account and then saves the customer, as steps")
       Component(updateCust, "UpdateCustomerUseCase", "Use case", "Address and phone")
       Component(getCust, "GetCustomerUseCase", "Use case", "One customer, whatever its status; CustomerNotFoundError when there is none")
       Component(custByUser, "GetCustomerByUserIdUseCase", "Use case", "Resolves the customer behind a token")
@@ -22,6 +22,8 @@ C4Component
       Component(custRepo, "TypeOrmCustomerRepository", "Repository", "Honours an ambient transaction")
       Component(custQuery, "TypeOrmCustomerQueryAdapter", "Query port", "CustomerQueryPort, composes the listing with the users from identity")
       Component(accountsGw, "CustomerAccountsGateway", "Gateway", "Implements CustomerAccounts by calling identity")
+      Component(accountSteps, "TypeOrmPendingAccountSteps", "Outbox", "The discard steps over customer_account_steps; claims due steps with SKIP LOCKED")
+      Component(accountApplier, "AccountStepApplier / AccountStepProcessor", "Service and processor", "Discard the accounts of steps that fell due, at bootstrap and on an interval")
       Component(custKeys, "CustomerKeyResolver", "Key resolver", "Customer UUID to internal key and back, for other modules")
     }
 
@@ -40,7 +42,7 @@ C4Component
 
   Component_Ext(identity, "identity", "Module", "Owns the account, the name, the email and the document")
   Component_Ext(workOrders, "work-orders", "Module", "Opens work orders against a customer and a vehicle")
-  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "customers, vehicles")
+  ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "customers, customer_account_steps, vehicles")
 
   Rel(advisor, custCtl, "Registers and maintains", "HTTPS")
   Rel(advisor, vehCtl, "Registers and maintains", "HTTPS")
@@ -52,7 +54,10 @@ C4Component
   Rel(custCtl, custByUser, "Calls")
   Rel(registerCust, custAgg, "Creates")
   Rel(registerCust, custRepo, "Saves")
-  Rel(registerCust, accountsGw, "Opens or checks the account through the CustomerAccounts port")
+  Rel(registerCust, accountsGw, "Opens or checks the account through the CustomerAccounts port, and discards it when the registration fails")
+  Rel(registerCust, accountSteps, "Arms the discard step, and disarms it in the transaction that saves the customer")
+  Rel(accountApplier, accountSteps, "Claims due steps, records the outcome")
+  Rel(accountApplier, accountsGw, "Discards the account of a step")
   Rel(getCust, custQuery, "Reads")
   Rel(custByUser, custQuery, "Reads")
   Rel(vehCtl, registerVeh, "Calls")
@@ -64,7 +69,7 @@ C4Component
   Rel(myVehicles, vehQuery, "Reads")
   Rel(getVeh, vehQuery, "Reads")
 
-  Rel(accountsGw, identity, "Calls through index.ts: registers the person, reads the user and its roles", "cross-module")
+  Rel(accountsGw, identity, "Calls through index.ts: opens the account under a chosen id, discards it, reads the user and its roles", "cross-module")
   Rel(custQuery, identity, "Calls through index.ts: name, email and document of each customer", "cross-module")
   Rel(custRepo, identity, "Calls through index.ts: user UUID to key", "cross-module")
   Rel(ownersGw, getCust, "Calls through index.ts: the owning customer", "cross-module")
@@ -76,6 +81,7 @@ C4Component
   Rel(workOrders, vehKeys, "Calls through index.ts: vehicle UUID to key", "cross-module")
 
   Rel(custRepo, pg, "Reads and writes", "TCP")
+  Rel(accountSteps, pg, "Reads and writes the outbox", "TCP")
   Rel(vehRepo, pg, "Reads and writes", "TCP")
   Rel(custQuery, pg, "Reads", "TCP")
   Rel(vehQuery, pg, "Reads", "TCP")
