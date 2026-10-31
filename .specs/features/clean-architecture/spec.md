@@ -38,7 +38,7 @@ Every ambiguity is resolved or recorded here, so nothing is left silently unclea
 
 | Assumption / decision | Chosen default | Rationale | Confirmed? |
 | --- | --- | --- | --- |
-| How "the API is unchanged" is measured | Capture the OpenAPI document and run the e2e suite on the commit before the first change; after each migrated flow the document must still match and no e2e assertion may change | The OpenAPI document carries every route, payload shape and status code, and the e2e suite pins the behavior behind them | y |
+| How "the API is unchanged" is measured | Capture the OpenAPI document and run the e2e suite on the commit before the first change; after each migrated flow the document must still match and no e2e assertion may change. One exception, approved on 2026-10-31: the case of a cancellation racing a withdrawal (CA-02 AC2, CA-10) | The OpenAPI document carries every route, payload shape and status code, and the e2e suite pins the behavior behind them. With the stock consumed before the work order saves, a withdrawal that loses that race leaves its consumption and the return beside it in the history, as a withdrawal returned before a cancellation already does | y |
 | Routes no e2e test exercises today | Each one gets a characterization e2e test before its flow migrates | The study's refactoring sequence records the current behavior first | y |
 | Event dispatch semantics | Keep today's timing: the publisher does not wait for subscribers, and a subscriber error is logged at error level under the `EventBus` context and never reaches the caller. The log line names the subscriber's class | That is how the `EventBus` of `@nestjs/cqrs` 11.0.3 behaves today, except for the name: its line reads `"InstanceWrapper" has thrown an unhandled exception.`, because it reads the name from Nest's provider wrapper (checked on 2026-10-29). Naming the subscriber is the one change, and it touches no route answer | y |
 | Cross-module write consistency | Steps committed per module and completed through a durable outbox the orchestrating module owns: compensation for the withdrawal and the registration, retry for the return, the delivery and the cancellation | The user's decision of 2026-10-31 | y |
@@ -105,7 +105,7 @@ Scope is Large, so every dimension resolves to a requirement or an explicit `N/A
 
 **Acceptance Criteria**:
 1. The system SHALL generate an OpenAPI document identical to the baseline captured before this feature's first code change.
-2. WHEN `npm run test:e2e` runs THEN the system SHALL pass every e2e test that existed before this feature, with no assertion changed.
+2. WHEN `npm run test:e2e` runs THEN the system SHALL pass every e2e test that existed before this feature, with no assertion changed except the case of a cancellation racing a withdrawal in `test/e2e/work-order-concurrency.e2e.spec.ts`, whose assertion the user amended on 2026-10-31 for CA-10: no consumption keeps units outstanding, and the stock is back where it was.
 3. The system SHALL exercise each HTTP route in at least one e2e test written before that route's flow migrates.
 4. IF a query use case finds no record for the identifier it receives THEN the system SHALL raise the owning module's not-found error from inside the use case.
 5. IF a write that spans two modules fails in a later step THEN the system SHALL compensate or retry it as CA-10 defines, so that no operation stays half applied (amended on 2026-10-31; it asked for a rollback of a shared transaction).
