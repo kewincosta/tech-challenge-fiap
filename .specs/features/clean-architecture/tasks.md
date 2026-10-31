@@ -57,7 +57,7 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 
 ## Confirmed lessons applied to this breakdown
 
-- **L-002** (every spec Edge Case needs an owning task): the Edge Case Ownership table assigns each of the spec's 22 edge cases to the tasks that prove it and the layer of each proof.
+- **L-002** (every spec Edge Case needs an owning task): the Edge Case Ownership table assigns each of the spec's edge cases to the tasks that prove it and the layer of each proof.
 - **L-003** (a sibling's test does not stand in for a call site's own): every route that answers a not-found gets its own e2e assertion in phase 1, before the not-found moves into its use case, and each query use case that throws gets its own unit case when it migrates.
 
 ## Edge Case Ownership
@@ -87,6 +87,7 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 | The inventory step of a return, a delivery or a cancellation fails, it applies on a later attempt | T73 | unit, integration |
 | The customer save fails after the account opened, no user with that email or document is left | T70, T74 | integration |
 | A withdrawal or a registration reaches its last step after the processor claimed its step: 409, nothing saved, the compensation still applied | T72, T74 | unit, integration |
+| A return's restore failed and a cancellation or a delivery followed: the restore applies first | T76 | integration |
 | `POST /customers` links the user `identity` opened earlier in the same registration | T14, T32, T74 | integration, e2e |
 | A subscriber throws, the caller keeps its result and the error is logged | T12 | unit |
 
@@ -226,6 +227,12 @@ T63 → T64 → T65 → T66 → T67
 
 ```
 T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
+```
+
+### Phase 20: Fixes from the second validation
+
+```
+T76 → T77 → T78
 ```
 
 ---
@@ -2371,6 +2378,94 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 ---
 
+### Phase 20: Fixes from the second validation
+
+The second validation (2026-10-31) found that a restore that failed could never apply once a later write-off or settlement of the same work order closed its consumptions, and that no test settles a work order twice through the real repository (surviving mutant S22). It also flagged spec text behind the approved scope, fixed in the spec itself.
+
+#### T76: The steps of a work order apply in the order they were recorded
+
+**What**: The claim of `TypeOrmPendingStockSteps` takes a step only while no older step of the same work order is `ARMED`, `PENDING` or `FAILED` (CA-10 AC10). A restore that failed then applies before a later write-off or settlement, and a failed step holds the later steps of its work order until an operator sets it back to pending. The port's comment and the test support follow.
+**Where**: `src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts`, `src/modules/work-orders/application/ports/pending-stock-steps.port.ts`, `test/support/outbox.ts`
+**Depends on**: T75
+**Reuses**: The claim's `FOR UPDATE SKIP LOCKED` and its lease
+**Requirement**: CA-10, CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A step is not claimed while an older step of its work order is armed, pending or failed, and is claimed once that step is done; a step of another work order is claimed meanwhile (integration)
+- [ ] The second validation's probe is a regression case: a return's restore fails once, a cancellation of the same work order is saved and its write-off attempted, the processor drains past the wait, and the stock holds the returned units while the write-off records only what stayed outstanding; the same with a delivery and its settlement (integration)
+- [ ] Two claims at once still never return the same step, and one claim takes at most one step per work order (integration)
+- [ ] No suite leaves an armed or pending step behind: a test whose request leaves a step waiting drains the steps of that work order only
+- [ ] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row, with no assertion changed
+- [ ] Test count: integration total grows; unit and e2e unchanged or larger
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `fix(work-orders): apply the steps of a work order in order`
+
+---
+
+#### T77: A settlement applied twice settles once
+
+**What**: Integration cases settle one work order twice through the real repository, one run after the other and two runs interleaved, and expect one transition per consumption (CA-10 AC6). They kill the surviving mutant S22.
+**Where**: `test/integration/` (the spec that holds the write-off's interleaving case)
+**Depends on**: T76
+**Reuses**: The deterministic interleaving of T73's write-off case
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A second settlement of the same work order records no transition and changes no status (integration)
+- [ ] Two settlements interleaved, the second reading while the first holds its update uncommitted, record one transition per consumption (integration)
+- [ ] The mutant without `AND status = 'PENDING'` in the settlement's update fails both cases
+- [ ] Test count: integration total grows by the new cases
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `test(inventory): settle a work order twice through the repository`
+
+---
+
+#### T78: ADR 0033 names the order of the steps and the registration's operator case
+
+**What**: ADR 0033 states that the steps of a work order apply in the order they were recorded and that a failed step holds the later ones, and its consequences name the registration's case left to an operator next to the withdrawal's.
+**Where**: `docs/adr/0033-writes-across-modules-run-as-steps.md`
+**Depends on**: T77
+**Reuses**: ADR 0033 as T75 wrote it
+**Requirement**: CA-09, CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The decision names the order rule, the hold of a failed step, and how an operator releases it (sets the step back to pending)
+- [ ] The consequences name the registration's case: a request that stalls past the grace period between arming its step and opening the account, and whose own discard then fails, leaves no step to retry
+- [ ] Gate check passes: `npx prettier --check README.md docs`
+
+**Tests**: none
+**Gate**: docs
+
+**Commit**: `docs(adr): name the order of the steps and the registration's operator case`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -2395,6 +2490,7 @@ Phase 16: T56 → T57
 Phase 17: T58 → T59 → T60
 Phase 18: T63 → T64 → T65 → T66 → T67
 Phase 19: T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
+Phase 20: T76 → T77 → T78
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2480,6 +2576,9 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T73 | T72 | T72 → T73 | ✅ Match |
 | T74 | T73 | T73 → T74 | ✅ Match |
 | T75 | T74 | T74 → T75 | ✅ Match |
+| T76 | T75 | Phase 20 start | ✅ Match |
+| T77 | T76 | T76 → T77 | ✅ Match |
+| T78 | T77 | T77 → T78 | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2560,3 +2659,6 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T73: Retried steps | Use cases | integration (highest) | integration | ✅ OK |
 | T74: Registration steps | Port, adapter, applier, processor, use case | integration (highest) | integration | ✅ OK |
 | T75: ADR 0033 and docs | Documentation | none | none | ✅ OK |
+| T76: Step order per work order | Adapter, test support | integration (highest) | integration | ✅ OK |
+| T77: Settlement twice | Repository (tests only) | integration | integration | ✅ OK |
+| T78: ADR 0033 | Documentation | none | none | ✅ OK |
