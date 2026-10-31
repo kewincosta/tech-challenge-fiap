@@ -2455,9 +2455,9 @@ The second validation (2026-10-31) found that a restore that failed could never 
 
 **Done when**:
 
-- [ ] The decision names the order rule, the hold of a failed step, and how an operator releases it (sets the step back to pending)
-- [ ] The consequences name the registration's case: a request that stalls past the grace period between arming its step and opening the account, and whose own discard then fails, leaves no step to retry
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] The decision names the order rule, the hold of a failed step, and how an operator releases it (sets the step back to pending)
+- [x] The consequences name the registration's case: a request that stalls past the grace period between arming its step and opening the account, and whose own discard then fails, leaves no step to retry
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs
