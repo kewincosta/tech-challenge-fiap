@@ -2397,13 +2397,13 @@ The second validation (2026-10-31) found that a restore that failed could never 
 
 **Done when**:
 
-- [ ] A step is not claimed while an older step of its work order is armed, pending or failed, and is claimed once that step is done; a step of another work order is claimed meanwhile (integration)
-- [ ] The second validation's probe is a regression case: a return's restore fails once, a cancellation of the same work order is saved and its write-off attempted, the processor drains past the wait, and the stock holds the returned units while the write-off records only what stayed outstanding; the same with a delivery and its settlement (integration)
-- [ ] Two claims at once still never return the same step, and one claim takes at most one step per work order (integration)
-- [ ] No suite leaves an armed or pending step behind: a test whose request leaves a step waiting drains the steps of that work order only
-- [ ] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row, with no assertion changed
-- [ ] Test count: integration total grows; unit and e2e unchanged or larger
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A step is not claimed while an older step of its work order is armed, pending or failed, and is claimed once that step is done; a step of another work order is claimed meanwhile (integration)
+- [x] The second validation's probe is a regression case: a return's restore fails once, a cancellation of the same work order is saved and its write-off attempted, the processor drains past the wait, and the stock holds the returned units while the write-off records only what stayed outstanding; the same with a delivery and its settlement (integration)
+- [x] Two claims at once still never return the same step, and one claim takes at most one step per work order (integration)
+- [x] No suite leaves an armed or pending step behind: a test whose request leaves a step waiting drains the steps of that work order only
+- [x] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row, with no assertion changed
+- [x] Test count: integration total grows; unit and e2e unchanged or larger
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

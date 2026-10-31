@@ -49,6 +49,11 @@ export interface PendingStockSteps {
    * Claims at most `limit` steps that are due at `now`, restricted to `operationIds` when given, and
    * pushes their due time to `leaseUntil` while counting the attempt, so no other claim returns them
    * before then. A step another claim holds is skipped, never waited for. Commits before it returns.
+   *
+   * The steps of a work order apply in the order they were recorded. A step is claimed only while no
+   * older step of its work order is armed, pending or failed, so a claim takes at most one step per
+   * work order, the oldest that is not done. A failed step holds the later steps of its work order
+   * until an operator sets it back to pending. The steps of other work orders are not held.
    */
   claimDue(
     now: Date,

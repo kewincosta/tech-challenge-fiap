@@ -1,15 +1,18 @@
 import { INestApplication } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
 import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { api, grantRole, login, registerUser, type AuthenticatedClient } from '../support/http';
+import { drainStockStepsOfWorkOrder } from '../support/outbox';
 
 let app: INestApplication;
 let close: () => Promise<void>;
 let admin: AuthenticatedClient;
 let serviceAdvisor: AuthenticatedClient;
 let mechanic: AuthenticatedClient;
+const madeWorkOrderNumbers: string[] = [];
 
 beforeAll(async () => {
   const testApp = await createTestApp();
@@ -30,8 +33,26 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await close();
+  try {
+    await drainWorkOrders();
+  } finally {
+    await close();
+  }
 });
+
+// The processor is off in the tests. A cancellation that raced a withdrawal can find the
+// withdrawal's undo step ahead of its own write-off, so the write-off waits in the outbox. Applying
+// what is left keeps the step table free of armed and pending steps once the file ends.
+async function drainWorkOrders(): Promise<void> {
+  const rows: Array<{ external_id: string }> = await app
+    .get(DataSource)
+    .query(`SELECT external_id FROM work_orders WHERE number = ANY($1::text[])`, [
+      madeWorkOrderNumbers,
+    ]);
+  for (const row of rows) {
+    await drainStockStepsOfWorkOrder(app, row.external_id);
+  }
+}
 
 async function registerCustomer(): Promise<{ customerId: string }> {
   const target = await registerUser(app);
@@ -148,6 +169,7 @@ async function createInExecutionWorkOrder(
     .send({ customerId: owner.customerId, vehicleId })
     .expect(201);
   const number = (created.body as { number: string }).number;
+  madeWorkOrderNumbers.push(number);
 
   const inventoryItemId = await createInventoryItem(priceCents);
   await replenish(inventoryItemId, stockOnHand, priceCents);

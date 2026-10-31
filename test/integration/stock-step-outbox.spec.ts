@@ -8,7 +8,7 @@ import {
 } from '../../src/modules/work-orders/application/ports/pending-stock-steps.port';
 import { PENDING_STOCK_STEPS } from '../../src/modules/work-orders/work-orders.tokens';
 import { createTestApp, TestApp } from '../support/app';
-import { drainStockSteps } from '../support/outbox';
+import { drainStockSteps, drainStockStepsOfWorkOrder } from '../support/outbox';
 
 // The steps of this spec are due in a window of 2002, long past, so any app that applies the due
 // steps takes them, and no step another spec or a real run leaves is in the window.
@@ -88,11 +88,11 @@ async function insertWorkOrder(): Promise<string> {
   return workOrderExternalId;
 }
 
-async function armDueStep(kind: StockStepKind): Promise<StockStep> {
+async function armDueStep(kind: StockStepKind, workOrderId?: string): Promise<StockStep> {
   const step: StockStep = {
     operationId: randomUUID(),
     kind,
-    workOrderId: await insertWorkOrder(),
+    workOrderId: workOrderId ?? (await insertWorkOrder()),
     actorUserId: actorId,
   };
   made.push(step.operationId);
@@ -195,6 +195,19 @@ describe('the stock step outbox in the application', () => {
     await drainStockSteps(testApp.app, [named.operationId]);
 
     expect(await stateOf(named.operationId)).toEqual({ status: 'DONE', attempts: 1 });
+    expect(await stateOf(other.operationId)).toEqual({ status: 'ARMED', attempts: 0 });
+  });
+
+  it('should drain every step of the named work order, one after the other, and leave the steps of another work order untouched', async () => {
+    const workOrderId = await insertWorkOrder();
+    const first = await armDueStep(StockStepKind.Settle, workOrderId);
+    const second = await armDueStep(StockStepKind.WriteOff, workOrderId);
+    const other = await armDueStep(StockStepKind.Settle);
+
+    await drainStockStepsOfWorkOrder(testApp.app, workOrderId);
+
+    expect(await stateOf(first.operationId)).toEqual({ status: 'DONE', attempts: 1 });
+    expect(await stateOf(second.operationId)).toEqual({ status: 'DONE', attempts: 1 });
     expect(await stateOf(other.operationId)).toEqual({ status: 'ARMED', attempts: 0 });
   });
 

@@ -1,4 +1,6 @@
+import { isDeepStrictEqual } from 'node:util';
 import { INestApplication } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { AccountStepApplier } from '../../src/modules/customers/application/services/account-step-applier';
 import {
   ACCOUNT_STEP_LOG,
@@ -38,6 +40,56 @@ export function drainStockSteps(
       )
     : app.get(StockStepApplier);
   return applier.applyOperations(operationIds);
+}
+
+interface WaitingStep {
+  operation_id: string;
+  attempts: number;
+}
+
+async function waitingStepsOf(dataSource: DataSource, workOrderId: string): Promise<WaitingStep[]> {
+  return dataSource.query(
+    `SELECT s.operation_id, s.attempts
+       FROM work_order_stock_steps s
+       JOIN work_orders wo ON wo.id = s.work_order_id
+      WHERE wo.external_id = $1 AND s.status IN ('ARMED', 'PENDING')
+      ORDER BY s.id`,
+    [workOrderId],
+  );
+}
+
+/**
+ * Applies the stock steps of one work order, the way the processor would over several runs. A claim
+ * takes at most one step per work order and a step waits for the older ones, so draining a list of
+ * operations leaves a step behind when an older blocker is missing from the list. This names the
+ * work order and loops until a round claims nothing of it. A step that is not due yet, a step a
+ * failed step holds back and a step another claim leases stay as they are. The steps of another
+ * work order are never claimed, which `applyDue()` over the table would do to steps that suites
+ * running in parallel own. A test whose request leaves a step waiting drains its work order with
+ * this, so that no armed or pending step is left behind.
+ */
+export async function drainStockStepsOfWorkOrder(
+  app: INestApplication,
+  workOrderId: string,
+  now?: Date,
+): Promise<void> {
+  const dataSource = app.get(DataSource);
+  for (;;) {
+    const before = await waitingStepsOf(dataSource, workOrderId);
+    if (before.length === 0) {
+      return;
+    }
+    await drainStockSteps(
+      app,
+      before.map((step) => step.operation_id),
+      now,
+    );
+    // A claim counts an attempt and a step it applied leaves the list, so an unchanged list means
+    // that nothing was claimable.
+    if (isDeepStrictEqual(await waitingStepsOf(dataSource, workOrderId), before)) {
+      return;
+    }
+  }
 }
 
 /**

@@ -29,12 +29,13 @@ import { uniqueSku } from '../support/factories/sku.factory';
 import { uniqueWorkOrderNumber } from '../support/factories/work-order-number.factory';
 import { RecordingStockStepLog } from '../support/fakes/recording-stock-step-log';
 import { createTestApp, TestApp } from '../support/app';
-import { drainStockSteps } from '../support/outbox';
+import { drainStockSteps, drainStockStepsOfWorkOrder } from '../support/outbox';
 
 // A return, a delivery and a cancellation record their step with the save and apply it after the
 // commit. This spec starts at the recorded step: the request's own attempt meets an inventory that
 // fails once, and the processor, run past the wait the failure set, applies the step to a real
-// database.
+// database. It also follows a return whose restore failed through the cancellation or the delivery
+// that comes next: the steps of a work order apply in the order they were recorded.
 const SHELF = 10;
 const WITHDRAWN = 3;
 const RETURNED = 2;
@@ -350,4 +351,111 @@ describe('a stock step whose first attempt meets an inventory that fails', () =>
       await scenario.expectApplied(itemId);
     },
   );
+});
+
+interface ClosingScenario {
+  kind: StockStepKind;
+  /** What the closing step leaves in the ledger once the restore applied first. */
+  expectedLedger: Array<[string, number, string | null]>;
+  /** The transitions of the item's consumptions the closing step recorded. */
+  expectedTransitions: Array<[string, number | null]>;
+}
+
+const CLOSING_SCENARIOS: Array<[string, ClosingScenario]> = [
+  [
+    'a cancellation writes off only what stayed outstanding',
+    {
+      kind: StockStepKind.WriteOff,
+      expectedLedger: [
+        ['INBOUND', SHELF, null],
+        ['CONSUMPTION', WITHDRAWN, 'WRITTEN_OFF'],
+        ['RETURN', RETURNED, null],
+      ],
+      expectedTransitions: [['WRITTEN_OFF', WITHDRAWN - RETURNED]],
+    },
+  ],
+  [
+    'a delivery settles the consumption the return drew from',
+    {
+      kind: StockStepKind.Settle,
+      expectedLedger: [
+        ['INBOUND', SHELF, null],
+        ['CONSUMPTION', WITHDRAWN, 'SETTLED'],
+        ['RETURN', RETURNED, null],
+      ],
+      expectedTransitions: [['SETTLED', null]],
+    },
+  ],
+];
+
+describe('a closing step recorded after a restore that failed', () => {
+  it.each(CLOSING_SCENARIOS)('waits for the restore, so that %s', async (_name, scenario) => {
+    const itemId = await buildStockedItem(SHELF);
+    const workOrderId = await insertWorkOrder();
+    await ledger.consume(
+      workOrderId,
+      [{ inventoryItemId: itemId, quantity: WITHDRAWN }],
+      actorId,
+      randomUUID(),
+    );
+    const restore: StockStep = {
+      operationId: randomUUID(),
+      kind: StockStepKind.Restore,
+      workOrderId,
+      actorUserId: actorId,
+      lines: [{ inventoryItemId: itemId, quantity: RETURNED }],
+    };
+    const closing: StockStep = {
+      operationId: randomUUID(),
+      kind: scenario.kind,
+      workOrderId,
+      actorUserId: actorId,
+    };
+    const failingRestore = new StockStepApplier(
+      steps,
+      ledgerFailingOnce('restore'),
+      clock,
+      new RecordingStockStepLog(),
+      settings,
+    );
+    const closingRequest = new StockStepApplier(
+      steps,
+      ledger,
+      clock,
+      new RecordingStockStepLog(),
+      settings,
+    );
+
+    // The return is saved with its step, and its attempt meets an inventory that fails.
+    await transactionRunner.run(() => steps.enqueue(restore));
+    await failingRestore.applyAfterCommit(restore.operationId);
+    // The cancellation or the delivery is saved with its step, and its attempt follows at once.
+    await transactionRunner.run(() => steps.enqueue(closing));
+    await closingRequest.applyAfterCommit(closing.operationId);
+
+    expect(await stepOf(restore.operationId)).toMatchObject({
+      status: 'PENDING',
+      attempts: 1,
+      last_error: 'inventory is busy',
+    });
+    expect(await stepOf(closing.operationId)).toMatchObject({
+      status: 'PENDING',
+      attempts: 0,
+      last_error: null,
+    });
+    expect(await quantityOf(itemId)).toBe(SHELF - WITHDRAWN);
+    expect(await ledgerOf(itemId)).toEqual([
+      ['INBOUND', SHELF, null],
+      ['CONSUMPTION', WITHDRAWN, 'PENDING'],
+    ]);
+
+    // The processor, past the wait the failure set, applies the restore and then the closing step.
+    await drainStockStepsOfWorkOrder(testApp.app, workOrderId, new Date(Date.now() + 5000));
+
+    expect(await stepOf(restore.operationId)).toMatchObject({ status: 'DONE', attempts: 2 });
+    expect(await stepOf(closing.operationId)).toMatchObject({ status: 'DONE', attempts: 1 });
+    expect(await quantityOf(itemId)).toBe(SHELF - WITHDRAWN + RETURNED);
+    expect(await ledgerOf(itemId)).toEqual(scenario.expectedLedger);
+    expect(await transitionsOf(itemId)).toEqual(scenario.expectedTransitions);
+  });
 });

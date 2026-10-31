@@ -542,6 +542,128 @@ describe('TypeOrmPendingStockSteps', () => {
       expect(new Set(claimedIds).size).toBe(claimedIds.length);
       expect([...claimedIds].sort()).toEqual(all.map((step) => step.operationId).sort());
     });
+
+    describe('the steps of one work order', () => {
+      it.each<[string, (older: StockStep) => Promise<void>]>([
+        ['armed', (older) => steps.arm(older, at(300))],
+        ['pending', (older) => steps.enqueue(older)],
+      ])(
+        'should not claim a step while an older step of its work order is %s, and claim it once that step is done',
+        async (_state, record) => {
+          startClock();
+          const workOrderId = await insertWorkOrder();
+          const older = await newStep({ workOrderId });
+          const newer = await newStep({ workOrderId, kind: StockStepKind.Settle });
+          await record(older);
+          await steps.enqueue(newer);
+
+          const whileWaiting = await steps.claimDue(at(60), 10, at(900), [newer.operationId]);
+          const heldBack = await rowOf(newer.operationId);
+          await steps.complete(older.operationId);
+          const afterDone = await steps.claimDue(at(60), 10, at(900), [newer.operationId]);
+
+          expect(whileWaiting).toEqual([]);
+          expect(heldBack).toMatchObject({ status: 'PENDING', attempts: 0, due_at: at(0) });
+          expect(afterDone).toEqual([{ ...newer, attempts: 1 }]);
+        },
+      );
+
+      it('should hold the later steps of a work order behind a failed step until an operator sets it back to pending', async () => {
+        startClock();
+        const workOrderId = await insertWorkOrder();
+        const failed = await newStep({ workOrderId });
+        const later = await newStep({ workOrderId, kind: StockStepKind.Settle });
+        await steps.enqueue(failed);
+        await steps.enqueue(later);
+        await steps.claimDue(at(0), 10, at(300), [failed.operationId]);
+        await steps.markFailed(failed.operationId, 'gave up');
+
+        const whileFailed = await steps.claimDue(at(86_400), 10, at(90_000), [later.operationId]);
+        // The operator fixed the cause and sets the failed step back to pending.
+        await dataSource.query(
+          `UPDATE work_order_stock_steps SET status = 'PENDING' WHERE operation_id = $1`,
+          [failed.operationId],
+        );
+        const afterRelease = await steps.claimDue(at(86_400), 10, at(90_000), [
+          failed.operationId,
+          later.operationId,
+        ]);
+        await steps.complete(failed.operationId);
+        const afterDone = await steps.claimDue(at(86_400), 10, at(90_000), [later.operationId]);
+
+        expect(whileFailed).toEqual([]);
+        expect(afterRelease.map((step) => step.operationId)).toEqual([failed.operationId]);
+        expect(afterDone.map((step) => step.operationId)).toEqual([later.operationId]);
+      });
+
+      it('should claim a step of another work order while the steps of one work order wait', async () => {
+        startClock();
+        const waitingOrder = await insertWorkOrder();
+        const otherOrder = await insertWorkOrder();
+        const older = await newStep({ workOrderId: waitingOrder });
+        const newer = await newStep({ workOrderId: waitingOrder });
+        const other = await newStep({ workOrderId: otherOrder });
+        await steps.arm(older, at(300));
+        await steps.enqueue(newer);
+        await steps.enqueue(other);
+
+        const claimed = await steps.claimDue(at(60), 10, at(900), [
+          newer.operationId,
+          other.operationId,
+        ]);
+
+        expect(claimed.map((step) => step.operationId)).toEqual([other.operationId]);
+        expect(await rowOf(newer.operationId)).toMatchObject({ status: 'PENDING', attempts: 0 });
+      });
+
+      it('should take at most one step per work order in a claim, the oldest that is not done', async () => {
+        startClock();
+        const firstOrder = await insertWorkOrder();
+        const secondOrder = await insertWorkOrder();
+        const first = await newStep({ workOrderId: firstOrder });
+        const second = await newStep({ workOrderId: firstOrder });
+        const third = await newStep({ workOrderId: firstOrder });
+        const elsewhere = await newStep({ workOrderId: secondOrder });
+        for (const step of [first, second, third, elsewhere]) {
+          await steps.enqueue(step);
+        }
+
+        const claimed = await steps.claimDue(at(0), 10, at(300));
+        await steps.complete(first.operationId);
+        const next = await steps.claimDue(at(0), 10, at(300));
+
+        expect(claimed.map((step) => step.operationId).sort()).toEqual(
+          [first.operationId, elsewhere.operationId].sort(),
+        );
+        expect(next.map((step) => step.operationId)).toEqual([second.operationId]);
+        expect(await rowOf(third.operationId)).toMatchObject({ status: 'PENDING', attempts: 0 });
+      });
+
+      it('should never hand the same step to two claims running together, and leave the later step of each work order', async () => {
+        startClock();
+        const pairs: Array<[StockStep, StockStep]> = [];
+        for (let index = 0; index < 4; index += 1) {
+          const workOrderId = await insertWorkOrder();
+          const older = await newStep({ workOrderId });
+          const newer = await newStep({ workOrderId });
+          await steps.enqueue(older);
+          await steps.enqueue(newer);
+          pairs.push([older, newer]);
+        }
+
+        const [first, second] = await Promise.all([
+          steps.claimDue(at(0), 8, at(300)),
+          steps.claimDue(at(0), 8, at(300)),
+        ]);
+
+        const claimedIds = [...first, ...second].map((step) => step.operationId);
+        expect(new Set(claimedIds).size).toBe(claimedIds.length);
+        expect([...claimedIds].sort()).toEqual(pairs.map(([older]) => older.operationId).sort());
+        for (const [, newer] of pairs) {
+          expect(await rowOf(newer.operationId)).toMatchObject({ status: 'PENDING', attempts: 0 });
+        }
+      });
+    });
   });
 
   describe('recordFailure and markFailed', () => {
