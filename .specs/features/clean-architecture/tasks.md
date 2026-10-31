@@ -2146,12 +2146,12 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] The migration creates both tables with the columns of design C16's data model, a unique `operation_id` each and a check on `status`, adds the nullable `stock_movements.operation_id` with an index, and its `down` removes all three
-- [ ] `scripts/architecture/table-owners.ts` maps `work_order_stock_steps` to `work-orders` and `customer_account_steps` to `customers`, and the table check passes
-- [ ] `test/integration/cross-module-steps-schema.migration.spec.ts` proves the columns, the unique operation ids and the status check
-- [ ] The ORM entities of the two tables exist in their modules and `test/support/db.ts` lists them
-- [ ] Test count: integration total grows by the migration cases
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The migration creates both tables with the columns of design C16's data model, a unique `operation_id` each and a check on `status`, adds the nullable `stock_movements.operation_id` with an index, and its `down` removes all three
+- [x] `scripts/architecture/table-owners.ts` maps `work_order_stock_steps` to `work-orders` and `customer_account_steps` to `customers`, and the table check passes
+- [x] `test/integration/cross-module-steps-schema.migration.spec.ts` proves the columns, the unique operation ids and the status check
+- [x] The ORM entities of the two tables exist in their modules and `test/support/db.ts` lists them
+- [x] Test count: integration total grows by the migration cases
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

@@ -6,6 +6,7 @@ import { RoleOrmEntity } from '../../src/modules/identity/authorization/infrastr
 import { RolePermissionOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/role-permission.orm-entity';
 import { UserRoleOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/user-role.orm-entity';
 import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
+import { CustomerAccountStepOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer-account-step.orm-entity';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
 import { ServiceOrmEntity } from '../../src/modules/services/infrastructure/persistence/service.orm-entity';
@@ -16,6 +17,7 @@ import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrast
 import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderEventOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
+import { WorkOrderStockStepOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-stock-step.orm-entity';
 
 /** `pool` narrows the connection pool, for a spec that needs to see a connection run out. */
 export function createTestDataSource(pool?: {
@@ -48,6 +50,8 @@ export function createTestDataSource(pool?: {
       WorkOrderPartOrmEntity,
       WorkOrderEventOrmEntity,
       WorkOrderBudgetOrmEntity,
+      WorkOrderStockStepOrmEntity,
+      CustomerAccountStepOrmEntity,
     ],
   });
 }

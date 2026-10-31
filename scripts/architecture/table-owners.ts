@@ -24,6 +24,8 @@ export const TABLE_OWNERS: Readonly<Record<string, string>> = {
   work_order_parts: 'work-orders',
   work_order_events: 'work-orders',
   work_order_budgets: 'work-orders',
+  work_order_stock_steps: 'work-orders',
+  customer_account_steps: 'customers',
   // Written by TypeORM's migration runner, not by a migration. No module queries it.
   migrations: 'shared',
 };
