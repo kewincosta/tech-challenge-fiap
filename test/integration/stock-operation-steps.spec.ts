@@ -512,4 +512,57 @@ describe('stock operations applied once', () => {
 
     expect(await transitionsOf(itemId)).toEqual([{ to_status: 'WRITTEN_OFF', quantity: 3 }]);
   });
+
+  it('should record no transition and change no status when a work order is settled a second time, one run after the other', async () => {
+    const itemA = await buildStockedItem(10);
+    const itemB = await buildStockedItem(6);
+    const workOrderId = await insertWorkOrder();
+    await withdraw(randomUUID(), workOrderId, [
+      { inventoryItemId: itemA, quantity: 3 },
+      { inventoryItemId: itemB, quantity: 2 },
+    ]);
+    const command = new SettleStockMovementsCommand(workOrderId, withdrawerId);
+    await settleStock.execute(command);
+    const ledgerAfterFirst = [await movementsOf(itemA), await movementsOf(itemB)];
+
+    await settleStock.execute(command);
+
+    expect(await transitionsOf(itemA)).toEqual([{ to_status: 'SETTLED', quantity: null }]);
+    expect(await transitionsOf(itemB)).toEqual([{ to_status: 'SETTLED', quantity: null }]);
+    expect((await movementsOf(itemA)).map((row) => row.status)).toEqual([null, 'SETTLED']);
+    expect((await movementsOf(itemB)).map((row) => row.status)).toEqual([null, 'SETTLED']);
+    expect([await movementsOf(itemA), await movementsOf(itemB)]).toEqual(ledgerAfterFirst);
+  });
+
+  it('should record one transition per consumption when two settlements of a work order interleave: the second starts while the first holds its update uncommitted', async () => {
+    const itemA = await buildStockedItem(10);
+    const itemB = await buildStockedItem(6);
+    const workOrderId = await insertWorkOrder();
+    await withdraw(randomUUID(), workOrderId, [
+      { inventoryItemId: itemA, quantity: 3 },
+      { inventoryItemId: itemB, quantity: 2 },
+    ]);
+    const reachedEnd = deferred();
+    const release = deferred();
+    const holding = new SettleStockMovementsUseCase(
+      repository,
+      holdingRunner(reachedEnd, release.promise),
+      new SystemClock(),
+    );
+    const command = new SettleStockMovementsCommand(workOrderId, withdrawerId);
+
+    const first = holding.execute(command);
+    // The first run has updated the rows and recorded its transitions, and keeps them uncommitted.
+    await Promise.race([reachedEnd.promise, first]);
+    const second = settleStock.execute(command);
+    // The second run met both consumptions pending and waits at its update for the row locks.
+    await Promise.race([waitForLockWaiters(1), second]);
+    release.resolve();
+    await Promise.all([first, second]);
+
+    expect(await transitionsOf(itemA)).toEqual([{ to_status: 'SETTLED', quantity: null }]);
+    expect(await transitionsOf(itemB)).toEqual([{ to_status: 'SETTLED', quantity: null }]);
+    expect((await movementsOf(itemA)).map((row) => row.status)).toEqual([null, 'SETTLED']);
+    expect((await movementsOf(itemB)).map((row) => row.status)).toEqual([null, 'SETTLED']);
+  });
 });

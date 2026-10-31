@@ -2427,11 +2427,11 @@ The second validation (2026-10-31) found that a restore that failed could never 
 
 **Done when**:
 
-- [ ] A second settlement of the same work order records no transition and changes no status (integration)
-- [ ] Two settlements interleaved, the second reading while the first holds its update uncommitted, record one transition per consumption (integration)
-- [ ] The mutant without `AND status = 'PENDING'` in the settlement's update fails both cases
-- [ ] Test count: integration total grows by the new cases
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A second settlement of the same work order records no transition and changes no status (integration)
+- [x] Two settlements interleaved, the second reading while the first holds its update uncommitted, record one transition per consumption (integration)
+- [x] The mutant without `AND status = 'PENDING'` in the settlement's update fails both cases
+- [x] Test count: integration total grows by the new cases
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full
