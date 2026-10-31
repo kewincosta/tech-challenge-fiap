@@ -44,7 +44,7 @@ export class RegisterUserUseCase {
     }
     const passwordHash = PasswordHash.create(await this.passwordHasher.hash(password.value));
     const user = User.register({
-      id: UserId.create(this.idGenerator.generate()),
+      id: UserId.create(command.userId ?? this.idGenerator.generate()),
       email,
       name: command.name,
       document,

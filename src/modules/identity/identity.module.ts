@@ -76,6 +76,7 @@ import { UserAccessController } from './authorization/presentation/controllers/u
 import { PermissionsGuard } from './authorization/presentation/guards/permissions.guard';
 import { ChangePasswordUseCase } from './users/application/commands/change-password/change-password.use-case';
 import { DeactivateUserUseCase } from './users/application/commands/deactivate-user/deactivate-user.use-case';
+import { DiscardOpenedAccountUseCase } from './users/application/commands/discard-opened-account/discard-opened-account.use-case';
 import { RegisterUserUseCase } from './users/application/commands/register-user/register-user.use-case';
 import { UpdateUserUseCase } from './users/application/commands/update-user/update-user.use-case';
 import { PasswordHasher } from './users/application/ports/password-hasher.port';
@@ -167,6 +168,12 @@ import {
         AssignRoleToUserUseCase,
         DOMAIN_EVENT_PUBLISHER,
       ],
+    },
+    {
+      provide: DiscardOpenedAccountUseCase,
+      useFactory: (users: UserRepository, sessions: SessionRepository) =>
+        new DiscardOpenedAccountUseCase(users, sessions),
+      inject: [USER_REPOSITORY, SESSION_REPOSITORY],
     },
     {
       provide: UpdateUserUseCase,
@@ -483,6 +490,7 @@ import {
     GetUserEffectiveAccessUseCase,
     GetUserByIdUseCase,
     RegisterUserUseCase,
+    DiscardOpenedAccountUseCase,
     UserKeyResolver,
     FindUsersUseCase,
   ],

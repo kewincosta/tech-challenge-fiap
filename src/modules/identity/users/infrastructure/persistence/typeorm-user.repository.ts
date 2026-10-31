@@ -4,6 +4,7 @@ import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { currentEntityManager } from '../../../../../shared/infrastructure/database/typeorm-transaction-runner';
 import { UserRepository } from '../../application/ports/user.repository';
 import { User } from '../../domain/entities/user';
+import { AccountInUseError } from '../../domain/errors/account-in-use.error';
 import { DocumentAlreadyInUseError } from '../../domain/errors/document-already-in-use.error';
 import { Email } from '../../domain/value-objects/email';
 import { PersonDocument } from '../../domain/value-objects/person-document';
@@ -12,6 +13,7 @@ import { UserMapper } from './user.mapper';
 import { UserOrmEntity } from './user.orm-entity';
 
 const UNIQUE_VIOLATION = '23505';
+const FOREIGN_KEY_VIOLATION = '23503';
 const DOCUMENT_CONSTRAINT = 'ux_users_document';
 
 @Injectable()
@@ -68,6 +70,19 @@ export class TypeOrmUserRepository implements UserRepository {
     }
   }
 
+  // The role assignments leave with the row (`user_roles.user_id` cascades). A session or a record
+  // of another module, such as a customer, restricts the delete; the violation is that refusal.
+  async delete(id: UserId): Promise<void> {
+    try {
+      await this.repo().delete({ externalId: id.value });
+    } catch (error) {
+      if (this.isForeignKeyViolation(error)) {
+        throw new AccountInUseError();
+      }
+      throw error;
+    }
+  }
+
   /**
    * Returns the repository bound to the transaction open on this async context (see
    * TypeOrmTransactionRunner), or the default injected repository outside a transaction. Only the
@@ -78,6 +93,13 @@ export class TypeOrmUserRepository implements UserRepository {
   private repo(): Repository<UserOrmEntity> {
     const manager = currentEntityManager();
     return manager ? manager.getRepository(UserOrmEntity) : this.repository;
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    return (
+      error instanceof QueryFailedError &&
+      (error.driverError as { code?: string }).code === FOREIGN_KEY_VIOLATION
+    );
   }
 
   private isUniqueViolation(error: unknown, constraint: string): boolean {

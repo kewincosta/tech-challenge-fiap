@@ -132,6 +132,14 @@ export class TypeOrmSessionRepository implements SessionRepository {
     }
   }
 
+  async existsByUserId(userId: string): Promise<boolean> {
+    const rows: unknown[] = await this.dataSource.query(
+      `SELECT 1 FROM sessions s JOIN users u ON u.id = s.user_id WHERE u.external_id = $1 LIMIT 1`,
+      [userId],
+    );
+    return rows.length > 0;
+  }
+
   async revokeAllActiveByUserId(
     userId: string,
     reason: SessionRevocationReason,

@@ -204,4 +204,25 @@ describe('RegisterCustomerUseCase', () => {
     expect(transactionRunner.runCalls).toBe(1);
     expect(accounts.opened.map((account) => account.insideTransaction)).toEqual([true]);
   });
+
+  it('should choose the id of the new account itself, with the id generator, and open the account under it', async () => {
+    const { useCase, customers, accounts } = makeUseCase();
+
+    await useCase.execute(
+      new RegisterCustomerCommand(
+        undefined,
+        'jane@example.com',
+        'Jane Doe',
+        '11144477735',
+        undefined,
+        undefined,
+      ),
+    );
+
+    // The first id `FakeIdGenerator` hands out; the customer takes the next one.
+    expect(accounts.opened.map((account) => account.userId)).toEqual([
+      '00000000-0000-4000-8000-000000000001',
+    ]);
+    expect(customers.customers[0].id.value).toBe('00000000-0000-4000-8000-000000000002');
+  });
 });

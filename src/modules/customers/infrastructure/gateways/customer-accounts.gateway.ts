@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
+  DiscardOpenedAccountCommand,
+  DiscardOpenedAccountUseCase,
   GetUserByIdUseCase,
   GetUserByIdQuery,
   GetUserEffectiveAccessUseCase,
@@ -21,6 +23,7 @@ export class CustomerAccountsGateway implements CustomerAccounts {
     private readonly getUserById: GetUserByIdUseCase,
     private readonly getUserEffectiveAccess: GetUserEffectiveAccessUseCase,
     private readonly registerUser: RegisterUserUseCase,
+    private readonly discardOpenedAccount: DiscardOpenedAccountUseCase,
   ) {}
 
   async findUser(userId: string): Promise<{ id: string } | null> {
@@ -43,10 +46,19 @@ export class CustomerAccountsGateway implements CustomerAccounts {
   }
 
   // No password: the account is issued by staff, so identity generates a temporary one.
-  async open(email: string, name: string, document: string): Promise<OpenedAccount> {
+  async open(
+    userId: string,
+    email: string,
+    name: string,
+    document: string,
+  ): Promise<OpenedAccount> {
     const account = await this.registerUser.execute(
-      new RegisterUserCommand(email, name, undefined, document, true),
+      new RegisterUserCommand(email, name, undefined, document, true, userId),
     );
     return { userId: account.id, temporaryPassword: account.temporaryPassword };
+  }
+
+  async discard(userId: string): Promise<void> {
+    await this.discardOpenedAccount.execute(new DiscardOpenedAccountCommand(userId));
   }
 }

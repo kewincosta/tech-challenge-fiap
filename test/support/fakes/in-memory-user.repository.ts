@@ -1,5 +1,6 @@
 import { UserRepository } from '../../../src/modules/identity/users/application/ports/user.repository';
 import { User } from '../../../src/modules/identity/users/domain/entities/user';
+import { AccountInUseError } from '../../../src/modules/identity/users/domain/errors/account-in-use.error';
 import { Email } from '../../../src/modules/identity/users/domain/value-objects/email';
 import { PersonDocument } from '../../../src/modules/identity/users/domain/value-objects/person-document';
 import { UserId } from '../../../src/modules/identity/users/domain/value-objects/user-id';
@@ -23,6 +24,8 @@ function copyOf(user: User): User {
 
 export class InMemoryUserRepository implements UserRepository {
   users: User[] = [];
+  /** Users a record of another module points at, which the database's foreign key would not let go. */
+  readonly referenced = new Set<string>();
 
   async findById(id: UserId): Promise<User | null> {
     const found = this.users.find((user) => user.id.equals(id));
@@ -56,6 +59,14 @@ export class InMemoryUserRepository implements UserRepository {
   async save(user: User): Promise<void> {
     this.users = this.users.filter((existing) => !existing.id.equals(user.id));
     this.users.push(copyOf(user));
+    return Promise.resolve();
+  }
+
+  async delete(id: UserId): Promise<void> {
+    if (this.referenced.has(id.value)) {
+      return Promise.reject(new AccountInUseError());
+    }
+    this.users = this.users.filter((existing) => !existing.id.equals(id));
     return Promise.resolve();
   }
 }

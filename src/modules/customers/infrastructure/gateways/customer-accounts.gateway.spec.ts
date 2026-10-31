@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DiscardOpenedAccountCommand,
+  DiscardOpenedAccountUseCase,
   EffectiveAccessDto,
   GetUserByIdUseCase,
   GetUserByIdQuery,
@@ -31,17 +33,21 @@ interface Setup {
   registered?: RegisteredUserDto | Error;
   /** What the user lookup throws for the user it knows, in place of answering. */
   lookupFailure?: Error;
+  /** What the discard use case rejects with, in place of answering. */
+  discardFailure?: Error;
 }
 
-// The gateway uses only `execute` of the identity module's three use cases. The first two answer
+// The gateway uses only `execute` of the identity module's four use cases. The first two answer
 // for the one user they know and, like identity, refuse any other: the lookup with its not-found
-// error, the effective access with empty roles and permissions. The register use case keeps the
-// commands it receives.
+// error, the effective access with empty roles and permissions. The register and discard use cases
+// keep the commands they receive.
 function gatewayFor(setup: Setup = {}): {
   gateway: CustomerAccountsGateway;
   registerCommands: RegisterUserCommand[];
+  discardCommands: DiscardOpenedAccountCommand[];
 } {
   const registerCommands: RegisterUserCommand[] = [];
+  const discardCommands: DiscardOpenedAccountCommand[] = [];
   const getUserById = {
     execute: (query: GetUserByIdQuery) => {
       if (setup.lookupFailure) {
@@ -67,9 +73,21 @@ function gatewayFor(setup: Setup = {}): {
       return registered instanceof Error ? Promise.reject(registered) : Promise.resolve(registered);
     },
   } as unknown as RegisterUserUseCase;
+  const discardOpenedAccount = {
+    execute: (command: DiscardOpenedAccountCommand) => {
+      discardCommands.push(command);
+      return setup.discardFailure ? Promise.reject(setup.discardFailure) : Promise.resolve();
+    },
+  } as unknown as DiscardOpenedAccountUseCase;
   return {
-    gateway: new CustomerAccountsGateway(getUserById, getUserEffectiveAccess, registerUser),
+    gateway: new CustomerAccountsGateway(
+      getUserById,
+      getUserEffectiveAccess,
+      registerUser,
+      discardOpenedAccount,
+    ),
     registerCommands,
+    discardCommands,
   };
 }
 
@@ -118,20 +136,32 @@ describe('CustomerAccountsGateway', () => {
   });
 
   describe('open', () => {
-    it('should hand the email, the name and the document to identity as a staff-issued account with no password', async () => {
+    it('should hand the chosen id, the email, the name and the document to identity as a staff-issued account with no password', async () => {
       const { gateway, registerCommands } = gatewayFor();
 
-      await gateway.open('jane@example.com', 'Jane Doe', '11144477735');
+      await gateway.open(NEW_USER_ID, 'jane@example.com', 'Jane Doe', '11144477735');
 
       expect(registerCommands).toEqual([
-        new RegisterUserCommand('jane@example.com', 'Jane Doe', undefined, '11144477735', true),
+        new RegisterUserCommand(
+          'jane@example.com',
+          'Jane Doe',
+          undefined,
+          '11144477735',
+          true,
+          NEW_USER_ID,
+        ),
       ]);
     });
 
     it('should answer the new user id and the temporary password identity issued', async () => {
       const { gateway } = gatewayFor();
 
-      const account = await gateway.open('jane@example.com', 'Jane Doe', '11144477735');
+      const account = await gateway.open(
+        NEW_USER_ID,
+        'jane@example.com',
+        'Jane Doe',
+        '11144477735',
+      );
 
       expect(account).toEqual({ userId: NEW_USER_ID, temporaryPassword: 'aB3dE5fG7h9K' });
     });
@@ -140,9 +170,26 @@ describe('CustomerAccountsGateway', () => {
       const failure = new Error('email already in use');
       const { gateway } = gatewayFor({ registered: failure });
 
-      await expect(gateway.open('jane@example.com', 'Jane Doe', '11144477735')).rejects.toBe(
-        failure,
-      );
+      await expect(
+        gateway.open(NEW_USER_ID, 'jane@example.com', 'Jane Doe', '11144477735'),
+      ).rejects.toBe(failure);
+    });
+  });
+
+  describe('discard', () => {
+    it('should hand the user id to the discard use case', async () => {
+      const { gateway, discardCommands } = gatewayFor();
+
+      await gateway.discard(NEW_USER_ID);
+
+      expect(discardCommands).toEqual([new DiscardOpenedAccountCommand(NEW_USER_ID)]);
+    });
+
+    it('should let the error of the identity module through', async () => {
+      const failure = new Error('the account is in use');
+      const { gateway } = gatewayFor({ discardFailure: failure });
+
+      await expect(gateway.discard(NEW_USER_ID)).rejects.toBe(failure);
     });
   });
 });

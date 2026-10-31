@@ -25,6 +25,10 @@ export class InMemorySessionRepository implements SessionRepository {
     return Promise.resolve();
   }
 
+  async existsByUserId(userId: string): Promise<boolean> {
+    return Promise.resolve(this.sessions.some((session) => session.userId === userId));
+  }
+
   async revokeAllActiveByUserId(
     userId: string,
     reason: SessionRevocationReason,

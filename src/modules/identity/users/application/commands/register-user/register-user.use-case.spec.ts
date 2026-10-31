@@ -168,4 +168,36 @@ describe('RegisterUserUseCase', () => {
     expect(transactionRunner.runCalls).toBe(1);
     expect(events.published).toEqual([]);
   });
+
+  it('should register the user under the id the caller chose', async () => {
+    const { handler, users, assignments, customerRole } = await makeHandler();
+    const chosenId = '77777777-7777-4777-8777-777777777777';
+
+    const result = await handler.execute(
+      new RegisterUserCommand(
+        'jane@example.com',
+        'Jane Doe',
+        undefined,
+        '11144477735',
+        true,
+        chosenId,
+      ),
+    );
+
+    expect(result.id).toBe(chosenId);
+    expect(users.users.map((user) => user.id.value)).toEqual([chosenId]);
+    expect([...assignments.userRoles]).toEqual([`${chosenId}:${customerRole.id.value}`]);
+  });
+
+  it('should generate the id when the caller chose none', async () => {
+    const { handler, users } = await makeHandler();
+
+    const result = await handler.execute(
+      new RegisterUserCommand('jane@example.com', 'Jane Doe', 'Str0ngPassword', '11144477735'),
+    );
+
+    // The first id `FakeIdGenerator` hands out.
+    expect(result.id).toBe('00000000-0000-4000-8000-000000000001');
+    expect(users.users[0].id.value).toBe(result.id);
+  });
 });

@@ -2204,11 +2204,11 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] A user registered with a chosen id carries that id, and without one registration keeps generating it
-- [ ] After a discard, a registration with the same email and document succeeds (integration); a discard of a missing user does nothing; a user with a session or a customer is refused and kept
-- [ ] The customer accounts gateway spec proves `open` passes the id and `discard` reaches the use case
-- [ ] Test count: unit and integration totals grow by the new cases
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A user registered with a chosen id carries that id, and without one registration keeps generating it
+- [x] After a discard, a registration with the same email and document succeeds (integration); a discard of a missing user does nothing; a user with a session or a customer is refused and kept
+- [x] The customer accounts gateway spec proves `open` passes the id and `discard` reaches the use case
+- [x] Test count: unit and integration totals grow by the new cases
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full

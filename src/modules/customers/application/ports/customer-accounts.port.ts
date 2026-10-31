@@ -14,6 +14,15 @@ export interface CustomerAccounts {
   findUser(userId: string): Promise<{ id: string } | null>;
   /** Whether the user holds the CUSTOMER role. */
   hasCustomerRole(userId: string): Promise<boolean>;
-  /** Opens an account for a customer, issued by staff: the CUSTOMER role and a temporary password. */
-  open(email: string, name: string, document: string): Promise<OpenedAccount>;
+  /**
+   * Opens an account for a customer, issued by staff: the CUSTOMER role and a temporary password.
+   * The account takes `userId`, the id the caller chose, so the caller can name it before it exists.
+   */
+  open(userId: string, email: string, name: string, document: string): Promise<OpenedAccount>;
+  /**
+   * Removes an account opened by `open`, its role included, so the email and the document can
+   * register again. Does nothing when no such user exists. Refuses with the identity module's error
+   * when the account is in use: somebody logged into it, or a customer points at it.
+   */
+  discard(userId: string): Promise<void>;
 }

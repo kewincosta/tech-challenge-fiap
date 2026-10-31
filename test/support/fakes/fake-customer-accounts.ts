@@ -4,6 +4,8 @@ import {
 } from '../../../src/modules/customers/application/ports/customer-accounts.port';
 
 export interface RecordedAccount {
+  /** The id the caller chose for the account. */
+  userId: string;
   email: string;
   name: string;
   document: string;
@@ -16,6 +18,8 @@ export class FakeCustomerAccounts implements CustomerAccounts {
   private readonly holdsCustomerRole = new Map<string, boolean>();
   /** Every account opened, in order. */
   readonly opened: RecordedAccount[] = [];
+  /** The id of every account discarded, in order. */
+  readonly discarded: string[] = [];
 
   /**
    * `newAccount` is what the next `open` answers. `insideTransaction` tells whether the
@@ -40,9 +44,26 @@ export class FakeCustomerAccounts implements CustomerAccounts {
     return Promise.resolve(this.holdsCustomerRole.get(userId) ?? false);
   }
 
-  async open(email: string, name: string, document: string): Promise<OpenedAccount> {
-    this.opened.push({ email, name, document, insideTransaction: this.insideTransaction() });
+  async open(
+    userId: string,
+    email: string,
+    name: string,
+    document: string,
+  ): Promise<OpenedAccount> {
+    this.opened.push({
+      userId,
+      email,
+      name,
+      document,
+      insideTransaction: this.insideTransaction(),
+    });
     this.holdsCustomerRole.set(this.newAccount.userId, true);
     return Promise.resolve({ ...this.newAccount });
+  }
+
+  async discard(userId: string): Promise<void> {
+    this.discarded.push(userId);
+    this.holdsCustomerRole.delete(userId);
+    return Promise.resolve();
   }
 }

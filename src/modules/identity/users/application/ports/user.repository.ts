@@ -10,4 +10,9 @@ export interface UserRepository {
   findByDocument(document: PersonDocument): Promise<User | null>;
   existsByDocument(document: PersonDocument): Promise<boolean>;
   save(user: User): Promise<void>;
+  /**
+   * Removes the user for good, its role assignments with it. Nothing happens when no such user
+   * exists. Throws `AccountInUseError` when a record of any module still points at the user.
+   */
+  delete(id: UserId): Promise<void>;
 }

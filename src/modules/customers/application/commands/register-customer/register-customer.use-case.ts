@@ -77,6 +77,11 @@ export class RegisterCustomerUseCase {
   }
 
   private createAccount(command: RegisterCustomerCommand): Promise<OpenedAccount> {
-    return this.accounts.open(command.email!, command.name!, command.document!);
+    return this.accounts.open(
+      this.idGenerator.generate(),
+      command.email!,
+      command.name!,
+      command.document!,
+    );
   }
 }

@@ -10,6 +10,8 @@ export type { UserDto } from './users/application/dtos/user.dto';
 export { RegisterUserCommand } from './users/application/commands/register-user/register-user.command';
 export type { RegisteredUserDto } from './users/application/commands/register-user/register-user.command';
 export { RegisterUserUseCase } from './users/application/commands/register-user/register-user.use-case';
+export { DiscardOpenedAccountCommand } from './users/application/commands/discard-opened-account/discard-opened-account.command';
+export { DiscardOpenedAccountUseCase } from './users/application/commands/discard-opened-account/discard-opened-account.use-case';
 export { FindUsersQuery } from './users/application/queries/find-users/find-users.query';
 export { FindUsersUseCase } from './users/application/queries/find-users/find-users.use-case';
 export { GetUserByIdUseCase } from './users/application/queries/get-user-by-id/get-user-by-id.use-case';
