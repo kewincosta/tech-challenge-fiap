@@ -208,6 +208,22 @@ describe('ConsumeStockBatchUseCase with a transaction of its own', () => {
     expect(await movementKindsOf(itemB)).toEqual(['INBOUND', 'CONSUMPTION']);
   });
 
+  it('refuses to run inside another open transaction, and consumes nothing', async () => {
+    const itemId = await buildStockedItem(10);
+    const workOrderId = await insertWorkOrder();
+
+    await expect(
+      runner.run(() =>
+        consumeWith(repository).execute(
+          consumeCommand(workOrderId, randomUUID(), [{ inventoryItemId: itemId, quantity: 3 }]),
+        ),
+      ),
+    ).rejects.toThrow(/does not nest/);
+
+    expect(await quantityOf(itemId)).toBe(10);
+    expect(await movementKindsOf(itemId)).toEqual(['INBOUND']);
+  });
+
   it('rolls the whole batch back when a later item cannot be saved', async () => {
     const itemA = await buildStockedItem(10);
     const itemB = await buildStockedItem(6);

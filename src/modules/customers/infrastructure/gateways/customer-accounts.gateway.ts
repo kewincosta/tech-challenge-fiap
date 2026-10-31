@@ -14,8 +14,9 @@ import {
 import { CustomerAccounts, OpenedAccount } from '../../application/ports/customer-accounts.port';
 
 /**
- * Reaches the user accounts through the public API of the identity module (AD-012). The calls run
- * on the caller's async context, so the account it opens joins the registration's transaction.
+ * Reaches the user accounts through the public API of the identity module (AD-012). `open` and
+ * `discard` call identity's use cases, which commit in a transaction of their own, so the
+ * registration opens the account before its customers transaction and discards it if that fails.
  */
 @Injectable()
 export class CustomerAccountsGateway implements CustomerAccounts {

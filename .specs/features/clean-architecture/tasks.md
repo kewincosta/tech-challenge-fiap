@@ -2327,14 +2327,14 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] No transaction of the registration writes identity and customers tables together: the spec on fakes proves that `open` and `discard` run outside the customers transaction
-- [ ] The spec on fakes proves the order of the steps; the discard on a failed opening or a failed save, with the first error rethrown; the 409 `CONCURRENT_MODIFICATION` when the processor already claimed the step, with no customer saved and the account discarded; a discard that fails leaving the step pending; and that a registration with an existing user arms no step
-- [ ] An integration case stops a registration after the account opened, drains the processor past the grace period and finds no user with that email or document
-- [ ] `TypeOrmTransactionRunner.run` called while a transaction is open on the same async context rejects without opening a second one (integration spec in `test/integration/`, so `src/shared` gains no file), and every suite passes with the check in place
-- [ ] The comment of `CustomerAccountsGateway` no longer says the account joins the registration's transaction
-- [ ] `POST /customers` e2e cases pass unchanged, for a new account and for an existing user
-- [ ] Test count: unit and integration totals grow; e2e unchanged
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] No transaction of the registration writes identity and customers tables together: the spec on fakes proves that `open` and `discard` run outside the customers transaction
+- [x] The spec on fakes proves the order of the steps; the discard on a failed opening or a failed save, with the first error rethrown; the 409 `CONCURRENT_MODIFICATION` when the processor already claimed the step, with no customer saved and the account discarded; a discard that fails leaving the step pending; and that a registration with an existing user arms no step
+- [x] An integration case stops a registration after the account opened, drains the processor past the grace period and finds no user with that email or document
+- [x] `TypeOrmTransactionRunner.run` called while a transaction is open on the same async context rejects without opening a second one (integration spec in `test/integration/`, so `src/shared` gains no file), and every suite passes with the check in place
+- [x] The comment of `CustomerAccountsGateway` no longer says the account joins the registration's transaction
+- [x] `POST /customers` e2e cases pass unchanged, for a new account and for an existing user
+- [x] Test count: unit and integration totals grow; e2e unchanged
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

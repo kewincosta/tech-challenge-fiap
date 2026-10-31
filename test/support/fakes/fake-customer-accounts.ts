@@ -20,6 +20,8 @@ export class FakeCustomerAccounts implements CustomerAccounts {
   readonly opened: RecordedAccount[] = [];
   /** The id of every account discarded, in order. */
   readonly discarded: string[] = [];
+  private openRefusal: Error | null = null;
+  private discardRefusal: Error | null = null;
 
   /**
    * `newAccount` is what the next `open` answers. `insideTransaction` tells whether the
@@ -29,6 +31,18 @@ export class FakeCustomerAccounts implements CustomerAccounts {
     private readonly newAccount: { userId: string; temporaryPassword: string },
     private readonly insideTransaction: () => boolean = () => false,
   ) {}
+
+  /** Makes every later `open` reject with `error` and record nothing. */
+  refuseOpenWith(error: Error): this {
+    this.openRefusal = error;
+    return this;
+  }
+
+  /** Makes every later `discard` reject with `error` and record nothing. */
+  refuseDiscardWith(error: Error): this {
+    this.discardRefusal = error;
+    return this;
+  }
 
   /** Seeds an existing user, with or without the CUSTOMER role. */
   withUser(userId: string, holdsCustomerRole: boolean): this {
@@ -50,6 +64,9 @@ export class FakeCustomerAccounts implements CustomerAccounts {
     name: string,
     document: string,
   ): Promise<OpenedAccount> {
+    if (this.openRefusal) {
+      return Promise.reject(this.openRefusal);
+    }
     this.opened.push({
       userId,
       email,
@@ -62,6 +79,9 @@ export class FakeCustomerAccounts implements CustomerAccounts {
   }
 
   async discard(userId: string): Promise<void> {
+    if (this.discardRefusal) {
+      return Promise.reject(this.discardRefusal);
+    }
     this.discarded.push(userId);
     this.holdsCustomerRole.delete(userId);
     return Promise.resolve();

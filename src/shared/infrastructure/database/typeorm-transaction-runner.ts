@@ -9,7 +9,7 @@ import { TransactionRunner } from '../../application/ports/transaction-runner.po
 // those calls instead: the module's repositories join the transaction, and so do the key resolvers
 // and the reads of other modules that run inside it, which see the rows written earlier and hold
 // no second connection (ADR 0032). Another module's use case that writes opens a transaction of
-// its own.
+// its own, so `run` refuses to open inside a transaction that is already open.
 const transactionContext = new AsyncLocalStorage<EntityManager>();
 
 /**
@@ -39,6 +39,16 @@ export class TypeOrmTransactionRunner implements TransactionRunner {
   constructor(private readonly dataSource: DataSource) {}
 
   run<T>(work: () => Promise<T>): Promise<T> {
+    if (currentEntityManager()) {
+      // A second transaction would take a second connection, and what it wrote would commit on its
+      // own while the outer one could still roll back. A use case that needs to write more than
+      // one module runs its steps one after another, each in a transaction of its own.
+      return Promise.reject(
+        new Error(
+          'A transaction is already open on this async context: TypeOrmTransactionRunner.run does not nest.',
+        ),
+      );
+    }
     return runInNewTransaction(this.dataSource, () => work());
   }
 }
