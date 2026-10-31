@@ -50,10 +50,12 @@ export interface InventoryItemRepository {
     workOrderId: string,
   ): Promise<PendingConsumptionDto[]>;
   /**
-   * The `PENDING` consumptions that one stock operation wrote and that still hold units, newest
-   * first, each carrying what is left on it after the returns that point at it: the figure
-   * `findPendingConsumptions` reports. Empty when the operation consumed nothing, or when an earlier
-   * undo returned everything. This is what an undo of the operation gives back.
+   * The consumptions that one stock operation wrote and that still hold units, whatever their
+   * status, newest first, each carrying what is left on it after the returns that point at it: the
+   * figure `findPendingConsumptions` reports. A consumption that a write-off or a settlement closed
+   * in the meantime is included, because an undone operation never reached the work order, so its
+   * units go back. Empty when the operation consumed nothing, or when an earlier undo returned
+   * everything. This is what an undo of the operation gives back.
    */
   findPendingConsumptionsOfOperation(operationId: string): Promise<OperationConsumptionDto[]>;
   /** Whether a `RETURN` that one stock operation wrote is already on the ledger. */

@@ -2262,16 +2262,16 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] No transaction of the withdrawal writes inventory and work-orders tables together: the spec on fakes proves that no ledger call happens inside the work-orders transaction
-- [ ] `ConsumeStockBatchUseCase` and `UndoConsumptionUseCase` run in a transaction of their own: called with no transaction open, each locks the items and commits its writes together (integration); their comments no longer say they run inside the caller's transaction
-- [ ] `disarm` marks an armed step done inside the caller's transaction and reports true, and reports false for a step a claim already took, a done step and a failed step (integration)
-- [ ] The spec on fakes proves that a 422 from the ledger leaves the work order unsaved and completes the step after an undo that finds nothing; that a failed save applies the undo and rethrows the save's error; that a step the processor already claimed answers 409 `CONCURRENT_MODIFICATION` with the work order unsaved and the undo applied; that an undo that fails leaves the step pending and still rethrows the first error; and that a success disarms the step
-- [ ] An integration case stops a withdrawal after its consumption, moves the clock past the grace period, drains the processor and finds every stock level as before
-- [ ] An e2e case runs two concurrent withdrawals on one work order and finds one 409, the other withdrawal applied once and the stock lower by that withdrawal only; the 422 withdrawal still changes nothing
-- [ ] The undo returns the net remaining units of every consumption the operation tagged, whatever its status, a consumption written off or settled first included (integration); the T69 case on a settled consumption expects the units back, and the comments of `findPendingConsumptionsOfOperation` and its in-memory fake say so
-- [ ] In `test/e2e/work-order-concurrency.e2e.spec.ts`, the case of a cancellation racing a withdrawal asserts that no consumption keeps units outstanding and that the stock is back at 20 (CA-02 AC2 as amended on 2026-10-31); no other e2e assertion changes, and the file passes 10 isolated runs in a row
-- [ ] Test count: unit and integration totals grow; e2e grows by the new case
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] No transaction of the withdrawal writes inventory and work-orders tables together: the spec on fakes proves that no ledger call happens inside the work-orders transaction
+- [x] `ConsumeStockBatchUseCase` and `UndoConsumptionUseCase` run in a transaction of their own: called with no transaction open, each locks the items and commits its writes together (integration); their comments no longer say they run inside the caller's transaction
+- [x] `disarm` marks an armed step done inside the caller's transaction and reports true, and reports false for a step a claim already took, a done step and a failed step (integration)
+- [x] The spec on fakes proves that a 422 from the ledger leaves the work order unsaved and completes the step after an undo that finds nothing; that a failed save applies the undo and rethrows the save's error; that a step the processor already claimed answers 409 `CONCURRENT_MODIFICATION` with the work order unsaved and the undo applied; that an undo that fails leaves the step pending and still rethrows the first error; and that a success disarms the step
+- [x] An integration case stops a withdrawal after its consumption, moves the clock past the grace period, drains the processor and finds every stock level as before
+- [x] An e2e case runs two concurrent withdrawals on one work order and finds one 409, the other withdrawal applied once and the stock lower by that withdrawal only; the 422 withdrawal still changes nothing
+- [x] The undo returns the net remaining units of every consumption the operation tagged, whatever its status, a consumption written off or settled first included (integration); the T69 case on a settled consumption expects the units back, and the comments of `findPendingConsumptionsOfOperation` and its in-memory fake say so
+- [x] In `test/e2e/work-order-concurrency.e2e.spec.ts`, the case of a cancellation racing a withdrawal asserts that no consumption keeps units outstanding and that the stock is back at 20 (CA-02 AC2 as amended on 2026-10-31); no other e2e assertion changes, and the file passes 10 isolated runs in a row
+- [x] Test count: unit and integration totals grow; e2e grows by the new case
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: e2e
 **Gate**: full

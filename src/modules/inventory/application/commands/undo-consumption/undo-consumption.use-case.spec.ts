@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import {
   InMemoryInventoryItemRepository,
   LedgerEntry,
@@ -56,13 +57,14 @@ async function makeUseCases() {
   const idGenerator = new FakeIdGenerator();
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
+  const transactionRunner = new FakeTransactionRunner();
   await items.save(buildStockedItem(ITEM_A_ID, 5));
   await items.save(buildStockedItem(ITEM_B_ID, 5));
   const consume = (
     operationId: string,
     lines: Array<{ inventoryItemId: string; quantity: number }>,
   ) =>
-    new ConsumeStockBatchUseCase(items, idGenerator, clock, events).execute(
+    new ConsumeStockBatchUseCase(items, transactionRunner, idGenerator, clock, events).execute(
       new ConsumeStockBatchCommand(lines, WORK_ORDER_ID, WITHDRAWER_ID, operationId),
     );
   const restore = (inventoryItemId: string, quantity: number, operationId: string) =>
@@ -75,12 +77,16 @@ async function makeUseCases() {
       ),
     );
   const undo = (operationId: string) =>
-    new UndoConsumptionUseCase(items, idGenerator, clock, events).execute(
-      new UndoConsumptionCommand(operationId, UNDOER_ID),
-    );
+    new UndoConsumptionUseCase(
+      transactionRunner.watch('items', items),
+      transactionRunner,
+      idGenerator,
+      clock,
+      events,
+    ).execute(new UndoConsumptionCommand(operationId, UNDOER_ID));
   const quantityOf = (id: string) =>
     items.items.find((item) => item.id.value === id)?.quantityOnHand.units;
-  return { items, consume, restore, undo, quantityOf };
+  return { items, transactionRunner, consume, restore, undo, quantityOf };
 }
 
 describe('UndoConsumptionUseCase', () => {
@@ -186,6 +192,43 @@ describe('UndoConsumptionUseCase', () => {
     expect(items.ledgerEntries).toEqual(ledgerBefore);
   });
 
+  it.each([
+    ['a delivery settled', StockMovementStatus.Settled],
+    ['a cancellation wrote off', StockMovementStatus.WrittenOff],
+  ])(
+    'returns the units of a consumption that %s while the withdrawal was in flight, and the history shows the closing followed by the return',
+    async (_closing, status) => {
+      const { items, consume, undo, quantityOf } = await makeUseCases();
+      await consume(OPERATION_ID, [{ inventoryItemId: ITEM_A_ID, quantity: 2 }]);
+      const closing = {
+        workOrderId: WORK_ORDER_ID,
+        actorUserId: WITHDRAWER_ID,
+        now: new Date(),
+      };
+      if (status === StockMovementStatus.Settled) {
+        await items.settleWorkOrderConsumptions(closing);
+      } else {
+        await items.writeOffWorkOrderConsumptions(closing);
+      }
+      expect(quantityOf(ITEM_A_ID)).toBe(3);
+
+      await undo(OPERATION_ID);
+
+      expect(quantityOf(ITEM_A_ID)).toBe(5);
+      const history = items.ledgerEntries.filter((entry) => entry.inventoryItemId === ITEM_A_ID);
+      expect(history.map((entry) => [entry.kind, entry.quantity, entry.status])).toEqual([
+        [StockMovementKind.Inbound, 5, null],
+        [StockMovementKind.Consumption, 2, status],
+        [StockMovementKind.Return, 2, null],
+      ]);
+      expect(history[2]).toMatchObject({
+        undoesMovementId: history[1].movementId,
+        operationId: OPERATION_ID,
+        workOrderId: WORK_ORDER_ID,
+      });
+    },
+  );
+
   it('returns only what is left on a consumption after an earlier return', async () => {
     const { items, consume, restore, undo, quantityOf } = await makeUseCases();
     await consume(OPERATION_ID, [{ inventoryItemId: ITEM_A_ID, quantity: 3 }]);
@@ -212,5 +255,37 @@ describe('UndoConsumptionUseCase', () => {
     expect(await items.findPendingConsumptionsOfOperation(OTHER_OPERATION_ID)).toMatchObject([
       { inventoryItemId: ITEM_A_ID, quantity: 1 },
     ]);
+  });
+
+  it('locks the items, reads the consumptions again and saves the returns inside a transaction of its own', async () => {
+    const { consume, undo, transactionRunner } = await makeUseCases();
+    await consume(OPERATION_ID, [
+      { inventoryItemId: ITEM_A_ID, quantity: 2 },
+      { inventoryItemId: ITEM_B_ID, quantity: 1 },
+    ]);
+    const runsBefore = transactionRunner.runCalls;
+
+    await undo(OPERATION_ID);
+
+    expect(transactionRunner.runCalls).toBe(runsBefore + 1);
+    expect(transactionRunner.calls).toEqual([
+      'items.findPendingConsumptionsOfOperation',
+      'items.findAllByIdsForUpdate',
+      'items.findPendingConsumptionsOfOperation',
+      'items.save',
+      'items.save',
+    ]);
+    expect(transactionRunner.callsInside).toEqual(transactionRunner.calls.slice(1));
+  });
+
+  it('opens no transaction for an operation that has nothing left to give back', async () => {
+    const { consume, undo, transactionRunner } = await makeUseCases();
+    await consume(OPERATION_ID, [{ inventoryItemId: ITEM_A_ID, quantity: 2 }]);
+    await undo(OPERATION_ID);
+    const runsBefore = transactionRunner.runCalls;
+
+    await undo(OPERATION_ID);
+
+    expect(transactionRunner.runCalls).toBe(runsBefore);
   });
 });

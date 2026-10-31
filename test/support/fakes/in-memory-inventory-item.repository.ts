@@ -132,7 +132,11 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     );
   }
 
-  /** Newest first, net of the returns that point at each consumption the operation wrote. */
+  /**
+   * Newest first, net of the returns that point at each consumption the operation wrote, whatever
+   * its status: an undone operation never reached the work order, so a consumption closed by a
+   * write-off or a settlement meanwhile still comes back.
+   */
   async findPendingConsumptionsOfOperation(
     operationId: string,
   ): Promise<OperationConsumptionDto[]> {
@@ -141,9 +145,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
       this.ledger
         .filter(
           (entry) =>
-            entry.operationId === operationId &&
-            entry.kind === StockMovementKind.Consumption &&
-            entry.status === StockMovementStatus.Pending,
+            entry.operationId === operationId && entry.kind === StockMovementKind.Consumption,
         )
         .map((entry) => ({
           movementId: entry.movementId,

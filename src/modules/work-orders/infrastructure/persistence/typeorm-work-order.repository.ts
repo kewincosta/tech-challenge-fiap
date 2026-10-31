@@ -363,11 +363,10 @@ export class TypeOrmWorkOrderRepository implements WorkOrderRepository {
   }
 
   /**
-   * A withdrawal or a return saves this aggregate and moves stock through the stock ledger port,
-   * all inside one `transactionRunner.run`, so both writes must land in the same Postgres
-   * transaction or a failure on one side leaves the other committed (AD-008). With no ambient
-   * transaction the save opens its own through `runInNewTransaction`, which publishes the manager
-   * as the ambient one.
+   * A use case that saves this aggregate together with a step of its own outbox runs both inside
+   * one `transactionRunner.run`, so this save joins that transaction and the step and the work
+   * order commit or roll back together. With no ambient transaction the save opens its own through
+   * `runInNewTransaction`, which publishes the manager as the ambient one.
    */
   private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     const ambient = currentEntityManager();

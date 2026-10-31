@@ -9,6 +9,7 @@ import {
 import { TypeOrmPendingStockSteps } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps';
 import { FakeClock } from '../support/fakes/fake-clock';
 import { createTestDataSource } from '../support/db';
+import { uniqueWorkOrderNumber } from '../support/factories/work-order-number.factory';
 
 // The test database is never truncated and a claim takes every step that is due, so the spec lives
 // in a window of its own: its clock reads 2001, long before any step another spec or a real run
@@ -76,7 +77,7 @@ async function insertWorkOrder(): Promise<string> {
      VALUES ($1, $2, $3, $4, $5, 'IN_EXECUTION', 'Jane Doe', 'ABC1234', 'Toyota', 'Corolla', 2020, now(), now())`,
     [
       workOrderExternalId,
-      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      uniqueWorkOrderNumber(),
       customerRows[0].id,
       vehicleRows[0].id,
       userRows[0].id,
@@ -215,6 +216,100 @@ describe('TypeOrmPendingStockSteps', () => {
 
       expect(await rowOf(rolledBack.operationId)).toBeUndefined();
       expect((await rowOf(committed.operationId))?.status).toBe('PENDING');
+    });
+  });
+
+  describe('disarm', () => {
+    it('should mark an armed step DONE at the moment of the call and report that it did', async () => {
+      startClock();
+      const step = await newStep();
+      await steps.arm(step, at(300));
+      clock.advanceSeconds(10);
+
+      const disarmed = await steps.disarm(step.operationId);
+
+      expect(disarmed).toBe(true);
+      expect(await rowOf(step.operationId)).toMatchObject({
+        status: 'DONE',
+        completed_at: at(10),
+        attempts: 0,
+      });
+    });
+
+    it('should join the transaction of the caller: a rollback leaves the step armed, a commit closes it', async () => {
+      startClock();
+      const rolledBack = await newStep();
+      const committed = await newStep();
+      await steps.arm(rolledBack, at(300));
+      await steps.arm(committed, at(300));
+
+      await expect(
+        runner.run(async () => {
+          expect(await steps.disarm(rolledBack.operationId)).toBe(true);
+          throw new Error('the save fails');
+        }),
+      ).rejects.toThrow('the save fails');
+      await runner.run(() => steps.disarm(committed.operationId));
+
+      expect(await rowOf(rolledBack.operationId)).toMatchObject({
+        status: 'ARMED',
+        completed_at: null,
+      });
+      expect((await rowOf(committed.operationId))?.status).toBe('DONE');
+    });
+
+    it('should report that a claim took the step and leave it as the claim made it', async () => {
+      startClock();
+      const step = await newStep();
+      await steps.arm(step, at(300));
+      await steps.claimDue(at(300), 10, at(900), [step.operationId]);
+
+      const disarmed = await steps.disarm(step.operationId);
+
+      expect(disarmed).toBe(false);
+      expect(await rowOf(step.operationId)).toMatchObject({
+        status: 'PENDING',
+        attempts: 1,
+        due_at: at(900),
+        completed_at: null,
+      });
+    });
+
+    it('should report false for a step already done, a step already disarmed and a step that failed', async () => {
+      startClock();
+      const done = await newStep();
+      const disarmed = await newStep();
+      const failed = await newStep();
+      await steps.arm(done, at(300));
+      await steps.arm(disarmed, at(300));
+      await steps.arm(failed, at(300));
+      await steps.complete(done.operationId);
+      await steps.disarm(disarmed.operationId);
+      await steps.markFailed(failed.operationId, 'gave up');
+      clock.advanceSeconds(60);
+
+      const results = [
+        await steps.disarm(done.operationId),
+        await steps.disarm(disarmed.operationId),
+        await steps.disarm(failed.operationId),
+      ];
+
+      expect(results).toEqual([false, false, false]);
+      expect(await rowOf(done.operationId)).toMatchObject({ status: 'DONE', completed_at: at(0) });
+      expect(await rowOf(disarmed.operationId)).toMatchObject({
+        status: 'DONE',
+        completed_at: at(0),
+      });
+      expect(await rowOf(failed.operationId)).toMatchObject({
+        status: 'FAILED',
+        last_error: 'gave up',
+      });
+    });
+
+    it('should report false for an operation that has no step', async () => {
+      startClock();
+
+      expect(await steps.disarm(randomUUID())).toBe(false);
     });
   });
 

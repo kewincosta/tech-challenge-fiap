@@ -27,6 +27,8 @@ export interface RecordedWorkOrderClosing {
   insideTransaction: boolean;
 }
 
+export type LedgerCall = 'consume' | 'restore' | 'undoConsumption' | 'settle' | 'writeOff';
+
 /**
  * Records what the work-orders use cases ask of stock, and refuses on demand like inventory does.
  */
@@ -36,14 +38,17 @@ export class FakeStockLedger implements StockLedger {
   readonly undone: RecordedUndo[] = [];
   readonly settled: RecordedWorkOrderClosing[] = [];
   readonly writtenOff: RecordedWorkOrderClosing[] = [];
-  private refusal: Error | null = null;
+  private readonly refusals: Array<{ error: Error; calls: LedgerCall[] }> = [];
 
   /** `insideTransaction` tells whether the transaction is open at the moment of a call. */
   constructor(private readonly insideTransaction: () => boolean = () => false) {}
 
-  /** Makes every later call reject with `error` and record nothing. */
-  refuseWith(error: Error): this {
-    this.refusal = error;
+  /**
+   * Makes every later call reject with `error` and record nothing, or only the named `calls`
+   * when there are any. A call takes the first refusal that covers it.
+   */
+  refuseWith(error: Error, ...calls: LedgerCall[]): this {
+    this.refusals.push({ error, calls });
     return this;
   }
 
@@ -53,7 +58,7 @@ export class FakeStockLedger implements StockLedger {
     actorUserId: string,
     operationId: string,
   ): Promise<void> {
-    this.throwIfRefusing();
+    this.throwIfRefusing('consume');
     this.consumed.push({
       workOrderId,
       lines,
@@ -70,7 +75,7 @@ export class FakeStockLedger implements StockLedger {
     actorUserId: string,
     operationId: string,
   ): Promise<void> {
-    this.throwIfRefusing();
+    this.throwIfRefusing('restore');
     this.restored.push({
       workOrderId,
       lines,
@@ -82,26 +87,29 @@ export class FakeStockLedger implements StockLedger {
   }
 
   async undoConsumption(operationId: string, actorUserId: string): Promise<void> {
-    this.throwIfRefusing();
+    this.throwIfRefusing('undoConsumption');
     this.undone.push({ operationId, actorUserId, insideTransaction: this.insideTransaction() });
     return Promise.resolve();
   }
 
   async settle(workOrderId: string, actorUserId: string): Promise<void> {
-    this.throwIfRefusing();
+    this.throwIfRefusing('settle');
     this.settled.push({ workOrderId, actorUserId, insideTransaction: this.insideTransaction() });
     return Promise.resolve();
   }
 
   async writeOff(workOrderId: string, actorUserId: string): Promise<void> {
-    this.throwIfRefusing();
+    this.throwIfRefusing('writeOff');
     this.writtenOff.push({ workOrderId, actorUserId, insideTransaction: this.insideTransaction() });
     return Promise.resolve();
   }
 
-  private throwIfRefusing(): void {
-    if (this.refusal) {
-      throw this.refusal;
+  private throwIfRefusing(call: LedgerCall): void {
+    const refusal = this.refusals.find(
+      (candidate) => candidate.calls.length === 0 || candidate.calls.includes(call),
+    );
+    if (refusal) {
+      throw refusal.error;
     }
   }
 }

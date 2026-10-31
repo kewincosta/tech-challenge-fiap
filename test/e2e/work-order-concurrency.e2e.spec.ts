@@ -88,9 +88,11 @@ async function getInventoryItem(inventoryItemId: string): Promise<{ quantityOnHa
 }
 
 interface Movement {
+  id: string;
   kind: string;
   quantity: number;
   status: string | null;
+  undoesMovementId: string | null;
 }
 
 async function getMovements(inventoryItemId: string): Promise<Movement[]> {
@@ -218,6 +220,32 @@ describe('Work order concurrency - the version guard', () => {
     expect(detail.partItems[0].withdrawnQuantity).toBe(consumed);
   });
 
+  it('applies the winning withdrawal once and leaves the stock lower by that withdrawal only, the loser having given its units back', async () => {
+    const workOrder = await createInExecutionWorkOrder(6, 20);
+
+    const [first, second] = await Promise.all([
+      api(app)
+        .post(`/api/v1/work-orders/${workOrder.number}/withdrawals`)
+        .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
+        .send({ lines: [{ itemId: workOrder.itemId, quantity: 3 }] }),
+      api(app)
+        .post(`/api/v1/work-orders/${workOrder.number}/withdrawals`)
+        .set('Authorization', `Bearer ${workOrder.assigneeAccessToken}`)
+        .send({ lines: [{ itemId: workOrder.itemId, quantity: 3 }] }),
+    ]);
+
+    expect([first.status, second.status].sort()).toEqual([200, 409]);
+    const detail = await getWorkOrder(workOrder.number);
+    const inventoryItem = await getInventoryItem(workOrder.inventoryItemId);
+    expect(detail.partItems[0].withdrawnQuantity).toBe(3);
+    expect(inventoryItem.quantityOnHand).toBe(17);
+    // The loser consumed before its save was refused, and its compensation shows as what happened:
+    // a consumption followed by its return.
+    const movements = await getMovements(workOrder.inventoryItemId);
+    expect(movements.filter((movement) => movement.kind === 'CONSUMPTION')).toHaveLength(2);
+    expect(movements.filter((movement) => movement.kind === 'RETURN')).toHaveLength(1);
+  });
+
   it('lets the refused call succeed on a retry, and then correctly refuses a further withdrawal that would exceed the planned quantity', async () => {
     const workOrder = await createInExecutionWorkOrder(6, 20);
 
@@ -266,7 +294,21 @@ describe('Work order concurrency - the version guard', () => {
     const detail = await getWorkOrder(workOrder.number);
     if (detail.status === 'CANCELED') {
       const movements = await getMovements(workOrder.inventoryItemId);
-      expect(movements.some((movement) => movement.status === 'PENDING')).toBe(false);
+      // No consumption keeps units outstanding: the withdrawal that lost the race gave its units
+      // back, whether the cancellation wrote its consumption off first or the consumption came
+      // after the write-off.
+      const returnedOf = (consumption: Movement): number =>
+        movements
+          .filter(
+            (movement) =>
+              movement.kind === 'RETURN' && movement.undoesMovementId === consumption.id,
+          )
+          .reduce((sum, movement) => sum + movement.quantity, 0);
+      const outstanding = movements
+        .filter((movement) => movement.kind === 'CONSUMPTION' && movement.status === 'PENDING')
+        .map((movement) => movement.quantity - returnedOf(movement));
+      expect(outstanding.every((units) => units === 0)).toBe(true);
+      expect((await getInventoryItem(workOrder.inventoryItemId)).quantityOnHand).toBe(20);
     }
   });
 

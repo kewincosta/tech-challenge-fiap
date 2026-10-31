@@ -73,10 +73,9 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   /**
    * The deadlock fix lives here, not in any caller: every batch, whatever order the client sent
    * its lines in, locks the same items in internal-id order in one query (design.md's Risks &
-   * Concerns). Meant to run inside the caller's own open transaction - `ConsumeStockBatchUseCase`
-   * and `RestoreStockBatchUseCase` are always reached from inside `WithdrawPartsUseCase`'s or
-   * `ReturnPartsUseCase`'s `transactionRunner.run`, so the lock this takes is held for that whole
-   * transaction, not released when this query alone finishes.
+   * Concerns). Must run inside an open transaction, where the lock is held until that transaction
+   * commits and not released when this query alone finishes. `ConsumeStockBatchUseCase` and
+   * `UndoConsumptionUseCase` open that transaction themselves.
    */
   async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
     if (ids.length === 0) {
@@ -124,9 +123,12 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * What an undo gives back: the operation's pending consumptions with units left, newest first, on
-   * the same net-remaining figure as `findPendingConsumptions` and the write-off. The consumptions
-   * carry the work order's internal key, so the external id comes from its owner in one batch.
+   * What an undo gives back: the operation's consumptions with units left, newest first, on the
+   * same net-remaining figure as `findPendingConsumptions` and the write-off. The status is left
+   * out on purpose. An undone operation never reached the work order, so a consumption that a
+   * cancellation wrote off or a delivery settled while the operation was in flight still comes
+   * back. The consumptions carry the work order's internal key, so the external id comes from its
+   * owner in one batch.
    */
   async findPendingConsumptionsOfOperation(
     operationId: string,
@@ -144,7 +146,7 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
          JOIN inventory_items ii ON ii.id = sm.inventory_item_id
          ${RETURNED_TOTALS_JOIN}
         WHERE sm.operation_id = $1
-          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND sm.kind = 'CONSUMPTION'
           AND ${NET_REMAINING_EXPR} > 0
         ORDER BY sm.occurred_at DESC, sm.id DESC`,
       [operationId],
@@ -309,12 +311,11 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * A withdrawal or a return saves the work order and then moves stock through the stock ledger
-   * port, all inside one `transactionRunner.run`, so this save has to join that transaction or a
-   * failure on one side leaves the other committed (AD-008). With no ambient transaction the save
-   * opens its own through `runInNewTransaction`, which publishes the manager as the ambient one:
-   * the user key resolver and the work order reads that `save` calls then join the transaction
-   * and hold no second pool connection.
+   * A stock use case saves its items inside the transaction it opened, after it locked them, so
+   * this save joins that transaction and the locks and the writes commit together. With no
+   * ambient transaction the save opens its own through `runInNewTransaction`, which publishes the
+   * manager as the ambient one: the user key resolver and the work order reads that `save` calls
+   * then join the transaction and hold no second pool connection.
    */
   private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     const ambient = currentEntityManager();

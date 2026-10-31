@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryInventoryItemRepository } from '../../../../../../test/support/fakes/in-memory-inventory-item.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { Money } from '../../../../../shared/domain/value-objects/money';
@@ -43,13 +44,15 @@ function buildStockedItem(id: string, quantity: number, priceCents = 2500): Inve
 
 function makeUseCase() {
   const items = new InMemoryInventoryItemRepository();
+  const transactionRunner = new FakeTransactionRunner();
   const useCase = new ConsumeStockBatchUseCase(
-    items,
+    transactionRunner.watch('items', items),
+    transactionRunner,
     new FakeIdGenerator(),
     new FakeClock(),
     new RecordingDomainEventPublisher(),
   );
-  return { useCase, items };
+  return { useCase, items, transactionRunner };
 }
 
 describe('ConsumeStockBatchUseCase', () => {
@@ -179,6 +182,31 @@ describe('ConsumeStockBatchUseCase', () => {
     expect(consumptions.map((entry) => [entry.inventoryItemId, entry.operationId])).toEqual([
       [ITEM_A_ID, OPERATION_ID],
       [ITEM_B_ID, OPERATION_ID],
+    ]);
+  });
+
+  it('opens a transaction of its own and locks the items and saves them inside it', async () => {
+    const { useCase, items, transactionRunner } = makeUseCase();
+    await items.save(buildStockedItem(ITEM_A_ID, 5));
+    await items.save(buildStockedItem(ITEM_B_ID, 5));
+
+    await useCase.execute(
+      new ConsumeStockBatchCommand(
+        [
+          { inventoryItemId: ITEM_A_ID, quantity: 2 },
+          { inventoryItemId: ITEM_B_ID, quantity: 1 },
+        ],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    expect(transactionRunner.runCalls).toBe(1);
+    expect(transactionRunner.callsInside).toEqual([
+      'items.findAllByIdsForUpdate',
+      'items.save',
+      'items.save',
     ]);
   });
 });

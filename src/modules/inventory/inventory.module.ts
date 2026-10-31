@@ -3,7 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Clock } from '../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
-import { CLOCK, DOMAIN_EVENT_PUBLISHER, ID_GENERATOR } from '../../shared/shared.tokens';
+import { TransactionRunner } from '../../shared/application/ports/transaction-runner.port';
+import {
+  CLOCK,
+  DOMAIN_EVENT_PUBLISHER,
+  ID_GENERATOR,
+  TRANSACTION_RUNNER,
+} from '../../shared/shared.tokens';
 import { IdentityModule } from '../identity';
 import { AdjustStockUseCase } from './application/commands/adjust-stock/adjust-stock.use-case';
 import { ConsumeStockBatchUseCase } from './application/commands/consume-stock-batch/consume-stock-batch.use-case';
@@ -110,11 +116,18 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
       provide: ConsumeStockBatchUseCase,
       useFactory: (
         items: InventoryItemRepository,
+        transactionRunner: TransactionRunner,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new ConsumeStockBatchUseCase(items, idGenerator, clock, events),
-      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+      ) => new ConsumeStockBatchUseCase(items, transactionRunner, idGenerator, clock, events),
+      inject: [
+        INVENTORY_ITEM_REPOSITORY,
+        TRANSACTION_RUNNER,
+        ID_GENERATOR,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
     },
     {
       provide: RestoreStockBatchUseCase,
@@ -130,11 +143,18 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
       provide: UndoConsumptionUseCase,
       useFactory: (
         items: InventoryItemRepository,
+        transactionRunner: TransactionRunner,
         idGenerator: IdGenerator,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new UndoConsumptionUseCase(items, idGenerator, clock, events),
-      inject: [INVENTORY_ITEM_REPOSITORY, ID_GENERATOR, CLOCK, DOMAIN_EVENT_PUBLISHER],
+      ) => new UndoConsumptionUseCase(items, transactionRunner, idGenerator, clock, events),
+      inject: [
+        INVENTORY_ITEM_REPOSITORY,
+        TRANSACTION_RUNNER,
+        ID_GENERATOR,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
     },
     {
       provide: SettleStockMovementsUseCase,

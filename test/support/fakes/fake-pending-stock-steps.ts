@@ -57,6 +57,15 @@ export class FakePendingStockSteps implements PendingStockSteps {
     return Promise.resolve();
   }
 
+  async disarm(operationId: string): Promise<boolean> {
+    const stored = this.stored.get(operationId);
+    if (stored?.status !== 'ARMED') {
+      return Promise.resolve(false);
+    }
+    stored.status = 'DONE';
+    return Promise.resolve(true);
+  }
+
   async complete(operationId: string): Promise<void> {
     const stored = this.stored.get(operationId);
     if (stored && (stored.status === 'ARMED' || stored.status === 'PENDING')) {

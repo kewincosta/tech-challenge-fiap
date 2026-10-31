@@ -11,6 +11,8 @@ import { RestoreStockBatchCommand } from '../../src/modules/inventory/applicatio
 import { RestoreStockBatchUseCase } from '../../src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.use-case';
 import { SettleStockMovementsCommand } from '../../src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.command';
 import { SettleStockMovementsUseCase } from '../../src/modules/inventory/application/commands/settle-stock-movements/settle-stock-movements.use-case';
+import { WriteOffStockMovementsCommand } from '../../src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.command';
+import { WriteOffStockMovementsUseCase } from '../../src/modules/inventory/application/commands/write-off-stock-movements/write-off-stock-movements.use-case';
 import { UndoConsumptionCommand } from '../../src/modules/inventory/application/commands/undo-consumption/undo-consumption.command';
 import { UndoConsumptionUseCase } from '../../src/modules/inventory/application/commands/undo-consumption/undo-consumption.use-case';
 import { InventoryItem } from '../../src/modules/inventory/domain/entities/inventory-item';
@@ -24,6 +26,7 @@ import { TypeOrmInventoryQueryAdapter } from '../../src/modules/inventory/infras
 import { UserKeyResolver } from '../../src/modules/identity';
 import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
+import { uniqueWorkOrderNumber } from '../support/factories/work-order-number.factory';
 import { RecordingDomainEventPublisher } from '../support/fakes/recording-domain-event-publisher';
 import { createTestDataSource } from '../support/db';
 
@@ -35,6 +38,7 @@ let consumeStock: ConsumeStockBatchUseCase;
 let restoreStock: RestoreStockBatchUseCase;
 let undoStock: UndoConsumptionUseCase;
 let settleStock: SettleStockMovementsUseCase;
+let writeOffStock: WriteOffStockMovementsUseCase;
 let withdrawerId: string;
 let undoerId: string;
 
@@ -54,10 +58,11 @@ beforeAll(async () => {
   const idGenerator = new CryptoIdGenerator();
   const clock = new SystemClock();
   const events = new RecordingDomainEventPublisher();
-  consumeStock = new ConsumeStockBatchUseCase(repository, idGenerator, clock, events);
+  consumeStock = new ConsumeStockBatchUseCase(repository, runner, idGenerator, clock, events);
   restoreStock = new RestoreStockBatchUseCase(repository, idGenerator, clock, events);
-  undoStock = new UndoConsumptionUseCase(repository, idGenerator, clock, events);
+  undoStock = new UndoConsumptionUseCase(repository, runner, idGenerator, clock, events);
   settleStock = new SettleStockMovementsUseCase(repository, clock);
+  writeOffStock = new WriteOffStockMovementsUseCase(repository, clock);
   withdrawerId = await insertUser();
   undoerId = await insertUser();
 });
@@ -103,7 +108,7 @@ async function insertWorkOrder(): Promise<string> {
      VALUES ($1, $2, $3, $4, $5, 'IN_EXECUTION', 'Jane Doe', 'ABC1234', 'Toyota', 'Corolla', 2020, now(), now())`,
     [
       workOrderExternalId,
-      `${Math.random().toString(36).slice(2, 8).toUpperCase()}-2026`,
+      uniqueWorkOrderNumber(),
       customerRows[0].id,
       vehicleRows[0].id,
       userRows[0].id,
@@ -138,10 +143,8 @@ function withdraw(
   workOrderId: string,
   lines: Array<{ inventoryItemId: string; quantity: number }>,
 ): Promise<unknown> {
-  return runner.run(() =>
-    consumeStock.execute(
-      new ConsumeStockBatchCommand(lines, workOrderId, withdrawerId, operationId),
-    ),
+  return consumeStock.execute(
+    new ConsumeStockBatchCommand(lines, workOrderId, withdrawerId, operationId),
   );
 }
 
@@ -158,7 +161,7 @@ function returnParts(
 }
 
 function undo(operationId: string): Promise<unknown> {
-  return runner.run(() => undoStock.execute(new UndoConsumptionCommand(operationId, undoerId)));
+  return undoStock.execute(new UndoConsumptionCommand(operationId, undoerId));
 }
 
 // Polls the server until `count` sessions wait for a row lock.
@@ -397,7 +400,7 @@ describe('stock operations applied once', () => {
     expect(await repository.findPendingConsumptionsOfOperation(undone)).toEqual([]);
   });
 
-  it('should not return the units of a consumption that was settled', async () => {
+  it('should give back the units of a consumption that was settled before the undo', async () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
@@ -408,7 +411,31 @@ describe('stock operations applied once', () => {
 
     await undo(operationId);
 
+    expect(await quantityOf(itemId)).toBe(10);
+    expect((await movementsOf(itemId)).map((row) => [row.kind, row.status])).toEqual([
+      ['INBOUND', null],
+      ['CONSUMPTION', 'SETTLED'],
+      ['RETURN', null],
+    ]);
+  });
+
+  it('should give back the units of a consumption that a write-off closed before the undo', async () => {
+    const itemId = await buildStockedItem(10);
+    const workOrderId = await insertWorkOrder();
+    const operationId = randomUUID();
+    await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await runner.run(() =>
+      writeOffStock.execute(new WriteOffStockMovementsCommand(workOrderId, withdrawerId)),
+    );
     expect(await quantityOf(itemId)).toBe(7);
-    expect((await movementsOf(itemId)).filter((row) => row.kind === 'RETURN')).toEqual([]);
+
+    await undo(operationId);
+
+    expect(await quantityOf(itemId)).toBe(10);
+    expect((await movementsOf(itemId)).map((row) => [row.kind, row.status])).toEqual([
+      ['INBOUND', null],
+      ['CONSUMPTION', 'WRITTEN_OFF'],
+      ['RETURN', null],
+    ]);
   });
 });

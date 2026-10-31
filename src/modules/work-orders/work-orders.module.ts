@@ -230,6 +230,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         idGenerator: IdGenerator,
         clock: Clock,
         stockLedger: StockLedger,
+        steps: PendingStockSteps,
+        settings: OutboxSettings,
         events: DomainEventPublisher,
       ) =>
         new WithdrawPartsUseCase(
@@ -238,6 +240,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
           idGenerator,
           clock,
           stockLedger,
+          steps,
+          settings,
           events,
         ),
       inject: [
@@ -246,6 +250,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         ID_GENERATOR,
         CLOCK,
         STOCK_LEDGER,
+        PENDING_STOCK_STEPS,
+        OUTBOX_SETTINGS,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },

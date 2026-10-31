@@ -46,9 +46,9 @@ const CLAIM_DUE = `
 `;
 
 /**
- * The outbox of `work-orders` over `work_order_stock_steps`. `enqueue` and `complete` join the
- * transaction of the caller, so a step is recorded with the save it belongs to. Every other write
- * is a statement of its own, committed at once.
+ * The outbox of `work-orders` over `work_order_stock_steps`. `enqueue`, `disarm` and `complete` join
+ * the transaction of the caller, so a step is recorded or closed with the save it belongs to. Every
+ * other write is a statement of its own, committed at once.
  */
 @Injectable()
 export class TypeOrmPendingStockSteps implements PendingStockSteps {
@@ -68,6 +68,20 @@ export class TypeOrmPendingStockSteps implements PendingStockSteps {
       'PENDING',
       this.clock.now(),
     );
+  }
+
+  async disarm(operationId: string): Promise<boolean> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    // A claim turns an armed step pending, so the status condition is what tells a request whether
+    // the processor took its step. TypeORM answers an UPDATE with `[rows, rowCount]`.
+    const [rows]: [Array<{ id: string }>, number] = await manager.query(
+      `UPDATE work_order_stock_steps
+          SET status = 'DONE', completed_at = $2
+        WHERE operation_id = $1 AND status = 'ARMED'
+        RETURNING id`,
+      [operationId, this.clock.now()],
+    );
+    return rows.length > 0;
   }
 
   async complete(operationId: string): Promise<void> {

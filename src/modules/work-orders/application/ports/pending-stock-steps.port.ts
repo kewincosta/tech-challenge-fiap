@@ -35,6 +35,12 @@ export interface PendingStockSteps {
   arm(step: StockStep, dueAt: Date): Promise<void>;
   /** Records the step as pending and due now, in the transaction the caller has open. */
   enqueue(step: StockStep): Promise<void>;
+  /**
+   * Marks an armed step done, in the transaction the caller has open, and says whether it did. A
+   * claim turns an armed step pending, so `false` tells the caller that the processor took the
+   * step. A step already done or failed answers `false` as well.
+   */
+  disarm(operationId: string): Promise<boolean>;
   /** Marks the step done, in the transaction the caller has open. A step already done or failed stays so. */
   complete(operationId: string): Promise<void>;
   /** Makes an armed step due now. Commits on its own. */
