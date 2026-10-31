@@ -1,6 +1,6 @@
 # 0027. Modules meet through consumer-owned ports and public APIs, with no cycle
 
-**Status**: Accepted
+**Status**: Amended by [0033](0033-writes-across-modules-run-as-steps.md)
 **Supersedes**: [0008](0008-cross-context-calls-through-the-buses.md)
 **Source**: AD-012 in `.specs/STATE.md`
 **Recorded**: 2026-10-28, from AD-012, taken during the `clean-architecture` feature
