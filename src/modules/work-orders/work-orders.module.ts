@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { outboxConfig } from '../../config/outbox.config';
 import { Clock } from '../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
@@ -33,9 +35,12 @@ import { SubmitSupplementaryBudgetUseCase } from './application/commands/submit-
 import { WithdrawPartsUseCase } from './application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
   CUSTOMER_DIRECTORY,
+  OUTBOX_SETTINGS,
   PART_CATALOG,
+  PENDING_STOCK_STEPS,
   SERVICE_CATALOG,
   STOCK_LEDGER,
+  STOCK_STEP_LOG,
   VEHICLE_DIRECTORY,
   WORK_ORDER_ACTORS,
   WORK_ORDER_METRICS_QUERY_PORT,
@@ -43,10 +48,13 @@ import {
   WORK_ORDER_QUERY_PORT,
   WORK_ORDER_REPOSITORY,
 } from './work-orders.tokens';
+import { OutboxSettings } from './application/outbox-settings';
 import { CustomerDirectory } from './application/ports/customer-directory.port';
 import { PartCatalog } from './application/ports/part-catalog.port';
+import { PendingStockSteps } from './application/ports/pending-stock-steps.port';
 import { ServiceCatalog } from './application/ports/service-catalog.port';
 import { StockLedger } from './application/ports/stock-ledger.port';
+import { StockStepLog } from './application/ports/stock-step-log.port';
 import { VehicleDirectory } from './application/ports/vehicle-directory.port';
 import { WorkOrderActors } from './application/ports/work-order-actors.port';
 import { WorkOrderMetricsQueryPort } from './application/ports/work-order-metrics-query.port';
@@ -61,6 +69,7 @@ import { GetWorkOrderUseCase } from './application/queries/get-work-order/get-wo
 import { ListWorkOrdersUseCase } from './application/queries/list-work-orders/list-work-orders.use-case';
 import { BudgetDecisionAuthorizer } from './application/services/budget-decision.authorizer';
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
+import { StockStepApplier } from './application/services/stock-step-applier';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
 import { CustomerDirectoryGateway } from './infrastructure/gateways/customer-directory.gateway';
 import { PartCatalogGateway } from './infrastructure/gateways/part-catalog.gateway';
@@ -68,11 +77,14 @@ import { ServiceCatalogGateway } from './infrastructure/gateways/service-catalog
 import { StockLedgerGateway } from './infrastructure/gateways/stock-ledger.gateway';
 import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
 import { WorkOrderActorsGateway } from './infrastructure/gateways/work-order-actors.gateway';
+import { NestStockStepLog } from './infrastructure/outbox/nest-stock-step-log';
+import { StockStepProcessor } from './infrastructure/outbox/stock-step-processor';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
 import { WorkOrderBudgetOrmEntity } from './infrastructure/persistence/work-order-budget.orm-entity';
 import { WorkOrderEventOrmEntity } from './infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderPartOrmEntity } from './infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './infrastructure/persistence/work-order-service.orm-entity';
+import { TypeOrmPendingStockSteps } from './infrastructure/persistence/typeorm-pending-stock-steps';
 import { TypeOrmWorkOrderMetricsQueryAdapter } from './infrastructure/persistence/typeorm-work-order-metrics-query.adapter';
 import { TypeOrmWorkOrderQueryAdapter } from './infrastructure/persistence/typeorm-work-order-query.adapter';
 import { TypeOrmWorkOrderRepository } from './infrastructure/persistence/typeorm-work-order.repository';
@@ -384,6 +396,29 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: PART_CATALOG, useClass: PartCatalogGateway },
     { provide: STOCK_LEDGER, useClass: StockLedgerGateway },
     { provide: WORK_ORDER_ACTORS, useClass: WorkOrderActorsGateway },
+    { provide: PENDING_STOCK_STEPS, useClass: TypeOrmPendingStockSteps },
+    { provide: STOCK_STEP_LOG, useClass: NestStockStepLog },
+    {
+      provide: OUTBOX_SETTINGS,
+      useFactory: (config: ConfigType<typeof outboxConfig>): OutboxSettings => ({
+        pollIntervalMs: config.pollIntervalMs,
+        graceSeconds: config.graceSeconds,
+        maxAttempts: config.maxAttempts,
+      }),
+      inject: [outboxConfig.KEY],
+    },
+    {
+      provide: StockStepApplier,
+      useFactory: (
+        steps: PendingStockSteps,
+        stockLedger: StockLedger,
+        clock: Clock,
+        log: StockStepLog,
+        settings: OutboxSettings,
+      ) => new StockStepApplier(steps, stockLedger, clock, log, settings),
+      inject: [PENDING_STOCK_STEPS, STOCK_LEDGER, CLOCK, STOCK_STEP_LOG, OUTBOX_SETTINGS],
+    },
+    StockStepProcessor,
   ],
 })
 export class WorkOrdersModule {}

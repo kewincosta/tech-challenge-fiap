@@ -8,3 +8,6 @@ export const SERVICE_CATALOG = Symbol('ServiceCatalog');
 export const PART_CATALOG = Symbol('PartCatalog');
 export const STOCK_LEDGER = Symbol('StockLedger');
 export const WORK_ORDER_ACTORS = Symbol('WorkOrderActors');
+export const PENDING_STOCK_STEPS = Symbol('PendingStockSteps');
+export const STOCK_STEP_LOG = Symbol('StockStepLog');
+export const OUTBOX_SETTINGS = Symbol('OutboxSettings');

@@ -19,6 +19,9 @@ const envSchema = z.object({
   RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_AUTH_MAX_REQUESTS: z.coerce.number().int().positive().default(10),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(0).default(5000),
+  OUTBOX_GRACE_SECONDS: z.coerce.number().int().positive().default(300),
+  OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
 });

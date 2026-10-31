@@ -10,6 +10,7 @@ import { appConfig } from './config/app.config';
 import { authConfig } from './config/auth.config';
 import { databaseConfig } from './config/database.config';
 import { validateEnv } from './config/env.validation';
+import { outboxConfig } from './config/outbox.config';
 import { rateLimitConfig } from './config/rate-limit.config';
 import { redisConfig } from './config/redis.config';
 import { JwtAuthGuard } from './modules/identity/authentication/presentation/guards/jwt-auth.guard';
@@ -34,7 +35,7 @@ import { SharedModule } from './shared/shared.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
-      load: [appConfig, databaseConfig, redisConfig, authConfig, rateLimitConfig],
+      load: [appConfig, databaseConfig, redisConfig, authConfig, rateLimitConfig, outboxConfig],
       validate: validateEnv,
     }),
     LoggerModule.forRootAsync({

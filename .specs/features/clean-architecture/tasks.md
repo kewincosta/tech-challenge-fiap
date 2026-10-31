@@ -2232,12 +2232,12 @@ On 2026-10-31 the user moved the five flows that wrote two modules in one transa
 
 **Done when**:
 
-- [ ] The adapter arms, enqueues, completes, releases, claims due steps with `FOR UPDATE SKIP LOCKED`, records failures with the next due time and marks steps failed; two concurrent claims never return the same step (integration)
-- [ ] The applier spec, on fakes, applies each kind through the ledger, completes on success, follows the delay schedule on failure (1 s, 5 s, 30 s, 2 min, 10 min, then 1 h), and at the attempt limit marks the step failed and logs the line CA-10 AC9 defines
-- [ ] The processor runs at bootstrap and on the interval, stays off when the interval is 0, and the test support drains it on demand
-- [ ] `.env.example` and `.env.test` carry the three settings; outside tests the defaults are 5000, 300 and 10, and `.env.test` sets the interval to 0
-- [ ] Test count: unit and integration totals grow by the new cases
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The adapter arms, enqueues, completes, releases, claims due steps with `FOR UPDATE SKIP LOCKED`, records failures with the next due time and marks steps failed; two concurrent claims never return the same step (integration)
+- [x] The applier spec, on fakes, applies each kind through the ledger, completes on success, follows the delay schedule on failure (1 s, 5 s, 30 s, 2 min, 10 min, then 1 h), and at the attempt limit marks the step failed and logs the line CA-10 AC9 defines
+- [x] The processor runs at bootstrap and on the interval, stays off when the interval is 0, and the test support drains it on demand
+- [x] `.env.example` and `.env.test` carry the three settings; outside tests the defaults are 5000, 300 and 10, and `.env.test` sets the interval to 0
+- [x] Test count: unit and integration totals grow by the new cases
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build
