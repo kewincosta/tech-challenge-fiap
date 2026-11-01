@@ -2492,11 +2492,11 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] The migration adds the nullable column, sets it to `occurred_at` on every `CONSUMPTION` row already recorded, and its `down` removes it
-- [ ] An integration spec proves the column, the backfill, a null on a consumption written afterwards, and `down`, and deletes what it inserts
-- [ ] `npm run migration:run` ran once on `workshop` after the spec passed; `workshop_test` gets it from the integration setup
-- [ ] Test count: integration total grows by the migration cases
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The migration adds the nullable column, sets it to `occurred_at` on every `CONSUMPTION` row already recorded, and its `down` removes it
+- [x] An integration spec proves the column, the backfill, a null on a consumption written afterwards, and `down`, and deletes what it inserts
+- [x] `npm run migration:run` ran once on `workshop` after the spec passed; `workshop_test` gets it from the integration setup
+- [x] Test count: integration total grows by the migration cases
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

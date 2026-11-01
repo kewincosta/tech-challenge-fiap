@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { AddCrossModuleSteps1787702400009 } from '../../src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps';
+import { AddConsumptionConfirmation1787702400010 } from '../../src/shared/infrastructure/database/migrations/1787702400010-add-consumption-confirmation';
 import { runMigrations } from '../support/global-setup';
 import { createTestDataSource } from '../support/db';
 
@@ -260,10 +261,12 @@ describe('cross-module steps schema migration, reverted', () => {
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: SCRATCH_DATABASE,
-      migrations: [AddCrossModuleSteps1787702400009],
+      migrations: [AddCrossModuleSteps1787702400009, AddConsumptionConfirmation1787702400010],
     });
     await scratch.initialize();
     try {
+      // The database holds every migration, and a revert takes the last one first.
+      await scratch.undoLastMigration();
       await scratch.undoLastMigration();
 
       const tables: Array<{ table_name: string }> = await scratch.query(

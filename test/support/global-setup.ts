@@ -12,6 +12,7 @@ import { CreateWorkOrdersSchema1787702400006 } from '../../src/shared/infrastruc
 import { CreateWorkOrderBudgets1787702400007 } from '../../src/shared/infrastructure/database/migrations/1787702400007-create-work-order-budgets';
 import { AddWorkOrderClosingColumns1787702400008 } from '../../src/shared/infrastructure/database/migrations/1787702400008-add-work-order-closing-columns';
 import { AddCrossModuleSteps1787702400009 } from '../../src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps';
+import { AddConsumptionConfirmation1787702400010 } from '../../src/shared/infrastructure/database/migrations/1787702400010-add-consumption-confirmation';
 
 const TEST_DATABASE_SUFFIX = '_test';
 
@@ -99,6 +100,7 @@ export async function runMigrations(database = process.env.DATABASE_NAME): Promi
       CreateWorkOrderBudgets1787702400007,
       AddWorkOrderClosingColumns1787702400008,
       AddCrossModuleSteps1787702400009,
+      AddConsumptionConfirmation1787702400010,
     ],
   });
   await dataSource.initialize();

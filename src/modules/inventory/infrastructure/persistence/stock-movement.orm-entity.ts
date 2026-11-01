@@ -41,4 +41,8 @@ export class StockMovementOrmEntity {
 
   @Column({ name: 'operation_id', type: 'uuid', nullable: true })
   operationId!: string | null;
+
+  // Null until the work order of the withdrawal that wrote a consumption confirmed it.
+  @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
+  confirmedAt!: Date | null;
 }
