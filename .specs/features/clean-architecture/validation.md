@@ -1,5 +1,199 @@
 # Clean architecture validation
 
+## Round 5
+
+**Date**: 2026-11-01
+**Spec**: `.specs/features/clean-architecture/spec.md`
+**Diff range**: `3305fb6..bf2e025` (3 commits): the plan of T85 and AD-017's status line `8b1b079`, T85 `22b6922` and the record `bf2e025`. The whole feature spans `51a3a8a..bf2e025`.
+**Verifier**: independent sub-agent (author is not the verifier), round 5, which the user restricted to T85 on 2026-11-01
+**Verdict**: PASS
+
+### Verdict
+
+PASS. T85 closes round 4's one finding with tests alone, and the restriction of this round holds: since round 4, only `test/` and `.specs/` changed, so the production code is the code round 4 verified. Eight adapter cases put a confirmation inside the order of its work order: a pending or failed confirmation holds a later restore, settlement and write-off until it is done, and a confirmation waits behind an older pending or failed restore. Two use-case cases replay round 4's probes N1 and N2: a delivery and a cancellation saved after a confirmation that failed once wait for it, then end `SETTLED` and `WRITTEN_OFF` 3 with every step `DONE`. Mutant O1, word for word as round 4 wrote it, now fails 8 integration cases, and the five other mutants of the confirmation path die as well. Every gate passes on `workshop_test` (unit 1272, integration 518, e2e 246), and the step tables hold the same six inert rows and no account step before and after.
+
+---
+
+### Scope check
+
+| Check | Outcome |
+| --- | --- |
+| `git diff --stat 3305fb6..HEAD -- . ':!.specs' ':!test'` | Empty |
+| `git diff --name-status 3305fb6..HEAD` | Four files: `.specs/STATE.md`, `.specs/features/clean-architecture/tasks.md`, `test/integration/return-beside-withdrawal.spec.ts`, `test/integration/work-order-stock-steps.adapter.spec.ts` |
+| `git diff --name-status f7d021d..3305fb6`, round 4's report commit | `.specs` only: `LESSONS.md`, `STATE.md`, `lessons.json` and `features/clean-architecture/validation.md` |
+| `git diff --stat f7d021d..HEAD -- . ':!.specs' ':!test'` | Empty |
+
+The restriction holds. No production code, document or configuration changed since `f7d021d`, the HEAD round 4 verified, so round 4's evidence for every file outside the two test files holds as written ("Carried over from round 4" gives the line shift inside them).
+
+---
+
+### Task completion
+
+`8b1b079` adds phase 22 and T85 to `tasks.md` and sets AD-017's status line to "active (T68 to T85)". `22b6922` changes the two test files and checks T85's six boxes. `bf2e025` records T85 in the handoff of `STATE.md`. The three commits pass `check_commit.py` and carry no trailer. `validate_spec.py` reports 0 errors and 0 warnings. `validate_tasks.py` reports 0 errors and 27 warnings: round 4's 26 and one for T85, whose `Where` names two files. `tasks.md` has 422 checked Done-when boxes and no open one.
+
+| T85 Done-when | Check at HEAD | Status |
+| --- | --- | --- |
+| A pending confirmation, and a failed one, hold a later restore, settlement and write-off until the confirmation is done | `work-order-stock-steps.adapter.spec.ts:791` to `:816` (Evidence) | Done |
+| A confirmation waits behind an older pending restore | `work-order-stock-steps.adapter.spec.ts:818` to `:845`, the restore pending and failed (Evidence) | Done |
+| A delivery after a confirmation that failed once settles after it; a cancellation writes off the outstanding units | `return-beside-withdrawal.spec.ts:752` and `:787` (Evidence) | Done |
+| O1 fails at least one new case; no file outside `test/` changes | O1 fails 8 new cases (Discrimination sensor); only `test/` and `.specs/` changed (Scope check) | Done |
+| Integration total grows; unit and e2e unchanged | 508 to 518; 1272 and 246 as at round 4 (Gate check) | Done |
+| The full gate passes | Lint, unit, integration and e2e exit 0 (Gate check) | Done |
+
+---
+
+### Evidence for round 4's gap
+
+Round 4's finding 1: no test held a step behind a confirmation, so mutant O1 survived every suite. CA-10 AC10 (`spec.md:224`) has confirmations, restores, settlements and write-offs of a work order apply in the order they were recorded, a failed one holding the later ones.
+
+#### On the claim
+
+`test/integration/work-order-stock-steps.adapter.spec.ts`, block `:759` to `:846`. `HOLDING_STATES` (`:765` to `:784`) records a step in each state a confirmation reaches, with its way out: pending (`steps.enqueue`, then `steps.complete`), and failed (enqueued, claimed once, `markFailed`, then set back to pending by an operator at `:777` to `:780` and completed). `LATER_STEPS` (`:785` to `:789`) names a restore, a settlement and a write-off. Each claim runs a day after the steps were recorded and names only the step under test, so the step is due and the claim's order check still sees every older step of its work order.
+
+| Spec outcome | Cases | Assertions |
+| --- | --- | --- |
+| A pending confirmation holds a later restore, settlement and write-off of its work order until it is done | `:791` to `:816`, three cases "while the confirmation is pending" | `:811` `expect(whileOpen).toEqual([])`; `:812` `expect(heldBack).toMatchObject({ status: 'PENDING', attempts: 0, due_at: at(0) })`; `:813` `expect(afterDone).toEqual([{ ...later, attempts: 1 }])` |
+| A failed confirmation holds them until an operator sets it back to pending and it is done | `:791` to `:816`, three cases "while the confirmation is failed" | The same three assertions |
+| A confirmation recorded after an open restore of its work order waits for it | `:818` to `:845`, two cases: the restore pending, the restore failed | `:841` `expect(whileWaiting).toEqual([])`; `:842` the confirmation `PENDING` with 0 attempts and its due time unchanged; `:843` `expect(afterDone).toEqual([{ ...confirmation, attempts: 1 }])` |
+
+#### Through the use cases
+
+`test/integration/return-beside-withdrawal.spec.ts`, block `:751` to `:818`. `scenario({ confirmationFailsOnce: true })` (`:232`, `:289` and `:290`) withdraws 3 units through `WithdrawPartsUseCase` with an applier whose ledger rejects the first confirmation with "inventory is busy" (`:411` to `:413`, `:435` to `:443`). The completion (`:358`), the delivery (`:367`) and the cancellation (`:343`) are the application's use cases, and the delivery and the cancellation attempt their step through the application's own applier. The processor is the test support's drain of one work order, its clock 5 s ahead, past the confirmation's wait of 1 s.
+
+| Spec outcome | Case | Assertions |
+| --- | --- | --- |
+| A delivery saved after a confirmation that failed once waits for it, then settles the consumption, every step `DONE` | N1, `:752` | Before the delivery: `:754` to `:757` `['CONFIRM_CONSUMPTION', 'PENDING', 1]`; `:758` `[[FIRST_WITHDRAWAL, 'PENDING', false]]`. After the delivery and its own attempt (`:762`): `:764` to `:768` `['SETTLE', 'PENDING', 0]` behind the pending confirmation; `:769` the consumption still pending and unconfirmed; `:770` `expect(await transitionsOf(fixture.itemId)).toEqual([])`; `:771` the shelf at 17 (`SHELF - FIRST_WITHDRAWAL`). After the drain (`:775`): `:777` to `:781` `['UNDO_CONSUMPTION', DONE, 0]`, `['CONFIRM_CONSUMPTION', DONE, 2]`, `['SETTLE', DONE, 1]`; `:782` `[[FIRST_WITHDRAWAL, 'SETTLED', true]]`; `:783` `[['SETTLED', null]]`; `:784` the shelf at 17 |
+| A cancellation in the same order waits, then writes off the outstanding units, every step `DONE` | N2, `:787` | After the cancellation and its own attempt (`:792` to `:794`): `:796` to `:800` `['WRITE_OFF', 'PENDING', 0]` behind the pending confirmation; `:801` to `:803` nothing written off, the shelf at 17. After the drain (`:807`): `:809` to `:813` every step `DONE`, the confirmation in 2 attempts and the write-off in 1; `:814` `[[FIRST_WITHDRAWAL, 'WRITTEN_OFF', true]]`; `:815` `[['WRITTEN_OFF', FIRST_WITHDRAWAL]]`, 3 units; `:816` the shelf at 17 |
+
+The assertions target the outcomes the spec defines and round 4's Fix 1 named: the consumption `SETTLED` with one `SETTLED` transition, `WRITTEN_OFF` 3, and every step `DONE`. The end states also pin the order. A settlement or a write-off that ran before the confirmation would find no confirmed consumption and close nothing for good, so neither case could end `SETTLED` or `WRITTEN_OFF` 3.
+
+The ten cases are hermetic. Each adapter case builds a work order of its own, claims only the step under test, and runs in the spec's clock window of 2001. Each use-case case builds its own item and work order, and the `afterEach` (`:117` to `:127`) removes the steps of the work orders it made. Neither block truncates a table.
+
+CA-10 AC10 now has evidence for each step kind it names. Status: PASS.
+
+---
+
+### Discrimination sensor
+
+Expanded tier, as in round 4, with CA-10 as the critical path. Every run used a detached `git worktree` of `bf2e025` under the scratchpad, with `node_modules` linked and `.env.test` set to `DATABASE_NAME=workshop_mut_test` and `REDIS_DB=13`. Before each run the scratch database was dropped and created again (the global setup migrates it) and Redis DB 13 emptied. Each mutant is an exact text replacement in `src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts` that refuses to apply unless its target occurs once. The file was checked out again after each run, and the worktree's `src` was confirmed clean before the next. Each run ran the unit, integration and e2e suites in full. A control run of the unmutated worktree passed 1272, 518 and 246, the ten new cases included.
+
+| # | Line | Mutation | Outcome (failing cases per suite) |
+| --- | --- | --- | --- |
+| O1 | `:49` | Round 4's O1 word for word: `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')`. A pending or failed confirmation holds no later step | KILLED (integration 8: N1 at `return-beside-withdrawal.spec.ts:764` and N2 at `:796`, where the settlement and the write-off come back `DONE` after 1 attempt while `PENDING` with 0 was due; and the six holding cases at `work-order-stock-steps.adapter.spec.ts:811`, where the claim returns the later step while the confirmation is open) |
+| H1 | `:50` | A failed confirmation holds nothing; a pending one still holds: `AND (older.status IN ('ARMED', 'PENDING') OR (older.status = 'FAILED' AND older.kind <> 'CONFIRM_CONSUMPTION'))` | KILLED (integration 3: the three cases "while the confirmation is failed", `work-order-stock-steps.adapter.spec.ts:811`) |
+| H2 | `:50` | A pending confirmation holds nothing; a failed one still holds: `AND (older.status IN ('ARMED', 'FAILED') OR (older.status = 'PENDING' AND older.kind <> 'CONFIRM_CONSUMPTION'))` | KILLED (integration 5: the three cases "while the confirmation is pending", `work-order-stock-steps.adapter.spec.ts:811`; N1 at `return-beside-withdrawal.spec.ts:764`; N2 at `:796`) |
+| W1 | `:44` | A newer confirmation is exempted from the order, as an undo is: `candidate.kind IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')` | KILLED (integration 2: both waiting cases, `work-order-stock-steps.adapter.spec.ts:841`, where the claim returns the confirmation while the older restore is open) |
+| K1 | `:49` | Own choice. A confirmation holds no later restore and still holds a later settlement and write-off: the line `AND NOT (older.kind = 'CONFIRM_CONSUMPTION' AND candidate.kind = 'RESTORE')` added | KILLED (integration 2: the restore rows, pending and failed, `work-order-stock-steps.adapter.spec.ts:811`) |
+| K2 | `:50` | Own choice. A pending confirmation holds the later steps only while it is due, so one that failed an attempt and waits for its retry holds nothing: `AND (older.status IN ('ARMED', 'FAILED') OR (older.status = 'PENDING' AND (older.kind <> 'CONFIRM_CONSUMPTION' OR older.due_at <= $1)))` | KILLED (integration 2: N1 at `return-beside-withdrawal.spec.ts:764` and N2 at `:796`; the adapter cases pass, because their pending confirmation is due) |
+
+Six mutants ran and six died, all in the integration suite. The unit suite runs the claim on a fake and no e2e case holds a step behind a confirmation, so unit (1272) and e2e (246) pass on every mutant, as they did on O1 in round 4. No case older than T85 fails on any of the six: every kill comes from the ten new cases, and each new case kills at least one mutant. H1 dies on the failed holding rows alone, K1 on the restore rows alone, W1 on the waiting cases alone and K2 on N1 and N2 alone; H2 and O1 fail both the adapter rows and the use-case cases.
+
+The real tree's `git status --porcelain` was empty before the sensor and still empty after it. Once the sensor was done, the worktree was removed and pruned (its `node_modules` link removed first), `workshop_mut_test` dropped and Redis DB 13 emptied (`DBSIZE` 0); the server holds only `postgres`, `workshop` and `workshop_test`. The `app` container was never started, and nothing touched `workshop`. No `git stash` was used.
+
+---
+
+### Gate check
+
+All commands ran in the real tree against `workshop_test` as it is (never truncated), with Redis DB 15.
+
+| Step | Exit | Outcome |
+| --- | --- | --- |
+| `npm run lint` | 0 | ESLint clean; "no dependency violations found (795 modules, 3657 dependencies cruised)"; "No table ownership violations found (0 known findings ignored)."; "No dependency cycle between modules found (7 modules, 16 dependencies between them)." |
+| `npm run build` | 0 | Clean |
+| `npm run test:unit` | 0 | 1272 passed (162 files) |
+| `npm run test:integration` | 0 | 518 passed (58 files); `work-order-stock-steps.adapter.spec.ts` runs 48 cases and `return-beside-withdrawal.spec.ts` 6 |
+| `npm run test:e2e` | 0 | 246 passed (19 files), `openapi-contract.e2e.spec.ts` included |
+| `npm run test:coverage` | 0 | 1272 passed; no threshold message |
+| `npx prettier --check README.md docs` | 0 | "All matched files use Prettier code style!" |
+
+Test counts: 1272, 508 and 246 at round 4; 1272, 518 and 246 at HEAD. T85 adds 10 integration cases, 8 on the adapter and 2 through the use cases, and leaves the unit and e2e counts as they were, which its Done-when asks. No test is skipped, focused or marked todo. No flake appeared in the gate, the control or the mutant runs: every failure under a mutant was a case of the mutated behavior.
+
+The step tables of `workshop_test`: `work_order_stock_steps` held the six inert `DONE` `WRITE_OFF` rows (ids 2659, 2672, 2685, 2698, 2711 and 2724) and nothing else before the gate, after it and at the end of the round; `customer_account_steps` held 0 rows each time. The suites added no row and left the six rows alone, as the user decided.
+
+---
+
+### Carried over from round 4
+
+Production code, documents and configuration are byte for byte those of `f7d021d`, so round 4's per-criterion table, its 27 edge cases, its code quality review and its 21 killed mutants hold as round 4 reports them. Two notes on lines:
+
+- `test/integration/return-beside-withdrawal.spec.ts`: T85 added helpers above the cases round 4 cites, so its lines `:475` to `:655` now sit 79 lines lower, at `:554` to `:734`, with the same text, and its `:112` to `:122` sit 5 lines lower, at `:117` to `:127`. The three reworked helpers keep their old behavior when a case passes no option: `scenario` withdraws through the default use case, `withdrawalUseCase` falls back to the application's applier, and `ledgerWith` fails a confirmation only when asked to.
+- `test/integration/work-order-stock-steps.adapter.spec.ts`: lines `:1` to `:757` are unchanged, and every line round 4 cites there falls within them.
+
+| Area | Round 4 | Round 5 |
+| --- | --- | --- |
+| Criteria | 57 of 58; gap in CA-10 AC10, its confirmation clause | 58 of 58: AC10's confirmation clause has the evidence above |
+| Edge cases | 27 of 27 | 27 of 27, unchanged |
+| Spec-precision gaps | None new | None new |
+| Sensor | 22 mutants, 21 killed, O1 survived | 6 mutants, 6 killed, each by the new cases; O1 fails 8 integration cases |
+
+---
+
+### Adversarial review
+
+- The adapter cases claim with the operation filter (`typeorm-pending-stock-steps.ts:42`) set to the step under test, while the order check (`:45` to `:51`) reads every older step of the work order. The confirmation is therefore open and visible when the later step is claimed, which is the condition O1 removes.
+- The failed state's way out sets the confirmation back to pending before it completes it, so the cases also walk the operator's release that round 4's restore case walks (`work-order-stock-steps.adapter.spec.ts:595` to `:620`).
+- N1 and N2 build the state a real failure leaves: one attempt counted, the error recorded, a wait of 1 s. The adapter cases build a pending confirmation that is due. K2 tells the two apart: the adapter cases pass on it, and only N1 and N2 kill it.
+- A restore that slips ahead of a confirmation heals itself through the use cases, as round 4's probe N3 found on O1: its first attempt finds no confirmed consumption and fails, and a retry applies it. Only the adapter's restore rows see that leg; K1 shows they do.
+- No case holds a confirmation behind an older open confirmation of the same work order, the state two withdrawals whose confirmations both wait would reach. T85's Done-when and this round's brief ask for no such case, and each confirmation confirms the consumptions of its own operation. Observation only.
+- The adapter spec's `beforeAll` removes steps due before 2002 (`:30` to `:32`). The six inert rows are due in 2026 and stay.
+
+---
+
+### Code quality
+
+| Check | Status |
+| --- | --- |
+| No features beyond what was asked | Pass. T85 adds tests and test helpers only |
+| No abstractions for single-use code | Pass. `completionUseCase` and `deliveryUseCase` follow `cancellationUseCase` and `returnUseCase`; `stepAttemptsOf` and `consumptionsOf` are queries like `stepsOf` and `transitionsOf` |
+| No unnecessary flexibility | Pass. The new option of `scenario`, the `applier` override and the ledger hook exist for N1 and N2 and have no other caller |
+| Only touched files the task required | Pass. The two files T85 names, its plan and its record |
+| Did not "improve" unrelated code | Pass. The reworked helpers keep their old behavior |
+| Matches existing patterns and style | Pass. The adapter block follows round 4's undo block (`:693` to `:757`); the use-case block follows the B cases |
+| Tests map to criteria and are not shallow | Pass. Each case asserts the step's status, attempts and due time, or the consumption's status and confirmation, the transitions and the shelf |
+| Spec-anchored outcome check | 58 of 58 criteria; 27 of 27 edge cases |
+| Per-layer coverage expectation | Pass. The order rule has its adapter cases for each kind and state, and the use cases show the outcome |
+| Every test maps to a requirement | Pass. The ten cases map to CA-10 AC10 through T85 |
+| Documented guidelines followed | `.specs/STATE.md` Conventions, the Test Coverage Matrix (T85: integration). The never-truncate convention holds |
+
+---
+
+### Requirement traceability update
+
+Proposed for `spec.md`; the orchestrator applies it.
+
+| Requirement | Previous status | New status |
+| --- | --- | --- |
+| CA-01 to CA-09 | In Tasks | Verified |
+| CA-10 | In Tasks | Verified |
+
+---
+
+### Summary
+
+| Area | Outcome |
+| --- | --- |
+| Overall | Ready |
+| Scope | Only `test/` and `.specs/` changed since round 4 |
+| Round 4's gap | Closed: O1 fails N1, N2 and the six holding cases, and CA-10 AC10 has evidence for each step kind it names |
+| Spec-anchored check | 58 of 58 criteria; no spec-precision gap; 27 of 27 edge cases |
+| Sensor | 6 mutants, 6 killed, each by the new cases; O1 fails 8 integration cases |
+| Gate | Lint, build, unit (1272), integration (518), e2e (246, contract included), coverage and docs pass on `workshop_test` |
+| Step tables | 6 rows in `work_order_stock_steps` and 0 in `customer_account_steps`, before and after |
+
+No fix task follows from this round. The orchestrator applies the traceability update to `spec.md`.
+
+---
+
+### Lessons
+
+A clean PASS: no mutant survived, no spec-precision gap appeared, no gate failed and the diff holds no `// SPEC_DEVIATION`, so `lessons.py` recorded nothing. No confirmed lesson recurred, so none was penalized: T85 adds no edge case (L-002) and no handler or route (L-003). T85 applies round 4's candidate L-030, since the confirmation now has its own cases that hold a later step. Candidates stay candidates until a second feature corroborates them, so L-030 and L-031 are left as they are.
+
+---
+
+# Round 4 history (2026-11-01)
+
+Round 4's report follows as it was written. It is history: the verdict of round 5 above governs.
+
 ## Round 4
 
 **Date**: 2026-11-01
