@@ -209,6 +209,6 @@ Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** none
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`
 - **Boundary:** none closed yet
 - **Abandoned:** none
