@@ -239,7 +239,7 @@ T76 → T77 → T78
 ### Phase 21: Confirmed consumptions
 
 ```
-T79 → T80 → T81 → T82 → T83
+T79 → T80 → T81 → T82 → T83 → T84
 ```
 
 ---
@@ -2616,6 +2616,34 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 ---
 
+#### T84: The designs describe the confirmed consumptions
+
+**What**: The low-level designs, the high-level design and the C4 component diagrams describe the steps as phase 21 left them: eleven migrations, the confirmation step and its kind, `confirmConsumption` on `StockLedger`, `ConfirmConsumptionUseCase`, `stock_movements.confirmed_at`, the reads that require a confirmation, and the undo's exemption from the order rule.
+**Where**: `docs/architecture/low-level-design/` (`shared.md`, `work-orders.md`, `inventory.md`), `docs/architecture/high-level-design.md`, `docs/architecture/c4-components-*.mmd`
+**Depends on**: T83
+**Reuses**: The wording of ADR 0033 and design C16
+**Requirement**: CA-09, CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] `shared.md` counts eleven migrations, `1787702400000` through `1787702400010`, and names the last one
+- [ ] `work-orders.md` lists the five step kinds and `consumptionOperationId`, the withdrawal's confirmation in its last transaction, `confirmConsumption` among the `StockLedger` methods, and the order rule with the undo's exemption
+- [ ] `inventory.md` lists `ConfirmConsumptionUseCase` among the use cases `work-orders` calls, `confirmed_at` among the columns of `stock_movements`, and the reads that require a confirmation
+- [ ] Every place in `docs/architecture` that lists the stock step kinds or the `StockLedger` operations names the confirmation too, checked by `grep -rn "UNDO_CONSUMPTION\|StockLedger" docs/architecture`
+- [ ] Gate check passes: `npx prettier --check README.md docs`
+
+**Tests**: none
+**Gate**: docs
+
+**Commit**: `docs(architecture): describe the confirmed consumptions`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -2641,7 +2669,7 @@ Phase 17: T58 → T59 → T60
 Phase 18: T63 → T64 → T65 → T66 → T67
 Phase 19: T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 Phase 20: T76 → T77 → T78
-Phase 21: T79 → T80 → T81 → T82 → T83
+Phase 21: T79 → T80 → T81 → T82 → T83 → T84
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2735,6 +2763,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T81 | T80 | T80 → T81 | ✅ Match |
 | T82 | T81 | T81 → T82 | ✅ Match |
 | T83 | T82 | T82 → T83 | ✅ Match |
+| T84 | T83 | T83 → T84 | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2823,3 +2852,4 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T81: Confirmation step | Use case, port, adapter, applier | integration (highest) | integration | ✅ OK |
 | T82: Confirmed reads | Repository, fake, adapter | integration (highest) | integration | ✅ OK |
 | T83: ADR 0033 and README | Documentation | none | none | ✅ OK |
+| T84: Designs | Documentation | none | none | ✅ OK |
