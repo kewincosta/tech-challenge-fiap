@@ -106,9 +106,11 @@ rejects is logged at error level, under the `EventBus` context, as
 
 ### `database/migrations/`
 
-Ten hand-written SQL migrations, `1787702400000` through `1787702400009`. Every table in the
+Eleven hand-written SQL migrations, `1787702400000` through `1787702400010`. Every table in the
 system is created here, not by synchronisation, so a schema change is a reviewable file. The last
-one, `1787702400009-add-cross-module-steps.ts`, creates the two outbox tables and adds
+one, `1787702400010-add-consumption-confirmation.ts`, adds the nullable
+`stock_movements.confirmed_at` and sets it on every consumption already recorded. The one before it,
+`1787702400009-add-cross-module-steps.ts`, creates the two outbox tables and adds
 `stock_movements.operation_id`. The per-table detail lives on each module's page.
 
 ### `typeorm-cli.datasource.ts`, `redis.module.ts`, `crypto-id-generator.ts`, `system-clock.ts`

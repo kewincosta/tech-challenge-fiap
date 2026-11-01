@@ -104,14 +104,14 @@ Ports, all in `application/ports`. Two are the usual ones for a module's own dat
 `infrastructure/gateways` implements each by calling the other module's public API
 ([0027](../../adr/0027-ports-between-modules.md)):
 
-| Port                | Gateway                    | Calls                                                                     |
-| ------------------- | -------------------------- | ------------------------------------------------------------------------- |
-| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`      |
-| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                         |
-| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                         |
-| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                                  |
-| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, undo, settle and write-off use cases of `inventory` |
-| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity`    |
+| Port                | Gateway                    | Calls                                                                              |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
+| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`               |
+| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                                  |
+| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                                  |
+| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                                           |
+| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, undo, confirm, settle and write-off use cases of `inventory` |
+| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity`             |
 
 Two more ports belong to the stock steps: `PendingStockSteps`, the outbox, and `StockStepLog`, which
 logs a step that reached its attempt limit.
@@ -122,9 +122,11 @@ found, with `active` false, which is what separates a 404 from a 422.
 
 ## Stock steps
 
-A step is `{ operationId, kind, workOrderId, actorUserId, lines? }`, with the kind `UNDO_CONSUMPTION`,
-`RESTORE`, `SETTLE` or `WRITE_OFF`. The `operationId` is the key `inventory` applies the step by, so a
-repeat changes nothing. The pieces ([0033](../../adr/0033-writes-across-modules-run-as-steps.md)):
+A step is `{ operationId, kind, workOrderId, actorUserId, lines?, consumptionOperationId? }`, with the
+kind `UNDO_CONSUMPTION`, `CONFIRM_CONSUMPTION`, `RESTORE`, `SETTLE` or `WRITE_OFF`. The `operationId`
+is the key `inventory` applies the step by, so a repeat changes nothing. A confirmation step has an
+`operationId` of its own, because each step has one, and carries the withdrawal's in
+`consumptionOperationId`. The pieces ([0033](../../adr/0033-writes-across-modules-run-as-steps.md)):
 
 - `PendingStockSteps` (`application/ports`), implemented by `TypeOrmPendingStockSteps` over
   `work_order_stock_steps`. `arm` records an armed step in a statement of its own. `enqueue` records a
@@ -132,7 +134,8 @@ repeat changes nothing. The pieces ([0033](../../adr/0033-writes-across-modules-
   did; both join the transaction the caller has open. `complete`, `release`, `recordFailure` and
   `markFailed` are statements of their own. `claimDue` takes the due steps with
   `FOR UPDATE SKIP LOCKED` and leases them for the grace period, counting the attempt.
-- `StockStepApplier` (`application/services`) applies one claimed step through `StockLedger`,
+- `StockStepApplier` (`application/services`) applies one claimed step through the `StockLedger`
+  method of its kind (`undoConsumption`, `confirmConsumption`, `restore`, `settle` or `writeOff`),
   completes it, or records the failure with the next due time (1 s, 5 s, 30 s, 2 min, 10 min, then
   1 h). At the attempt limit it marks the step failed and logs it through `StockStepLog`.
   `applyAfterCommit` is the attempt a request makes at its own step, and it never fails the request.
@@ -140,12 +143,26 @@ repeat changes nothing. The pieces ([0033](../../adr/0033-writes-across-modules-
   `OUTBOX_POLL_INTERVAL_MS`. An interval of 0 turns it off, which is how the test suites keep an
   application from picking up steps older runs left behind.
 
+A work order's steps apply in the order they were recorded. A claim takes a step only while no older
+step of the same work order is armed, pending or failed, so it takes at most one step per work
+order, the oldest that is not done. A failed step holds the later ones until an operator sets it
+back to pending, and the steps of other work orders go on. The undo is the exception: a claim takes
+it once it is due, whatever older step of its work order is still open, and it holds no later step.
+It touches only the unconfirmed consumptions of its own operation, which no other step reads.
+
 Withdrawal arms an `UNDO_CONSUMPTION` step due after `OUTBOX_GRACE_SECONDS`, consumes the stock,
-and then disarms the step and saves the work order in one transaction. When the consumption or that
+and then disarms the step, saves the work order and enqueues a `CONFIRM_CONSUMPTION` step in one
+transaction. After the commit the request applies the confirmation, and `inventory` records a
+confirmation time on the consumptions the withdrawal tagged. When the consumption or that
 transaction fails, the request undoes the consumption through the ledger at once, completes the step
-and answers the first error. A step the processor claimed first answers 409
-`CONCURRENT_MODIFICATION`. Return, delivery and cancellation save the work order and enqueue their
-step in one transaction, and apply it after the commit.
+and answers the first error, and no confirmation step exists. A step the processor claimed first
+answers 409 `CONCURRENT_MODIFICATION`. Return, delivery and cancellation save the work order and
+enqueue their step in one transaction, and apply it after the commit.
+
+`inventory` counts a consumption for a restore, a settlement and a write-off only once its work
+order confirmed it. Until the confirmation applies, the units of a withdrawal belong to its undo
+alone. The confirmation follows the order rule like any other step: a restore, a settlement or a
+write-off recorded after the withdrawal's save waits for it.
 
 ## Persistence
 
@@ -295,19 +312,19 @@ Indexed by `ix_work_order_events_work_order_occurred`.
 
 The outbox of the stock steps. From migration `1787702400009-add-cross-module-steps.ts`.
 
-| Column          | Type          | Notes                                                                                     |
-| --------------- | ------------- | ----------------------------------------------------------------------------------------- |
-| `id`            | `bigserial`   | Primary key, internal only.                                                               |
-| `operation_id`  | `uuid`        | `ux_work_order_stock_steps_operation_id` unique. The key `inventory` applies the step by. |
-| `kind`          | `varchar(30)` | `UNDO_CONSUMPTION`, `RESTORE`, `SETTLE` or `WRITE_OFF`.                                   |
-| `work_order_id` | `bigint`      | References `work_orders (id)`, `ON DELETE RESTRICT`.                                      |
-| `payload`       | `jsonb`       | The actor and, for a restore, the lines. Defaults to `{}`.                                |
-| `status`        | `varchar(20)` | `ARMED`, `PENDING`, `DONE` or `FAILED`, checked by `chk_work_order_stock_steps_status`.   |
-| `attempts`      | `integer`     | Claims so far. Defaults to 0.                                                             |
-| `due_at`        | `timestamptz` | When the step is next due. A claim pushes it to the end of its lease.                     |
-| `last_error`    | `text`        | Nullable. The error of the last failed attempt.                                           |
-| `created_at`    | `timestamptz` |                                                                                           |
-| `completed_at`  | `timestamptz` | Nullable. Set when the step is done.                                                      |
+| Column          | Type          | Notes                                                                                                                                                 |
+| --------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | `bigserial`   | Primary key, internal only.                                                                                                                           |
+| `operation_id`  | `uuid`        | `ux_work_order_stock_steps_operation_id` unique. The key `inventory` applies the step by; a confirmation applies by `payload.consumptionOperationId`. |
+| `kind`          | `varchar(30)` | `UNDO_CONSUMPTION`, `CONFIRM_CONSUMPTION`, `RESTORE`, `SETTLE` or `WRITE_OFF`.                                                                        |
+| `work_order_id` | `bigint`      | References `work_orders (id)`, `ON DELETE RESTRICT`.                                                                                                  |
+| `payload`       | `jsonb`       | The actor, plus the lines of a restore or the `consumptionOperationId` of a confirmation. Defaults to `{}`.                                           |
+| `status`        | `varchar(20)` | `ARMED`, `PENDING`, `DONE` or `FAILED`, checked by `chk_work_order_stock_steps_status`.                                                               |
+| `attempts`      | `integer`     | Claims so far. Defaults to 0.                                                                                                                         |
+| `due_at`        | `timestamptz` | When the step is next due. A claim pushes it to the end of its lease.                                                                                 |
+| `last_error`    | `text`        | Nullable. The error of the last failed attempt.                                                                                                       |
+| `created_at`    | `timestamptz` |                                                                                                                                                       |
+| `completed_at`  | `timestamptz` | Nullable. Set when the step is done.                                                                                                                  |
 
 A step stays in the table after it is done or failed. A failed one waits there for an operator.
 

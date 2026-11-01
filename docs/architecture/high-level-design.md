@@ -136,18 +136,24 @@ due at application bootstrap and every `OUTBOX_POLL_INTERVAL_MS`, applies them t
 and retries a failed step after 1 second, 5 seconds, 30 seconds, 2 minutes, 10 minutes and then
 every hour, until `OUTBOX_MAX_ATTEMPTS` marks it failed and logs it. Five flows work this way:
 
-| Flow                                   | First step                                                                               | Last step                                                   | When a step fails                                                                                             |
-| -------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Withdraw parts                         | Arm an undo step, then consume in `inventory`                                            | Disarm the step and save the work order, in one transaction | The request undoes the consumption at once and answers the first error; the processor undoes it after a crash |
-| Register a customer with a new account | Arm a discard step, then open the account in `identity`                                  | Disarm the step and save the customer, in one transaction   | The request discards the account at once and answers the first error; the processor discards it after a crash |
-| Return parts, deliver, cancel          | Save the work order and record the restore, settle or write-off step, in one transaction | Apply the step after the commit                             | The step stays pending and the processor retries it; the request still succeeds                               |
+| Flow                                   | First step                                                                               | Last step                                                                                                                        | When a step fails                                                                                             |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Withdraw parts                         | Arm an undo step, then consume in `inventory`                                            | Disarm the step, save the work order and record a confirmation step, in one transaction; apply the confirmation after the commit | The request undoes the consumption at once and answers the first error; the processor undoes it after a crash |
+| Register a customer with a new account | Arm a discard step, then open the account in `identity`                                  | Disarm the step and save the customer, in one transaction                                                                        | The request discards the account at once and answers the first error; the processor discards it after a crash |
+| Return parts, deliver, cancel          | Save the work order and record the restore, settle or write-off step, in one transaction | Apply the step after the commit                                                                                                  | The step stays pending and the processor retries it; the request still succeeds                               |
 
 When the processor claimed an armed step before the request reached its last transaction, the
 disarm finds the step taken, the request answers 409 `CONCURRENT_MODIFICATION`, saves nothing and
 applies its own compensation. Every receiving step is idempotent by operation id, so a repeat after
 a crash or a retry changes nothing. A registration over an existing user writes nothing in
 `identity` and arms no step. The `inventory` use cases that consume, restore, undo, settle and
-write off each open a transaction of their own.
+write off each open a transaction of their own, and the confirmation is a single statement.
+
+A work order's steps apply in the order they were recorded, and a failed step holds the later ones
+until an operator sets it back to pending. The undo is outside that order: it applies once it is
+due and holds no other step. The confirmation tells `inventory` that the work order accepted the
+withdrawal. Until it applies, the consumption belongs to the withdrawal's undo alone, and a restore,
+a settlement and a write-off leave it untouched.
 
 The work order aggregate additionally carries a `version` column, and its repository refuses a
 write whose loaded version no longer matches, answering 409
@@ -171,12 +177,12 @@ of internal ids ([0006](../adr/0006-internal-key-plus-external-uuid.md)).
 is what lets a repository write a trail from the same events the use case will publish afterwards.
 
 **Append-only history.** `stock_movements`, `stock_movement_transitions` and `work_order_events`
-are never deleted and never rewritten beyond a movement's status
-([0015](../adr/0015-stock-movements-append-only.md),
+are never deleted and never rewritten beyond a movement's status and a consumption's confirmation
+time ([0015](../adr/0015-stock-movements-append-only.md),
 [0021](../adr/0021-the-trail-written-inside-the-aggregate-transaction.md)).
 
 **Persistence.** Hand-written SQL migrations under
-`src/shared/infrastructure/database/migrations`, ten of them. `CHECK` constraints for status
+`src/shared/infrastructure/database/migrations`, eleven of them. `CHECK` constraints for status
 columns, partial unique indexes filtered by `deleted_at IS NULL` for the soft-delete rules.
 
 **Errors.** Each rule gets a `DomainError` subclass with a module-prefixed `code` and an
@@ -203,8 +209,9 @@ anything that must not be lost is written inside the transaction instead
 **Cross-context work that must be able to fail the caller** is a synchronous call through a port,
 not a subscriber. Stock consumption and the opening of an account go through the `StockLedger` and
 `CustomerAccounts` ports for exactly that reason, and the request answers the error of the call.
-Work that must not fail the caller, such as the restore, the settlement and the write-off that
-follow a committed save, is a step in the outbox of the module that saved.
+Work that must not fail the caller, such as the confirmation of a withdrawal and the restore, the
+settlement and the write-off that follow a committed save, is a step in the outbox of the module
+that saved.
 
 ## The HTTP surface
 

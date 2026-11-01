@@ -2631,11 +2631,11 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] `shared.md` counts eleven migrations, `1787702400000` through `1787702400010`, and names the last one
-- [ ] `work-orders.md` lists the five step kinds and `consumptionOperationId`, the withdrawal's confirmation in its last transaction, `confirmConsumption` among the `StockLedger` methods, and the order rule with the undo's exemption
-- [ ] `inventory.md` lists `ConfirmConsumptionUseCase` among the use cases `work-orders` calls, `confirmed_at` among the columns of `stock_movements`, and the reads that require a confirmation
-- [ ] Every place in `docs/architecture` that lists the stock step kinds or the `StockLedger` operations names the confirmation too, checked by `grep -rn "UNDO_CONSUMPTION\|StockLedger" docs/architecture`
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] `shared.md` counts eleven migrations, `1787702400000` through `1787702400010`, and names the last one
+- [x] `work-orders.md` lists the five step kinds and `consumptionOperationId`, the withdrawal's confirmation in its last transaction, `confirmConsumption` among the `StockLedger` methods, and the order rule with the undo's exemption
+- [x] `inventory.md` lists `ConfirmConsumptionUseCase` among the use cases `work-orders` calls, `confirmed_at` among the columns of `stock_movements`, and the reads that require a confirmation
+- [x] Every place in `docs/architecture` that lists the stock step kinds or the `StockLedger` operations names the confirmation too, checked by `grep -rn "UNDO_CONSUMPTION\|StockLedger" docs/architecture`
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs
