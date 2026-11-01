@@ -7,7 +7,7 @@
 ## Context
 
 The project measures its architecture against the Clean Architecture study it adopted on 2026-10-27,
-summarized in `.specs/features/clean-architecture/context.md`. The study's first premise is the
+summarized in `.specs/archive/clean-architecture/context.md`. The study's first premise is the
 dependency rule: source dependencies point inward, and business rules know nothing of the framework,
 the database or the delivery mechanism. The domain layer meets that rule. The application layer does
 not.
