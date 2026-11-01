@@ -2520,11 +2520,11 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] A confirmation sets the time on every consumption the operation tagged, leaves other operations' consumptions alone, and a second confirmation changes nothing (integration)
-- [ ] Use case specs on the in-memory repository cover the confirmation, its repeat and an operation that consumed nothing
-- [ ] The ledger gateway spec proves `confirmConsumption` reaches the new use case with the operation id
-- [ ] Test count: unit and integration totals grow
-- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A confirmation sets the time on every consumption the operation tagged, leaves other operations' consumptions alone, and a second confirmation changes nothing (integration)
+- [x] Use case specs on the in-memory repository cover the confirmation, its repeat and an operation that consumed nothing
+- [x] The ledger gateway spec proves `confirmConsumption` reaches the new use case with the operation id
+- [x] Test count: unit and integration totals grow
+- [x] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full

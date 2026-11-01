@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ConfirmConsumptionCommand,
+  ConfirmConsumptionUseCase,
   ConsumeStockBatchCommand,
   ConsumeStockBatchUseCase,
   RestoreStockBatchCommand,
@@ -23,15 +25,23 @@ interface Received {
   consume: unknown[];
   restore: unknown[];
   undo: unknown[];
+  confirm: unknown[];
   settle: unknown[];
   writeOff: unknown[];
 }
 
-// The gateway uses only `execute` of the inventory module's five stock use cases. Each stand-in
+// The gateway uses only `execute` of the inventory module's six stock use cases. Each stand-in
 // keeps what it was handed, so a gateway that sends a command to the wrong use case shows up as
 // state, and `failure` makes every one of them reject like inventory does when stock falls short.
 function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: Received } {
-  const received: Received = { consume: [], restore: [], undo: [], settle: [], writeOff: [] };
+  const received: Received = {
+    consume: [],
+    restore: [],
+    undo: [],
+    confirm: [],
+    settle: [],
+    writeOff: [],
+  };
   const standIn = (into: unknown[]) => ({
     execute: (command: unknown) => {
       into.push(command);
@@ -44,6 +54,7 @@ function gatewayOver(failure?: Error): { gateway: StockLedgerGateway; received: 
     standIn(received.settle) as unknown as SettleStockMovementsUseCase,
     standIn(received.writeOff) as unknown as WriteOffStockMovementsUseCase,
     standIn(received.undo) as unknown as UndoConsumptionUseCase,
+    standIn(received.confirm) as unknown as ConfirmConsumptionUseCase,
   );
   return { gateway, received };
 }
@@ -58,6 +69,7 @@ describe('StockLedgerGateway', () => {
       consume: [new ConsumeStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID, OPERATION_ID)],
       restore: [],
       undo: [],
+      confirm: [],
       settle: [],
       writeOff: [],
     });
@@ -72,6 +84,7 @@ describe('StockLedgerGateway', () => {
       consume: [],
       restore: [new RestoreStockBatchCommand(LINES, WORK_ORDER_ID, ACTOR_ID, OPERATION_ID)],
       undo: [],
+      confirm: [],
       settle: [],
       writeOff: [],
     });
@@ -86,6 +99,22 @@ describe('StockLedgerGateway', () => {
       consume: [],
       restore: [],
       undo: [new UndoConsumptionCommand(OPERATION_ID, ACTOR_ID)],
+      confirm: [],
+      settle: [],
+      writeOff: [],
+    });
+  });
+
+  it('should hand the operation id and the actor of a confirmation to the confirm use case alone', async () => {
+    const { gateway, received } = gatewayOver();
+
+    await gateway.confirmConsumption(OPERATION_ID, ACTOR_ID);
+
+    expect(received).toStrictEqual({
+      consume: [],
+      restore: [],
+      undo: [],
+      confirm: [new ConfirmConsumptionCommand(OPERATION_ID, ACTOR_ID)],
       settle: [],
       writeOff: [],
     });
@@ -100,6 +129,7 @@ describe('StockLedgerGateway', () => {
       consume: [],
       restore: [],
       undo: [],
+      confirm: [],
       settle: [new SettleStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)],
       writeOff: [],
     });
@@ -114,6 +144,7 @@ describe('StockLedgerGateway', () => {
       consume: [],
       restore: [],
       undo: [],
+      confirm: [],
       settle: [],
       writeOff: [new WriteOffStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID)],
     });
@@ -133,6 +164,10 @@ describe('StockLedgerGateway', () => {
     [
       'undoConsumption',
       (gateway: StockLedgerGateway) => gateway.undoConsumption(OPERATION_ID, ACTOR_ID),
+    ],
+    [
+      'confirmConsumption',
+      (gateway: StockLedgerGateway) => gateway.confirmConsumption(OPERATION_ID, ACTOR_ID),
     ],
     ['settle', (gateway: StockLedgerGateway) => gateway.settle(WORK_ORDER_ID, ACTOR_ID)],
     ['writeOff', (gateway: StockLedgerGateway) => gateway.writeOff(WORK_ORDER_ID, ACTOR_ID)],

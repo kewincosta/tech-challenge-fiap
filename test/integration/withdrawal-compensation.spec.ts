@@ -263,6 +263,8 @@ function ledgerWith(hooks: LedgerHooks): StockLedger {
       hooks.undoFailure
         ? Promise.reject(hooks.undoFailure)
         : ledger.undoConsumption(operationId, actorUserId),
+    confirmConsumption: (operationId, actorUserId) =>
+      ledger.confirmConsumption(operationId, actorUserId),
     settle: (workOrderId, actorUserId) => ledger.settle(workOrderId, actorUserId),
     writeOff: (workOrderId, actorUserId) => ledger.writeOff(workOrderId, actorUserId),
   };

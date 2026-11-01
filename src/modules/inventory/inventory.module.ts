@@ -12,6 +12,7 @@ import {
 } from '../../shared/shared.tokens';
 import { IdentityModule } from '../identity';
 import { AdjustStockUseCase } from './application/commands/adjust-stock/adjust-stock.use-case';
+import { ConfirmConsumptionUseCase } from './application/commands/confirm-consumption/confirm-consumption.use-case';
 import { ConsumeStockBatchUseCase } from './application/commands/consume-stock-batch/consume-stock-batch.use-case';
 import { CreateInventoryItemUseCase } from './application/commands/create-inventory-item/create-inventory-item.use-case';
 import { DeactivateInventoryItemUseCase } from './application/commands/deactivate-inventory-item/deactivate-inventory-item.use-case';
@@ -164,6 +165,12 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
       ],
     },
     {
+      provide: ConfirmConsumptionUseCase,
+      useFactory: (items: InventoryItemRepository, clock: Clock) =>
+        new ConfirmConsumptionUseCase(items, clock),
+      inject: [INVENTORY_ITEM_REPOSITORY, CLOCK],
+    },
+    {
       provide: SettleStockMovementsUseCase,
       useFactory: (
         items: InventoryItemRepository,
@@ -190,6 +197,7 @@ import { InventoryItemsController } from './presentation/controllers/inventory-i
     ConsumeStockBatchUseCase,
     RestoreStockBatchUseCase,
     UndoConsumptionUseCase,
+    ConfirmConsumptionUseCase,
     SettleStockMovementsUseCase,
     WriteOffStockMovementsUseCase,
     InventoryItemKeyResolver,

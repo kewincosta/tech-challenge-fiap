@@ -27,7 +27,8 @@ export interface RecordedWorkOrderClosing {
   insideTransaction: boolean;
 }
 
-export type LedgerCall = 'consume' | 'restore' | 'undoConsumption' | 'settle' | 'writeOff';
+export type LedgerCall =
+  'consume' | 'restore' | 'undoConsumption' | 'confirmConsumption' | 'settle' | 'writeOff';
 
 /**
  * Records what the work-orders use cases ask of stock, and refuses on demand like inventory does.
@@ -36,6 +37,7 @@ export class FakeStockLedger implements StockLedger {
   readonly consumed: RecordedStockMovement[] = [];
   readonly restored: RecordedStockMovement[] = [];
   readonly undone: RecordedUndo[] = [];
+  readonly confirmed: RecordedUndo[] = [];
   readonly settled: RecordedWorkOrderClosing[] = [];
   readonly writtenOff: RecordedWorkOrderClosing[] = [];
   private readonly refusals: Array<{ error: Error; calls: LedgerCall[] }> = [];
@@ -89,6 +91,12 @@ export class FakeStockLedger implements StockLedger {
   async undoConsumption(operationId: string, actorUserId: string): Promise<void> {
     this.throwIfRefusing('undoConsumption');
     this.undone.push({ operationId, actorUserId, insideTransaction: this.insideTransaction() });
+    return Promise.resolve();
+  }
+
+  async confirmConsumption(operationId: string, actorUserId: string): Promise<void> {
+    this.throwIfRefusing('confirmConsumption');
+    this.confirmed.push({ operationId, actorUserId, insideTransaction: this.insideTransaction() });
     return Promise.resolve();
   }
 

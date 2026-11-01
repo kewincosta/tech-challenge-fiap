@@ -180,6 +180,16 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     return rows.length > 0;
   }
 
+  async confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    await manager.query(
+      `UPDATE stock_movements
+          SET confirmed_at = $2
+        WHERE operation_id = $1 AND kind = 'CONSUMPTION' AND confirmed_at IS NULL`,
+      [operationId, confirmedAt],
+    );
+  }
+
   /** Rule 23: every `PENDING` consumption of the work order, whatever its remaining balance,
    * moves to `SETTLED` on delivery - see the interface doc for why netting does not apply here. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {

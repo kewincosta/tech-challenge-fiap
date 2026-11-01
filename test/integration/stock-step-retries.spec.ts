@@ -161,6 +161,8 @@ function ledgerFailingOnce(call: LedgerCall): StockLedger {
     restore: (workOrderId, lines, actorUserId, operationId) =>
       unlessFirst('restore', () => ledger.restore(workOrderId, lines, actorUserId, operationId)),
     undoConsumption: (operationId, actorUserId) => ledger.undoConsumption(operationId, actorUserId),
+    confirmConsumption: (operationId, actorUserId) =>
+      ledger.confirmConsumption(operationId, actorUserId),
     settle: (workOrderId, actorUserId) =>
       unlessFirst('settle', () => ledger.settle(workOrderId, actorUserId)),
     writeOff: (workOrderId, actorUserId) =>

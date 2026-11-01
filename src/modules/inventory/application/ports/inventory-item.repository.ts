@@ -61,6 +61,13 @@ export interface InventoryItemRepository {
   /** Whether a `RETURN` that one stock operation wrote is already on the ledger. */
   hasReturnOfOperation(operationId: string): Promise<boolean>;
   /**
+   * Sets `confirmedAt` on the consumptions that one stock operation wrote and that have no
+   * confirmation time, in one statement. A consumption already confirmed keeps its time, so a
+   * repeat changes nothing, and neither does an operation that wrote no consumption. The returns an
+   * undo tagged with the same operation id are not consumptions and are left alone.
+   */
+  confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void>;
+  /**
    * Every `PENDING` consumption of that work order moves to `SETTLED`, regardless of whether a
    * later return already drained it - a fully returned consumption is still settled like any
    * other, since delivery closes the book on every movement the work order caused (rule 23,

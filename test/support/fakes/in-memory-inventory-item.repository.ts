@@ -22,6 +22,8 @@ export interface LedgerEntry {
   operationId: string | null;
   /** The actor of the movement, so a spec can tell who a return is attributed to. */
   actorUserId: string;
+  /** When the work order confirmed a consumption; null until it does, and for every other kind. */
+  confirmedAt: Date | null;
 }
 
 export class InMemoryInventoryItemRepository implements InventoryItemRepository {
@@ -66,6 +68,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         undoesMovementId: movement.undoesMovementId,
         operationId: movement.operationId,
         actorUserId: movement.actorUserId,
+        confirmedAt: null,
       });
     }
     return Promise.resolve();
@@ -164,6 +167,20 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         (entry) => entry.kind === StockMovementKind.Return && entry.operationId === operationId,
       ),
     );
+  }
+
+  /** Sets the time only where the SQL does: a consumption of the operation with no time yet. */
+  async confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void> {
+    for (const entry of this.ledger) {
+      if (
+        entry.operationId === operationId &&
+        entry.kind === StockMovementKind.Consumption &&
+        entry.confirmedAt === null
+      ) {
+        entry.confirmedAt = confirmedAt;
+      }
+    }
+    return Promise.resolve();
   }
 
   private returnedTotals(): Map<string, number> {

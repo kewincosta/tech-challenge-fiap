@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ConfirmConsumptionCommand,
+  ConfirmConsumptionUseCase,
   ConsumeStockBatchCommand,
   ConsumeStockBatchUseCase,
   RestoreStockBatchCommand,
@@ -26,6 +28,7 @@ export class StockLedgerGateway implements StockLedger {
     private readonly settleMovements: SettleStockMovementsUseCase,
     private readonly writeOffMovements: WriteOffStockMovementsUseCase,
     private readonly undoStock: UndoConsumptionUseCase,
+    private readonly confirmStock: ConfirmConsumptionUseCase,
   ) {}
 
   async consume(
@@ -52,6 +55,10 @@ export class StockLedgerGateway implements StockLedger {
 
   async undoConsumption(operationId: string, actorUserId: string): Promise<void> {
     await this.undoStock.execute(new UndoConsumptionCommand(operationId, actorUserId));
+  }
+
+  async confirmConsumption(operationId: string, actorUserId: string): Promise<void> {
+    await this.confirmStock.execute(new ConfirmConsumptionCommand(operationId, actorUserId));
   }
 
   async settle(workOrderId: string, actorUserId: string): Promise<void> {

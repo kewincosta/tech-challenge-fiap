@@ -7,8 +7,8 @@ export interface StockLine {
  * Moves stock for a work order. Every call commits in a transaction that inventory opens itself, so
  * a caller never holds a transaction that writes stock, and no call needs one open. A call that
  * fails changes nothing. Each call is safe to repeat: a consumption or a restore is tagged with the
- * operation id the caller chose, and an undo, a settlement and a write-off act on what is still
- * there to act on.
+ * operation id the caller chose, and an undo, a confirmation, a settlement and a write-off act on
+ * what is still there to act on.
  */
 export interface StockLedger {
   /**
@@ -38,6 +38,12 @@ export interface StockLedger {
    * nothing when the operation consumed nothing or was already undone.
    */
   undoConsumption(operationId: string, actorUserId: string): Promise<void>;
+  /**
+   * Records that the work order accepted the consumptions tagged with `operationId`, in a statement
+   * of inventory's own. Changes nothing when the operation consumed nothing or was already
+   * confirmed.
+   */
+  confirmConsumption(operationId: string, actorUserId: string): Promise<void>;
   /** Closes the work order's pending consumptions as used. Settles nothing when there are none. */
   settle(workOrderId: string, actorUserId: string): Promise<void>;
   /**

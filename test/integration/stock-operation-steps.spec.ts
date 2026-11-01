@@ -6,6 +6,8 @@ import { CryptoIdGenerator } from '../../src/shared/infrastructure/ids/crypto-id
 import { TransactionRunner } from '../../src/shared/application/ports/transaction-runner.port';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { SystemClock } from '../../src/shared/infrastructure/time/system-clock';
+import { ConfirmConsumptionCommand } from '../../src/modules/inventory/application/commands/confirm-consumption/confirm-consumption.command';
+import { ConfirmConsumptionUseCase } from '../../src/modules/inventory/application/commands/confirm-consumption/confirm-consumption.use-case';
 import { ConsumeStockBatchCommand } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
 import { ConsumeStockBatchUseCase } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.use-case';
 import { RestoreStockBatchCommand } from '../../src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
@@ -28,6 +30,7 @@ import { UserKeyResolver } from '../../src/modules/identity';
 import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { uniqueWorkOrderNumber } from '../support/factories/work-order-number.factory';
+import { FakeClock } from '../support/fakes/fake-clock';
 import { RecordingDomainEventPublisher } from '../support/fakes/recording-domain-event-publisher';
 import { createTestDataSource } from '../support/db';
 
@@ -38,6 +41,9 @@ let runner: TypeOrmTransactionRunner;
 let consumeStock: ConsumeStockBatchUseCase;
 let restoreStock: RestoreStockBatchUseCase;
 let undoStock: UndoConsumptionUseCase;
+let confirmStock: ConfirmConsumptionUseCase;
+// The confirmation use case reads this clock alone, so a case moves it to tell two confirmations apart.
+const confirmClock = new FakeClock(new Date('2030-01-01T00:00:00.000Z'));
 let settleStock: SettleStockMovementsUseCase;
 let writeOffStock: WriteOffStockMovementsUseCase;
 let withdrawerId: string;
@@ -62,6 +68,7 @@ beforeAll(async () => {
   consumeStock = new ConsumeStockBatchUseCase(repository, runner, idGenerator, clock, events);
   restoreStock = new RestoreStockBatchUseCase(repository, runner, idGenerator, clock, events);
   undoStock = new UndoConsumptionUseCase(repository, runner, idGenerator, clock, events);
+  confirmStock = new ConfirmConsumptionUseCase(repository, confirmClock);
   settleStock = new SettleStockMovementsUseCase(repository, runner, clock);
   writeOffStock = new WriteOffStockMovementsUseCase(repository, runner, clock);
   withdrawerId = await insertUser();
@@ -163,6 +170,10 @@ function undo(operationId: string): Promise<unknown> {
   return undoStock.execute(new UndoConsumptionCommand(operationId, undoerId));
 }
 
+function confirm(operationId: string): Promise<unknown> {
+  return confirmStock.execute(new ConfirmConsumptionCommand(operationId, withdrawerId));
+}
+
 // Polls the server until `count` sessions wait for a row lock.
 async function waitForLockWaiters(count: number): Promise<void> {
   for (let attempt = 0; attempt < 250; attempt += 1) {
@@ -226,6 +237,21 @@ function movementsOf(itemId: string): Promise<MovementRow[]> {
       ORDER BY sm.id`,
     [itemId],
   );
+}
+
+async function confirmationsOf(
+  itemId: string,
+): Promise<Array<[string, string | null, Date | null]>> {
+  const rows: Array<{ kind: string; operation_id: string | null; confirmed_at: Date | null }> =
+    await dataSource.query(
+      `SELECT sm.kind, sm.operation_id, sm.confirmed_at
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1
+        ORDER BY sm.id`,
+      [itemId],
+    );
+  return rows.map((row) => [row.kind, row.operation_id, row.confirmed_at]);
 }
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
@@ -564,5 +590,81 @@ describe('stock operations applied once', () => {
     expect(await transitionsOf(itemB)).toEqual([{ to_status: 'SETTLED', quantity: null }]);
     expect((await movementsOf(itemA)).map((row) => row.status)).toEqual([null, 'SETTLED']);
     expect((await movementsOf(itemB)).map((row) => row.status)).toEqual([null, 'SETTLED']);
+  });
+});
+
+describe('consumptions confirmed by operation', () => {
+  it('should set the time of the clock on every consumption the operation tagged, and leave the other operations, the inbound movements and the returns without one', async () => {
+    const itemA = await buildStockedItem(10);
+    const itemB = await buildStockedItem(6);
+    const workOrderId = await insertWorkOrder();
+    const confirmed = randomUUID();
+    const other = randomUUID();
+    await withdraw(confirmed, workOrderId, [
+      { inventoryItemId: itemA, quantity: 3 },
+      { inventoryItemId: itemB, quantity: 2 },
+    ]);
+    await withdraw(other, workOrderId, [{ inventoryItemId: itemA, quantity: 1 }]);
+    const confirmedAt = confirmClock.now();
+
+    await confirm(confirmed);
+
+    expect(await confirmationsOf(itemA)).toEqual([
+      ['INBOUND', null, null],
+      ['CONSUMPTION', confirmed, confirmedAt],
+      ['CONSUMPTION', other, null],
+    ]);
+    expect(await confirmationsOf(itemB)).toEqual([
+      ['INBOUND', null, null],
+      ['CONSUMPTION', confirmed, confirmedAt],
+    ]);
+  });
+
+  it('should keep the time of the first confirmation when the operation is confirmed a second time', async () => {
+    const itemId = await buildStockedItem(10);
+    const operationId = randomUUID();
+    await withdraw(operationId, await insertWorkOrder(), [
+      { inventoryItemId: itemId, quantity: 3 },
+    ]);
+    const firstConfirmation = confirmClock.now();
+    await confirm(operationId);
+    confirmClock.advanceSeconds(60);
+
+    await confirm(operationId);
+
+    expect(await confirmationsOf(itemId)).toEqual([
+      ['INBOUND', null, null],
+      ['CONSUMPTION', operationId, firstConfirmation],
+    ]);
+  });
+
+  it('should change nothing for an operation that consumed nothing', async () => {
+    const itemId = await buildStockedItem(10);
+    await withdraw(randomUUID(), await insertWorkOrder(), [
+      { inventoryItemId: itemId, quantity: 3 },
+    ]);
+    const ledgerBefore = await confirmationsOf(itemId);
+
+    await confirm(randomUUID());
+
+    expect(await confirmationsOf(itemId)).toEqual(ledgerBefore);
+  });
+
+  it('should set the time on the consumption alone when an undo tagged its returns with the same operation id', async () => {
+    const itemId = await buildStockedItem(10);
+    const operationId = randomUUID();
+    await withdraw(operationId, await insertWorkOrder(), [
+      { inventoryItemId: itemId, quantity: 3 },
+    ]);
+    await undo(operationId);
+    const confirmedAt = confirmClock.now();
+
+    await confirm(operationId);
+
+    expect(await confirmationsOf(itemId)).toEqual([
+      ['INBOUND', null, null],
+      ['CONSUMPTION', operationId, confirmedAt],
+      ['RETURN', operationId, null],
+    ]);
   });
 });
