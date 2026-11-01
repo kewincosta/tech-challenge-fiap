@@ -87,7 +87,8 @@ Filled by T1 before any code changes: the totals of the three suites on the unto
 | The inventory step of a return, a delivery or a cancellation fails, it applies on a later attempt | T73 | unit, integration |
 | The customer save fails after the account opened, no user with that email or document is left | T70, T74 | integration |
 | A withdrawal or a registration reaches its last step after the processor claimed its step: 409, nothing saved, the compensation still applied | T72, T74 | unit, integration |
-| A return's restore failed and a cancellation or a delivery followed: the restore applies first | T76 | integration |
+| A return's restore failed and a cancellation or a delivery followed: the restore applies first | T76, T82 | integration |
+| A return applies while a withdrawal of the same work order is in flight: the return draws from confirmed consumptions, the undo returns all of the withdrawal's units | T82 | integration |
 | `POST /customers` links the user `identity` opened earlier in the same registration | T14, T32, T74 | integration, e2e |
 | A subscriber throws, the caller keeps its result and the error is logged | T12 | unit |
 
@@ -233,6 +234,12 @@ T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 
 ```
 T76 → T77 → T78
+```
+
+### Phase 21: Confirmed consumptions
+
+```
+T79 → T80 → T81 → T82 → T83
 ```
 
 ---
@@ -2466,6 +2473,149 @@ The second validation (2026-10-31) found that a restore that failed could never 
 
 ---
 
+### Phase 21: Confirmed consumptions
+
+The third validation (2026-10-31) found that a return's restore could draw its units from the consumption of a withdrawal still in flight, so the undo of that withdrawal returned only what the restore left. The user chose, on 2026-10-31, to have inventory count a withdrawal's consumption only once its work order confirmed it (CA-10 AC10 amended, AC11 added). Each task keeps the suites green: the column comes first, then the confirmation, then the step that applies it, and only then do the reads require it.
+
+#### T79: The column that records a confirmed consumption
+
+**What**: One migration adds the nullable `stock_movements.confirmed_at timestamptz` and sets it to `occurred_at` on every consumption already recorded, and the stock movement ORM entity maps it. The development database `workshop` gets the migration once, after its spec passes.
+**Where**: `src/shared/infrastructure/database/migrations/1787702400010-add-consumption-confirmation.ts` (new), the stock movement ORM entity, `test/integration/` (the migration spec)
+**Depends on**: T78
+**Reuses**: The style of `1787702400009-add-cross-module-steps.ts` and of its spec
+**Requirement**: CA-10, CA-04
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The migration adds the nullable column, sets it to `occurred_at` on every `CONSUMPTION` row already recorded, and its `down` removes it
+- [ ] An integration spec proves the column, the backfill, a null on a consumption written afterwards, and `down`, and deletes what it inserts
+- [ ] `npm run migration:run` ran once on `workshop` after the spec passed; `workshop_test` gets it from the integration setup
+- [ ] Test count: integration total grows by the migration cases
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `feat(database): record when a consumption is confirmed`
+
+---
+
+#### T80: Inventory confirms the consumptions of an operation
+
+**What**: `ConfirmConsumptionUseCase` sets the confirmation time on the consumptions an operation tagged that have none, so a repeat changes nothing. `StockLedger` and its gateway gain `confirmConsumption`. No read requires a confirmation yet.
+**Where**: `src/modules/inventory/application/commands/` (new confirm-consumption), the inventory repository and its port, the in-memory repository fake, `inventory.module.ts`, `index.ts`, `src/modules/work-orders/application/ports/stock-ledger.port.ts`, `src/modules/work-orders/infrastructure/gateways/stock-ledger.gateway.ts`
+**Depends on**: T79
+**Reuses**: The shape of `UndoConsumptionUseCase` and of its wiring
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A confirmation sets the time on every consumption the operation tagged, leaves other operations' consumptions alone, and a second confirmation changes nothing (integration)
+- [ ] Use case specs on the in-memory repository cover the confirmation, its repeat and an operation that consumed nothing
+- [ ] The ledger gateway spec proves `confirmConsumption` reaches the new use case with the operation id
+- [ ] Test count: unit and integration totals grow
+- [ ] Gate check passes: `npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `feat(inventory): confirm the consumptions of an operation`
+
+---
+
+#### T81: A withdrawal confirms its consumption through a step
+
+**What**: The withdrawal's last transaction disarms the undo step, saves the work order and enqueues a `CONFIRM_CONSUMPTION` step that carries the withdrawal's operation id; after the commit, the request's own attempt applies it, and the applier applies the new kind through `confirmConsumption`. Reads still ignore the confirmation.
+**Where**: `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts`, the `PendingStockSteps` port (the new kind and its payload) and its adapter, `StockStepApplier`
+**Depends on**: T80
+**Reuses**: `enqueue` and `applyAfterCommit` from T73
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The spec on fakes proves the confirmation step enqueued in the save's transaction with the withdrawal's operation id, its application after the commit, and no confirmation step when the withdrawal fails or compensates
+- [ ] The applier spec applies `CONFIRM_CONSUMPTION` through the ledger, and a failed confirmation follows the delay schedule
+- [ ] After an accepted withdrawal, its consumptions carry a confirmation time and its confirmation step is `DONE` (integration)
+- [ ] Test count: unit and integration totals grow
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `feat(work-orders): confirm a withdrawal's consumption through a step`
+
+---
+
+#### T82: Restores, settlements and write-offs read confirmed consumptions only
+
+**What**: The restore's draw (`findPendingConsumptions`), the settlement and the write-off read only the consumptions with no operation id or with a confirmation time, in the repository and in its in-memory fake; the undo keeps reading its operation's consumptions whatever their state. The claim exempts an undo from the order rule: it neither waits for nor holds the other steps of its work order (CA-10 AC10 as amended, AC11).
+**Where**: `src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts`, its port, the in-memory repository fake, `src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts`
+**Depends on**: T81
+**Reuses**: T76's order condition
+**Requirement**: CA-10, CA-02
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A restore, a settlement and a write-off leave an unconfirmed consumption untouched and act on the confirmed ones and on those with no operation id (integration)
+- [ ] An undo step is claimed once due while an older step of its work order is armed, pending or failed, and it holds no newer step (integration); every T76 case whose newer or older step is an undo is updated and reported
+- [ ] The third validation's probes B2, B3, B4 and B5 are regression cases through the real use cases: each ends with the work order and inventory agreeing on 1 outstanding unit, the shelf at 19 of 20, a cancellation that follows writing off 1 unit, and every step `DONE` (integration)
+- [ ] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row with no assertion changed, and no suite leaves an armed or pending step
+- [ ] Test count: integration total grows; unit and e2e unchanged or larger
+- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: build
+
+**Commit**: `fix(inventory): restore, settle and write off confirmed consumptions only`
+
+---
+
+#### T83: Records of the confirmed consumptions
+
+**What**: ADR 0033 records the confirmation of consumptions, the undo's exemption from the order rule, and the hold rule as an alternative set aside for the window of time it leaves; the README counts eleven migrations.
+**Where**: `docs/adr/0033-writes-across-modules-run-as-steps.md`, `README.md`
+**Depends on**: T82
+**Reuses**: ADR 0033 as T75 and T78 wrote it
+**Requirement**: CA-09, CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] The decision names the confirmation step, the reads that require it and the undo's exemption; the alternatives name the hold rule (restores, settlements and write-offs waiting behind an armed undo) and the window between a claim and its read that it leaves
+- [ ] The README counts eleven migrations and still 20 domain tables
+- [ ] Gate check passes: `npx prettier --check README.md docs`
+
+**Tests**: none
+**Gate**: docs
+
+**Commit**: `docs(adr): record the confirmed consumptions`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -2491,6 +2641,7 @@ Phase 17: T58 → T59 → T60
 Phase 18: T63 → T64 → T65 → T66 → T67
 Phase 19: T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 Phase 20: T76 → T77 → T78
+Phase 21: T79 → T80 → T81 → T82 → T83
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2579,6 +2730,11 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T76 | T75 | Phase 20 start | ✅ Match |
 | T77 | T76 | T76 → T77 | ✅ Match |
 | T78 | T77 | T77 → T78 | ✅ Match |
+| T79 | T78 | Phase 21 start | ✅ Match |
+| T80 | T79 | T79 → T80 | ✅ Match |
+| T81 | T80 | T80 → T81 | ✅ Match |
+| T82 | T81 | T81 → T82 | ✅ Match |
+| T83 | T82 | T82 → T83 | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2662,3 +2818,8 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T76: Step order per work order | Adapter, test support | integration (highest) | integration | ✅ OK |
 | T77: Settlement twice | Repository (tests only) | integration | integration | ✅ OK |
 | T78: ADR 0033 | Documentation | none | none | ✅ OK |
+| T79: Confirmation column | Migration, ORM entity | integration | integration | ✅ OK |
+| T80: Confirm use case | Use case, repository, gateway | integration (highest) | integration | ✅ OK |
+| T81: Confirmation step | Use case, port, adapter, applier | integration (highest) | integration | ✅ OK |
+| T82: Confirmed reads | Repository, fake, adapter | integration (highest) | integration | ✅ OK |
+| T83: ADR 0033 and README | Documentation | none | none | ✅ OK |
