@@ -174,6 +174,17 @@ function confirm(operationId: string): Promise<unknown> {
   return confirmStock.execute(new ConfirmConsumptionCommand(operationId, withdrawerId));
 }
 
+// A withdrawal that reached its work order: its consumptions count for a restore, a settlement and
+// a write-off once they are confirmed.
+async function withdrawConfirmed(
+  operationId: string,
+  workOrderId: string,
+  lines: Array<{ inventoryItemId: string; quantity: number }>,
+): Promise<void> {
+  await withdraw(operationId, workOrderId, lines);
+  await confirm(operationId);
+}
+
 // Polls the server until `count` sessions wait for a row lock.
 async function waitForLockWaiters(count: number): Promise<void> {
   for (let attempt = 0; attempt < 250; attempt += 1) {
@@ -356,7 +367,7 @@ describe('stock operations applied once', () => {
   it('should change nothing on a second restore carrying the same operation id', async () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     const returnId = randomUUID();
     const lines = [{ inventoryItemId: itemId, quantity: 1 }];
     await returnParts(returnId, workOrderId, lines);
@@ -371,7 +382,7 @@ describe('stock operations applied once', () => {
   it('should apply a second restore that carries another operation id', async () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     const lines = [{ inventoryItemId: itemId, quantity: 1 }];
 
     await returnParts(randomUUID(), workOrderId, lines);
@@ -400,7 +411,7 @@ describe('stock operations applied once', () => {
   it('should apply a restore once when two restores with one operation id run at the same time', async () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     const returnId = randomUUID();
     const lines = [{ inventoryItemId: itemId, quantity: 2 }];
 
@@ -431,7 +442,7 @@ describe('stock operations applied once', () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
-    await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     await returnParts(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 1 }]);
 
     await undo(operationId);
@@ -465,7 +476,7 @@ describe('stock operations applied once', () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
-    await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     await settleStock.execute(new SettleStockMovementsCommand(workOrderId, withdrawerId));
 
     await undo(operationId);
@@ -482,7 +493,7 @@ describe('stock operations applied once', () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
     const operationId = randomUUID();
-    await withdraw(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(operationId, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     await writeOffStock.execute(new WriteOffStockMovementsCommand(workOrderId, withdrawerId));
     expect(await quantityOf(itemId)).toBe(7);
 
@@ -500,7 +511,7 @@ describe('stock operations applied once', () => {
     const itemA = await buildStockedItem(10);
     const itemB = await buildStockedItem(6);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [
+    await withdrawConfirmed(randomUUID(), workOrderId, [
       { inventoryItemId: itemA, quantity: 3 },
       { inventoryItemId: itemB, quantity: 2 },
     ]);
@@ -531,7 +542,7 @@ describe('stock operations applied once', () => {
   it('should record one transition per consumption when two write-offs of a work order run together', async () => {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    await withdrawConfirmed(randomUUID(), workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
     const command = new WriteOffStockMovementsCommand(workOrderId, withdrawerId);
 
     await Promise.all([writeOffStock.execute(command), writeOffStock.execute(command)]);
@@ -543,7 +554,7 @@ describe('stock operations applied once', () => {
     const itemA = await buildStockedItem(10);
     const itemB = await buildStockedItem(6);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [
+    await withdrawConfirmed(randomUUID(), workOrderId, [
       { inventoryItemId: itemA, quantity: 3 },
       { inventoryItemId: itemB, quantity: 2 },
     ]);
@@ -564,7 +575,7 @@ describe('stock operations applied once', () => {
     const itemA = await buildStockedItem(10);
     const itemB = await buildStockedItem(6);
     const workOrderId = await insertWorkOrder();
-    await withdraw(randomUUID(), workOrderId, [
+    await withdrawConfirmed(randomUUID(), workOrderId, [
       { inventoryItemId: itemA, quantity: 3 },
       { inventoryItemId: itemB, quantity: 2 },
     ]);
@@ -666,5 +677,112 @@ describe('consumptions confirmed by operation', () => {
       ['CONSUMPTION', operationId, confirmedAt],
       ['RETURN', operationId, null],
     ]);
+  });
+});
+
+// A restore, a settlement and a write-off read the consumptions that count: the ones with no
+// operation id, because no step wrote them, and the ones their work order confirmed. The newest
+// consumption below belongs to a withdrawal in flight, which only its undo may touch.
+describe('the consumptions a restore, a settlement and a write-off read', () => {
+  // A consumption no step wrote: it carries no operation id.
+  async function consumeWithoutOperation(
+    itemId: string,
+    workOrderId: string,
+    quantity: number,
+  ): Promise<void> {
+    const item = await repository.findById(InventoryItemId.create(itemId));
+    item!.consume({
+      quantity,
+      workOrderId,
+      actorUserId: withdrawerId,
+      movementId: StockMovementId.create(randomUUID()),
+      now: new Date(),
+    });
+    await repository.save(item!);
+  }
+
+  async function threeKindsOfConsumption() {
+    const itemId = await buildStockedItem(20);
+    const workOrderId = await insertWorkOrder();
+    await consumeWithoutOperation(itemId, workOrderId, 2);
+    const confirmed = randomUUID();
+    await withdrawConfirmed(confirmed, workOrderId, [{ inventoryItemId: itemId, quantity: 2 }]);
+    const inFlight = randomUUID();
+    await withdraw(inFlight, workOrderId, [{ inventoryItemId: itemId, quantity: 3 }]);
+    return { itemId, workOrderId, confirmed, inFlight };
+  }
+
+  async function consumptionStatusesOf(itemId: string): Promise<Array<string | null>> {
+    return (await movementsOf(itemId))
+      .filter((row) => row.kind === 'CONSUMPTION')
+      .map((row) => row.status);
+  }
+
+  it('should draw a return from the confirmed consumptions and the ones with no operation id, and leave the consumption in flight for its undo', async () => {
+    const { itemId, workOrderId, inFlight } = await threeKindsOfConsumption();
+    const lines = (quantity: number) => [{ inventoryItemId: itemId, quantity }];
+
+    // The units of the consumption in flight would cover this return, so the failure shows that
+    // the restore does not read them.
+    await expect(returnParts(randomUUID(), workOrderId, lines(5))).rejects.toThrow(
+      /No pending consumption covers a return of 5/,
+    );
+    expect(await quantityOf(itemId)).toBe(13);
+
+    await returnParts(randomUUID(), workOrderId, lines(4));
+
+    expect(await quantityOf(itemId)).toBe(17);
+    expect(
+      await repository.findPendingConsumptions(InventoryItemId.create(itemId), workOrderId),
+    ).toEqual([]);
+    expect(await repository.findPendingConsumptionsOfOperation(inFlight)).toMatchObject([
+      { quantity: 3 },
+    ]);
+    expect((await movementsOf(itemId)).filter((row) => row.kind === 'RETURN')).toHaveLength(2);
+  });
+
+  it('should settle the confirmed consumptions and the ones with no operation id, leave the consumption in flight pending, and settle it once it is confirmed', async () => {
+    const { itemId, workOrderId, inFlight } = await threeKindsOfConsumption();
+    const command = new SettleStockMovementsCommand(workOrderId, withdrawerId);
+
+    await settleStock.execute(command);
+
+    expect(await consumptionStatusesOf(itemId)).toEqual(['SETTLED', 'SETTLED', 'PENDING']);
+    expect(await transitionsOf(itemId)).toEqual([
+      { to_status: 'SETTLED', quantity: null },
+      { to_status: 'SETTLED', quantity: null },
+    ]);
+
+    await confirm(inFlight);
+    await settleStock.execute(command);
+
+    expect(await consumptionStatusesOf(itemId)).toEqual(['SETTLED', 'SETTLED', 'SETTLED']);
+    expect(await transitionsOf(itemId)).toHaveLength(3);
+  });
+
+  it('should write off the confirmed consumptions and the ones with no operation id, leave the consumption in flight pending, and write it off once it is confirmed', async () => {
+    const { itemId, workOrderId, inFlight } = await threeKindsOfConsumption();
+    const command = new WriteOffStockMovementsCommand(workOrderId, withdrawerId);
+
+    await writeOffStock.execute(command);
+
+    expect(await consumptionStatusesOf(itemId)).toEqual(['WRITTEN_OFF', 'WRITTEN_OFF', 'PENDING']);
+    expect(await transitionsOf(itemId)).toEqual([
+      { to_status: 'WRITTEN_OFF', quantity: 2 },
+      { to_status: 'WRITTEN_OFF', quantity: 2 },
+    ]);
+
+    await confirm(inFlight);
+    await writeOffStock.execute(command);
+
+    expect(await consumptionStatusesOf(itemId)).toEqual([
+      'WRITTEN_OFF',
+      'WRITTEN_OFF',
+      'WRITTEN_OFF',
+    ]);
+    expect(await transitionsOf(itemId)).toEqual(
+      expect.arrayContaining([{ to_status: 'WRITTEN_OFF', quantity: 3 }]),
+    );
+    expect(await transitionsOf(itemId)).toHaveLength(3);
   });
 });

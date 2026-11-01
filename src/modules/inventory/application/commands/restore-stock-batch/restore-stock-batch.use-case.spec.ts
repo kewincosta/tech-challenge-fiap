@@ -20,6 +20,7 @@ const ITEM_B_ID = '22222222-2222-4222-8222-222222222222';
 const ACTOR_ID = '33333333-3333-4333-8333-333333333333';
 const WORK_ORDER_ID = '44444444-4444-4444-8444-444444444444';
 const OPERATION_ID = '66666666-6666-4666-8666-666666666666';
+const WITHDRAWAL_OPERATION_ID = '99999999-9999-4999-8999-999999999999';
 
 function buildItem(id: string): InventoryItem {
   return InventoryItem.create({
@@ -75,6 +76,25 @@ async function replenishAndConsume(
   }
 }
 
+// A withdrawal in flight on the work order: its consumption is the newest, carries an operation id
+// and has no confirmation yet.
+async function consumeInFlight(
+  items: InMemoryInventoryItemRepository,
+  id: string,
+  quantity: number,
+): Promise<void> {
+  const [item] = await items.findAllByIdsForUpdate([InventoryItemId.create(id)]);
+  item.consume({
+    quantity,
+    workOrderId: WORK_ORDER_ID,
+    actorUserId: ACTOR_ID,
+    movementId: StockMovementId.create(`${id.slice(0, 8)}-0000-4000-8000-000000000009`),
+    operationId: WITHDRAWAL_OPERATION_ID,
+    now: new Date('2026-08-31T11:00:00.000Z'),
+  });
+  await items.save(item);
+}
+
 describe('RestoreStockBatchUseCase', () => {
   it('draws from the single pending consumption when one covers the whole return', async () => {
     const { useCase, items } = makeUseCase();
@@ -126,6 +146,54 @@ describe('RestoreStockBatchUseCase', () => {
     const fromOldest = returns?.find((movement) => movement.quantity === 1);
     expect(fromNewest?.undoesMovementId).toBe(newestConsumptionId);
     expect(fromOldest?.undoesMovementId).toBe(oldestConsumptionId);
+  });
+
+  it('draws only from confirmed consumptions, so the units of a withdrawal in flight stay for its undo', async () => {
+    const { useCase, items } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2]);
+    await consumeInFlight(items, ITEM_A_ID, 3);
+
+    await useCase.execute(
+      new RestoreStockBatchCommand(
+        [{ inventoryItemId: ITEM_A_ID, quantity: 2 }],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    const oldestConsumptionId = `${ITEM_A_ID.slice(0, 8)}-0000-4000-8000-000000000001`;
+    const returns = items.ledgerEntries.filter((entry) => entry.kind === StockMovementKind.Return);
+    expect(returns.map((entry) => [entry.quantity, entry.undoesMovementId])).toEqual([
+      [2, oldestConsumptionId],
+    ]);
+    expect(await items.findPendingConsumptionsOfOperation(WITHDRAWAL_OPERATION_ID)).toMatchObject([
+      { quantity: 3 },
+    ]);
+  });
+
+  it('draws from the consumption of a withdrawal once its work order confirmed it, the newest first', async () => {
+    const { useCase, items } = makeUseCase();
+    await replenishAndConsume(items, ITEM_A_ID, [2]);
+    await consumeInFlight(items, ITEM_A_ID, 3);
+    await items.confirmConsumptionsOfOperation(WITHDRAWAL_OPERATION_ID, new Date());
+
+    await useCase.execute(
+      new RestoreStockBatchCommand(
+        [{ inventoryItemId: ITEM_A_ID, quantity: 4 }],
+        WORK_ORDER_ID,
+        ACTOR_ID,
+        OPERATION_ID,
+      ),
+    );
+
+    const oldestConsumptionId = `${ITEM_A_ID.slice(0, 8)}-0000-4000-8000-000000000001`;
+    const newestConsumptionId = `${ITEM_A_ID.slice(0, 8)}-0000-4000-8000-000000000009`;
+    const returns = items.ledgerEntries.filter((entry) => entry.kind === StockMovementKind.Return);
+    expect(returns.map((entry) => [entry.quantity, entry.undoesMovementId])).toEqual([
+      [3, newestConsumptionId],
+      [1, oldestConsumptionId],
+    ]);
   });
 
   it('never edits the original consumption, and marks it fully drained after a full return', async () => {

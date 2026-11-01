@@ -15,6 +15,8 @@ import { StockMovementStatus } from '../../../domain/stock-movement-status';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
+import { ConfirmConsumptionCommand } from '../confirm-consumption/confirm-consumption.command';
+import { ConfirmConsumptionUseCase } from '../confirm-consumption/confirm-consumption.use-case';
 import { ConsumeStockBatchCommand } from '../consume-stock-batch/consume-stock-batch.command';
 import { ConsumeStockBatchUseCase } from '../consume-stock-batch/consume-stock-batch.use-case';
 import { RestoreStockBatchCommand } from '../restore-stock-batch/restore-stock-batch.command';
@@ -76,6 +78,12 @@ async function makeUseCases() {
         operationId,
       ),
     );
+  // A withdrawal that reached its work order: the consumptions count for a restore, a settlement
+  // and a write-off from here on. An undo gives back the units whether or not this ran.
+  const confirm = (operationId: string) =>
+    new ConfirmConsumptionUseCase(items, clock).execute(
+      new ConfirmConsumptionCommand(operationId, WITHDRAWER_ID),
+    );
   const undo = (operationId: string) =>
     new UndoConsumptionUseCase(
       transactionRunner.watch('items', items),
@@ -86,7 +94,7 @@ async function makeUseCases() {
     ).execute(new UndoConsumptionCommand(operationId, UNDOER_ID));
   const quantityOf = (id: string) =>
     items.items.find((item) => item.id.value === id)?.quantityOnHand.units;
-  return { items, transactionRunner, consume, restore, undo, quantityOf };
+  return { items, transactionRunner, consume, confirm, restore, undo, quantityOf };
 }
 
 describe('UndoConsumptionUseCase', () => {
@@ -196,10 +204,11 @@ describe('UndoConsumptionUseCase', () => {
     ['a delivery settled', StockMovementStatus.Settled],
     ['a cancellation wrote off', StockMovementStatus.WrittenOff],
   ])(
-    'returns the units of a consumption that %s while the withdrawal was in flight, and the history shows the closing followed by the return',
+    'returns the units of a consumption that %s, and the history shows the closing followed by the return',
     async (_closing, status) => {
-      const { items, consume, undo, quantityOf } = await makeUseCases();
+      const { items, consume, confirm, undo, quantityOf } = await makeUseCases();
       await consume(OPERATION_ID, [{ inventoryItemId: ITEM_A_ID, quantity: 2 }]);
+      await confirm(OPERATION_ID);
       const closing = {
         workOrderId: WORK_ORDER_ID,
         actorUserId: WITHDRAWER_ID,
@@ -230,8 +239,9 @@ describe('UndoConsumptionUseCase', () => {
   );
 
   it('returns only what is left on a consumption after an earlier return', async () => {
-    const { items, consume, restore, undo, quantityOf } = await makeUseCases();
+    const { items, consume, confirm, restore, undo, quantityOf } = await makeUseCases();
     await consume(OPERATION_ID, [{ inventoryItemId: ITEM_A_ID, quantity: 3 }]);
+    await confirm(OPERATION_ID);
     await restore(ITEM_A_ID, 1, OTHER_OPERATION_ID);
     expect(quantityOf(ITEM_A_ID)).toBe(3);
 

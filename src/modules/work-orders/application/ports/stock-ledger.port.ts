@@ -23,8 +23,9 @@ export interface StockLedger {
     operationId: string,
   ): Promise<void>;
   /**
-   * Puts returned units back, undoing the work order's pending consumptions, all lines together. A
-   * second call with the same `operationId` changes nothing.
+   * Puts returned units back, undoing the work order's pending consumptions that it confirmed, all
+   * lines together. The consumptions of a withdrawal still in flight are left to its undo. A second
+   * call with the same `operationId` changes nothing.
    */
   restore(
     workOrderId: string,
@@ -44,11 +45,15 @@ export interface StockLedger {
    * confirmed.
    */
   confirmConsumption(operationId: string, actorUserId: string): Promise<void>;
-  /** Closes the work order's pending consumptions as used. Settles nothing when there are none. */
+  /**
+   * Closes the work order's confirmed pending consumptions as used. Settles nothing when there are
+   * none.
+   */
   settle(workOrderId: string, actorUserId: string): Promise<void>;
   /**
-   * Writes the work order's outstanding consumptions off as a loss, and records one transition for
-   * each. Writes off nothing when there are none, and two calls at once record each transition once.
+   * Writes the work order's confirmed outstanding consumptions off as a loss, and records one
+   * transition for each. Writes off nothing when there are none, and two calls at once record each
+   * transition once.
    */
   writeOff(workOrderId: string, actorUserId: string): Promise<void>;
 }

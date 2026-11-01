@@ -103,7 +103,10 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     );
   }
 
-  /** Newest first, net of whatever was already returned against each consumption. */
+  /**
+   * Newest first, net of whatever was already returned against each consumption. A consumption
+   * counts once it is confirmed, or at once when it carries no operation id, as in the SQL.
+   */
   async findPendingConsumptions(
     inventoryItemId: InventoryItemId,
     workOrderId: string,
@@ -124,7 +127,8 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
             entry.inventoryItemId === inventoryItemId.value &&
             entry.workOrderId === workOrderId &&
             entry.kind === StockMovementKind.Consumption &&
-            entry.status === StockMovementStatus.Pending,
+            entry.status === StockMovementStatus.Pending &&
+            this.isConfirmed(entry),
         )
         .map((entry) => ({
           movementId: entry.movementId,
@@ -183,6 +187,11 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     return Promise.resolve();
   }
 
+  /** What the SQL reads as `operation_id IS NULL OR confirmed_at IS NOT NULL`. */
+  private isConfirmed(entry: LedgerEntry): boolean {
+    return entry.operationId === null || entry.confirmedAt !== null;
+  }
+
   private returnedTotals(): Map<string, number> {
     const returnedByConsumption = new Map<string, number>();
     for (const entry of this.ledger) {
@@ -204,7 +213,8 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
       (entry) =>
         entry.workOrderId === input.workOrderId &&
         entry.kind === StockMovementKind.Consumption &&
-        entry.status === StockMovementStatus.Pending,
+        entry.status === StockMovementStatus.Pending &&
+        this.isConfirmed(entry),
     );
     for (const entry of matches) {
       entry.status = StockMovementStatus.Settled;
@@ -228,6 +238,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         entry.workOrderId === input.workOrderId &&
         entry.kind === StockMovementKind.Consumption &&
         entry.status === StockMovementStatus.Pending &&
+        this.isConfirmed(entry) &&
         entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0) > 0,
     );
     for (const entry of candidates) {

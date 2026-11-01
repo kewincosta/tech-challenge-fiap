@@ -565,6 +565,8 @@ describe('TypeOrmPendingStockSteps', () => {
       expect([...claimedIds].sort()).toEqual(all.map((step) => step.operationId).sort());
     });
 
+    // The steps below are restores and settlements. An undo is outside the order rule, which the
+    // cases after them show.
     describe('the steps of one work order', () => {
       it.each<[string, (older: StockStep) => Promise<void>]>([
         ['armed', (older) => steps.arm(older, at(300))],
@@ -574,7 +576,7 @@ describe('TypeOrmPendingStockSteps', () => {
         async (_state, record) => {
           startClock();
           const workOrderId = await insertWorkOrder();
-          const older = await newStep({ workOrderId });
+          const older = await newStep({ workOrderId, kind: StockStepKind.Restore });
           const newer = await newStep({ workOrderId, kind: StockStepKind.Settle });
           await record(older);
           await steps.enqueue(newer);
@@ -593,7 +595,7 @@ describe('TypeOrmPendingStockSteps', () => {
       it('should hold the later steps of a work order behind a failed step until an operator sets it back to pending', async () => {
         startClock();
         const workOrderId = await insertWorkOrder();
-        const failed = await newStep({ workOrderId });
+        const failed = await newStep({ workOrderId, kind: StockStepKind.Restore });
         const later = await newStep({ workOrderId, kind: StockStepKind.Settle });
         await steps.enqueue(failed);
         await steps.enqueue(later);
@@ -622,9 +624,9 @@ describe('TypeOrmPendingStockSteps', () => {
         startClock();
         const waitingOrder = await insertWorkOrder();
         const otherOrder = await insertWorkOrder();
-        const older = await newStep({ workOrderId: waitingOrder });
-        const newer = await newStep({ workOrderId: waitingOrder });
-        const other = await newStep({ workOrderId: otherOrder });
+        const older = await newStep({ workOrderId: waitingOrder, kind: StockStepKind.Restore });
+        const newer = await newStep({ workOrderId: waitingOrder, kind: StockStepKind.Settle });
+        const other = await newStep({ workOrderId: otherOrder, kind: StockStepKind.Settle });
         await steps.arm(older, at(300));
         await steps.enqueue(newer);
         await steps.enqueue(other);
@@ -642,10 +644,10 @@ describe('TypeOrmPendingStockSteps', () => {
         startClock();
         const firstOrder = await insertWorkOrder();
         const secondOrder = await insertWorkOrder();
-        const first = await newStep({ workOrderId: firstOrder });
-        const second = await newStep({ workOrderId: firstOrder });
-        const third = await newStep({ workOrderId: firstOrder });
-        const elsewhere = await newStep({ workOrderId: secondOrder });
+        const first = await newStep({ workOrderId: firstOrder, kind: StockStepKind.Restore });
+        const second = await newStep({ workOrderId: firstOrder, kind: StockStepKind.Settle });
+        const third = await newStep({ workOrderId: firstOrder, kind: StockStepKind.WriteOff });
+        const elsewhere = await newStep({ workOrderId: secondOrder, kind: StockStepKind.Restore });
         for (const step of [first, second, third, elsewhere]) {
           await steps.enqueue(step);
         }
@@ -666,8 +668,8 @@ describe('TypeOrmPendingStockSteps', () => {
         const pairs: Array<[StockStep, StockStep]> = [];
         for (let index = 0; index < 4; index += 1) {
           const workOrderId = await insertWorkOrder();
-          const older = await newStep({ workOrderId });
-          const newer = await newStep({ workOrderId });
+          const older = await newStep({ workOrderId, kind: StockStepKind.Restore });
+          const newer = await newStep({ workOrderId, kind: StockStepKind.Settle });
           await steps.enqueue(older);
           await steps.enqueue(newer);
           pairs.push([older, newer]);
@@ -685,6 +687,72 @@ describe('TypeOrmPendingStockSteps', () => {
           expect(await rowOf(newer.operationId)).toMatchObject({ status: 'PENDING', attempts: 0 });
         }
       });
+    });
+  });
+
+  describe('an undo step, which is outside the order of the steps of a work order', () => {
+    // The states in which an open step holds the later steps of its work order.
+    const OPEN_STATES: Array<[string, (step: StockStep) => Promise<void>]> = [
+      ['armed', (step) => steps.arm(step, at(300))],
+      ['pending', (step) => steps.enqueue(step)],
+      [
+        'failed',
+        async (step) => {
+          await steps.enqueue(step);
+          await steps.claimDue(at(0), 10, at(300), [step.operationId]);
+          await steps.markFailed(step.operationId, 'gave up');
+        },
+      ],
+    ];
+
+    it.each(OPEN_STATES)(
+      'should claim an undo once it is due while an older step of its work order is %s',
+      async (_state, record) => {
+        startClock();
+        const workOrderId = await insertWorkOrder();
+        const older = await newStep({ workOrderId, kind: StockStepKind.Restore });
+        const undo = await newStep({ workOrderId, kind: StockStepKind.UndoConsumption });
+        await record(older);
+        await steps.enqueue(undo);
+
+        const claimed = await steps.claimDue(at(60), 10, at(900), [undo.operationId]);
+
+        expect(claimed).toEqual([{ ...undo, attempts: 1 }]);
+      },
+    );
+
+    it.each(OPEN_STATES)(
+      'should not hold a later step of its work order while the undo is %s',
+      async (_state, record) => {
+        startClock();
+        const workOrderId = await insertWorkOrder();
+        const undo = await newStep({ workOrderId, kind: StockStepKind.UndoConsumption });
+        const later = await newStep({ workOrderId, kind: StockStepKind.Settle });
+        await record(undo);
+        await steps.enqueue(later);
+
+        const claimed = await steps.claimDue(at(60), 10, at(900), [later.operationId]);
+
+        expect(claimed).toEqual([{ ...later, attempts: 1 }]);
+      },
+    );
+
+    it('should claim an undo together with the oldest other step of its work order, and leave the later steps', async () => {
+      startClock();
+      const workOrderId = await insertWorkOrder();
+      const restore = await newStep({ workOrderId, kind: StockStepKind.Restore });
+      const undo = await newStep({ workOrderId, kind: StockStepKind.UndoConsumption });
+      const settle = await newStep({ workOrderId, kind: StockStepKind.Settle });
+      for (const step of [restore, undo, settle]) {
+        await steps.enqueue(step);
+      }
+
+      const claimed = await steps.claimDue(at(0), 10, at(300));
+
+      expect(claimed.map((step) => step.operationId).sort()).toEqual(
+        [restore.operationId, undo.operationId].sort(),
+      );
+      expect(await rowOf(settle.operationId)).toMatchObject({ status: 'PENDING', attempts: 0 });
     });
   });
 

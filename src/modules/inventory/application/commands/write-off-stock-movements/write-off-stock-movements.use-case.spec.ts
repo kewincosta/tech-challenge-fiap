@@ -5,6 +5,8 @@ import { InMemoryInventoryItemRepository } from '../../../../../../test/support/
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { InventoryItem } from '../../../domain/entities/inventory-item';
 import { InventoryItemKind } from '../../../domain/inventory-item-kind';
+import { StockMovementKind } from '../../../domain/stock-movement-kind';
+import { StockMovementStatus } from '../../../domain/stock-movement-status';
 import { InventoryItemId } from '../../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../../domain/value-objects/sku';
 import { StockMovementId } from '../../../domain/value-objects/stock-movement-id';
@@ -17,6 +19,8 @@ const ACTOR_ID = '22222222-2222-4222-8222-222222222222';
 const ITEM_ID = InventoryItemId.create('44444444-4444-4444-8444-444444444444');
 const CONSUMPTION_ID = '55555555-5555-4555-8555-555555555555';
 const OTHER_CONSUMPTION_ID = '66666666-6666-4666-8666-666666666666';
+const IN_FLIGHT_CONSUMPTION_ID = '88888888-8888-4888-8888-888888888888';
+const OPERATION_ID = '99999999-9999-4999-8999-999999999999';
 const NOW = new Date('2026-08-31T12:00:00.000Z');
 
 // An item that withdrew 2 units for each of two work orders, stored the way the repository keeps it.
@@ -51,6 +55,27 @@ async function seedConsumptions(items: InMemoryInventoryItemRepository): Promise
     now: NOW,
   });
   await items.save(item);
+}
+
+// A withdrawal in flight on the first work order: its consumption carries an operation id and has no
+// confirmation yet.
+async function consumeInFlight(items: InMemoryInventoryItemRepository): Promise<void> {
+  const [item] = await items.findAllByIdsForUpdate([ITEM_ID]);
+  item.consume({
+    quantity: 3,
+    workOrderId: WORK_ORDER_ID,
+    actorUserId: ACTOR_ID,
+    movementId: StockMovementId.create(IN_FLIGHT_CONSUMPTION_ID),
+    operationId: OPERATION_ID,
+    now: NOW,
+  });
+  await items.save(item);
+}
+
+function consumptionStatuses(items: InMemoryInventoryItemRepository) {
+  return items.ledgerEntries
+    .filter((entry) => entry.kind === StockMovementKind.Consumption)
+    .map((entry) => [entry.movementId, entry.status]);
 }
 
 describe('WriteOffStockMovementsUseCase', () => {
@@ -91,6 +116,35 @@ describe('WriteOffStockMovementsUseCase', () => {
 
     expect(await items.findPendingConsumptions(ITEM_ID, WORK_ORDER_ID)).toHaveLength(1);
     expect(await items.findPendingConsumptions(ITEM_ID, OTHER_WORK_ORDER_ID)).toHaveLength(1);
+  });
+
+  it('leaves the consumption of a withdrawal its work order has not confirmed as it is, and writes it off once it is confirmed', async () => {
+    const items = new InMemoryInventoryItemRepository();
+    await seedConsumptions(items);
+    await consumeInFlight(items);
+    const useCase = new WriteOffStockMovementsUseCase(
+      items,
+      new FakeTransactionRunner(),
+      new FakeClock(NOW),
+    );
+    const command = new WriteOffStockMovementsCommand(WORK_ORDER_ID, ACTOR_ID);
+
+    await useCase.execute(command);
+
+    expect(consumptionStatuses(items)).toEqual([
+      [CONSUMPTION_ID, StockMovementStatus.WrittenOff],
+      [OTHER_CONSUMPTION_ID, StockMovementStatus.Pending],
+      [IN_FLIGHT_CONSUMPTION_ID, StockMovementStatus.Pending],
+    ]);
+
+    await items.confirmConsumptionsOfOperation(OPERATION_ID, NOW);
+    await useCase.execute(command);
+
+    expect(consumptionStatuses(items)).toEqual([
+      [CONSUMPTION_ID, StockMovementStatus.WrittenOff],
+      [OTHER_CONSUMPTION_ID, StockMovementStatus.Pending],
+      [IN_FLIGHT_CONSUMPTION_ID, StockMovementStatus.WrittenOff],
+    ]);
   });
 
   it('lets an error from the repository travel out untouched', async () => {

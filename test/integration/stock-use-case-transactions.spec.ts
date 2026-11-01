@@ -6,6 +6,8 @@ import { Money } from '../../src/shared/domain/value-objects/money';
 import { CryptoIdGenerator } from '../../src/shared/infrastructure/ids/crypto-id-generator';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { SystemClock } from '../../src/shared/infrastructure/time/system-clock';
+import { ConfirmConsumptionCommand } from '../../src/modules/inventory/application/commands/confirm-consumption/confirm-consumption.command';
+import { ConfirmConsumptionUseCase } from '../../src/modules/inventory/application/commands/confirm-consumption/confirm-consumption.use-case';
 import { ConsumeStockBatchCommand } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.command';
 import { ConsumeStockBatchUseCase } from '../../src/modules/inventory/application/commands/consume-stock-batch/consume-stock-batch.use-case';
 import { RestoreStockBatchCommand } from '../../src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.command';
@@ -354,11 +356,17 @@ describe('RestoreStockBatchUseCase, SettleStockMovementsUseCase and WriteOffStoc
       }),
   };
 
+  // A withdrawal that reached its work order. A restore, a settlement and a write-off read only the
+  // consumptions that are confirmed, so the fixture confirms it.
   async function withdrawn(): Promise<{ itemId: string; workOrderId: string }> {
     const itemId = await buildStockedItem(10);
     const workOrderId = await insertWorkOrder();
+    const operationId = randomUUID();
     await consumeWith(repository).execute(
-      consumeCommand(workOrderId, randomUUID(), [{ inventoryItemId: itemId, quantity: 3 }]),
+      consumeCommand(workOrderId, operationId, [{ inventoryItemId: itemId, quantity: 3 }]),
+    );
+    await new ConfirmConsumptionUseCase(repository, clock).execute(
+      new ConfirmConsumptionCommand(operationId, actorId),
     );
     return { itemId, workOrderId };
   }

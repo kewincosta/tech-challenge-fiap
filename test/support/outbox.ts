@@ -60,13 +60,14 @@ async function waitingStepsOf(dataSource: DataSource, workOrderId: string): Prom
 
 /**
  * Applies the stock steps of one work order, the way the processor would over several runs. A claim
- * takes at most one step per work order and a step waits for the older ones, so draining a list of
- * operations leaves a step behind when an older blocker is missing from the list. This names the
- * work order and loops until a round claims nothing of it. A step that is not due yet, a step a
- * failed step holds back and a step another claim leases stay as they are. The steps of another
- * work order are never claimed, which `applyDue()` over the table would do to steps that suites
- * running in parallel own. A test whose request leaves a step waiting drains its work order with
- * this, so that no armed or pending step is left behind.
+ * takes at most one step per work order besides its undo steps, which are outside the order, and a
+ * step waits for the older ones, so draining a list of operations leaves a step behind when an
+ * older blocker is missing from the list. This names the work order and loops until a round claims
+ * nothing of it. A step that is not due yet, a step a failed step holds back and a step another
+ * claim leases stay as they are. The steps of another work order are never claimed, which
+ * `applyDue()` over the table would do to steps that suites running in parallel own. A test whose
+ * request leaves a step waiting drains its work order with this, so that no armed or pending step
+ * is left behind.
  */
 export async function drainStockStepsOfWorkOrder(
   app: INestApplication,

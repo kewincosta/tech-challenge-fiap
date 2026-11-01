@@ -17,7 +17,8 @@ import { RestoreStockBatchCommand } from './restore-stock-batch.command';
  * module's own `stock_movements` ledger, so this use case resolves it itself: for each line, it
  * draws from the item's pending consumptions on that work order, newest first, splitting the
  * requested quantity across as many as it takes and appending one `RETURN` per consumption drawn
- * from (spec.md's Assumptions).
+ * from (spec.md's Assumptions). Only confirmed consumptions are drawn from, so the units of a
+ * withdrawal still in flight are left to its undo.
  */
 export class RestoreStockBatchUseCase {
   constructor(

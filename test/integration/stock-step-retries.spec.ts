@@ -143,6 +143,19 @@ async function buildStockedItem(quantity: number): Promise<string> {
   return item.id.value;
 }
 
+// A withdrawal that reached its work order: a restore, a settlement and a write-off read only the
+// consumptions that are confirmed.
+async function withdrawConfirmed(workOrderId: string, itemId: string): Promise<void> {
+  const operationId = randomUUID();
+  await ledger.consume(
+    workOrderId,
+    [{ inventoryItemId: itemId, quantity: WITHDRAWN }],
+    actorId,
+    operationId,
+  );
+  await ledger.confirmConsumption(operationId, actorId);
+}
+
 type LedgerCall = 'restore' | 'settle' | 'writeOff';
 
 /** The real ledger, whose first `call` fails the way an inventory that is busy would. */
@@ -304,12 +317,7 @@ describe('a stock step whose first attempt meets an inventory that fails', () =>
     async (_name, scenarioOf) => {
       const itemId = await buildStockedItem(SHELF);
       const workOrderId = await insertWorkOrder();
-      await ledger.consume(
-        workOrderId,
-        [{ inventoryItemId: itemId, quantity: WITHDRAWN }],
-        actorId,
-        randomUUID(),
-      );
+      await withdrawConfirmed(workOrderId, itemId);
       const scenario = scenarioOf(itemId);
       const step: StockStep = {
         operationId: randomUUID(),
@@ -394,12 +402,7 @@ describe('a closing step recorded after a restore that failed', () => {
   it.each(CLOSING_SCENARIOS)('waits for the restore, so that %s', async (_name, scenario) => {
     const itemId = await buildStockedItem(SHELF);
     const workOrderId = await insertWorkOrder();
-    await ledger.consume(
-      workOrderId,
-      [{ inventoryItemId: itemId, quantity: WITHDRAWN }],
-      actorId,
-      randomUUID(),
-    );
+    await withdrawConfirmed(workOrderId, itemId);
     const restore: StockStep = {
       operationId: randomUUID(),
       kind: StockStepKind.Restore,

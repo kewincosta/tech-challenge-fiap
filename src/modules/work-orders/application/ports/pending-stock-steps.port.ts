@@ -59,7 +59,9 @@ export interface PendingStockSteps {
    * The steps of a work order apply in the order they were recorded. A step is claimed only while no
    * older step of its work order is armed, pending or failed, so a claim takes at most one step per
    * work order, the oldest that is not done. A failed step holds the later steps of its work order
-   * until an operator sets it back to pending. The steps of other work orders are not held.
+   * until an operator sets it back to pending. The steps of other work orders are not held. An undo
+   * is outside that order: it is claimed once it is due, whatever older step of its work order is
+   * still open, and it holds no later step.
    */
   claimDue(
     now: Date,

@@ -41,9 +41,12 @@ export interface InventoryItemRepository {
   findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]>;
   /**
    * The `CONSUMPTION` movements a return draws from, newest first (spec.md's Assumptions: "the
-   * work order's pending consumptions for that item, drawn newest first"). Work-orders has no way
-   * to know a movement id - that data lives only in `stock_movements`, inventory's own ledger, so
-   * `RestoreStockBatchUseCase` resolves it itself rather than the caller supplying it.
+   * work order's pending consumptions for that item, drawn newest first"). Only confirmed
+   * consumptions are offered: one that a withdrawal wrote and its work order has not confirmed yet
+   * belongs to that withdrawal's undo, and a consumption with no operation id counts at once.
+   * Work-orders has no way to know a movement id, because that data lives only in
+   * `stock_movements`, inventory's own ledger, so `RestoreStockBatchUseCase` resolves it itself
+   * rather than the caller supplying it.
    */
   findPendingConsumptions(
     inventoryItemId: InventoryItemId,
@@ -51,11 +54,12 @@ export interface InventoryItemRepository {
   ): Promise<PendingConsumptionDto[]>;
   /**
    * The consumptions that one stock operation wrote and that still hold units, whatever their
-   * status, newest first, each carrying what is left on it after the returns that point at it: the
-   * figure `findPendingConsumptions` reports. A consumption that a write-off or a settlement closed
-   * in the meantime is included, because an undone operation never reached the work order, so its
-   * units go back. Empty when the operation consumed nothing, or when an earlier undo returned
-   * everything. This is what an undo of the operation gives back.
+   * status and whether the work order confirmed them, newest first, each carrying what is left on
+   * it after the returns that point at it: the figure `findPendingConsumptions` reports. A
+   * consumption that a write-off or a settlement closed in the meantime is included, because an
+   * undone operation never reached the work order, so its units go back. Empty when the operation
+   * consumed nothing, or when an earlier undo returned everything. This is what an undo of the
+   * operation gives back.
    */
   findPendingConsumptionsOfOperation(operationId: string): Promise<OperationConsumptionDto[]>;
   /** Whether a `RETURN` that one stock operation wrote is already on the ledger. */
@@ -68,22 +72,23 @@ export interface InventoryItemRepository {
    */
   confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void>;
   /**
-   * Every `PENDING` consumption of that work order moves to `SETTLED`, regardless of whether a
-   * later return already drained it - a fully returned consumption is still settled like any
-   * other, since delivery closes the book on every movement the work order caused (rule 23,
-   * spec.md's edge case). Never touches `quantity_on_hand`: the units already left at withdrawal.
-   * Returns how many it moved. Must run in one transaction, because it writes more than one
-   * statement.
+   * Every confirmed `PENDING` consumption of that work order moves to `SETTLED`, regardless of
+   * whether a later return already drained it. A fully returned consumption is still settled like
+   * any other, since delivery closes the book on every movement the work order caused (rule 23,
+   * spec.md's edge case). A consumption its work order has not confirmed stays as it is. Never
+   * touches `quantity_on_hand`: the units already left at withdrawal. Returns how many it moved.
+   * Must run in one transaction, because it writes more than one statement.
    */
   settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
   /**
-   * Every `PENDING` consumption of that work order with anything still outstanding moves to
-   * `WRITTEN_OFF`, the transition row carrying the net lost quantity - `quantity` minus every
+   * Every confirmed `PENDING` consumption of that work order with anything still outstanding moves
+   * to `WRITTEN_OFF`, the transition row carrying the net lost quantity: `quantity` minus every
    * `RETURN` pointing at it, the same expression `findPendingConsumptions` uses (rule 24). A
-   * consumption already drained to zero by prior returns is skipped: nothing was lost from it.
-   * Only the rows still pending are updated and only those get a transition, so two runs that read
-   * the same consumptions record each transition once. Never touches `quantity_on_hand`. Returns
-   * how many it wrote off. Must run in one transaction, because it writes more than one statement.
+   * consumption already drained to zero by prior returns is skipped: nothing was lost from it. A
+   * consumption its work order has not confirmed stays as it is. Only the rows still pending are
+   * updated and only those get a transition, so two runs that read the same consumptions record
+   * each transition once. Never touches `quantity_on_hand`. Returns how many it wrote off. Must
+   * run in one transaction, because it writes more than one statement.
    */
   writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number>;
 }

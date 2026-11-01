@@ -33,16 +33,22 @@ interface ClaimedRow {
 // older step of its work order is armed, pending or failed. That leaves one step per work order for
 // a claim, the oldest that is not done, and a failed step holds the later ones until an operator
 // sets it back to pending. The steps of other work orders are not held.
+// An undo is outside that order: it touches only the unconfirmed consumption of its own operation,
+// which no other step reads. It is picked once it is due, and it holds no later step.
 const CLAIM_DUE = `
   WITH due AS (
     SELECT candidate.id FROM work_order_stock_steps candidate
      WHERE candidate.status IN ('ARMED', 'PENDING') AND candidate.due_at <= $1
        AND ($4::uuid[] IS NULL OR candidate.operation_id = ANY($4::uuid[]))
-       AND NOT EXISTS (
-         SELECT 1 FROM work_order_stock_steps older
-          WHERE older.work_order_id = candidate.work_order_id
-            AND older.id < candidate.id
-            AND older.status IN ('ARMED', 'PENDING', 'FAILED')
+       AND (
+         candidate.kind = 'UNDO_CONSUMPTION'
+         OR NOT EXISTS (
+           SELECT 1 FROM work_order_stock_steps older
+            WHERE older.work_order_id = candidate.work_order_id
+              AND older.id < candidate.id
+              AND older.kind <> 'UNDO_CONSUMPTION'
+              AND older.status IN ('ARMED', 'PENDING', 'FAILED')
+         )
        )
      ORDER BY candidate.due_at, candidate.id
      LIMIT $2

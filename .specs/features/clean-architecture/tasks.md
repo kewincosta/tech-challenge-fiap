@@ -2576,12 +2576,12 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] A restore, a settlement and a write-off leave an unconfirmed consumption untouched and act on the confirmed ones and on those with no operation id (integration)
-- [ ] An undo step is claimed once due while an older step of its work order is armed, pending or failed, and it holds no newer step (integration); every T76 case whose newer or older step is an undo is updated and reported
-- [ ] The third validation's probes B2, B3, B4 and B5 are regression cases through the real use cases: each ends with the work order and inventory agreeing on 1 outstanding unit, the shelf at 19 of 20, a cancellation that follows writing off 1 unit, and every step `DONE` (integration)
-- [ ] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row with no assertion changed, and no suite leaves an armed or pending step
-- [ ] Test count: integration total grows; unit and e2e unchanged or larger
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A restore, a settlement and a write-off leave an unconfirmed consumption untouched and act on the confirmed ones and on those with no operation id (integration)
+- [x] An undo step is claimed once due while an older step of its work order is armed, pending or failed, and it holds no newer step (integration); every T76 case whose newer or older step is an undo is updated and reported
+- [x] The third validation's probes B2, B3, B4 and B5 are regression cases through the real use cases: each ends with the work order and inventory agreeing on 1 outstanding unit, the shelf at 19 of 20, a cancellation that follows writing off 1 unit, and every step `DONE` (integration)
+- [x] `test/e2e/work-order-concurrency.e2e.spec.ts` passes 10 isolated runs in a row with no assertion changed, and no suite leaves an armed or pending step
+- [x] Test count: integration total grows; unit and e2e unchanged or larger
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

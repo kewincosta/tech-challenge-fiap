@@ -45,6 +45,15 @@ const RETURNED_TOTALS_JOIN = `
 `;
 const NET_REMAINING_EXPR = `(sm.quantity - COALESCE(returned.total, 0))::integer`;
 
+/**
+ * A consumption counts for a restore, a settlement and a write-off once its work order confirmed
+ * it. Until then it belongs to the undo of the withdrawal that wrote it, so none of these three
+ * touches it (CA-10 AC11). A consumption with no operation id was written by no step, so no
+ * withdrawal is in flight on it and it counts at once. `findPendingConsumptionsOfOperation` is the
+ * one read that ignores this: an undo gives back what its operation consumed, confirmed or not.
+ */
+const CONFIRMED_CONSUMPTION = `(sm.operation_id IS NULL OR sm.confirmed_at IS NOT NULL)`;
+
 @Injectable()
 export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   constructor(
@@ -92,12 +101,14 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * Newest first, each carrying what is still un-returned on it - a `RETURN` never edits the
+   * Newest first, each carrying what is still un-returned on it: a `RETURN` never edits the
    * consumption it undoes (rule 22), so "pending" alone would keep offering an already-exhausted
    * consumption forever. `quantity - COALESCE(returned, 0)` is the true remaining amount, and a
-   * consumption drained to zero drops out of the result entirely. This is the only place a
-   * return's `undoesMovementId` comes from - work-orders has no way to know a movement id, since
-   * that data lives only in `stock_movements`, this module's own ledger (spec.md's Assumptions).
+   * consumption drained to zero drops out of the result entirely. Only confirmed consumptions are
+   * offered, so a return never draws from the units of a withdrawal still in flight. This is the
+   * only place a return's `undoesMovementId` comes from, because work-orders has no way to know a
+   * movement id: that data lives only in `stock_movements`, this module's own ledger (spec.md's
+   * Assumptions).
    */
   async findPendingConsumptions(
     inventoryItemId: InventoryItemId,
@@ -115,6 +126,7 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
          ${RETURNED_TOTALS_JOIN}
         WHERE ii.external_id = $1 AND sm.work_order_id = $2
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
           AND ${NET_REMAINING_EXPR} > 0
         ORDER BY sm.occurred_at DESC`,
       [inventoryItemId.value, workOrderInternalId],
@@ -124,11 +136,11 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
 
   /**
    * What an undo gives back: the operation's consumptions with units left, newest first, on the
-   * same net-remaining figure as `findPendingConsumptions` and the write-off. The status is left
-   * out on purpose. An undone operation never reached the work order, so a consumption that a
-   * cancellation wrote off or a delivery settled while the operation was in flight still comes
-   * back. The consumptions carry the work order's internal key, so the external id comes from its
-   * owner in one batch.
+   * same net-remaining figure as `findPendingConsumptions` and the write-off. The status and the
+   * confirmation are left out on purpose. An undone operation never reached the work order, so its
+   * consumptions are unconfirmed, and one that a cancellation wrote off or a delivery settled while
+   * the operation was in flight still comes back. The consumptions carry the work order's internal
+   * key, so the external id comes from its owner in one batch.
    */
   async findPendingConsumptionsOfOperation(
     operationId: string,
@@ -190,8 +202,9 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     );
   }
 
-  /** Rule 23: every `PENDING` consumption of the work order, whatever its remaining balance,
-   * moves to `SETTLED` on delivery - see the interface doc for why netting does not apply here. */
+  /** Rule 23: every confirmed `PENDING` consumption of the work order, whatever its remaining
+   * balance, moves to `SETTLED` on delivery. See the interface doc for why netting does not apply
+   * here. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
     const actorInternalId = await this.actorInternalId(input.actorUserId);
@@ -202,11 +215,12 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     // TypeORM's raw `query()` returns `[rows, rowCount]` for UPDATE/DELETE, unlike the plain rows
     // array a SELECT or INSERT returns - `PostgresQueryRunner.query`'s own switch on `raw.command`.
     const [rows]: [Array<{ id: string }>, number] = await manager.query(
-      `UPDATE stock_movements
+      `UPDATE stock_movements sm
           SET status = 'SETTLED'
-        WHERE work_order_id = $1
-          AND kind = 'CONSUMPTION' AND status = 'PENDING'
-        RETURNING id`,
+        WHERE sm.work_order_id = $1
+          AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
+        RETURNING sm.id`,
       [workOrderInternalId],
     );
     if (rows.length === 0) {
@@ -222,8 +236,8 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     return rows.length;
   }
 
-  /** Rule 24: only what is still outstanding on a `PENDING` consumption is lost - a consumption a
-   * prior return already drained contributes nothing and is skipped entirely. */
+  /** Rule 24: only what is still outstanding on a confirmed `PENDING` consumption is lost. A
+   * consumption a prior return already drained contributes nothing and is skipped entirely. */
   async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
     const actorInternalId = await this.actorInternalId(input.actorUserId);
@@ -237,6 +251,7 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
          ${RETURNED_TOTALS_JOIN}
         WHERE sm.work_order_id = $1
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
           AND ${NET_REMAINING_EXPR} > 0`,
       [workOrderInternalId],
     );
