@@ -78,6 +78,30 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: spec.md:71 Concurrency / ordering row, round 2 spec-precision gap 1 (planning)
 - last seen: 2026-10-31T19:53:15Z
 
+### L-026 - Keep a step from drawing on the movements of an operation that is still in flight, or the compensation that returns that operation's net remaining gives back less than it took.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: CA-02 AC5 and spec.md:283, probes B2, B3 and B5 in validation.md round 3 (outbox)
+- last seen: 2026-11-01T00:36:15Z
+
+### L-027 - When a spec lets an operation's first step commit before its last, state what the other steps of the same aggregate may read from that operation until it is confirmed or compensated.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 1 (CA-10) (planning)
+- last seen: 2026-11-01T00:36:15Z
+
+### L-028 - State in the ordering rule of retried steps whether a compensation step may apply before the older steps of its aggregate that read what it undoes.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 2 (CA-10 AC10, probe B4) (planning)
+- last seen: 2026-11-01T00:36:15Z
+
+### L-029 - When a spec adds a rule that holds a step behind another, state how it combines with each criterion that promises the step applies after a set delay.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 3 (CA-10 AC8 and AC10) (planning)
+- last seen: 2026-11-01T00:36:15Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -1,5 +1,381 @@
 # Clean architecture validation
 
+## Round 3
+
+**Date**: 2026-10-31
+**Spec**: `.specs/features/clean-architecture/spec.md`
+**Diff range**: `51a3a8a..f65d7f9` (104 commits). Since round 2 (`832bbb6`): the round 2 report `23a61db`, the plan and spec amendments `bd54c40`, phase 20 (T76 `4f87c4a`, T77 `b37d06a`, T78 `395d45e`) and the record `f65d7f9`.
+**Verifier**: independent sub-agent (author is not the verifier), round 3 of at most 3
+**Verdict**: FAIL
+
+### Verdict
+
+FAIL. Phase 20 closes the three gaps of round 2. Round 2's probe now ends with the returned units on the shelf and a write-off of the one unit that stayed outstanding, S22 dies in both new settlement cases, and the spec names the T68 migration, the two CA-10 exceptions and ten requirements. Every gate passes on `workshop_test`, the concurrency file passes 5 of 5 isolated runs, and all 17 mutants die, S22 among them.
+
+One finding blocks the verdict. This is the last round, so it goes to the user:
+
+1. A return's restore can draw its units from the consumption of a withdrawal that has not reached the work order. When that withdrawal is undone afterwards, the undo returns only what the restore left, and the return's units are lost while every step ends `DONE` and nothing is logged. Through the real use cases on HEAD, the work order shows 1 unit outstanding and the shelf holds 17 where 19 was due. In the same order on the adapters, inventory counts 3 units outstanding on the work order, and a cancellation that follows writes off 3 units where 1 was outstanding, the symptom of round 2's finding 1. Two orders reach it: a return and a withdrawal that race with no failure (B2), and a restore that failed followed by a withdrawal that stalls after consuming (B3). With a cancellation saved while the restore waits (B5), the new edge case at `spec.md:283` fails as written: the restore applies first, yet the shelf ends at 7 where 9 was due and the write-off records 3 units lost where 1 was outstanding. T76's order rule cannot prevent it, because a withdrawal's consumption is no outbox step, and when the withdrawal's undo is the newer step the rule applies the restore first. In one order with two inventory failures (B4), the claim before T76 ends with the shelf right, and T76's claim ends 2 units short. In 30 races over HTTP the interleave of B2 never occurred. The finding breaks CA-02 AC5 ("so that no operation stays half applied") and the edge case at `spec.md:283`. No test runs a return beside a withdrawal in flight.
+
+---
+
+### Round 2's gaps
+
+| Round 2 gap | Check at HEAD | Status |
+| --- | --- | --- |
+| 1. A retried restore could never apply after a later write-off or settlement of its work order | Round 2's probe re-run on HEAD in four forms: a write-off or a settlement, each with the processor's own `applyDue()` and with a drain by operation ids. The restore fails once, the closing step is recorded and attempted at once, then the processor runs past the wait twice. The closing request claims nothing (`PENDING`, 0 attempts); the first run applies the restore (stock 9); the second applies the closing step. End state in all four: both steps `DONE`, stock 9 of 10, ledger `CONSUMPTION 3 WRITTEN_OFF` (or `SETTLED`) and `RETURN 2`, transition `WRITTEN_OFF` with quantity 1 (or `SETTLED`). Regression cases: `test/integration/stock-step-retries.spec.ts:392` to `:459` | Closed |
+| 2. S22 survived | `test/integration/stock-operation-steps.spec.ts:516` to `:534` (a second settlement after the first) and `:537` to `:566` (two settlements interleaved, the second waiting at the row locks). S22 re-run: killed by both cases | Closed |
+| 3. Spec text behind the approved scope | CA-03 AC7 names the T68 migration (`spec.md:131`); the Out of Scope rows name the operation id on stock movements, the two step tables and that column (`spec.md:27`, `:28`); the count reads 10 (`spec.md:310`); CA-10 AC10 (`spec.md:224`), the concurrency row of the sweep (`spec.md:71`) and the edge case at `spec.md:283` state the order of the steps. `git diff 51a3a8a..HEAD -- src/shared` adds only what AC7 lists | Closed |
+
+---
+
+### Task completion
+
+All 387 Done-when boxes of `tasks.md` are checked and none is open. The six commits since round 2 pass `check_commit.py` and carry no trailer.
+
+| Phase | Tasks and commits | Status |
+| --- | --- | --- |
+| 1 to 19 | As rounds 1 and 2 report them | Done |
+| 20. Fixes from the second validation | T76 `4f87c4a`, T77 `b37d06a`, T78 `395d45e` | Done; finding 1 sits beside T76's rule |
+
+---
+
+### Spec-anchored acceptance criteria
+
+PASS means the cited assertion targets the outcome the spec defines. CA-02 AC5, CA-10 AC5, AC6 and AC10, and every criterion phase 20 touched were derived again from the spec. For the others, round 2's evidence was re-read at HEAD, and a line that moved is given at its HEAD position. "Inspection" marks a structural criterion verified by reading the tree.
+
+#### CA-01: the core runs without the framework
+
+| Criterion | Spec-defined outcome | Evidence at HEAD (`file:line` and assertion) | Status |
+| --- | --- | --- | --- |
+| AC1: no banned import under `domain` or `application` | Zero | `test/architecture/core-purity.spec.ts:197` `expect(scanCore(ROOT, migratedModules)).toEqual([])`; lint "no dependency violations found (791 modules, 3622 dependencies cruised)"; a grep of every core folder for the banned packages and `node:` finds 0 | PASS |
+| AC2: no decorator under `application` | Zero | `core-purity.spec.ts:150` and `:197`; a grep for decorators under every `application` folder finds 0 | PASS |
+| AC3: no injection token in the core | Zero | `core-purity.spec.ts:159` and `:197`; a grep for `Symbol(` in the core finds 0 | PASS |
+| AC4: repository contracts in the owner's `application/ports` | All of them | Inspection: `src/modules/work-orders/application/ports/pending-stock-steps.port.ts:33`, `src/modules/customers/application/ports/pending-account-steps.port.ts:26` and the ten repository contracts round 1 lists | PASS (inspection) |
+| AC5: every use case built in its composition root | All of them | Inspection: `src/modules/inventory/inventory.module.ts:157`, `src/modules/identity/identity.module.ts:175`, `src/modules/work-orders/work-orders.module.ts:237` and `:446`, `src/modules/customers/customers.module.ts:62` and `:131` | PASS (inspection) |
+| AC6: refresh token TTL of 600 | Exactly 600 000 ms | `test/e2e/authentication.e2e.spec.ts:391` `.toBe(600 * 1000)` | PASS |
+| AC7: reuse warning line | Exact message and context | `security-events.subscriber.spec.ts:29` and `:32` (`context: 'AuthenticationSecurity'`), `identity.module.spec.ts:68`, `refresh-session.use-case.spec.ts:166` | PASS |
+
+#### CA-02: every route answers exactly as before
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: OpenAPI document equals the baseline | Canonical equality | `test/e2e/openapi-contract.e2e.spec.ts:44` `expect(canonical(buildOpenApiDocument(testApp.app))).toBe(canonical(baseline))`, green at HEAD; the baseline has one commit, `709eb27` | PASS |
+| AC2: pre-existing e2e tests pass with no changed assertion except the approved race case | One changed assertion, in that case | `git diff 51a3a8a..HEAD` over the 16 e2e files of `51a3a8a` removes five lines: the one `expect` of the approved case, now `test/e2e/work-order-concurrency.e2e.spec.ts:332` `expect(outstanding.every((units) => units === 0)).toBe(true)` and `:333` `.quantityOnHand).toBe(20)`; one import; two comments; and the bare `await close();` of that file's `afterAll`, which T76 wraps in the drain of its work orders. No other `expect` changed. 246 of 246 pass | PASS |
+| AC3: every route has an e2e test written before its flow moved | 73 of 73 | The OpenAPI document is unchanged, so no route was added; round 1's scan holds | PASS |
+| AC4: a query use case raises its module's not-found | 11 use cases | The 11 specs round 1 cites are unchanged since `943018a` | PASS |
+| AC5 (amended): a later step that fails is compensated or retried so that no operation stays half applied | Nothing half applied | Round 2's probe now passes (see Round 2's gaps). Covered paths: `test/integration/withdrawal-compensation.spec.ts:388` `rejects.toBe(saveFailure)`, `:390` `toBe(SHELF)`, `:392`; `test/integration/registration-compensation.spec.ts:247`, `:249` `userCount(registered)).toBe(0)`; `test/integration/stock-step-retries.spec.ts:330` to `:351` and `:392` to `:459`. Failing: probes B2, B3 and B5 leave a return applied on the work order and lost in inventory, with every step `DONE` | GAP (finding 1) |
+| AC6: a throwing subscriber leaves the result and is logged by name | `publish` never throws; the class is named | `in-memory-domain-event-dispatcher.spec.ts:105`, `:109`, `:112`, `:124`, `:129` | PASS |
+
+#### CA-03: modules meet only through ports and public APIs
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: no module cycle | 0 | `test/architecture/module-cycles.spec.ts:89`; lint "No dependency cycle between modules found (7 modules, 16 dependencies between them)." | PASS |
+| AC2: no core import into another module | 0 | `test/architecture/dependency-rules.spec.ts:158` `expect(stdout).toContain('no dependency violations found')`, `test/architecture/baselines.spec.ts:15` | PASS |
+| AC3: outer layers reach another module only through its `index.ts` | 0 | `dependency-rules.spec.ts:95` and `:102` to `:110`; acceptance A3 and A3b at HEAD (CA-04) | PASS |
+| AC4: a cross-module need goes through a consumer port | Port in the consumer, gateway in its infrastructure | `stock-ledger.gateway.spec.ts:57` to `:113` `toStrictEqual` per call; `customer-accounts.gateway.spec.ts:185` `toEqual([new DiscardOpenedAccountCommand(NEW_USER_ID)])`; `customer-directory.gateway.spec.ts:72` `toBeNull()` | PASS |
+| AC5: identity is one module | One Nest module | `src/modules/identity/identity.module.ts:114` `@Module` | PASS |
+| AC6: no bus reference, no `@nestjs/cqrs` dependency | 0 | `grep -rnE "CommandBus\|QueryBus\|@nestjs/cqrs" src test scripts` finds 0; `package.json` has none | PASS |
+| AC7 (amended twice): `src/shared` gains only the listed pieces | Only those | `git diff --name-status 51a3a8a..HEAD -- src/shared` adds the publisher port, the dispatcher and its spec, the publisher spec, `shared.tokens.ts`, `runInNewTransaction` (`src/shared/infrastructure/database/typeorm-transaction-runner.ts:30`) and `src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps.ts`; the four modified files lose the moved tokens and wire the dispatcher | PASS |
+| AC8: an adapter writes only its own tables | 0 findings | `scripts/architecture/table-owners.ts:27` and `:28`; `test/architecture/table-ownership.spec.ts:73`; `baselines.spec.ts:19`; lint "No table ownership violations found (0 known findings ignored)." | PASS |
+| AC9: no adapter reads another module's table | 0 findings | Same evidence. T76's subquery reads `work_order_stock_steps`, the module's own table (`src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:41`), and the claim still joins only `work_orders` (`:52`) | PASS |
+| AC10: translation between UUID and internal id through the owner's resolver | The resolvers | `typeorm-work-order-query.adapter.ts:232` to `:248`; `test/integration/work-order-query.adapter.spec.ts:510`; `typeorm-inventory-item.repository.ts:157` | PASS |
+| AC11: another module's data in batch through its API | One call per owner | `test/integration/customer-query.adapter.spec.ts:291` `toEqual(['toExternalIds', 'findUsers'])` | PASS |
+| AC12: consumer declares, owner implements, root binds | `WorkOrderReads` | Unchanged since round 1; `test/integration/work-order-reads.spec.ts` green | PASS |
+| AC13: a resolver sees rows written earlier in its transaction | Resolved inside | `user-key-resolver.spec.ts:125`, `customer-key-resolver.spec.ts:133`, `vehicle-key-resolver.spec.ts:141`, `service-key-resolver.spec.ts:121`, `inventory-item-key-resolver.spec.ts:119`, `work-order-reads.spec.ts:177`, `customer.repository.spec.ts:164` | PASS |
+
+#### CA-04: the build enforces the architecture
+
+Each acceptance check ran at HEAD in the scratch worktree: one throwaway file, then `npm run lint`, then the file removed.
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: banned import fails lint, naming file and rule | Non-zero | A1: `src/modules/services/application/throwaway.ts` importing `@nestjs/common`, exit 1, "'@nestjs/common' import is restricted from being used by a pattern" with `no-restricted-imports` on that file; `test/architecture/dependency-rules.spec.ts:137` | PASS |
+| AC2: module cycle fails lint, naming the files | Non-zero, files named | A2: a type import of `customers` from `src/modules/identity/users/infrastructure/cycle-probe.ts`, exit 1, "Dependency cycle between modules: customers -> identity -> customers", then the importing file of each step; `test/architecture/module-cycles.spec.ts:36` and `:48` | PASS |
+| AC3: import outside `index.ts` fails lint, naming the file | Non-zero | A3 (`deep-probe.ts` importing a `customers` domain error) and A3b (`tokens-probe.ts` importing `customers.tokens.ts`), exit 1, "error through-public-api: src/modules/vehicles/infrastructure/tokens-probe.ts" and the target; `dependency-rules.spec.ts:95` and `:102` | PASS |
+| AC4: foreign table fails lint, naming adapter and table | Non-zero | A4: exit 1, "src/modules/vehicles/infrastructure/persistence/foreign-probe.ts: queries customers, a table owned by customers"; `test/architecture/table-ownership.spec.ts:51` | PASS |
+| AC5: empty baselines | Both `[]` | `test/architecture/baselines.spec.ts:15` and `:19` | PASS |
+| AC6: pre-push runs lint | Hook calls lint | `.husky/pre-push:6` `npm run lint` | PASS |
+
+#### CA-05: use case tests exercise real collaborators
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: no bus stub helpers | 0 | A grep over `src`, `test` and `scripts` finds 0 | PASS |
+| AC2: cross-module use cases tested through fakes in `test/support/fakes` | All of them | Unchanged since round 2: withdraw, return, deliver and cancel run on `FakeStockLedger` and `FakePendingStockSteps`, registration on `FakeCustomerAccounts` and `FakePendingAccountSteps`. Phase 20 changed no use case spec and no fake | PASS |
+| AC3: collaborations asserted on fake state | No `toHaveBeenCalled` on a cross-module port | e.g. `withdraw-parts.use-case.spec.ts:199` `expect(stockLedger.consumed).toEqual([...])`, `register-customer.use-case.spec.ts:302` `expect(accounts.discarded).toEqual([CHOSEN_USER_ID])` | PASS |
+| AC4: thresholds keep their percentages | Same percentages | `vitest.config.ts` is unchanged since round 1 (three globs moved, no percentage changed); `npm run test:coverage` exits 0 with no threshold message | PASS |
+
+#### CA-06: a second entry point reuses the use cases
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: the seed calls the five use cases | The five use cases; the records exist | `scripts/seed.ts:170` to `:174`; `test/integration/seed.script.spec.ts:81` names a database of its own, `:109` to `:115` create, migrate and seed it twice, `:124` drops it; `register-vehicle.use-case.spec.ts:59` `toBe(2018)`, `register-customer.use-case.spec.ts:161` `toBe('11987654321')` | PASS |
+
+#### CA-07: the decisions are recorded
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: each decision as an AD and an ADR naming each other | Both places | AD-011 to AD-016 and ADRs 0026 to 0031 as in round 1; AD-008 and ADR 0032 (`.specs/STATE.md:70`, `docs/adr/0032-a-repository-own-transaction-is-the-ambient-one.md:4`); AD-017 and ADR 0033 (`.specs/STATE.md:154`, `docs/adr/0033-writes-across-modules-run-as-steps.md:5`). T78 states the order rule in ADR 0033's decision (`:28`) and consequences (`:46`), and the registration's operator case (`:54`) | PASS |
+| AC2: ADR for the four kept patterns | ADR 0031 | Unchanged | PASS |
+| AC3: ADR for permissions in the guard | ADR 0030 | Unchanged | PASS |
+| AC4: ADR 0008 and AD-003 superseded | Both marked | `docs/adr/0008-cross-context-calls-through-the-buses.md:3`; `.specs/STATE.md:30` | PASS |
+| AC5: ADR for own tables with three reasons | ADR 0028 | Unchanged | PASS |
+| AC6: ADR for the inversion | ADR 0027 | Body unchanged; status `Amended by 0033` (`docs/adr/0027-ports-between-modules.md:3`) | PASS |
+
+The statuses match the user's decisions: 0001 `Amended by 0026 and 0033`, 0008 `Superseded by 0027`, 0023 `Superseded by 0033`, 0027 `Amended by 0033`, 0032 `Accepted`. `git diff 51a3a8a..HEAD` changes only the status line of 0001, 0008 and 0023, and `git diff 61984b9..HEAD` only the status line of 0027. Phase 20 changed no ADR but 0033, which is this feature's own.
+
+#### CA-08: use cases carry the use case name
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: `<Name>UseCase` in `<name>.use-case.ts` | Only those names | The `commands` and `queries` folders hold 234 files: 79 `.use-case.ts`, 76 `.use-case.spec.ts`, 50 `.command.ts` and 29 `.query.ts`; no `*Handler` class in `src` | PASS |
+| AC2: spec beside each use case | Named `<name>.use-case.spec.ts` | As round 2; phase 20 added no use case | PASS |
+
+#### CA-09: the documentation matches the structure
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: README circles and module graph | Both diagrams | `README.md:144` (circles labeled with their folders) and `README.md:201` (16 arrows, the count lint reports) | PASS |
+| AC2: no bus name, `*Handler` class or old identity path | 0 | `grep -rnE "CommandBus\|QueryBus\|@nestjs/cqrs\|Handler\b\|modules/(users\|authentication\|authorization)" README.md docs/architecture` finds 0; phase 20 changed neither | PASS |
+
+#### CA-10: writes across modules run as steps an outbox completes
+
+| Criterion | Spec-defined outcome | Evidence at HEAD (`file:line` and assertion) | Status |
+| --- | --- | --- | --- |
+| AC1: no transaction writes two modules; `run` wraps own tables only | Ledger and account calls outside the caller's transaction; nesting refused | `withdraw-parts.use-case.spec.ts:216` `expect(transactionRunner.callsInside).toEqual(['steps.disarm', 'workOrders.save'])`, `:205` `insideTransaction: false`; `register-customer.use-case.spec.ts:221` `.insideTransaction)).toEqual([false])`, `:222`; `return-parts.use-case.spec.ts:195` `toEqual(['workOrders.save', 'steps.enqueue'])`, `:220`; deliver `:129`, `:150`; cancel `:160`, `:182`; `test/integration/transaction-runner-nesting.spec.ts:46` `rejects.toThrow(/transaction is already open/)`, `:49`, `:50`; `test/integration/stock-use-case-transactions.spec.ts:215` to `:224`. R5 killed | PASS |
+| AC2: consume before saving; a shortage answers 422 and changes nothing | Order, 422 `INVENTORY_INSUFFICIENT_STOCK`, no change | `withdraw-parts.use-case.spec.ts:187` to `:194`; `test/e2e/work-order-withdrawals.e2e.spec.ts:596` `.expect(422)`, `:598` `toMatchObject({ code: 'INVENTORY_INSUFFICIENT_STOCK' })`, `:599` and `:600` stock 10 and 2, `:606` `toEqual(['INBOUND'])`, `:609` `toEqual([0, 0])`; `withdrawal-compensation.spec.ts:458` to `:465` | PASS |
+| AC3: a failed save returns every consumed unit, history linked, save's error | Units back, returns linked to the work order | `withdrawal-compensation.spec.ts:388` `rejects.toBe(saveFailure)`, `:390` `toBe(SHELF)`, `:392` to `:396`; `stock-operation-steps.spec.ts:295` `toEqual([10, 6])`, `:305` `returned.undoesMovementId).toBe(consumption.id)`. R2 killed. Finding 1 reaches this criterion: in B2 the request's own returns are 2 of the 4 units it consumed, and the movement history nets the consumption to zero only because the return's restore was booked against it | PASS on the cited paths; see finding 1 |
+| AC4: return, delivery and cancellation record their step with the save and apply it after the commit | Same transaction; applied after | `return-parts.use-case.spec.ts:223` `toMatchObject({ status: 'DONE', attempts: 1 })`, deliver `:153`, cancel `:185`; `test/integration/work-order-step-transaction.spec.ts:166` and `:167` (committed together, step `PENDING`), `:192` and `:193` (rolled back together, no step) | PASS |
+| AC5: a failed step stays pending, retried with a growing delay; the answer reflects the saved work order | Pending, growing delay, request succeeds | `return-parts.use-case.spec.ts:250` `resolves.toBeUndefined()`, `:253`; deliver `:174` to `:177`; cancel `:214` to `:217`; `stock-step-applier.spec.ts:187` to `:212` (after attempts 1 to 6 the waits are 1, 5, 30, 120, 600 and 3600 s, and 3600 s after); `stock-step-retries.spec.ts:330` to `:351`. A step held behind an older one stays `PENDING` with no attempt counted while its request succeeds: `stock-step-retries.spec.ts:441` to `:445`. R6 killed | PASS |
+| AC6: a step applied twice changes the stock or the accounts once | Once | Undo: `stock-operation-steps.spec.ts:326` and `:327`, two at once `:370` and `:371`; restore: `:341` and `:342`, two at once `:387` and `:388`; write-off: interleaved `:499` and `:500`, together `:513`; settlement: a second run `:530` to `:534` (one `SETTLED` transition each, statuses and ledger as after the first run), interleaved `:563` to `:566`; discard of a missing user: `discard-opened-account.spec.ts:170` to `:174`. S22 and R4 killed | PASS |
+| AC7: registration opens in identity first; a failed save discards the account, role included | Account and role gone, save's error | `register-customer.use-case.spec.ts:246` (order), `:298` `rejects.toBe(saveFailure)`, `:302`; `registration-compensation.spec.ts:247` and `:249`; `discard-opened-account.spec.ts:161` `userCount(account.userId)).toBe(0)`, `:162` `roleAssignmentCount(internalId)).toBe(0)`. R8 killed | PASS |
+| AC8: a stop between steps is compensated after the grace period | Not before; after, compensated | `withdrawal-compensation.spec.ts:340` and `:341` (before: units out, step `ARMED`), `:345` `toBe(SHELF)`, `:346` `{ status: 'DONE', attempts: 1 }`, `:358`; `registration-compensation.spec.ts:200`, `:201`, `:209` `toBe(0)`, `:219`. Finding 1 reaches this criterion: in B3 the processor's undo after the grace period returns 2 of the 4 units the stopped withdrawal consumed | PASS on the cited paths; see finding 1 |
+| AC9: at the attempt limit, failed and logged with kind, operation id, work order or user, last error | Error level, the four values | `stock-step-applier.spec.ts:234` to `:249` (`status: 'FAILED'`, `log.failures`); `nest-stock-step-log.spec.ts:28` to `:32` (`Stock step WRITE_OFF ${OPERATION_ID} for work order ${WORK_ORDER_ID} failed for good: inventory is busy`, context `StockStepOutbox`); `account-step-applier.spec.ts:186` to `:201`; `nest-account-step-log.spec.ts:22` to `:26` (round 2 cited `:56` to `:60`, lines this 28-line file never had); `stock-step-outbox.spec.ts:230` to `:253` (was `:217` to `:240`). R7 killed | PASS |
+| AC10 (new): the steps of a work order apply in the order they were recorded; a failed step holds the later ones | Recorded order; a failed step holds; other work orders go on | `test/integration/work-order-stock-steps.adapter.spec.ts:547` to `:567`: for an older step armed and pending, `:565` `expect(whileWaiting).toEqual([])`, `:566` the newer step `PENDING` with 0 attempts, `:567` claimed once the older one is done; `:571` to `:596`: behind a failed step `:594` `toEqual([])`, `:595` the operator's release frees the failed step first, `:596` then the later one; `:599` to `:616`: another work order's step is claimed meanwhile; `:619` to `:639`: one claim takes the oldest open step of each work order, `:635`, `:638`, `:639`; `:642` to `:663`: two claims at once share no step and take only the older step of each pair. `stock-step-retries.spec.ts:392` to `:459`: a restore that failed applies before the closing step of its work order. P1 to P6 killed. The criterion holds as written; finding 1 and B4 show that the recorded order is the wrong one when the newer step is the undo of a withdrawal that never reached the work order | PASS |
+
+Status: 56 of 57 criteria match the spec-defined outcome. Gap: CA-02 AC5 (finding 1). CA-10 AC3 and AC8 pass on their cited paths, and finding 1 reaches them.
+
+#### Spec-precision gaps
+
+1. The spec does not say which consumptions a restore may draw from while a withdrawal of the same work order has consumed and has neither saved nor been undone. CA-10 AC10 orders the outbox steps, and a withdrawal's consumption is none of them. The user's decision of 2026-10-31 covers a write-off or a settlement that closes such a consumption: the undo returns it whatever its status. Nothing covers a restore that draws from it. Finding 1 lives in that silence.
+2. CA-10 AC10 has no exception for an undo. B4 shows a released undo that must apply before an older restore, and a fix that lets an undo go first needs AC10 amended.
+3. CA-10 AC8 and AC10 do not say which one wins when an older step of the same work order has failed: the undo of a stopped withdrawal stays held after its grace period until an operator releases the failed step. ADR 0033 records the hold (`docs/adr/0033-writes-across-modules-run-as-steps.md:46`); the spec does not.
+
+Round 2's three spec-precision gaps are resolved by `bd54c40`.
+
+---
+
+### Edge cases
+
+| Edge case | Spec outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| Seventeen cases unchanged since round 1 (the ten not-found answers, the customer filters, the shortage list, the item in use, the movement history UUIDs, five taken numbers) | As round 1 states them | Round 1's lines hold at HEAD: `work-order-tracking.e2e.spec.ts:350` and `:364`, `services.e2e.spec.ts:226`, `inventory-items.e2e.spec.ts:223`, `:232`, `:539`, `:591`, `:592`, `:718`, `:719`, `vehicles.e2e.spec.ts:322`, `customers.e2e.spec.ts:212`, `:223`, `:314`, `:315`, `:321`, `:322`, `:338`, `users.e2e.spec.ts:183`, `roles.e2e.spec.ts:116`, `work-order-withdrawals.e2e.spec.ts:579`, `create-work-order.use-case.spec.ts:235` | PASS (17) |
+| Two concurrent changes, one 409 `CONCURRENT_MODIFICATION` | One 200, one 409 with the code | `work-order-concurrency.e2e.spec.ts:218` `toEqual([200, 409])`, `:220` `code: 'CONCURRENT_MODIFICATION'` (was `:196` and `:198`) | PASS |
+| Withdrawal above stock | 422, nothing changed | `work-order-withdrawals.e2e.spec.ts:596` to `:611` | PASS |
+| Save fails with 409 after the consumption | Units back, every level as before | `work-order-concurrency.e2e.spec.ts:259` `toEqual([200, 409])`, `:262` withdrawn 3, `:263` `quantityOnHand).toBe(17)`, `:267` and `:268` two consumptions, one return (was `:237` to `:246`). In B2 the stock also ends where it stood before the withdrawal (17); the return that won the race loses its units, which finding 1 counts | PASS |
+| The inventory step of a return, delivery or cancellation fails | Work order change kept; step applied on a later attempt | `stock-step-retries.spec.ts:330` to `:351`, and `:392` to `:459` when a closing step of the same work order lands first; round 2's probe passes | PASS |
+| Customer save fails after the account opened | No user with that email or document | `registration-compensation.spec.ts:249` (`count(*) ... WHERE email = $1 OR document = $2` is 0), `:219` the same email and document register again | PASS |
+| Last step after the processor claimed the armed step | 409, nothing saved, compensation applied | `withdraw-parts.use-case.spec.ts:365` to `:373`; `register-customer.use-case.spec.ts:324` to `:329`; `withdrawal-compensation.spec.ts:439` to `:449`; `registration-compensation.spec.ts:290` to `:294`. R1 killed | PASS |
+| New: a restore failed, then a cancellation or a delivery of the same work order | The restore applies first; the returned units are back in stock; the closing step closes only what stays outstanding | `stock-step-retries.spec.ts:392` (`it.each` over both kinds): `:436` the restore `PENDING` after its failure, `:441` the closing step `PENDING` with 0 attempts, `:453` the processor past the wait, `:455` restore `DONE` in 2 attempts, `:456` closing `DONE` in 1, `:457` `toBe(SHELF - WITHDRAWN + RETURNED)`, `:458` the ledger of `:369` or `:381`, `:459` `[['WRITTEN_OFF', WITHDRAWN - RETURNED]]` (`:374`) or `[['SETTLED', null]]` (`:386`). Fails when a withdrawal of the same work order stalls after consuming while the restore waits (B5): the restore applies first and draws from that consumption, the undo after the grace period returns the 2 units left, and the write-off records `WRITTEN_OFF` 3 where 1 stays outstanding; the shelf ends at 7 where 9 was due, every step `DONE` | GAP (finding 1) |
+| `POST /customers` links the user opened earlier in the registration | Linked to that user | `registration-compensation.spec.ts:234` `customerOf(registered.userId)).toBe(registered.customerId)`; `customers.e2e.spec.ts:314`; `customer.repository.spec.ts:164` | PASS |
+| A subscriber throws | Caller keeps the result; error logged by name | `in-memory-domain-event-dispatcher.spec.ts:105`, `:109` | PASS |
+
+25 of 26 edge cases pass. Gap: the edge case at `spec.md:283` (finding 1).
+
+---
+
+### Gate check
+
+All commands ran in the real tree against `workshop_test`, as it is (never truncated), with Redis DB 15.
+
+| Step | Exit | Outcome |
+| --- | --- | --- |
+| `npm run lint` | 0 | ESLint clean; "no dependency violations found (791 modules, 3622 dependencies cruised)"; "No table ownership violations found (0 known findings ignored)."; "No dependency cycle between modules found (7 modules, 16 dependencies between them)." |
+| `npm run build` | 0 | Clean |
+| `npm run test:unit` | 0 | 1249 passed (161 files) |
+| `npm run test:integration` | 0 | 483 passed (56 files) |
+| `npm run test:e2e` | 0 | 246 passed (19 files), the OpenAPI contract case included |
+| `npm run test:coverage` | 0 | Every threshold passed |
+| `npx prettier --check README.md docs` | 0 | "All matched files use Prettier code style!" |
+| `test/e2e/work-order-concurrency.e2e.spec.ts`, 5 isolated runs | 0 each | 6 of 6 tests each run; no flake |
+| Control: the three suites on an empty scratch database (`workshop_mut_test`) | 0 | 1249, 483 and 246 passed |
+
+No flake appeared in any run of this round: the full gate, the five isolated runs, the control and the 17 mutant runs, where each kill names a test of the mutated behavior. No test is skipped, focused or marked todo.
+
+Test counts: 955, 239 and 203 before the feature (`51a3a8a`); 1249, 472 and 246 at round 2; 1249, 483 and 246 at HEAD. T76 adds nine integration cases (six in the adapter spec, one in the outbox spec, two in the retries spec) and T77 two.
+
+The step tables of `workshop_test`: `work_order_stock_steps` held the six inert `DONE` `WRITE_OFF` rows (ids 2659, 2672, 2685, 2698, 2711 and 2724) and nothing else before the gate, after the integration and e2e suites, and after the five isolated runs; `customer_account_steps` held 0 rows each time. The suites added no row and left the six rows alone; the user decided on 2026-10-31 that they stay.
+
+---
+
+### Discrimination sensor
+
+Expanded tier, CA-10 as the critical path. Every mutant ran in a detached `git worktree` of `f65d7f9` under the scratchpad, with `node_modules` linked and `.env.test` set to `DATABASE_NAME=workshop_mut_test` and `REDIS_DB=13`. Before each run the scratch database was recreated (the global setup migrates it) and Redis DB 13 emptied. Each mutation is an exact text replacement that refused to apply unless its target occurred once. Suites ran unit, then integration, then e2e, and the first failing suite killed the mutant; P7 and P8 change test support that only the integration and e2e suites load, so they ran those two. Nothing touched `workshop` or `workshop_test`.
+
+| # | File:line | Mutation | Outcome |
+| --- | --- | --- | --- |
+| P1 | `src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:43` | Order reversed (`older.id > candidate.id`): a step waits for the newer steps of its work order | KILLED (integration, 8: the six cases of "the steps of one work order" and both closing scenarios of `stock-step-retries.spec.ts:392`) |
+| P2 | `typeorm-pending-stock-steps.ts:44` | A `FAILED` step no longer holds the later steps | KILLED (integration, 1: `work-order-stock-steps.adapter.spec.ts:571`) |
+| P3 | `typeorm-pending-stock-steps.ts:44` | An `ARMED` step no longer holds the later steps | KILLED (integration, 2: the armed case of `:547`, and `:599`) |
+| P4 | `typeorm-pending-stock-steps.ts:44` | A `PENDING` step no longer holds the later steps | KILLED (integration, 6: the pending case of `:547`, `:571`, `:619`, `:642` and both closing scenarios) |
+| P5 | `typeorm-pending-stock-steps.ts:42` | The older-step check loses its work-order scope: an open step of any work order holds every newer one | KILLED (integration, 6: `:599`, `:619`, `:642` and the claim cases at `:446`, `:494` and `:529`) |
+| P6 | `typeorm-pending-stock-steps.ts:40` to `:45` | Order rule removed: the claim orders by due time alone, as before T76 | KILLED (integration, 8) |
+| S22 | `src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:198` | Settlement closes consumptions of any status | KILLED (integration, 2: `stock-operation-steps.spec.ts:516` and `:537`) |
+| P7 | `test/support/outbox.ts:89` | Drain helper makes a single pass | KILLED (integration, 3: both closing scenarios and the drain case of `stock-step-outbox.spec.ts`) |
+| P8 | `test/support/outbox.ts:55` | Drain helper sees pending steps only, not armed ones | KILLED (integration, 1: the drain case of `stock-step-outbox.spec.ts`) |
+| R1 | `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts:81` | Disarm result ignored, so a claimed step answers no 409 | KILLED (unit, 1) |
+| R2 | `withdraw-parts.use-case.ts:86` | No compensation when a later step fails | KILLED (unit, 4) |
+| R3 | `typeorm-inventory-item.repository.ts:148` | Undo returns only consumptions still `PENDING` | KILLED (integration, 2: the written-off and the settled consumption) |
+| R4 | `typeorm-inventory-item.repository.ts:241` | Write-off updates every candidate, pending or not | KILLED (integration, 2: interleaved and concurrent write-offs) |
+| R5 | `src/shared/infrastructure/database/typeorm-transaction-runner.ts:42` | `run` no longer refuses to nest | KILLED (integration, 5: `transaction-runner-nesting`, `stock-use-case-transactions`) |
+| R6 | `src/modules/work-orders/application/services/stock-step-applier.ts:102` | Delay read one slot later (5 s after the first failure) | KILLED (unit, 11) |
+| R7 | `stock-step-applier.ts:96` | Attempt limit reached one attempt late | KILLED (unit, 1) |
+| R8 | `src/modules/customers/application/commands/register-customer/register-customer.use-case.ts:127` | No compensation when a later step fails | KILLED (unit, 4) |
+
+The sensor depth is expanded. 17 mutants ran: nine on phase 20 (the order condition, the three statuses that hold a step, the work-order scope, the rule as a whole, the settlement's pending-only update and the drain helper twice) and eight on phase 19's critical paths. All 17 die, S22 in both new settlement cases. Probe B4 also ran once with P6 applied, to compare the claim before T76 with HEAD (Probes).
+
+The real tree's `git status --porcelain` was empty before the sensor and still empty after it; the only files this round changed afterwards are this report and the two files `lessons.py` writes. Once the probes and the acceptance checks were done, the worktree was removed and pruned, `workshop_mut_test` dropped, Redis DB 13 emptied (`DBSIZE` 0), and no `workshop_seed_*` database was left. No `git stash` was used.
+
+---
+
+### Probes
+
+Throwaway specs in the scratch worktree, on the unmutated code and the scratch database, removed with the worktree. The adapter probes reuse the helpers of `test/integration/stock-step-retries.spec.ts` and call the real adapters in the order the use cases call them. The use-case probes build `ReturnPartsUseCase` and `WithdrawPartsUseCase` from the application's own providers and wrap a dependency only to fix the order of events.
+
+#### Round 2's probe on HEAD
+
+Stock 10, a consumption of 3, a return of 2 recorded as a `RESTORE` step whose first attempt meets an inventory that fails, then a `WRITE_OFF` or a `SETTLE` of the same work order recorded and attempted at once, then two processor runs past the wait.
+
+| Closing step | Processor | After the two requests | After run 1 | After run 2 |
+| --- | --- | --- | --- | --- |
+| `WRITE_OFF` | `applyDue()` | restore `PENDING` (1 attempt, "inventory is busy"); write-off `PENDING` (0 attempts); stock 7 | restore `DONE` (2 attempts); write-off `PENDING`; stock 9 | write-off `DONE` (1 attempt); stock 9; `CONSUMPTION 3 WRITTEN_OFF`, `RETURN 2`; transition `WRITTEN_OFF` 1 |
+| `SETTLE` | `applyDue()` | as above | as above | settle `DONE` (1 attempt); stock 9; `CONSUMPTION 3 SETTLED`, `RETURN 2`; transition `SETTLED` |
+| `WRITE_OFF` | drain by operation ids | as above | as above | as the first row |
+| `SETTLE` | drain by operation ids | as above | as above | as the second row |
+
+#### A return beside a withdrawal in flight
+
+The work order has a consumption of 3 that reached it. A return of 2 and a withdrawal of 4 then meet. The right outcome returns the withdrawal's 4 units and the return's 2: the shelf ends 1 unit below its opening stock (9 of 10, or 19 of 20 in the use-case probes), the work order shows 1 unit outstanding, and inventory agrees.
+
+| Probe | Order of events | Layer | End state | Due |
+| --- | --- | --- | --- | --- |
+| B1 | The withdrawal arms its undo and consumes 4; the return records its restore, whose attempt claims nothing behind the armed undo; the withdrawal's save fails and it compensates; the drain applies the restore | Adapter | Stock 9 of 10; the restore drew from the consumption of 3 | 9 |
+| B2 | The withdrawal loads the work order; the return saves and records its restore; the withdrawal arms and consumes 4; the restore applies after the consumption; the withdrawal's save answers 409 and it compensates | Adapter | Stock 7; consumption of 3 with 3 outstanding, consumption of 4 with 0 | 9 |
+| B2 | The same, through the use cases | Use cases | Withdrawal rejects with `ConcurrentModificationError`, return succeeds; work order 1 unit outstanding; shelf 17 of 20; three steps `DONE` | 19 |
+| B3 | The restore's first attempt fails; a withdrawal of 4 consumes and stalls before its last step; the processor runs past the restore's wait, then past the grace period | Adapter | Stock 5 after the first run (the restore drew from the consumption of 4), 7 after the undo returned the 2 left | 9 |
+| B3 | The same, through the use cases | Use cases | Work order 1 unit outstanding; shelf 17 of 20; every step `DONE`, the restore in 2 attempts | 19 |
+| B4 | The restore's first attempt fails; a withdrawal consumes 4, its save fails and its own undo fails, so it releases the step; the processor runs twice | Adapter | HEAD: 7, the restore applies first and the undo waits behind it. The claim before T76 (mutant P6): 9, the released undo applies first | 9 |
+| B2, then a cancellation | B2, then a write-off of the work order | Adapter | Transition `WRITTEN_OFF` with quantity 3 | 1 |
+| B5 | The restore's first attempt fails; a withdrawal of 4 consumes and stalls; a cancellation is saved and its attempt claims nothing; the processor runs past the waits | Adapter | Stock 5 after the restore applies, 7 after the undo; the write-off, held until then, records `WRITTEN_OFF` 3; every step `DONE` | 9; `WRITTEN_OFF` 1 |
+| Race over HTTP | 30 rounds of `POST .../withdrawals` (4) and `POST .../returns` (2) sent together on a work order in execution, then a drain of its steps | E2e | 30 of 30: withdrawal 409, return 200, shelf and work order agree | Agree |
+
+Cause. `RestoreStockBatchUseCase` draws from the item's `PENDING` consumptions on the work order, newest first (`src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:111` to `:119`, drawn at `src/modules/inventory/application/commands/restore-stock-batch/restore-stock-batch.use-case.ts:76` to `:93`). A withdrawal consumes in inventory's own transaction before it saves the work order (CA-10 AC2), so until its last step its consumption is the newest pending one. The undo returns the net remaining units of the operation's consumptions (`typeorm-inventory-item.repository.ts:143` to `:151`, used at `src/modules/inventory/application/commands/undo-consumption/undo-consumption.use-case.ts:43` to `:59`), and that figure already subtracts what the restore drew. T76 orders outbox steps (`src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:40` to `:45`). The consumption itself is no step, and a restore recorded before the withdrawal armed is the older step, so the rule lets it apply first; in B4 it makes the restore apply before a released undo. The interleave of B2 needs the return to commit its step after the withdrawal loaded the work order and before it armed, and the restore to read after the consumption committed; 30 races in this setup never produced it. B3 and B5 need one inventory failure and a withdrawal that stops or stalls between its consumption and its last step, the case CA-10 AC8 exists for.
+
+---
+
+### Adversarial review
+
+#### The claim and its order rule
+
+- The claim is one statement. `FOR UPDATE OF candidate SKIP LOCKED` locks only the candidate rows, and the `NOT EXISTS` reads the committed status of the older steps, so two claims at once never take two steps of one work order (`work-order-stock-steps.adapter.spec.ts:642` to `:663`). P1 to P6 die.
+- Saves of one work order serialize on its version guard (AD-009), and each enqueue follows its save in the same transaction (`return-parts.use-case.spec.ts:195`), so the id order of enqueued steps is their commit order. An armed step commits in a transaction of its own before its consumption, so it is always older than the steps recorded while its withdrawal is in flight.
+- An armed undo holds the later steps of its work order while its withdrawal is in flight, and for up to the grace period (300 s) when the request stalls. The requests that recorded them succeed, as ADR 0033 says (`docs/adr/0033-writes-across-modules-run-as-steps.md:46`).
+- An undo held behind an older failed step stays held after its grace period, until an operator sets the failed step back to pending (spec-precision gap 3).
+- A request's own compensation never claims, so it is outside the order rule. In B1 that is how the undo lands before the restore, which waits behind the armed step.
+- The order rule lets a restore read the consumption of a withdrawal in flight: finding 1.
+
+#### Test support and the never-truncate convention
+
+- `drainStockStepsOfWorkOrder` (`test/support/outbox.ts:71` to `:93`) always returns: each round applies a step, counts an attempt, or leaves the list unchanged, and a failed attempt moves the due time past the drain's clock. P7 and P8 die.
+- `FakePendingStockSteps.claimDue` (`test/support/fakes/fake-pending-stock-steps.ts:86` to `:104`) still claims by due time alone, as the user decided; the order rule is proven on the real adapter only.
+- Phase 20's cases remove their own rows: the adapter spec by operation id and by its 2001 window (`work-order-stock-steps.adapter.spec.ts:30` and `:39`), the outbox spec by operation id (`stock-step-outbox.spec.ts:38`), the retries spec by work order (`stock-step-retries.spec.ts:66` to `:72`). The concurrency file drains the work orders it made in `afterAll` (`work-order-concurrency.e2e.spec.ts:35` to `:55`). No `TRUNCATE` was added.
+
+#### The docs
+
+- ADR 0033 states the order rule and the operator's release in its decision (`:28`), the hold in its consequences (`:46`) and both cases left to an operator (`:52` and `:54`); the port comment says the same (`src/modules/work-orders/application/ports/pending-stock-steps.port.ts:53` to `:56`). Prettier is clean.
+- No tracked document mentions microservices or a future migration of the system. ADR 0001 says "Distributed services and a layerless single module are the obvious alternatives, and neither was written down as considered" (`docs/adr/0001-modular-monolith-with-cqrs.md:29`). The user decided on 2026-10-31, relayed by the orchestrator, that the sentence stays as written: it predates the feature, speaks of no future migration, and the body of an ADR stays as decided.
+
+---
+
+### Code quality
+
+| Check | Status |
+| --- | --- |
+| No features beyond what was asked | Pass. T76 to T78 touch only what their tasks name |
+| No abstractions for single-use code | Pass. `drainStockStepsOfWorkOrder` has three callers |
+| No unnecessary flexibility | Pass |
+| Only touched files the tasks required | Pass |
+| Did not "improve" unrelated code | Pass |
+| Matches existing patterns and style | Pass |
+| Tests map to criteria and are not shallow | Pass with a gap: no case runs a return beside a withdrawal in flight (finding 1) |
+| Spec-anchored outcome check | 56 of 57; gap CA-02 AC5; 25 of 26 edge cases, gap at `spec.md:283` |
+| Per-layer coverage expectation | Pass: the order rule on the database (held, released, other work orders, one per claim, two claims at once), the settlement twice on the real repository |
+| Every test maps to a requirement | Pass |
+| Documented guidelines followed | `.specs/STATE.md` Conventions, the Test Coverage Matrix, the `vitest.config.ts` thresholds. The never-truncate convention holds |
+
+---
+
+### Fix plans
+
+#### Fix 1 (Major, needs the user's decision): a restore must not take the units of a withdrawal in flight
+
+Root cause in the Probes section. The rule is the user's choice, and each shape below touches CA-10 AC10 or the restore's contract:
+
+- Hold the restore, the settlement and the write-off of a work order while an undo step of that work order is armed or pending, so a withdrawal's compensation lands before any step that reads the pending consumptions. This covers B1 to B5, and the race of a cancellation with a withdrawal as well. It amends CA-10 AC10: an undo goes before the older steps of its work order, and a restore can wait up to the grace period behind a stalled withdrawal.
+- Or have the restore draw only from consumptions the work order has accepted. Inventory cannot read the step table (CA-03 AC9), so `work-orders` would pass the operation ids the restore may draw from, which the aggregate does not track today.
+
+Fix task: record the chosen rule in CA-10 (AC10 and an edge case on a return beside a withdrawal in flight) and in ADR 0033, implement it, and add integration cases for B2, B3, B4 and B5 through the real use cases. Done when each ends with the work order and inventory agreeing on 1 outstanding unit, the shelf at 19 of 20 in the use-case probes' numbers (9 of 10 in the adapter probes'), a cancellation writing off 1 unit, and every step `DONE`.
+
+Decided by the user on 2026-10-31 and relayed by the orchestrator: the ADR 0001 sentence on distributed services stays as written, and the six inert `DONE` rows stay in `workshop_test`. Observation that needs no fix in this feature: the teardown also matches the `DONE` steps another process writes during a run, as in round 2.
+
+---
+
+### Requirement traceability update
+
+Proposed for `spec.md`; the orchestrator applies it.
+
+| Requirement | Previous status | New status |
+| --- | --- | --- |
+| CA-01 | In Tasks | Verified |
+| CA-02 | In Tasks | Needs fix (AC5, Fix 1) |
+| CA-03 | In Tasks | Verified |
+| CA-04 | In Tasks | Verified |
+| CA-05 | In Tasks | Verified |
+| CA-06 | In Tasks | Verified |
+| CA-07 | In Tasks | Verified |
+| CA-08 | In Tasks | Verified |
+| CA-09 | In Tasks | Verified |
+| CA-10 | In Tasks | Needs fix (edge case at `spec.md:283`, Fix 1; a decision on AC10) |
+
+---
+
+### Summary
+
+| Area | Outcome |
+| --- | --- |
+| Overall | Not ready |
+| Round 2's gaps | 1, 2 and 3 closed |
+| Spec-anchored check | 56 of 57 criteria match; 3 spec-precision gaps; 25 of 26 edge cases |
+| Sensor | 17 mutants, 17 killed: 9 on phase 20 (S22 included) and 8 on phase 19 |
+| Gate | Lint, build, unit (1249), integration (483), e2e (246, contract included), coverage and docs pass on `workshop_test`; the concurrency file passes 5 of 5 isolated runs |
+
+Phase 20 does what round 2 asked: a restore that failed now applies before the write-off or the settlement of its work order, a failed step holds the later ones, the settlement is proven idempotent on the real repository, and the spec states the order and the approved scope. The defect left is a restore that draws from the consumption of a withdrawal still in flight, which loses the returned units when that withdrawal is undone.
+
+Next: this is the third round, so the loop escalates to the user with Fix 1 and the decision on CA-10 AC10.
+
+---
+
+### Lessons
+
+`lessons.py` recorded four candidates from this round: L-026 (finding 1: a step that draws on the movements of an operation in flight), L-027 (spec-precision gap 1: what other steps may read from an operation in flight), L-028 (spec-precision gap 2: whether a compensation may apply before older steps) and L-029 (spec-precision gap 3: how a hold combines with a criterion that promises a delay). No mutant survived and no gate failed, so neither produced a lesson. No confirmed lesson recurred, so none was penalized: the new edge case has its owning task (T76), as L-002 asks, and L-003 saw no repeat.
+
+---
+
+# Round 2 history (2026-10-31)
+
+Round 2's report follows as it was written. It is history: the verdict of round 3 above governs.
+
 ## Round 2
 
 **Date**: 2026-10-31
