@@ -388,7 +388,7 @@ the `workshop_test` database and holds only local test credentials.
 ## Database
 
 PostgreSQL, reached through TypeORM with hand-written migrations. The schema has 20 domain tables,
-plus TypeORM's own bookkeeping table, created by ten migrations in
+plus TypeORM's own bookkeeping table, created by eleven migrations in
 [`src/shared/infrastructure/database/migrations/`](src/shared/infrastructure/database/migrations/).
 `synchronize` is off: nothing changes the schema outside a migration.
 

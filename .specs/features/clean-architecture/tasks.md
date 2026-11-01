@@ -2605,9 +2605,9 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] The decision names the confirmation step, the reads that require it and the undo's exemption; the alternatives name the hold rule (restores, settlements and write-offs waiting behind an armed undo) and the window between a claim and its read that it leaves
-- [ ] The README counts eleven migrations and still 20 domain tables
-- [ ] Gate check passes: `npx prettier --check README.md docs`
+- [x] The decision names the confirmation step, the reads that require it and the undo's exemption; the alternatives name the hold rule (restores, settlements and write-offs waiting behind an armed undo) and the window between a claim and its read that it leaves
+- [x] The README counts eleven migrations and still 20 domain tables
+- [x] Gate check passes: `npx prettier --check README.md docs`
 
 **Tests**: none
 **Gate**: docs
