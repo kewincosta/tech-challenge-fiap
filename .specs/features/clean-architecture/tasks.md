@@ -242,6 +242,12 @@ T76 → T77 → T78
 T79 → T80 → T81 → T82 → T83 → T84
 ```
 
+### Phase 22: Fix from the fourth validation
+
+```
+T85
+```
+
 ---
 
 ## Task Breakdown
@@ -2644,6 +2650,39 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 ---
 
+### Phase 22: Fix from the fourth validation
+
+The fourth validation (2026-11-01) found the code correct and one mutant alive: with confirmations dropped from the order condition (O1), every suite still passes, because every confirmation in the suites applies at once. The user chose, on 2026-11-01, a task of tests only and a fifth validation restricted to it.
+
+#### T85: A confirmation holds the later steps of its work order
+
+**What**: Integration cases prove that a pending or failed `CONFIRM_CONSUMPTION` step holds a later restore, settlement and write-off of its work order, and that a confirmation waits behind an older open restore. Use-case cases follow the fourth validation's probes N1 and N2: a delivery, and a cancellation, saved after a confirmation that failed once. Tests only: no file outside `test/` changes.
+**Where**: `test/integration/work-order-stock-steps.adapter.spec.ts`, `test/integration/return-beside-withdrawal.spec.ts`
+**Depends on**: T84
+**Reuses**: T76's order cases and the use-case probes of `return-beside-withdrawal.spec.ts`
+**Requirement**: CA-10
+
+**Tools**:
+
+- MCP: NONE
+- Skill: NONE
+
+**Done when**:
+
+- [ ] A pending confirmation, and a failed one, hold a later restore, settlement and write-off of their work order until the confirmation is done (integration, adapter)
+- [ ] A confirmation waits behind an older pending restore of its work order (integration, adapter)
+- [ ] A delivery saved after a confirmation that failed once settles the consumption after the confirmation applies, and a cancellation in the same order writes off the outstanding units (integration, use cases)
+- [ ] Mutant O1, `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')` in the claim's order condition, fails at least one new case; no file outside `test/` changes
+- [ ] Test count: integration total grows; unit and e2e unchanged
+- [ ] Gate check passes: `npm run lint && npm run test:unit && npm run test:integration && npm run test:e2e`
+
+**Tests**: integration
+**Gate**: full
+
+**Commit**: `test(work-orders): hold the later steps behind a confirmation`
+
+---
+
 ## Phase Execution Map
 
 ```
@@ -2670,6 +2709,7 @@ Phase 18: T63 → T64 → T65 → T66 → T67
 Phase 19: T68 → T69 → T70 → T71 → T72 → T73 → T74 → T75
 Phase 20: T76 → T77 → T78
 Phase 21: T79 → T80 → T81 → T82 → T83 → T84
+Phase 22: T85
 ```
 
 Execution is strictly sequential. Cross-phase dependencies (for example T21 on T15 and T16) point backward and need no arrow.
@@ -2764,6 +2804,7 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T82 | T81 | T81 → T82 | ✅ Match |
 | T83 | T82 | T82 → T83 | ✅ Match |
 | T84 | T83 | T83 → T84 | ✅ Match |
+| T85 | T84 | Phase 22 start | ✅ Match |
 
 ## Test Co-location Validation
 
@@ -2853,3 +2894,4 @@ Execution is strictly sequential. Cross-phase dependencies (for example T21 on T
 | T82: Confirmed reads | Repository, fake, adapter | integration (highest) | integration | ✅ OK |
 | T83: ADR 0033 and README | Documentation | none | none | ✅ OK |
 | T84: Designs | Documentation | none | none | ✅ OK |
+| T85: Confirmation holds later steps | Tests only | integration | integration | ✅ OK |
