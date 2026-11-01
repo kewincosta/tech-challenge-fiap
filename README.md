@@ -245,11 +245,13 @@ A transaction writes the tables of one module only. A flow that writes two modul
 and each module commits its own. The module that orchestrates the flow keeps an outbox table of its
 own, `work_order_stock_steps` in `work-orders` and `customer_account_steps` in `customers`, and a
 processor applies the steps that are due. Withdrawing a part arms an undo step, consumes the stock
-in `inventory`, and then saves the work order and closes the step in one transaction. When the save
-fails, the request gives the units back at once, and when the process stops in between, the
+in `inventory`, and then, in one transaction, closes the step, saves the work order and records a
+confirmation step, which the request applies after the commit. When the save fails, the request gives the units back at once, and when the process stops in between, the
 processor gives them back after a grace period. A return, a delivery and a cancellation save the
 work order and record the stock step together, apply it after the commit, and leave a failed
-attempt to the processor, which retries it with a growing delay. The registration of a customer
+attempt to the processor, which retries it with a growing delay. Those steps count only the
+consumptions a work order confirmed, so the consumption of a withdrawal in flight belongs to its undo
+alone. The registration of a customer
 with a new account follows the withdrawal: it arms a discard step, opens the account in `identity`,
 and then saves the customer. Every receiving step is idempotent by operation id
 ([ADR 0033](docs/adr/0033-writes-across-modules-run-as-steps.md)).

@@ -131,8 +131,8 @@ is the key `inventory` applies the step by, so a repeat changes nothing. A confi
 - `PendingStockSteps` (`application/ports`), implemented by `TypeOrmPendingStockSteps` over
   `work_order_stock_steps`. `arm` records an armed step in a statement of its own. `enqueue` records a
   pending step, and `disarm` closes an armed step only while it is still armed and says whether it
-  did; both join the transaction the caller has open. `complete`, `release`, `recordFailure` and
-  `markFailed` are statements of their own. `claimDue` takes the due steps with
+  did; both join the transaction the caller has open. `complete` joins the transaction the caller has open,
+  if there is one. `release`, `recordFailure` and `markFailed` are statements of their own. `claimDue` takes the due steps with
   `FOR UPDATE SKIP LOCKED` and leases them for the grace period, counting the attempt.
 - `StockStepApplier` (`application/services`) applies one claimed step through the `StockLedger`
   method of its kind (`undoConsumption`, `confirmConsumption`, `restore`, `settle` or `writeOff`),
