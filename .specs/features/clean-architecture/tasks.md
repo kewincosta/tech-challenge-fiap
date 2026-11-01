@@ -2669,12 +2669,12 @@ The fourth validation (2026-11-01) found the code correct and one mutant alive: 
 
 **Done when**:
 
-- [ ] A pending confirmation, and a failed one, hold a later restore, settlement and write-off of their work order until the confirmation is done (integration, adapter)
-- [ ] A confirmation waits behind an older pending restore of its work order (integration, adapter)
-- [ ] A delivery saved after a confirmation that failed once settles the consumption after the confirmation applies, and a cancellation in the same order writes off the outstanding units (integration, use cases)
-- [ ] Mutant O1, `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')` in the claim's order condition, fails at least one new case; no file outside `test/` changes
-- [ ] Test count: integration total grows; unit and e2e unchanged
-- [ ] Gate check passes: `npm run lint && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] A pending confirmation, and a failed one, hold a later restore, settlement and write-off of their work order until the confirmation is done (integration, adapter)
+- [x] A confirmation waits behind an older pending restore of its work order (integration, adapter)
+- [x] A delivery saved after a confirmation that failed once settles the consumption after the confirmation applies, and a cancellation in the same order writes off the outstanding units (integration, use cases)
+- [x] Mutant O1, `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')` in the claim's order condition, fails at least one new case; no file outside `test/` changes
+- [x] Test count: integration total grows; unit and e2e unchanged
+- [x] Gate check passes: `npm run lint && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: full

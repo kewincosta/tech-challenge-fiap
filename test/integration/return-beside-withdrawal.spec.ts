@@ -22,6 +22,10 @@ import { StockMovementId } from '../../src/modules/inventory/domain/value-object
 import { INVENTORY_ITEM_REPOSITORY } from '../../src/modules/inventory/inventory.tokens';
 import { CancelWorkOrderCommand } from '../../src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.command';
 import { CancelWorkOrderUseCase } from '../../src/modules/work-orders/application/commands/cancel-work-order/cancel-work-order.use-case';
+import { CompleteWorkOrderCommand } from '../../src/modules/work-orders/application/commands/complete-work-order/complete-work-order.command';
+import { CompleteWorkOrderUseCase } from '../../src/modules/work-orders/application/commands/complete-work-order/complete-work-order.use-case';
+import { DeliverVehicleCommand } from '../../src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.command';
+import { DeliverVehicleUseCase } from '../../src/modules/work-orders/application/commands/deliver-vehicle/deliver-vehicle.use-case';
 import { ReturnPartsCommand } from '../../src/modules/work-orders/application/commands/return-parts/return-parts.command';
 import { ReturnPartsUseCase } from '../../src/modules/work-orders/application/commands/return-parts/return-parts.use-case';
 import { WithdrawPartsCommand } from '../../src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.command';
@@ -33,6 +37,7 @@ import { StockStepLog } from '../../src/modules/work-orders/application/ports/st
 import { WorkOrderRepository } from '../../src/modules/work-orders/application/ports/work-order.repository';
 import { CancellationAuthorizer } from '../../src/modules/work-orders/application/services/cancellation.authorizer';
 import { StockStepApplier } from '../../src/modules/work-orders/application/services/stock-step-applier';
+import { WorkOrderCompletionAuthorizer } from '../../src/modules/work-orders/application/services/work-order-completion.authorizer';
 import { BudgetStatus } from '../../src/modules/work-orders/domain/budget-status';
 import { Budget } from '../../src/modules/work-orders/domain/entities/budget';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
@@ -221,8 +226,10 @@ interface Scenario {
 }
 
 // A work order in execution, saved through the real repository, that planned 10 units of one part
-// and has already withdrawn 3 of them through the real use case, confirmation included.
-async function scenario(): Promise<Scenario> {
+// and has already withdrawn 3 of them through the real use case, confirmation included. A case that
+// asks for a confirmation that fails once gets the withdrawal saved with its consumption still
+// unconfirmed and the confirmation step waiting for a second attempt.
+async function scenario(options: { confirmationFailsOnce?: boolean } = {}): Promise<Scenario> {
   const itemId = await buildStockedItem(SHELF);
   const { customerId, vehicleId } = await insertCustomerAndVehicle();
   const workOrderId = randomUUID();
@@ -279,7 +286,10 @@ async function scenario(): Promise<Scenario> {
   );
   madeWorkOrders.push(workOrderId);
   const fixture = { workOrderId, number, itemId, partItemId };
-  await withdrawalUseCase().execute(withdrawCommand(fixture, FIRST_WITHDRAWAL));
+  const withdrawal = options.confirmationFailsOnce
+    ? withdrawalUseCase({ applier: applierWhoseConfirmationFailsOnce() })
+    : withdrawalUseCase();
+  await withdrawal.execute(withdrawCommand(fixture, FIRST_WITHDRAWAL));
   return fixture;
 }
 
@@ -302,7 +312,7 @@ function returnCommand(fixture: Scenario, quantity: number): ReturnPartsCommand 
 // The use cases, built from the application's providers. A case hands one of them a wrapped
 // dependency to fix the order of events.
 function withdrawalUseCase(
-  over: { workOrders?: WorkOrderRepository; ledger?: StockLedger } = {},
+  over: { workOrders?: WorkOrderRepository; ledger?: StockLedger; applier?: StockStepApplier } = {},
 ): WithdrawPartsUseCase {
   return new WithdrawPartsUseCase(
     over.workOrders ?? workOrders,
@@ -311,7 +321,7 @@ function withdrawalUseCase(
     clock,
     over.ledger ?? ledger,
     steps,
-    applier,
+    over.applier ?? applier,
     settings,
     events,
   );
@@ -344,6 +354,28 @@ function cancellationUseCase(): CancelWorkOrderUseCase {
   );
 }
 
+// The fixture assigns the work order to the actor, so the actor may complete it.
+function completionUseCase(): CompleteWorkOrderUseCase {
+  return new CompleteWorkOrderUseCase(
+    workOrders,
+    new WorkOrderCompletionAuthorizer(new FakeWorkOrderActors()),
+    clock,
+    events,
+  );
+}
+
+function deliveryUseCase(): DeliverVehicleUseCase {
+  return new DeliverVehicleUseCase(
+    workOrders,
+    transactionRunner,
+    idGenerator,
+    clock,
+    steps,
+    applier,
+    events,
+  );
+}
+
 interface LedgerHooks {
   /** Runs once the consumption has committed. */
   afterConsume?: () => Promise<void>;
@@ -351,11 +383,14 @@ interface LedgerHooks {
   undoFailure?: Error;
   /** The first restore fails, as an inventory that is busy would make it. */
   restoreFailsOnce?: boolean;
+  /** The first confirmation fails, the same way. */
+  confirmationFailsOnce?: boolean;
 }
 
 /** The real ledger, with the hooks a case needs between its calls. */
 function ledgerWith(hooks: LedgerHooks): StockLedger {
   let restoreFailed = false;
+  let confirmationFailed = false;
   return {
     consume: async (workOrderId, lines, actorUserId, operationId) => {
       await ledger.consume(workOrderId, lines, actorUserId, operationId);
@@ -372,8 +407,13 @@ function ledgerWith(hooks: LedgerHooks): StockLedger {
       hooks.undoFailure
         ? Promise.reject(hooks.undoFailure)
         : ledger.undoConsumption(operationId, actorUserId),
-    confirmConsumption: (operationId, actorUserId) =>
-      ledger.confirmConsumption(operationId, actorUserId),
+    confirmConsumption: (operationId, actorUserId) => {
+      if (hooks.confirmationFailsOnce && !confirmationFailed) {
+        confirmationFailed = true;
+        return Promise.reject(new Error('inventory is busy'));
+      }
+      return ledger.confirmConsumption(operationId, actorUserId);
+    },
     settle: (workOrderId, actorUserId) => ledger.settle(workOrderId, actorUserId),
     writeOff: (workOrderId, actorUserId) => ledger.writeOff(workOrderId, actorUserId),
   };
@@ -384,6 +424,18 @@ function applierWhoseRestoreFailsOnce(): StockStepApplier {
   return new StockStepApplier(
     steps,
     ledgerWith({ restoreFailsOnce: true }),
+    clock,
+    stepLog,
+    settings,
+  );
+}
+
+// The applier a withdrawal uses when its attempt at the confirmation meets an inventory that fails
+// once.
+function applierWhoseConfirmationFailsOnce(): StockStepApplier {
+  return new StockStepApplier(
+    steps,
+    ledgerWith({ confirmationFailsOnce: true }),
     clock,
     stepLog,
     settings,
@@ -467,6 +519,33 @@ async function stepsOf(workOrderId: string): Promise<Array<[string, string]>> {
     [workOrderId],
   );
   return rows.map((row) => [row.kind, row.status]);
+}
+
+// The same list with the attempts each step counted.
+async function stepAttemptsOf(workOrderId: string): Promise<Array<[string, string, number]>> {
+  const rows: Array<{ kind: string; status: string; attempts: number }> = await dataSource.query(
+    `SELECT s.kind, s.status, s.attempts
+       FROM work_order_stock_steps s
+       JOIN work_orders wo ON wo.id = s.work_order_id
+      WHERE wo.external_id = $1
+      ORDER BY s.id`,
+    [workOrderId],
+  );
+  return rows.map((row) => [row.kind, row.status, row.attempts]);
+}
+
+// The consumptions of the item: the units, the status and whether the work order confirmed it.
+async function consumptionsOf(itemId: string): Promise<Array<[number, string | null, boolean]>> {
+  const rows: Array<{ quantity: number; status: string | null; confirmed_at: Date | null }> =
+    await dataSource.query(
+      `SELECT sm.quantity, sm.status, sm.confirmed_at
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+        WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'
+        ORDER BY sm.id`,
+      [itemId],
+    );
+  return rows.map((row) => [row.quantity, row.status, row.confirmed_at !== null]);
 }
 
 // The end state every case reaches before the cancellation: the work order and inventory agree on
@@ -659,5 +738,81 @@ describe('a return beside a withdrawal in flight, through the real use cases', (
       ['UNDO_CONSUMPTION', DONE],
       ['WRITE_OFF', DONE],
     ]);
+  });
+});
+
+// The confirmation of a withdrawal is a step of its work order, and it holds the steps recorded
+// after it. A settlement and a write-off read confirmed consumptions only, so one that applied
+// before the confirmation would close nothing of that withdrawal and be done for good, with the
+// consumption left pending on a delivered or canceled work order. The fourth validation's probes N1
+// and N2 follow a withdrawal of 3 units whose confirmation fails once with a delivery and with a
+// cancellation. Each closing step waits, and the processor then applies the confirmation and the
+// closing step in the order they were recorded.
+describe('a closing step recorded after a withdrawal whose confirmation failed, through the real use cases', () => {
+  it('N1: a delivery waits for the confirmation, and the processor then confirms the consumption and settles it', async () => {
+    const fixture = await scenario({ confirmationFailsOnce: true });
+    expect(await stepAttemptsOf(fixture.workOrderId)).toEqual([
+      ['UNDO_CONSUMPTION', DONE, 0],
+      ['CONFIRM_CONSUMPTION', 'PENDING', 1],
+    ]);
+    expect(await consumptionsOf(fixture.itemId)).toEqual([[FIRST_WITHDRAWAL, 'PENDING', false]]);
+    await completionUseCase().execute(new CompleteWorkOrderCommand(fixture.number, actorId));
+
+    // The delivery is saved with its step, and its attempt claims nothing behind the confirmation.
+    await deliveryUseCase().execute(new DeliverVehicleCommand(fixture.number, actorId));
+
+    expect(await stepAttemptsOf(fixture.workOrderId)).toEqual([
+      ['UNDO_CONSUMPTION', DONE, 0],
+      ['CONFIRM_CONSUMPTION', 'PENDING', 1],
+      ['SETTLE', 'PENDING', 0],
+    ]);
+    expect(await consumptionsOf(fixture.itemId)).toEqual([[FIRST_WITHDRAWAL, 'PENDING', false]]);
+    expect(await transitionsOf(fixture.itemId)).toEqual([]);
+    expect(await quantityOf(fixture.itemId)).toBe(SHELF - FIRST_WITHDRAWAL);
+
+    // The processor runs past the wait of the confirmation: the confirmation first, then the
+    // settlement.
+    await drainStockStepsOfWorkOrder(testApp.app, fixture.workOrderId, secondsFromNow(5));
+
+    expect(await stepAttemptsOf(fixture.workOrderId)).toEqual([
+      ['UNDO_CONSUMPTION', DONE, 0],
+      ['CONFIRM_CONSUMPTION', DONE, 2],
+      ['SETTLE', DONE, 1],
+    ]);
+    expect(await consumptionsOf(fixture.itemId)).toEqual([[FIRST_WITHDRAWAL, 'SETTLED', true]]);
+    expect(await transitionsOf(fixture.itemId)).toEqual([['SETTLED', null]]);
+    expect(await quantityOf(fixture.itemId)).toBe(SHELF - FIRST_WITHDRAWAL);
+  });
+
+  it('N2: a cancellation waits for the confirmation, and the processor then confirms the consumption and writes off the units that are outstanding', async () => {
+    const fixture = await scenario({ confirmationFailsOnce: true });
+
+    // The cancellation is saved with its step, and its attempt claims nothing behind the
+    // confirmation.
+    await cancellationUseCase().execute(
+      new CancelWorkOrderCommand(fixture.number, 'No show', actorId),
+    );
+
+    expect(await stepAttemptsOf(fixture.workOrderId)).toEqual([
+      ['UNDO_CONSUMPTION', DONE, 0],
+      ['CONFIRM_CONSUMPTION', 'PENDING', 1],
+      ['WRITE_OFF', 'PENDING', 0],
+    ]);
+    expect(await consumptionsOf(fixture.itemId)).toEqual([[FIRST_WITHDRAWAL, 'PENDING', false]]);
+    expect(await transitionsOf(fixture.itemId)).toEqual([]);
+    expect(await quantityOf(fixture.itemId)).toBe(SHELF - FIRST_WITHDRAWAL);
+
+    // The processor runs past the wait of the confirmation: the confirmation first, then the
+    // write-off.
+    await drainStockStepsOfWorkOrder(testApp.app, fixture.workOrderId, secondsFromNow(5));
+
+    expect(await stepAttemptsOf(fixture.workOrderId)).toEqual([
+      ['UNDO_CONSUMPTION', DONE, 0],
+      ['CONFIRM_CONSUMPTION', DONE, 2],
+      ['WRITE_OFF', DONE, 1],
+    ]);
+    expect(await consumptionsOf(fixture.itemId)).toEqual([[FIRST_WITHDRAWAL, 'WRITTEN_OFF', true]]);
+    expect(await transitionsOf(fixture.itemId)).toEqual([['WRITTEN_OFF', FIRST_WITHDRAWAL]]);
+    expect(await quantityOf(fixture.itemId)).toBe(SHELF - FIRST_WITHDRAWAL);
   });
 });

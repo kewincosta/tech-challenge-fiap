@@ -756,6 +756,95 @@ describe('TypeOrmPendingStockSteps', () => {
     });
   });
 
+  describe('a confirmation step, which is inside the order of the steps of a work order', () => {
+    // A withdrawal records its confirmation with the save and never arms it, so the confirmation is
+    // pending until it applies, and failed once its attempts run out. Each state comes with the way
+    // out of it: a pending step is completed, and an operator sets a failed one back to pending
+    // first. The later steps wait because a settlement and a write-off read confirmed consumptions
+    // only: one that applied before the confirmation would close nothing and be done for good.
+    const HOLDING_STATES: Array<
+      [string, (step: StockStep) => Promise<void>, (step: StockStep) => Promise<void>]
+    > = [
+      ['pending', (step) => steps.enqueue(step), (step) => steps.complete(step.operationId)],
+      [
+        'failed',
+        async (step) => {
+          await steps.enqueue(step);
+          await steps.claimDue(at(0), 10, at(300), [step.operationId]);
+          await steps.markFailed(step.operationId, 'gave up');
+        },
+        async (step) => {
+          await dataSource.query(
+            `UPDATE work_order_stock_steps SET status = 'PENDING' WHERE operation_id = $1`,
+            [step.operationId],
+          );
+          await steps.complete(step.operationId);
+        },
+      ],
+    ];
+    const LATER_STEPS: Array<[string, StockStepKind]> = [
+      ['restore', StockStepKind.Restore],
+      ['settlement', StockStepKind.Settle],
+      ['write-off', StockStepKind.WriteOff],
+    ];
+
+    describe.each(HOLDING_STATES)('while the confirmation is %s', (_state, record, finish) => {
+      it.each(LATER_STEPS)(
+        'should not claim a later %s of its work order, and claim it once the confirmation is done',
+        async (_name, kind) => {
+          startClock();
+          const workOrderId = await insertWorkOrder();
+          const confirmation = await newStep({
+            workOrderId,
+            kind: StockStepKind.ConfirmConsumption,
+            consumptionOperationId: randomUUID(),
+          });
+          const later = await newStep({ workOrderId, kind });
+          await record(confirmation);
+          await steps.enqueue(later);
+
+          const whileOpen = await steps.claimDue(at(86_400), 10, at(90_000), [later.operationId]);
+          const heldBack = await rowOf(later.operationId);
+          await finish(confirmation);
+          const afterDone = await steps.claimDue(at(86_400), 10, at(90_000), [later.operationId]);
+
+          expect(whileOpen).toEqual([]);
+          expect(heldBack).toMatchObject({ status: 'PENDING', attempts: 0, due_at: at(0) });
+          expect(afterDone).toEqual([{ ...later, attempts: 1 }]);
+        },
+      );
+    });
+
+    it.each(HOLDING_STATES)(
+      'should not claim a confirmation while an older restore of its work order is %s, and claim it once that restore is done',
+      async (_state, record, finish) => {
+        startClock();
+        const workOrderId = await insertWorkOrder();
+        const restore = await newStep({ workOrderId, kind: StockStepKind.Restore });
+        const confirmation = await newStep({
+          workOrderId,
+          kind: StockStepKind.ConfirmConsumption,
+          consumptionOperationId: randomUUID(),
+        });
+        await record(restore);
+        await steps.enqueue(confirmation);
+
+        const whileWaiting = await steps.claimDue(at(86_400), 10, at(90_000), [
+          confirmation.operationId,
+        ]);
+        const heldBack = await rowOf(confirmation.operationId);
+        await finish(restore);
+        const afterDone = await steps.claimDue(at(86_400), 10, at(90_000), [
+          confirmation.operationId,
+        ]);
+
+        expect(whileWaiting).toEqual([]);
+        expect(heldBack).toMatchObject({ status: 'PENDING', attempts: 0, due_at: at(0) });
+        expect(afterDone).toEqual([{ ...confirmation, attempts: 1 }]);
+      },
+    );
+  });
+
   describe('recordFailure and markFailed', () => {
     it('should keep a failed attempt pending with its error and the time of the next one', async () => {
       startClock();
