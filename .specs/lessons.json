@@ -6,29 +6,9 @@
   "next_id": 32,
   "lessons": [
     {
-      "id": "L-002",
-      "key": "ac_gap::every line in a spec s edge cases section needs an owning task in tasks md an edge case with no task assigned to it typically ships unimplemented and untested",
-      "text": "Every line in a spec's Edge Cases section needs an owning task in tasks.md - an edge case with no task assigned to it typically ships unimplemented and untested.",
-      "signal": "ac_gap",
-      "scope": "planning",
-      "status": "confirmed",
-      "features": [
-        "identity-foundation",
-        "service-catalog"
-      ],
-      "recurrence": 2,
-      "harmful": 0,
-      "evidence": [
-        ".specs/features/identity-foundation/spec.md:206 (planning)",
-        "spec.md Edge Cases (whitespace-only duplicate name; update-path reuse of a deactivated service's name) - no owning task in tasks.md (planning)"
-      ],
-      "created": "2026-08-31T10:15:15Z",
-      "last_seen": "2026-08-31T17:48:37Z"
-    },
-    {
       "id": "L-003",
-      "key": "ac_gap::a value object s own passing unit tests or a sibling handler exercising the identical call pattern do not substitute for a dedicated test on the specific handler or route that also calls it give every error producing call site its own asserting test at the layer the test coverage matrix promises for that route",
-      "text": "A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.",
+      "key": "ac_gap::a value object s passing unit tests or a sibling use case with the same call pattern do not prove another call site give every route or use case that can produce an error its own asserting test at the layer the repo s test docs name for it",
+      "text": "A value object's passing unit tests, or a sibling use case with the same call pattern, do not prove another call site: give every route or use case that can produce an error its own asserting test, at the layer the repo's test docs name for it.",
       "signal": "ac_gap",
       "scope": "application-handlers",
       "status": "confirmed",
@@ -70,9 +50,9 @@
     },
     {
       "id": "L-018",
-      "key": "surviving_mutant::run the spec of an idempotent script against a database the spec creates and drops because on a shared database every run after the first skips the work and asserts rows an older version wrote",
+      "key": "weak_test::run the spec of an idempotent script against a database the spec creates and drops because on a shared database every run after the first skips the work and asserts rows an older version wrote",
       "text": "Run the spec of an idempotent script against a database the spec creates and drops, because on a shared database every run after the first skips the work and asserts rows an older version wrote.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "integration-tests",
       "status": "candidate",
       "features": [
@@ -88,9 +68,9 @@
     },
     {
       "id": "L-019",
-      "key": "surviving_mutant::give each architecture rule a refusing fixture for every kind of path it must reject so a looser pattern fails its own test",
+      "key": "weak_test::give each architecture rule a refusing fixture for every kind of path it must reject so a looser pattern fails its own test",
       "text": "Give each architecture rule a refusing fixture for every kind of path it must reject, so a looser pattern fails its own test.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "architecture-checks",
       "status": "candidate",
       "features": [
@@ -106,9 +86,9 @@
     },
     {
       "id": "L-020",
-      "key": "surviving_mutant::in memory repository fakes must store and return copies of the aggregate so a use case spec can tell a missing save from a saved change",
+      "key": "weak_test::in memory repository fakes must store and return copies of the aggregate so a use case spec can tell a missing save from a saved change",
       "text": "In-memory repository fakes must store and return copies of the aggregate, so a use case spec can tell a missing save from a saved change.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "test-support",
       "status": "candidate",
       "features": [
@@ -124,9 +104,9 @@
     },
     {
       "id": "L-021",
-      "key": "surviving_mutant::when a use case checks its input before a port read on purpose pin that order with a case that fails both checks and asserts which error wins",
+      "key": "weak_test::when a use case checks its input before a port read on purpose pin that order with a case that fails both checks and asserts which error wins",
       "text": "When a use case checks its input before a port read on purpose, pin that order with a case that fails both checks and asserts which error wins.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "application-use-cases",
       "status": "candidate",
       "features": [
@@ -142,8 +122,8 @@
     },
     {
       "id": "L-022",
-      "key": "ac_gap::when a task refines an existing ad nnn entry record the refinement in an adr in the same task so the entry and its adr state the same decision",
-      "text": "When a task refines an existing AD-NNN entry, record the refinement in an ADR in the same task, so the entry and its ADR state the same decision.",
+      "key": "ac_gap::when a change refines an existing ad nnn decision record the refinement in its adr in the same commit so the decision log and the adr state the same decision",
+      "text": "When a change refines an existing AD-NNN decision, record the refinement in its ADR in the same commit, so the decision log and the ADR state the same decision.",
       "signal": "ac_gap",
       "scope": "decisions",
       "status": "candidate",
@@ -178,9 +158,9 @@
     },
     {
       "id": "L-024",
-      "key": "surviving_mutant::apply every idempotent operation twice through the real adapter in a test so a dropped status guard on the repeat fails a suite",
+      "key": "weak_test::apply every idempotent operation twice through the real adapter in a test so a dropped status guard on the repeat fails a suite",
       "text": "Apply every idempotent operation twice through the real adapter in a test, so a dropped status guard on the repeat fails a suite.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "integration-tests",
       "status": "candidate",
       "features": [
@@ -286,9 +266,9 @@
     },
     {
       "id": "L-030",
-      "key": "surviving_mutant::give every step kind that an ordering rule names its own case that holds a later step behind it so a kind that drops out of the order fails a suite",
+      "key": "weak_test::give every step kind that an ordering rule names its own case that holds a later step behind it so a kind that drops out of the order fails a suite",
       "text": "Give every step kind that an ordering rule names its own case that holds a later step behind it, so a kind that drops out of the order fails a suite.",
-      "signal": "surviving_mutant",
+      "signal": "weak_test",
       "scope": "outbox",
       "status": "candidate",
       "features": [
@@ -298,24 +278,6 @@
       "harmful": 0,
       "evidence": [
         "O1 (typeorm-pending-stock-steps.ts:49), validation.md round 4 (outbox)"
-      ],
-      "created": "2026-11-01T12:41:12Z",
-      "last_seen": "2026-11-01T12:41:12Z"
-    },
-    {
-      "id": "L-031",
-      "key": "ac_gap::when an acceptance criterion lists several kinds give each listed kind its own done when case in the task that implements the criterion",
-      "text": "When an acceptance criterion lists several kinds, give each listed kind its own Done-when case in the task that implements the criterion.",
-      "signal": "ac_gap",
-      "scope": "planning",
-      "status": "candidate",
-      "features": [
-        "clean-architecture"
-      ],
-      "recurrence": 1,
-      "harmful": 0,
-      "evidence": [
-        "CA-10 AC10 (spec.md:224), validation.md round 4 (planning)"
       ],
       "created": "2026-11-01T12:41:12Z",
       "last_seen": "2026-11-01T12:41:12Z"
