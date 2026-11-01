@@ -9,6 +9,8 @@ import { StockStepApplier } from './stock-step-applier';
 
 const OPERATION_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_OPERATION_ID = '22222222-2222-4222-8222-222222222222';
+// The operation id of the withdrawal that a confirmation step confirms.
+const CONSUMPTION_OPERATION_ID = '66666666-6666-4666-8666-666666666666';
 const WORK_ORDER_ID = '33333333-3333-4333-8333-333333333333';
 const ACTOR_ID = '44444444-4444-4444-8444-444444444444';
 const ITEM_ID = '55555555-5555-4555-8555-555555555555';
@@ -21,6 +23,8 @@ function stepOf(kind: StockStepKind, operationId = OPERATION_ID): StockStep {
     workOrderId: WORK_ORDER_ID,
     actorUserId: ACTOR_ID,
     lines: kind === StockStepKind.Restore ? LINES : undefined,
+    consumptionOperationId:
+      kind === StockStepKind.ConfirmConsumption ? CONSUMPTION_OPERATION_ID : undefined,
   };
 }
 
@@ -50,6 +54,24 @@ describe('StockStepApplier', () => {
         { operationId: OPERATION_ID, actorUserId: ACTOR_ID, insideTransaction: false },
       ]);
       expect([ledger.restored, ledger.settled, ledger.writtenOff]).toEqual([[], [], []]);
+    });
+
+    it('confirms the consumption of the withdrawal the step carries, under the operation id of that withdrawal', async () => {
+      const { applier, steps, ledger } = makeApplier();
+      steps.seed(stepOf(StockStepKind.ConfirmConsumption));
+
+      await applier.applyDue();
+
+      expect(ledger.confirmed).toEqual([
+        { operationId: CONSUMPTION_OPERATION_ID, actorUserId: ACTOR_ID, insideTransaction: false },
+      ]);
+      expect([ledger.undone, ledger.restored, ledger.settled, ledger.writtenOff]).toEqual([
+        [],
+        [],
+        [],
+        [],
+      ]);
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'DONE', attempts: 1 });
     });
 
     it('restores the lines of the step under its operation id', async () => {
@@ -210,6 +232,45 @@ describe('StockStepApplier', () => {
         });
       },
     );
+
+    it.each([
+      [1, 1],
+      [3, 30],
+      [6, 3600],
+    ])(
+      'after attempt %i of a confirmation it keeps the step pending and waits %i seconds',
+      async (attempt, seconds) => {
+        const { applier, steps, ledger, clock } = makeApplier({ maxAttempts: 10 });
+        ledger.refuseWith(new Error('inventory is busy'), 'confirmConsumption');
+        steps.seed(stepOf(StockStepKind.ConfirmConsumption), { attempts: attempt - 1 });
+
+        await applier.applyDue();
+
+        expect(steps.stateOf(OPERATION_ID)).toMatchObject({
+          status: 'PENDING',
+          attempts: attempt,
+          dueAt: new Date(clock.now().getTime() + seconds * 1000),
+          lastError: 'inventory is busy',
+        });
+        expect(ledger.confirmed).toEqual([]);
+      },
+    );
+
+    it('keeps a confirmation that carries no consumption operation id pending with the error, and confirms nothing', async () => {
+      const { applier, steps, ledger } = makeApplier();
+      steps.seed({
+        ...stepOf(StockStepKind.ConfirmConsumption),
+        consumptionOperationId: undefined,
+      });
+
+      await applier.applyDue();
+
+      expect(steps.stateOf(OPERATION_ID)).toMatchObject({
+        status: 'PENDING',
+        lastError: 'A confirmation step carries no consumption operation id',
+      });
+      expect(ledger.confirmed).toEqual([]);
+    });
 
     it('retries the step once the wait is over', async () => {
       const { applier, steps, ledger, clock } = makeApplier();

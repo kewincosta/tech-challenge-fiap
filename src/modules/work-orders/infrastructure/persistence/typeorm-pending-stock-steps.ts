@@ -14,6 +14,7 @@ import { StockLine } from '../../application/ports/stock-ledger.port';
 interface StepPayload {
   actorUserId: string;
   lines?: StockLine[];
+  consumptionOperationId?: string;
 }
 
 interface ClaimedRow {
@@ -132,6 +133,7 @@ export class TypeOrmPendingStockSteps implements PendingStockSteps {
       workOrderId: row.work_order_external_id,
       actorUserId: row.payload.actorUserId,
       lines: row.payload.lines,
+      consumptionOperationId: row.payload.consumptionOperationId,
       attempts: row.attempts,
     }));
   }
@@ -160,7 +162,11 @@ export class TypeOrmPendingStockSteps implements PendingStockSteps {
     status: 'ARMED' | 'PENDING',
     dueAt: Date,
   ): Promise<void> {
-    const payload: StepPayload = { actorUserId: step.actorUserId, lines: step.lines };
+    const payload: StepPayload = {
+      actorUserId: step.actorUserId,
+      lines: step.lines,
+      consumptionOperationId: step.consumptionOperationId,
+    };
     const rows: unknown[] = await manager.query(
       `INSERT INTO work_order_stock_steps
          (operation_id, kind, work_order_id, payload, status, due_at, created_at)

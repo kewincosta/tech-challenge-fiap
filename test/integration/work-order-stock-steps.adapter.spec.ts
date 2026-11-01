@@ -108,7 +108,11 @@ interface StepRow {
   last_error: string | null;
   completed_at: Date | null;
   created_at: Date;
-  payload: { actorUserId: string; lines?: Array<{ inventoryItemId: string; quantity: number }> };
+  payload: {
+    actorUserId: string;
+    lines?: Array<{ inventoryItemId: string; quantity: number }>;
+    consumptionOperationId?: string;
+  };
   work_order_external_id: string;
 }
 
@@ -415,6 +419,24 @@ describe('TypeOrmPendingStockSteps', () => {
         status: 'PENDING',
         attempts: 1,
         due_at: at(300),
+      });
+    });
+
+    it('should keep the consumption operation id of a confirmation in its payload and hand it out on a claim', async () => {
+      startClock();
+      const consumptionOperationId = randomUUID();
+      const step = await newStep({
+        kind: StockStepKind.ConfirmConsumption,
+        consumptionOperationId,
+      });
+      await steps.enqueue(step);
+
+      const claimed = await steps.claimDue(at(0), 10, at(300), [step.operationId]);
+
+      expect(claimed).toEqual([{ ...step, attempts: 1 }]);
+      expect(await rowOf(step.operationId)).toMatchObject({
+        kind: 'CONFIRM_CONSUMPTION',
+        payload: { actorUserId: actorId, consumptionOperationId },
       });
     });
 

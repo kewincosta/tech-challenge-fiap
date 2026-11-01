@@ -76,6 +76,15 @@ export class StockStepApplier {
     switch (step.kind) {
       case StockStepKind.UndoConsumption:
         return this.ledger.undoConsumption(step.operationId, step.actorUserId);
+      case StockStepKind.ConfirmConsumption:
+        // A confirmation without the withdrawal's operation id confirms nothing. Failing the step
+        // lets its attempts run out and puts it in front of an operator.
+        if (step.consumptionOperationId === undefined) {
+          return Promise.reject(
+            new Error('A confirmation step carries no consumption operation id'),
+          );
+        }
+        return this.ledger.confirmConsumption(step.consumptionOperationId, step.actorUserId);
       case StockStepKind.Restore:
         return this.ledger.restore(
           step.workOrderId,

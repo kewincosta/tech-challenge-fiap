@@ -2548,11 +2548,11 @@ The third validation (2026-10-31) found that a return's restore could draw its u
 
 **Done when**:
 
-- [ ] The spec on fakes proves the confirmation step enqueued in the save's transaction with the withdrawal's operation id, its application after the commit, and no confirmation step when the withdrawal fails or compensates
-- [ ] The applier spec applies `CONFIRM_CONSUMPTION` through the ledger, and a failed confirmation follows the delay schedule
-- [ ] After an accepted withdrawal, its consumptions carry a confirmation time and its confirmation step is `DONE` (integration)
-- [ ] Test count: unit and integration totals grow
-- [ ] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
+- [x] The spec on fakes proves the confirmation step enqueued in the save's transaction with the withdrawal's operation id, its application after the commit, and no confirmation step when the withdrawal fails or compensates
+- [x] The applier spec applies `CONFIRM_CONSUMPTION` through the ledger, and a failed confirmation follows the delay schedule
+- [x] After an accepted withdrawal, its consumptions carry a confirmation time and its confirmation step is `DONE` (integration)
+- [x] Test count: unit and integration totals grow
+- [x] Gate check passes: `npm run lint && npm run build && npm run test:unit && npm run test:integration && npm run test:e2e`
 
 **Tests**: integration
 **Gate**: build

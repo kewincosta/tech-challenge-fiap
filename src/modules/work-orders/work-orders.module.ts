@@ -231,6 +231,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         clock: Clock,
         stockLedger: StockLedger,
         steps: PendingStockSteps,
+        applier: StockStepApplier,
         settings: OutboxSettings,
         events: DomainEventPublisher,
       ) =>
@@ -241,6 +242,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
           clock,
           stockLedger,
           steps,
+          applier,
           settings,
           events,
         ),
@@ -251,6 +253,7 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         CLOCK,
         STOCK_LEDGER,
         PENDING_STOCK_STEPS,
+        StockStepApplier,
         OUTBOX_SETTINGS,
         DOMAIN_EVENT_PUBLISHER,
       ],

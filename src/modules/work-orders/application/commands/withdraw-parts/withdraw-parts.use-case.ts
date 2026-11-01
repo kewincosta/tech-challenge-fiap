@@ -8,6 +8,7 @@ import { OutboxSettings } from '../../outbox-settings';
 import { PendingStockSteps, StockStep, StockStepKind } from '../../ports/pending-stock-steps.port';
 import { StockLedger } from '../../ports/stock-ledger.port';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { StockStepApplier } from '../../services/stock-step-applier';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WithdrawPartsCommand } from './withdraw-parts.command';
@@ -20,13 +21,19 @@ import { WithdrawPartsCommand } from './withdraw-parts.command';
  * 1. It arms an undo step in the work-orders outbox, due after the grace period.
  * 2. Inventory consumes the stock in its own transaction, tagging the movements with the step's
  *    operation id.
- * 3. One work-orders transaction disarms the step and saves the work order.
+ * 3. One work-orders transaction disarms the step, saves the work order and records a confirmation
+ *    step that carries the operation id of the consumption.
+ *
+ * Once that transaction has committed, the request applies the confirmation. Until inventory has
+ * confirmed them, the consumptions belong to the undo alone, and a failed attempt never fails the
+ * request: the processor applies the confirmation later.
  *
  * If the consumption or the last step fails, the request gives the units back at once, completes
- * the step and answers the first error. A process that stops between the steps leaves the armed
- * step behind, and the processor undoes the consumption once the grace period has passed. When
- * the processor claimed the step before the request reached the last step, the disarm finds it
- * taken and the request answers 409: the work order stays unsaved and the units go back.
+ * the step and answers the first error, and no confirmation step exists. A process that stops
+ * between the steps leaves the armed step behind, and the processor undoes the consumption once
+ * the grace period has passed. When the processor claimed the step before the request reached the
+ * last step, the disarm finds it taken and the request answers 409: the work order stays unsaved
+ * and the units go back.
  */
 export class WithdrawPartsUseCase {
   constructor(
@@ -36,6 +43,7 @@ export class WithdrawPartsUseCase {
     private readonly clock: Clock,
     private readonly stockLedger: StockLedger,
     private readonly steps: PendingStockSteps,
+    private readonly applier: StockStepApplier,
     private readonly settings: OutboxSettings,
     private readonly events: DomainEventPublisher,
   ) {}
@@ -63,6 +71,15 @@ export class WithdrawPartsUseCase {
       workOrderId: workOrder.id.value,
       actorUserId: command.actorUserId,
     };
+    // The confirmation has an operation id of its own, because the id of each step is unique, and
+    // carries the id the consumption is tagged with.
+    const confirmation: StockStep = {
+      operationId: this.idGenerator.generate(),
+      kind: StockStepKind.ConfirmConsumption,
+      workOrderId: step.workOrderId,
+      actorUserId: step.actorUserId,
+      consumptionOperationId: step.operationId,
+    };
     const dueAt = new Date(this.clock.now().getTime() + this.settings.graceSeconds * 1000);
     // Nothing is consumed yet, so a failure here has nothing to undo.
     await this.steps.arm(step, dueAt);
@@ -82,12 +99,14 @@ export class WithdrawPartsUseCase {
           throw new ConcurrentModificationError();
         }
         await this.workOrders.save(workOrder);
+        await this.steps.enqueue(confirmation);
       });
     } catch (error) {
       await this.compensate(step);
       throw error;
     }
     this.events.publish(workOrder.pullDomainEvents());
+    await this.applier.applyAfterCommit(confirmation.operationId);
   }
 
   /**

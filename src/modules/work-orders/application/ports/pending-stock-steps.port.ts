@@ -2,6 +2,7 @@ import { StockLine } from './stock-ledger.port';
 
 export enum StockStepKind {
   UndoConsumption = 'UNDO_CONSUMPTION',
+  ConfirmConsumption = 'CONFIRM_CONSUMPTION',
   Restore = 'RESTORE',
   Settle = 'SETTLE',
   WriteOff = 'WRITE_OFF',
@@ -16,6 +17,11 @@ export interface StockStep {
   actorUserId: string;
   /** Only a restore carries lines. */
   lines?: StockLine[];
+  /**
+   * Only a confirmation carries it: the operation id of the withdrawal whose consumptions it
+   * confirms. The step's own `operationId` is another one, because each step has one of its own.
+   */
+  consumptionOperationId?: string;
 }
 
 /** A step a claim handed out. */

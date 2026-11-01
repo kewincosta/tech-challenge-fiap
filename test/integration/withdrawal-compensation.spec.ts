@@ -28,6 +28,7 @@ import {
   StockStepKind,
 } from '../../src/modules/work-orders/application/ports/pending-stock-steps.port';
 import { StockLedger } from '../../src/modules/work-orders/application/ports/stock-ledger.port';
+import { StockStepApplier } from '../../src/modules/work-orders/application/services/stock-step-applier';
 import { WorkOrderRepository } from '../../src/modules/work-orders/application/ports/work-order.repository';
 import { BudgetStatus } from '../../src/modules/work-orders/domain/budget-status';
 import { Budget } from '../../src/modules/work-orders/domain/entities/budget';
@@ -270,11 +271,15 @@ function ledgerWith(hooks: LedgerHooks): StockLedger {
   };
 }
 
+// The use case draws two ids: the operation id of the withdrawal, and then the one of the
+// confirmation step. Each step has an id of its own.
 function withdrawal(fixture: Scenario, hooks: LedgerHooks = {}) {
   const operationId = randomUUID();
+  const confirmationId = randomUUID();
+  const drawn = [operationId, confirmationId];
   const workOrders = new StubWorkOrders(fixture.workOrder);
   const events = new RecordingDomainEventPublisher();
-  const idGenerator: IdGenerator = { generate: () => operationId };
+  const idGenerator: IdGenerator = { generate: () => drawn.shift() ?? randomUUID() };
   const useCase = new WithdrawPartsUseCase(
     workOrders,
     transactionRunner,
@@ -282,12 +287,13 @@ function withdrawal(fixture: Scenario, hooks: LedgerHooks = {}) {
     clock,
     ledgerWith(hooks),
     steps,
+    testApp.app.get(StockStepApplier),
     settings,
     events,
   );
   const command = (quantity: number) =>
     new WithdrawPartsCommand(NUMBER, [{ itemId: fixture.partItemId, quantity }], actorId);
-  return { useCase, command, workOrders, events, operationId };
+  return { useCase, command, workOrders, events, operationId, confirmationId };
 }
 
 async function quantityOf(itemId: string): Promise<number> {
@@ -299,18 +305,33 @@ async function quantityOf(itemId: string): Promise<number> {
 }
 
 interface StepRow {
+  kind: string;
   status: string;
   attempts: number;
   due_at: Date;
   completed_at: Date | null;
+  payload: { actorUserId: string; consumptionOperationId?: string };
 }
 
 async function stepOf(operationId: string): Promise<StepRow> {
   const rows: StepRow[] = await dataSource.query(
-    `SELECT status, attempts, due_at, completed_at FROM work_order_stock_steps WHERE operation_id = $1`,
+    `SELECT kind, status, attempts, due_at, completed_at, payload FROM work_order_stock_steps WHERE operation_id = $1`,
     [operationId],
   );
   return rows[0];
+}
+
+/** The consumptions of the item, each with whether the work order confirmed it. */
+async function confirmedConsumptionsOf(itemId: string): Promise<boolean[]> {
+  const rows: Array<{ confirmed_at: Date | null }> = await dataSource.query(
+    `SELECT sm.confirmed_at
+       FROM stock_movements sm
+       JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+      WHERE ii.external_id = $1 AND sm.kind = 'CONSUMPTION'
+      ORDER BY sm.id`,
+    [itemId],
+  );
+  return rows.map((row) => row.confirmed_at !== null);
 }
 
 async function historyOf(itemId: string): Promise<Array<[string, number, string | null]>> {
@@ -380,6 +401,25 @@ describe('a withdrawal on the real adapters', () => {
     });
   });
 
+  describe('when it is accepted', () => {
+    it('records a confirmation step for the consumption, applies it after the commit and leaves the consumptions confirmed', async () => {
+      const fixture = await scenario();
+      const { useCase, command, operationId, confirmationId } = withdrawal(fixture);
+      expect(await confirmedConsumptionsOf(fixture.itemId)).toEqual([]);
+
+      await useCase.execute(command(2));
+
+      const confirmation = await stepOf(confirmationId);
+      expect(confirmation).toMatchObject({
+        kind: 'CONFIRM_CONSUMPTION',
+        status: 'DONE',
+        attempts: 1,
+        payload: { actorUserId: actorId, consumptionOperationId: operationId },
+      });
+      expect(await confirmedConsumptionsOf(fixture.itemId)).toEqual([true]);
+    });
+  });
+
   describe('when the work order save fails after the consumption', () => {
     it('returns the units, records the return in the movement history and answers the error of the save', async () => {
       const fixture = await scenario();
@@ -397,6 +437,17 @@ describe('a withdrawal on the real adapters', () => {
         ['RETURN', 2, fixture.workOrderId],
       ]);
       expect(events.published).toHaveLength(0);
+    });
+
+    it('records no confirmation step and leaves the consumption unconfirmed', async () => {
+      const fixture = await scenario();
+      const { useCase, command, workOrders, confirmationId } = withdrawal(fixture);
+      workOrders.saveFailure = new Error('the save failed');
+
+      await expect(useCase.execute(command(2))).rejects.toThrow('the save failed');
+
+      expect(await stepOf(confirmationId)).toBeUndefined();
+      expect(await confirmedConsumptionsOf(fixture.itemId)).toEqual([false]);
     });
 
     it('hands the step to the processor when the undo fails too, answers the first error, and the processor then returns the units', async () => {

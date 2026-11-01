@@ -6,6 +6,7 @@ import { FakeStockLedger } from '../../../../../../test/support/fakes/fake-stock
 import { FakeTransactionRunner } from '../../../../../../test/support/fakes/fake-transaction-runner';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { RecordingStockStepLog } from '../../../../../../test/support/fakes/recording-stock-step-log';
 import { ConcurrentModificationError } from '../../../../../shared/application/errors/concurrent-modification.error';
 import { Money } from '../../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../../../domain/budget-status';
@@ -25,6 +26,7 @@ import { WorkOrderStatus } from '../../../domain/work-order-status';
 import { OutboxSettings } from '../../outbox-settings';
 import { StockStepKind } from '../../ports/pending-stock-steps.port';
 import { StockLedger } from '../../ports/stock-ledger.port';
+import { StockStepApplier } from '../../services/stock-step-applier';
 import { WithdrawPartsCommand } from './withdraw-parts.command';
 import { WithdrawPartsUseCase } from './withdraw-parts.use-case';
 
@@ -38,6 +40,8 @@ const APPROVED_ITEM_ID = WorkOrderItemId.create('66666666-6666-4666-8666-6666666
 const APPROVED_INVENTORY_ITEM_ID = '77777777-7777-4777-8777-777777777777';
 // The first id `FakeIdGenerator` hands out, which the use case draws as the withdrawal's operation id.
 const OPERATION_ID = '00000000-0000-4000-8000-000000000001';
+// The second one, which it draws as the operation id of the confirmation step.
+const CONFIRMATION_ID = '00000000-0000-4000-8000-000000000002';
 
 function approvedRoundOnePart(): WorkOrderPartItem {
   return WorkOrderPartItem.restore({
@@ -94,7 +98,8 @@ class StockRefusal extends Error {}
 
 // The use case reaches every collaborator through `transactionRunner.watch`, which records the
 // calls in order and tells which of them ran while the transaction was open. The specs seed and
-// inspect the plain fakes.
+// inspect the plain fakes, and the applier works on them as well, so the ledger call it makes shows
+// whether it ran inside the transaction.
 function makeUseCase(refusal?: Error, graceSeconds = 300) {
   const transactionRunner = new FakeTransactionRunner();
   const workOrders = new InMemoryWorkOrderRepository(() => transactionRunner.active);
@@ -106,6 +111,13 @@ function makeUseCase(refusal?: Error, graceSeconds = 300) {
   const steps = new FakePendingStockSteps(clock);
   const events = new RecordingDomainEventPublisher();
   const settings: OutboxSettings = { pollIntervalMs: 5000, graceSeconds, maxAttempts: 10 };
+  const applier = new StockStepApplier(
+    steps,
+    stockLedger,
+    clock,
+    new RecordingStockStepLog(),
+    settings,
+  );
   const useCase = new WithdrawPartsUseCase(
     transactionRunner.watch('workOrders', workOrders),
     transactionRunner,
@@ -113,6 +125,7 @@ function makeUseCase(refusal?: Error, graceSeconds = 300) {
     clock,
     transactionRunner.watch('ledger', stockLedger),
     transactionRunner.watch('steps', steps),
+    applier,
     settings,
     transactionRunner.watch('events', events),
   );
@@ -178,7 +191,7 @@ describe('WithdrawPartsUseCase', () => {
     expect(events.published).toHaveLength(0);
   });
 
-  it('arms the undo step, consumes the stock, then disarms the step and saves the work order in one transaction', async () => {
+  it('arms the undo step, consumes the stock, then disarms the step, saves the work order and records the confirmation step in one transaction', async () => {
     const { useCase, workOrders, transactionRunner, stockLedger } = makeUseCase();
     await workOrders.save(restoreInExecution());
 
@@ -190,6 +203,7 @@ describe('WithdrawPartsUseCase', () => {
       'ledger.consume',
       'steps.disarm',
       'workOrders.save',
+      'steps.enqueue',
       'events.publish',
     ]);
     expect(transactionRunner.runCalls).toBe(1);
@@ -207,13 +221,17 @@ describe('WithdrawPartsUseCase', () => {
     ]);
   });
 
-  it('keeps every ledger call outside the work-orders transaction, which holds the disarm and the save only', async () => {
+  it('keeps every ledger call outside the work-orders transaction, which holds the disarm, the save and the confirmation step only', async () => {
     const { useCase, workOrders, transactionRunner } = makeUseCase();
     await workOrders.save(restoreInExecution());
 
     await useCase.execute(WITHDRAW_TWO);
 
-    expect(transactionRunner.callsInside).toEqual(['steps.disarm', 'workOrders.save']);
+    expect(transactionRunner.callsInside).toEqual([
+      'steps.disarm',
+      'workOrders.save',
+      'steps.enqueue',
+    ]);
   });
 
   it('arms an undo step for the operation, due after the grace period of the settings, and leaves it done', async () => {
@@ -252,6 +270,97 @@ describe('WithdrawPartsUseCase', () => {
       new PartWithdrawn(workOrders.workOrders[0].id.value, MECHANIC_ID, clock.now()),
     ]);
     expect(transactionRunner.callsInside).not.toContain('events.publish');
+  });
+
+  describe('the confirmation of the consumption', () => {
+    it('records a confirmation step with an operation id of its own that carries the operation id of the withdrawal', async () => {
+      const { useCase, workOrders, steps } = makeUseCase();
+      await workOrders.save(restoreInExecution());
+
+      await useCase.execute(WITHDRAW_TWO);
+
+      expect(steps.stateOf(CONFIRMATION_ID).step).toEqual({
+        operationId: CONFIRMATION_ID,
+        kind: StockStepKind.ConfirmConsumption,
+        workOrderId: workOrders.workOrders[0].id.value,
+        actorUserId: MECHANIC_ID,
+        consumptionOperationId: OPERATION_ID,
+      });
+    });
+
+    it('applies the confirmation after the commit, so inventory confirms the consumption of the withdrawal outside the transaction', async () => {
+      const { useCase, workOrders, stockLedger, steps } = makeUseCase();
+      await workOrders.save(restoreInExecution());
+
+      await useCase.execute(WITHDRAW_TWO);
+
+      expect(stockLedger.confirmed).toEqual([
+        { operationId: OPERATION_ID, actorUserId: MECHANIC_ID, insideTransaction: false },
+      ]);
+      expect(steps.stateOf(CONFIRMATION_ID)).toMatchObject({ status: 'DONE', attempts: 1 });
+    });
+
+    it('succeeds with the confirmation step left pending, with the error and the wait, when inventory refuses to confirm', async () => {
+      const { useCase, workOrders, stockLedger, steps, clock, events } = makeUseCase();
+      await workOrders.save(restoreInExecution());
+      stockLedger.refuseWith(new Error('inventory is busy'), 'confirmConsumption');
+
+      await expect(useCase.execute(WITHDRAW_TWO)).resolves.toBeUndefined();
+
+      expect(workOrders.workOrders[0].partItems[0].withdrawnQuantity).toBe(2);
+      expect(events.published).toHaveLength(1);
+      expect(steps.stateOf(CONFIRMATION_ID)).toMatchObject({
+        status: 'PENDING',
+        attempts: 1,
+        lastError: 'inventory is busy',
+        dueAt: new Date(clock.now().getTime() + 1000),
+      });
+    });
+
+    it.each<[string, (fixture: ReturnType<typeof makeUseCase>) => void]>([
+      [
+        'the consumption is refused',
+        ({ stockLedger }) =>
+          stockLedger.refuseWith(new StockRefusal('not enough stock'), 'consume'),
+      ],
+      [
+        'the consumption is refused and the undo fails too',
+        ({ stockLedger }) =>
+          stockLedger
+            .refuseWith(new StockRefusal('not enough stock'), 'consume')
+            .refuseWith(new Error('inventory is down'), 'undoConsumption'),
+      ],
+      [
+        'the save fails',
+        ({ workOrders }) => {
+          workOrders.save = () => Promise.reject(new Error('the save failed'));
+        },
+      ],
+      [
+        'the processor claimed the armed step',
+        ({ stockLedger, steps, clock }) => {
+          const consume = stockLedger.consume.bind(stockLedger);
+          stockLedger.consume = async (...args: Parameters<StockLedger['consume']>) => {
+            await consume(...args);
+            clock.advanceSeconds(300);
+            await steps.claimDue(clock.now(), 10, new Date(clock.now().getTime() + 300_000), [
+              OPERATION_ID,
+            ]);
+          };
+        },
+      ],
+    ])('records no confirmation step and confirms nothing when %s', async (_failure, arrange) => {
+      const fixture = makeUseCase();
+      await fixture.workOrders.save(restoreInExecution());
+      arrange(fixture);
+
+      await expect(fixture.useCase.execute(WITHDRAW_TWO)).rejects.toThrow();
+
+      expect([...fixture.steps.stored.values()].map((stored) => stored.step.kind)).toEqual([
+        StockStepKind.UndoConsumption,
+      ]);
+      expect(fixture.stockLedger.confirmed).toEqual([]);
+    });
   });
 
   it('lets the refusal raised by the stock side travel out untouched', async () => {
