@@ -294,16 +294,16 @@ Each requirement gets a unique ID for tracking across design, tasks, and validat
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CA-01 | P1: The core runs without the framework | Tasks | In Tasks |
-| CA-02 | P1: Every route answers exactly as before | Tasks | In Tasks |
-| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | Tasks | In Tasks |
-| CA-04 | P1: The build enforces the architecture | Tasks | In Tasks |
-| CA-05 | P1: Use case tests exercise real collaborators | Tasks | In Tasks |
-| CA-06 | P1: A second entry point reuses the use cases | Tasks | In Tasks |
-| CA-07 | P1: The decisions and extra choices are recorded | Tasks | In Tasks |
-| CA-08 | P2: Use cases carry the use case name | Tasks | In Tasks |
-| CA-09 | P2: The documentation matches the new structure | Tasks | In Tasks |
-| CA-10 | P1: Writes across modules run as steps an outbox completes | Tasks | In Tasks |
+| CA-01 | P1: The core runs without the framework | Tasks | Verified |
+| CA-02 | P1: Every route answers exactly as before | Tasks | Verified |
+| CA-03 | P1: Modules meet only through ports and public APIs, without cycles | Tasks | Verified |
+| CA-04 | P1: The build enforces the architecture | Tasks | Verified |
+| CA-05 | P1: Use case tests exercise real collaborators | Tasks | Verified |
+| CA-06 | P1: A second entry point reuses the use cases | Tasks | Verified |
+| CA-07 | P1: The decisions and extra choices are recorded | Tasks | Verified |
+| CA-08 | P2: Use cases carry the use case name | Tasks | Verified |
+| CA-09 | P2: The documentation matches the new structure | Tasks | Verified |
+| CA-10 | P1: Writes across modules run as steps an outbox completes | Tasks | Verified |
 
 **ID format:** `CA-NN`
 
