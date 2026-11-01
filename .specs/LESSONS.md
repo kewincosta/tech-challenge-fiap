@@ -102,6 +102,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: validation.md round 3, spec-precision gap 3 (CA-10 AC8 and AC10) (planning)
 - last seen: 2026-11-01T00:36:15Z
 
+### L-030 - Give every step kind that an ordering rule names its own case that holds a later step behind it, so a kind that drops out of the order fails a suite.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: O1 (typeorm-pending-stock-steps.ts:49), validation.md round 4 (outbox)
+- last seen: 2026-11-01T12:41:12Z
+
+### L-031 - When an acceptance criterion lists several kinds, give each listed kind its own Done-when case in the task that implements the criterion.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: CA-10 AC10 (spec.md:224), validation.md round 4 (planning)
+- last seen: 2026-11-01T12:41:12Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

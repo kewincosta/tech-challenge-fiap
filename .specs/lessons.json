@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 30,
+  "next_id": 32,
   "lessons": [
     {
       "id": "L-002",
@@ -283,6 +283,42 @@
       ],
       "created": "2026-11-01T00:36:15Z",
       "last_seen": "2026-11-01T00:36:15Z"
+    },
+    {
+      "id": "L-030",
+      "key": "surviving_mutant::give every step kind that an ordering rule names its own case that holds a later step behind it so a kind that drops out of the order fails a suite",
+      "text": "Give every step kind that an ordering rule names its own case that holds a later step behind it, so a kind that drops out of the order fails a suite.",
+      "signal": "surviving_mutant",
+      "scope": "outbox",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "O1 (typeorm-pending-stock-steps.ts:49), validation.md round 4 (outbox)"
+      ],
+      "created": "2026-11-01T12:41:12Z",
+      "last_seen": "2026-11-01T12:41:12Z"
+    },
+    {
+      "id": "L-031",
+      "key": "ac_gap::when an acceptance criterion lists several kinds give each listed kind its own done when case in the task that implements the criterion",
+      "text": "When an acceptance criterion lists several kinds, give each listed kind its own Done-when case in the task that implements the criterion.",
+      "signal": "ac_gap",
+      "scope": "planning",
+      "status": "candidate",
+      "features": [
+        "clean-architecture"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "CA-10 AC10 (spec.md:224), validation.md round 4 (planning)"
+      ],
+      "created": "2026-11-01T12:41:12Z",
+      "last_seen": "2026-11-01T12:41:12Z"
     }
   ]
 }

@@ -1,5 +1,387 @@
 # Clean architecture validation
 
+## Round 4
+
+**Date**: 2026-11-01
+**Spec**: `.specs/features/clean-architecture/spec.md`
+**Diff range**: `51a3a8a..f7d021d` (115 commits). Since round 3 (`f65d7f9`): the round 3 report `8d4f342`, the plan and spec amendments `22bbe69`, phase 21 (T79 `9a8b0ef`, T80 `e8e80b1`, T81 `d64b1b2`, T82 `9c816c5`, T83 `077c9d1`, T84 `ee2d8b5`), the documentation fix `135e4cf` and the records `f0582b1` and `f7d021d`.
+**Verifier**: independent sub-agent (author is not the verifier), round 4, which the user authorized beyond the loop's bound of three
+**Verdict**: FAIL
+
+### Verdict
+
+FAIL. Phase 21 closes round 3's finding. Round 3's probes B1 to B5 now end with the work order and inventory agreeing on 1 unit outstanding, the shelf at 19 of 20 through the use cases and at 9 of 10 on the adapters, a cancellation that writes off 1 unit, and every step `DONE`. The order the orchestrator added holds on HEAD as well: a delivery saved after a confirmation that failed once waits for that confirmation and then settles the consumption. Every gate passes on `workshop_test`, the concurrency file passes 5 of 5 isolated runs, 57 of 58 criteria and 27 of 27 edge cases match the spec, and 21 of 22 mutants die.
+
+One finding blocks the verdict:
+
+1. Mutant O1 survives all three suites. It takes the confirmation out of the order on the holding side, so a pending or failed confirmation no longer holds the later steps of its work order (`src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:49` reading `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')`). With it, 1272 unit, 508 integration and 246 e2e tests pass. On that mutant, a delivery saved after a confirmation that failed once settles nothing and completes, the confirmation applies afterwards, and the consumption stays `PENDING` on a delivered work order with no transition, every step `DONE` and nothing logged; a cancellation in the same order writes off nothing (probes N1, N2 and N4). CA-10 AC10 names confirmations among the steps that apply in the order they were recorded, a failed one holding the later ones (`spec.md:224`). The cases that pin the order use restores, settlements and write-offs only (`test/integration/work-order-stock-steps.adapter.spec.ts:571` to `:687`), and every confirmation in the suites applies at once, so the confirmation clause of AC10 has no test. HEAD behaves as the spec says (probes N1 to N4 pass there); the suites would let a regression of it through.
+
+---
+
+### Round 3's gap
+
+| Round 3 gap | Check at HEAD | Status |
+| --- | --- | --- |
+| 1. A return's restore could draw its units from the consumption of a withdrawal still in flight, so the undo of that withdrawal returned only what the restore left | Round 3's probes, re-run on HEAD in a throwaway spec written for this round in the scratch worktree: B2 and B3 through `WithdrawPartsUseCase`, `ReturnPartsUseCase` and `CancelWorkOrderUseCase` built from the application's providers, and B1 to B5 and "B2, then a cancellation" on the real adapters called in the order the use cases call them. Each ends with 1 unit outstanding in inventory (and on the work order, through the use cases), the shelf at 19 of 20 or 9 of 10, a cancellation that writes off 1 unit, and every step `DONE` (Probes). The restore's draw reads confirmed consumptions only (`src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:55` and `:129`), so it leaves the consumption of a withdrawal in flight to that withdrawal's undo. Regression cases through the real use cases: `test/integration/return-beside-withdrawal.spec.ts:493` (B2), `:553` (B3), `:586` (B4) and `:621` (B5), each asserting work order 1, inventory 1 and shelf 19 (`:475` to `:477`), `[['WRITTEN_OFF', 1]]` after a cancellation (`:485`) and five steps `DONE` (`:544`, `:577`, `:612`, `:655`). Mutant F1, which drops the confirmed filter from the restore's draw, fails B2, B3 and B5; B4 passes on F1, because the released undo now applies before the restore whatever the restore reads, and fails on A1, where no consumption gets confirmed | Closed |
+| Spec-precision gap 1: what a restore may draw from while a withdrawal of the same work order is in flight | CA-10 AC11 (`spec.md:225`) and the edge case at `spec.md:285` | Closed |
+| Spec-precision gap 2: CA-10 AC10 had no exception for an undo | AC10 as amended (`spec.md:224`): an undo applies once it is due, neither waiting for nor holding the other steps | Closed |
+| Spec-precision gap 3: an undo held behind an older failed step after its grace period | The same amendment; `test/integration/work-order-stock-steps.adapter.spec.ts:708` to `:720` claims an undo once it is due while an older restore is armed, pending or failed | Closed |
+
+---
+
+### Task completion
+
+All 416 Done-when boxes of `tasks.md` are checked and none is open. The ten commits since round 3 pass `check_commit.py` and carry no trailer. `validate_spec.py` reports 0 errors and 0 warnings; `validate_tasks.py` reports 0 errors and 26 granularity warnings.
+
+| Phase | Tasks and commits | Status |
+| --- | --- | --- |
+| 1 to 20 | As rounds 1 to 3 report them | Done |
+| 21. Confirmed consumptions | T79 `9a8b0ef`, T80 `e8e80b1`, T81 `d64b1b2`, T82 `9c816c5`, T83 `077c9d1`, T84 `ee2d8b5`, and `135e4cf` outside the task list (the README's "Writes across modules" and one sentence of `work-orders.md`) | Done; finding 1 is a case that T82's claim lacks |
+
+---
+
+### Spec-anchored acceptance criteria
+
+PASS means the cited assertion targets the outcome the spec defines. CA-10 AC2 to AC11, the two edge cases on a failed restore and on a return beside a withdrawal in flight, CA-09, CA-03 AC7 and every criterion phase 21 touched were derived again from the spec. For the others, round 3's evidence was re-read at HEAD: every file round 3 cites outside phase 21's diff is unchanged since `f65d7f9`, so its lines hold, and a line in a file phase 21 changed is given at its HEAD position. "Inspection" marks a structural criterion verified by reading the tree.
+
+#### CA-01: the core runs without the framework
+
+| Criterion | Spec-defined outcome | Evidence at HEAD (`file:line` and assertion) | Status |
+| --- | --- | --- | --- |
+| AC1: no banned import under `domain` or `application` | Zero | `test/architecture/core-purity.spec.ts:197` `expect(scanCore(ROOT, migratedModules)).toEqual([])`; lint "no dependency violations found (795 modules, 3657 dependencies cruised)"; a grep of every core folder for the banned packages and `node:` finds 0, the new `confirm-consumption` files included | PASS |
+| AC2: no decorator under `application` | Zero | `core-purity.spec.ts:150` and `:197`; a grep for decorators under every `application` folder finds 0 | PASS |
+| AC3: no injection token in the core | Zero | `core-purity.spec.ts:159` and `:197`; a grep for `Symbol(` in the core finds 0 | PASS |
+| AC4: repository contracts in the owner's `application/ports` | All of them | Inspection: `confirmConsumptionsOfOperation` joins the inventory contract at `src/modules/inventory/application/ports/inventory-item.repository.ts:73`; the other contracts as round 3 lists them | PASS (inspection) |
+| AC5: every use case built in its composition root | All of them | Inspection: a factory builds `ConfirmConsumptionUseCase` at `src/modules/inventory/inventory.module.ts:167` to `:172`, and `WithdrawPartsUseCase` receives the applier at `src/modules/work-orders/work-orders.module.ts:234`, `:245` and `:256`; the other roots as round 3 lists them | PASS (inspection) |
+| AC6: refresh token TTL of 600 | Exactly 600 000 ms | `test/e2e/authentication.e2e.spec.ts:391` `.toBe(600 * 1000)` | PASS |
+| AC7: reuse warning line | Exact message and context | `security-events.subscriber.spec.ts:29` and `:32` (`context: 'AuthenticationSecurity'`), `identity.module.spec.ts:68`, `refresh-session.use-case.spec.ts:166`; unchanged since round 3 | PASS |
+
+#### CA-02: every route answers exactly as before
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: OpenAPI document equals the baseline | Canonical equality | `test/e2e/openapi-contract.e2e.spec.ts:44` `expect(canonical(buildOpenApiDocument(testApp.app))).toBe(canonical(baseline))`, green at HEAD; `test/contract/openapi.baseline.json` has one commit, `709eb27` | PASS |
+| AC2: pre-existing e2e tests pass with no changed assertion except the approved race case | One changed assertion, in that case | `git diff 51a3a8a..HEAD` over the 16 e2e files of `51a3a8a` removes the same five lines as at round 3: the one `expect` of the approved case, now `test/e2e/work-order-concurrency.e2e.spec.ts:332` `expect(outstanding.every((units) => units === 0)).toBe(true)` and `:333` `.quantityOnHand).toBe(20)`; one import; two comments; and the bare `await close();` of that file's `afterAll`. No e2e file changed since round 3. 246 of 246 pass | PASS |
+| AC3: every route has an e2e test written before its flow moved | 73 of 73 | The OpenAPI document is unchanged, so no route was added; round 1's scan holds | PASS |
+| AC4: a query use case raises its module's not-found | 11 use cases | The 11 specs round 1 cites are unchanged since `943018a` | PASS |
+| AC5 (amended): a later step that fails is compensated or retried so that no operation stays half applied | Nothing half applied | Round 3's finding is closed (Round 3's gap). Covered paths at HEAD: `test/integration/withdrawal-compensation.spec.ts:430` `rejects.toBe(saveFailure)`, `:432` `toBe(SHELF)`; `registration-compensation.spec.ts:247`, `:249`; `stock-step-retries.spec.ts:340` to `:360` and `:401` to `:464`; `return-beside-withdrawal.spec.ts:475` to `:485`. Mutant O1 reaches a half-applied delivery that no test catches; it is counted under CA-10 AC10 (finding 1) | PASS |
+| AC6: a throwing subscriber leaves the result and is logged by name | `publish` never throws; the class is named | `in-memory-domain-event-dispatcher.spec.ts:105`, `:109`, `:112`, `:124`, `:129` | PASS |
+
+#### CA-03: modules meet only through ports and public APIs
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: no module cycle | 0 | `test/architecture/module-cycles.spec.ts:89`; lint "No dependency cycle between modules found (7 modules, 16 dependencies between them)." | PASS |
+| AC2: no core import into another module | 0 | `test/architecture/dependency-rules.spec.ts:158` `expect(stdout).toContain('no dependency violations found')`, `test/architecture/baselines.spec.ts:15` | PASS |
+| AC3: outer layers reach another module only through its `index.ts` | 0 | `dependency-rules.spec.ts:95` and `:102` to `:110`; acceptance A3 and A3b at HEAD (CA-04) | PASS |
+| AC4: a cross-module need goes through a consumer port | Port in the consumer, gateway in its infrastructure | The confirmation goes through `StockLedger.confirmConsumption` (`src/modules/work-orders/application/ports/stock-ledger.port.ts:47`) and `StockLedgerGateway.confirmConsumption` (`src/modules/work-orders/infrastructure/gateways/stock-ledger.gateway.ts:60`), which calls the use case inventory exports from its `index.ts` (`src/modules/inventory/index.ts:7` and `:8`); `stock-ledger.gateway.spec.ts:108` to `:120`, `:117` `confirm: [new ConfirmConsumptionCommand(OPERATION_ID, ACTOR_ID)]`; round 3's other cases hold | PASS |
+| AC5: identity is one module | One Nest module | `src/modules/identity/identity.module.ts:114` `@Module` | PASS |
+| AC6: no bus reference, no `@nestjs/cqrs` dependency | 0 | `grep -rnE "CommandBus\|QueryBus\|@nestjs/cqrs" src test scripts package.json` finds 0 | PASS |
+| AC7 (amended): `src/shared` gains only the listed pieces | Only those | `git diff --name-status 51a3a8a..HEAD -- src/shared` adds the publisher port, the dispatcher and its spec, the publisher spec, `shared.tokens.ts`, `runInNewTransaction` (`src/shared/infrastructure/database/typeorm-transaction-runner.ts:30`) and the two migrations AC7 names, `1787702400009-add-cross-module-steps.ts` and `1787702400010-add-consumption-confirmation.ts`; the four modified files lose the moved tokens and wire the dispatcher | PASS |
+| AC8: an adapter writes only its own tables | 0 findings | The confirmation's update writes `stock_movements` from inventory's repository (`typeorm-inventory-item.repository.ts:195` to `:202`), and `scripts/architecture/table-owners.ts:20` gives that table to `inventory`; `test/architecture/table-ownership.spec.ts:73`; `baselines.spec.ts:19`; lint "No table ownership violations found (0 known findings ignored)." | PASS |
+| AC9: no adapter reads another module's table | 0 findings | Same evidence. The claim's older-step check reads `work_order_stock_steps` alone (`src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:46`), and its update joins only `work_orders` (`:59`) | PASS |
+| AC10: translation between UUID and internal id through the owner's resolver | The resolvers | `typeorm-work-order-query.adapter.ts:232` to `:248`; `test/integration/work-order-query.adapter.spec.ts:510`; `typeorm-inventory-item.repository.ts:169` (round 3's `:157`) | PASS |
+| AC11: another module's data in batch through its API | One call per owner | `test/integration/customer-query.adapter.spec.ts:291` `toEqual(['toExternalIds', 'findUsers'])` | PASS |
+| AC12: consumer declares, owner implements, root binds | `WorkOrderReads` | Unchanged since round 1; `test/integration/work-order-reads.spec.ts` green | PASS |
+| AC13: a resolver sees rows written earlier in its transaction | Resolved inside | `user-key-resolver.spec.ts:125`, `customer-key-resolver.spec.ts:133`, `vehicle-key-resolver.spec.ts:141`, `service-key-resolver.spec.ts:121`, `inventory-item-key-resolver.spec.ts:119`, `work-order-reads.spec.ts:177`, `customer.repository.spec.ts:164` | PASS |
+
+#### CA-04: the build enforces the architecture
+
+Each acceptance check ran at HEAD in the scratch worktree: one throwaway file, then `npm run lint`, then the file removed. A lint of the unmodified worktree passed first. A first attempt counts for nothing: the round's probe file, then still in the worktree, failed ESLint before the architecture checks ran, so the probe files were moved out and every check ran again.
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: banned import fails lint, naming file and rule | Non-zero | A1: `src/modules/services/application/throwaway.ts` importing `@nestjs/common`, exit 1, "'@nestjs/common' import is restricted from being used by a pattern" with `no-restricted-imports` on that file; `test/architecture/dependency-rules.spec.ts:137` | PASS |
+| AC2: module cycle fails lint, naming the files | Non-zero, files named | A2: a type import of `customers` from `src/modules/identity/users/infrastructure/cycle-probe.ts`, exit 1, "Dependency cycle between modules: customers -> identity -> customers", then the importing file of each step; `test/architecture/module-cycles.spec.ts:36` and `:48` | PASS |
+| AC3: import outside `index.ts` fails lint, naming the file | Non-zero | A3 (`deep-probe.ts` importing a `customers` use case file) and A3b (`tokens-probe.ts` importing `customers.tokens.ts`), exit 1, "error through-public-api: src/modules/vehicles/infrastructure/deep-probe.ts" and ".../tokens-probe.ts", each with its target; `dependency-rules.spec.ts:95` and `:102` | PASS |
+| AC4: foreign table fails lint, naming adapter and table | Non-zero | A4: exit 1, "src/modules/vehicles/infrastructure/persistence/foreign-probe.ts: queries customers, a table owned by customers"; `test/architecture/table-ownership.spec.ts:51` | PASS |
+| AC5: empty baselines | Both `[]` | `test/architecture/baselines.spec.ts:15` and `:19` | PASS |
+| AC6: pre-push runs lint | Hook calls lint | `.husky/pre-push:6` `npm run lint` | PASS |
+
+#### CA-05: use case tests exercise real collaborators
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: no bus stub helpers | 0 | A grep over `src`, `test` and `scripts` finds 0 | PASS |
+| AC2: cross-module use cases tested through fakes in `test/support/fakes` | All of them | The withdrawal spec runs its confirmation through `FakeStockLedger.confirmConsumption` (`test/support/fakes/fake-stock-ledger.ts:97`) and a real `StockStepApplier` over the fakes (`withdraw-parts.use-case.spec.ts:114` to `:120`); the inventory use case specs run on the in-memory repository, which implements the confirmed read as decided (`test/support/fakes/in-memory-inventory-item.repository.ts:177` to `:193`); the other use cases as round 3 | PASS |
+| AC3: collaborations asserted on fake state | No `toHaveBeenCalled` on a cross-module port | `withdraw-parts.use-case.spec.ts:297` `expect(stockLedger.confirmed).toEqual([{ operationId: OPERATION_ID, actorUserId: MECHANIC_ID, insideTransaction: false }])`, `:362` `expect(fixture.stockLedger.confirmed).toEqual([])`; a grep of the specs phase 21 touched finds no `toHaveBeenCalled` | PASS |
+| AC4: thresholds keep their percentages | Same percentages | `vitest.config.ts` is unchanged since round 3; `npm run test:coverage` exits 0 with no threshold message | PASS |
+
+#### CA-06: a second entry point reuses the use cases
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: the seed calls the five use cases | The five use cases; the records exist | `scripts/seed.ts:170` to `:174`; `test/integration/seed.script.spec.ts:81` names a database of its own, `:109` to `:115` create, migrate and seed it twice, `:124` drops it; unchanged since round 3 | PASS |
+
+#### CA-07: the decisions are recorded
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: each decision as an AD and an ADR naming each other | Both places | AD-017 records the confirmation in its decision (`.specs/STATE.md:151`), and ADR 0033 in its decision (`docs/adr/0033-writes-across-modules-run-as-steps.md:30`), with the undo's exemption (`:32`), the hold rule as the alternative set aside (`:44`) and the consequences (`:52`, `:54`); each names the other (`STATE.md:154`, ADR 0033 `:5`); the earlier pairs as round 3 | PASS |
+| AC2: ADR for the four kept patterns | ADR 0031 | Unchanged | PASS |
+| AC3: ADR for permissions in the guard | ADR 0030 | Unchanged | PASS |
+| AC4: ADR 0008 and AD-003 superseded | Both marked | `docs/adr/0008-cross-context-calls-through-the-buses.md:3`; `.specs/STATE.md:30` | PASS |
+| AC5: ADR for own tables with three reasons | ADR 0028 | Unchanged | PASS |
+| AC6: ADR for the inversion | ADR 0027 | Body unchanged; status `Amended by 0033` (`docs/adr/0027-ports-between-modules.md:3`) | PASS |
+
+The statuses match the user's decisions: 0001 `Amended by 0026 and 0033`, 0008 `Superseded by 0027`, 0023 `Superseded by 0033`, 0027 `Amended by 0033`, 0032 `Accepted`. `git diff 51a3a8a..HEAD` changes only the status line of 0001, 0008 and 0023, and `git diff 61984b9..HEAD` only the status line of 0027. Phase 21 changed no ADR but 0033, which is this feature's own.
+
+#### CA-08: use cases carry the use case name
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: `<Name>UseCase` in `<name>.use-case.ts` | Only those names | The `commands` and `queries` folders hold 237 files: 80 `.use-case.ts`, 77 `.use-case.spec.ts`, 51 `.command.ts` and 29 `.query.ts`, phase 21's `confirm-consumption.use-case.ts` and `confirm-consumption.command.ts` among them; no `*Handler` class in `src` | PASS |
+| AC2: spec beside each use case | Named `<name>.use-case.spec.ts` | `confirm-consumption.use-case.spec.ts` sits beside its use case; the three use cases without a spec had none at `51a3a8a`, as round 1 records | PASS |
+
+#### CA-09: the documentation matches the structure
+
+| Criterion | Spec-defined outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| AC1: README circles and module graph | Both diagrams | `README.md:144` (circles labeled with their folders) and `README.md:201` (16 arrows, the count lint reports) | PASS |
+| AC2: no bus name, `*Handler` class or old identity path | 0 | `grep -rnE "CommandBus\|QueryBus\|@nestjs/cqrs\|Handler\b\|modules/(users\|authentication\|authorization)" README.md docs/architecture` finds 0 after phase 21's changes to both | PASS |
+
+Phase 21's documents describe the code as it is: the README's "Writes across modules" names the confirmation and the reads that require it (`README.md:242` to `:257`) and counts eleven migrations (`:393`); `docs/architecture/low-level-design/shared.md:109` counts eleven and names the last; `work-orders.md:123` to `:165` lists the five step kinds and `consumptionOperationId`, the order rule with the undo's exemption and the withdrawal's confirmation; `inventory.md:47`, `:51` to `:71` and `:151` list `ConfirmConsumptionUseCase`, the reads that require a confirmation and `confirmed_at`; `high-level-design.md:141`, `:152` to `:156`, `:180` and `:212` to `:214` say the same; the two changed C4 diagrams name the confirmation. `grep -rn "UNDO_CONSUMPTION\|StockLedger" docs/architecture` finds the confirmation wherever the step kinds or the ledger's operations are listed. A structural check of the two changed `.mmd` files finds every relation naming a defined element and the quotes and braces balanced (24 elements and 30 relations; 24 and 38).
+
+#### CA-10: writes across modules run as steps an outbox completes
+
+| Criterion | Spec-defined outcome | Evidence at HEAD (`file:line` and assertion) | Status |
+| --- | --- | --- | --- |
+| AC1: no transaction writes two modules; `run` wraps own tables only | Ledger and account calls outside the caller's transaction; nesting refused | `withdraw-parts.use-case.spec.ts:230` `expect(transactionRunner.callsInside).toEqual(['steps.disarm', 'workOrders.save', 'steps.enqueue'])`, `:219` `insideTransaction: false` on the consumption, `:297` the confirmation outside the transaction (`insideTransaction: false`); `register-customer.use-case.spec.ts:221` and `:222`; `return-parts.use-case.spec.ts:195` `toEqual(['workOrders.save', 'steps.enqueue'])`, `:220`; deliver `:129`, `:150`; cancel `:160`, `:182`; `test/integration/transaction-runner-nesting.spec.ts:46` `rejects.toThrow(/transaction is already open/)`, `:49`, `:50`; `test/integration/stock-use-case-transactions.spec.ts:215` to `:224`. R5 and E1 killed | PASS |
+| AC2: consume before saving; a shortage answers 422 and changes nothing | Order; 422 `INVENTORY_INSUFFICIENT_STOCK`; no change | `withdraw-parts.use-case.spec.ts:200` to `:208` (`steps.arm` and `ledger.consume` before `steps.disarm`, `workOrders.save` and `steps.enqueue`); `test/e2e/work-order-withdrawals.e2e.spec.ts:596` `.expect(422)`, `:598` `toMatchObject({ code: 'INVENTORY_INSUFFICIENT_STOCK' })`, `:599` and `:600` stock 10 and 2, `:606` `toEqual(['INBOUND'])`, `:609` `toEqual([0, 0])`; `withdrawal-compensation.spec.ts:511` to `:518` (the shortage rejects, stock 2, no save, history `[['INBOUND', 2, null]]`) | PASS |
+| AC3: a failed save returns every consumed unit, records each return linked to the work order, and answers the save's error | Units back; returns linked; the save's error | `withdrawal-compensation.spec.ts:430` `rejects.toBe(saveFailure)`, `:432` `toBe(SHELF)`, `:434` to `:438` `['CONSUMPTION', 2, fixture.workOrderId]` and `['RETURN', 2, fixture.workOrderId]`; `withdraw-parts.use-case.spec.ts:437` `rejects.toBe(saveFailure)`, `:441`; `stock-operation-steps.spec.ts:332` `toEqual([10, 6])`, `:342` `returned.undoesMovementId).toBe(consumption.id)`. With a return of the same work order applied beside it, the undo still returns every unit: `return-beside-withdrawal.spec.ts:541` and `:542` (B2), `:598` to `:603` `rejects.toBe(failingSave)` and `:610` (B4). R2 killed | PASS |
+| AC4: return, delivery and cancellation record their step with the save and apply it after the commit | Same transaction; applied after | `return-parts.use-case.spec.ts:195`, `:223` `toMatchObject({ status: 'DONE', attempts: 1 })`; deliver `:153`; cancel `:185`; `test/integration/work-order-step-transaction.spec.ts:166` and `:167` (committed together, step `PENDING`), `:192` and `:193` (rolled back together, no step); unchanged since round 3 | PASS |
+| AC5: a failed step stays pending and is retried with a growing delay; the answer reflects the saved work order | Pending; growing delay; request succeeds | `stock-step-applier.spec.ts:209` to `:234` (after attempts 1 to 6 the waits are 1, 5, 30, 120, 600 and 3600 s, and 3600 s after), `:236` to `:257` (the same schedule for a confirmation); `withdraw-parts.use-case.spec.ts:308` `resolves.toBeUndefined()`, `:310` the withdrawal saved, `:312` to `:317` the confirmation `PENDING` with the error and a 1 s wait; `return-parts.use-case.spec.ts:250`, `:253`; deliver `:174` to `:177`; cancel `:214` to `:217`; `stock-step-retries.spec.ts:340` to `:360`. A step held behind an older one stays `PENDING` with no attempt counted while its request succeeds: `stock-step-retries.spec.ts:446` to `:450`. R6 killed | PASS |
+| AC6: a step applied more than once changes the stock or the accounts once | Once | Undo: `stock-operation-steps.spec.ts:363` and `:364`, two at once `:407` and `:408`; restore: `:378` and `:379`, two at once `:424` and `:425`; write-off: interleaved `:536` to `:539`, together `:550`; settlement: a second run `:567` to `:571`, interleaved `:600` to `:603`; confirmation: a second one keeps the first time (`:646`; on the fake, `confirm-consumption.use-case.spec.ts:121`); discard of a missing user: `discard-opened-account.spec.ts:170` to `:174`. S22, R4 and C1 killed | PASS |
+| AC7: the registration opens the account in identity first; a failed customer save discards it, role included | Account and role gone; the save's error | `register-customer.use-case.spec.ts:246` (order), `:298` `rejects.toBe(saveFailure)`, `:302`; `registration-compensation.spec.ts:247` and `:249`; `discard-opened-account.spec.ts:161` `userCount(account.userId)).toBe(0)`, `:162` `roleAssignmentCount(internalId)).toBe(0)`; unchanged since round 3, where R8 died | PASS |
+| AC8: a stop between steps is compensated once the grace period has passed | Not before; after, compensated | `withdrawal-compensation.spec.ts:363` and `:364` (before: units out, step `ARMED`), `:368` `toBe(SHELF)`, `:369` `{ status: 'DONE', attempts: 1 }`, `:381`; `registration-compensation.spec.ts:200`, `:201`, `:209` `toBe(0)`, `:219`. A stalled withdrawal's undo returns all of its units although a return of the same work order applied in between: `return-beside-withdrawal.spec.ts:574` and `:575` (B3), `:650` and `:651` (B5). U1 killed | PASS |
+| AC9: at the attempt limit, the step is marked failed and logged with its kind, operation id, work order or user, and last error | Error level; the four values | `stock-step-applier.spec.ts:295` to `:310` (`status: 'FAILED'`, `log.failures`); `nest-stock-step-log.spec.ts:28` to `:32` (`Stock step WRITE_OFF ${OPERATION_ID} for work order ${WORK_ORDER_ID} failed for good: inventory is busy`, context `StockStepOutbox`); `account-step-applier.spec.ts:186` to `:201`; `nest-account-step-log.spec.ts:22` to `:26`; `test/integration/stock-step-outbox.spec.ts:230` to `:253`. R7 killed | PASS |
+| AC10 (amended): confirmations, restores, settlements and write-offs of a work order apply in the order they were recorded, and a failed one holds the later ones; an undo applies once it is due, neither waiting for nor holding the others | Recorded order for the four kinds; a failed one holds; an undo applies once due | Restores, settlements and write-offs: `test/integration/work-order-stock-steps.adapter.spec.ts:571` to `:591` (an older restore, armed or pending, holds a newer settlement: `:589` `expect(whileWaiting).toEqual([])`, `:590` the newer one `PENDING` with 0 attempts, `:591` claimed once the older one is done); `:595` to `:620` (behind a failed restore: `:618` `toEqual([])`, `:619` the operator's release frees the failed step first, `:620` then the later one); `:623` to `:640` (another work order's step is claimed meanwhile); `:643` to `:663` (one claim takes the oldest open step of each work order); `:666` to `:687` (two claims at once share no step); `stock-step-retries.spec.ts:401` to `:464` (a restore that failed applies before the closing step). Undo: `:708` to `:720` (claimed once due while an older restore is armed, pending or failed: `:720` `toEqual([{ ...undo, attempts: 1 }])`), `:724` to `:736` (an armed, pending or failed undo holds no later settlement), `:740` to `:755` (one claim takes an undo with the oldest other step and leaves the later one). Confirmations: no case. Every confirmation in the suites applies at once, so no case holds a step behind a pending or failed confirmation, or a confirmation behind an older step. P1, U1 and U2 killed; O1 survives | GAP (finding 1) |
+| AC11 (new): the save of a withdrawal records a confirmation step in its transaction; a restore, a settlement and a write-off act only on confirmed consumptions | Confirmation recorded with the save and applied; the three reads leave an unconfirmed consumption alone | Recorded with the save: `withdraw-parts.use-case.spec.ts:230` to `:234` (`steps.enqueue` inside the transaction), `:282` to `:288` (an operation id of its own, kind `ConfirmConsumption`, `consumptionOperationId: OPERATION_ID`), `:297` to `:300` (applied after the commit, outside the transaction, `DONE` in 1 attempt), `:320` to `:363` (no confirmation step and nothing confirmed when the consumption is refused, the undo fails too, the save fails or the processor claimed the armed step); on the real adapters, `withdrawal-compensation.spec.ts:413` to `:419` (`kind: 'CONFIRM_CONSUMPTION'`, `status: 'DONE'`, `consumptionOperationId: operationId`, the consumption confirmed) and `:449` and `:450` (a failed save: no step, the consumption unconfirmed); the payload survives a claim (`work-order-stock-steps.adapter.spec.ts:436` to `:440`); the applier confirms under the withdrawal's id (`stock-step-applier.spec.ts:59` to `:75`) and keeps a step without it pending (`:259` to `:273`); the gateway (`stock-ledger.gateway.spec.ts:117`). The confirmation: `stock-operation-steps.spec.ts:623` to `:632` (each consumption of the operation gets the clock's time; another operation, the inbound movement and the returns stay `null`), `:646`, `:661`, `:675` to `:679`; the migration's backfill and its `down` (`consumption-confirmation-schema.migration.spec.ts:177` to `:185`, `:211`, `:230`). The reads: `stock-operation-steps.spec.ts:727` (a return of 5 fails although the 3 units in flight would cover it), `:734` and `:738` (a return of 4 draws from the confirmed consumption and the one no step tagged, and the consumption in flight keeps its 3 units for its undo), `:750` and `:759` (the settlement leaves the consumption in flight `PENDING`, then settles it once confirmed), `:769`, `:770` and `:778` (the same for the write-off, losing 2 and 2, then 3). A consumption that no step tagged counts at once, as the Out of Scope row at `spec.md:27` reads with AC11. F1, F2, F3, N0, C1, C2, C3, E1, E2, A1 and MB killed | PASS |
+
+Status: 57 of 58 criteria match the spec-defined outcome. Gap: CA-10 AC10, its confirmation clause (finding 1).
+
+#### Spec-precision gaps
+
+None new. Round 3's three are resolved by `22bbe69` (Round 3's gap).
+
+---
+
+### Edge cases
+
+| Edge case | Spec outcome | Evidence at HEAD | Status |
+| --- | --- | --- | --- |
+| Seventeen cases unchanged since round 1 (the ten not-found answers, the customer filters, the shortage list, the item in use, the movement history UUIDs, five taken numbers) | As round 1 states them | Round 1's lines hold at HEAD, since no e2e file and no cited unit spec changed since round 3: `work-order-tracking.e2e.spec.ts:350` and `:364`, `services.e2e.spec.ts:226`, `inventory-items.e2e.spec.ts:223`, `:232`, `:539`, `:591`, `:592`, `:718`, `:719`, `vehicles.e2e.spec.ts:322`, `customers.e2e.spec.ts:212`, `:223`, `:314`, `:315`, `:321`, `:322`, `:338`, `users.e2e.spec.ts:183`, `roles.e2e.spec.ts:116`, `work-order-withdrawals.e2e.spec.ts:579`, `create-work-order.use-case.spec.ts:235` | PASS (17) |
+| Two concurrent changes, one 409 `CONCURRENT_MODIFICATION` | One 200, one 409 with the code | `work-order-concurrency.e2e.spec.ts:218` `toEqual([200, 409])`, `:220` `code: 'CONCURRENT_MODIFICATION'` | PASS |
+| Withdrawal above stock | 422, nothing changed | `work-order-withdrawals.e2e.spec.ts:596` to `:611` | PASS |
+| Save fails with 409 after the consumption | Units back; every level as before | `work-order-concurrency.e2e.spec.ts:259` `toEqual([200, 409])`, `:263` `quantityOnHand).toBe(17)`, `:267` and `:268` two consumptions and one return | PASS |
+| The inventory step of a return, delivery or cancellation fails | Work order change kept; step applied on a later attempt | `stock-step-retries.spec.ts:340` to `:360`; a withdrawal's confirmation the same way: `withdraw-parts.use-case.spec.ts:303` to `:318` | PASS |
+| Customer save fails after the account opened | No user with that email or document | `registration-compensation.spec.ts:249` (`count(*) ... WHERE email = $1 OR document = $2` is 0), `:219` the same email and document register again | PASS |
+| Last step after the processor claimed the armed step | 409; nothing saved; compensation applied | `withdraw-parts.use-case.spec.ts:466` to `:482`; `register-customer.use-case.spec.ts:324` to `:329`; `withdrawal-compensation.spec.ts:492` to `:503`; `registration-compensation.spec.ts:290` to `:294`. R1 killed | PASS |
+| A restore failed, then a cancellation or a delivery of the same work order | The restore applies first; the returned units are back; the closing step closes only what stays outstanding | `stock-step-retries.spec.ts:402` (`it.each` over both kinds): `:441` to `:445` the restore `PENDING` after its failure, `:446` to `:450` the closing step `PENDING` with 0 attempts, `:458` the processor past the wait, `:460` the restore `DONE` in 2 attempts, `:461` the closing step `DONE` in 1, `:462` `toBe(SHELF - WITHDRAWN + RETURNED)`, `:463` the ledger, `:464` `[['WRITTEN_OFF', WITHDRAWN - RETURNED]]` or `[['SETTLED', null]]`. The same with a withdrawal of the work order stalled in between: `return-beside-withdrawal.spec.ts:621` (B5). P1 killed | PASS |
+| New: a return applies while a withdrawal of the same work order is in flight, after a race or after the return's restore failed | The return draws from consumptions the work order confirmed; the undo returns all of the withdrawal's units | `return-beside-withdrawal.spec.ts:493` (a race, B2), `:553`, `:586` and `:621` (a restore that failed, B3 to B5), each ending in `:475` `expect(await outstandingOnWorkOrder(fixture)).toBe(FIRST_WITHDRAWAL - RETURNED)`, `:476` the same figure in inventory, `:477` `toBe(SHELF - (FIRST_WITHDRAWAL - RETURNED))`; `stock-operation-steps.spec.ts:727` to `:738`. F1, F3 and A1 killed | PASS |
+| `POST /customers` links the user opened earlier in the registration | Linked to that user | `registration-compensation.spec.ts:234` `customerOf(registered.userId)).toBe(registered.customerId)`; `customers.e2e.spec.ts:314`; `customer.repository.spec.ts:164` | PASS |
+| A subscriber throws | Caller keeps the result; error logged by name | `in-memory-domain-event-dispatcher.spec.ts:105`, `:109` | PASS |
+
+27 of 27 edge cases pass.
+
+---
+
+### Gate check
+
+All commands ran in the real tree against `workshop_test`, as it is (never truncated), with Redis DB 15.
+
+| Step | Exit | Outcome |
+| --- | --- | --- |
+| `npm run lint` | 0 | ESLint clean; "no dependency violations found (795 modules, 3657 dependencies cruised)"; "No table ownership violations found (0 known findings ignored)."; "No dependency cycle between modules found (7 modules, 16 dependencies between them)." |
+| `npm run build` | 0 | Clean |
+| `npm run test:unit` | 0 | 1272 passed (162 files) |
+| `npm run test:integration` | 0 | 508 passed (58 files) |
+| `npm run test:e2e` | 0 | 246 passed (19 files), the OpenAPI contract case included |
+| `npm run test:coverage` | 0 | Every threshold passed |
+| `npx prettier --check README.md docs` | 0 | "All matched files use Prettier code style!" |
+| `test/e2e/work-order-concurrency.e2e.spec.ts`, 5 isolated runs | 0 each | 6 of 6 tests each run; no flake |
+| Control: the three suites on an empty scratch database (`workshop_mut_test`) | 0 | 1272, 508 and 246 passed |
+
+No flake appeared in any run of this round: the gate, the five isolated runs, the control, the probes and the 22 mutant runs, where each kill names a test of the mutated behavior. No test is skipped, focused or marked todo.
+
+Test counts: 955, 239 and 203 before the feature (`51a3a8a`); 1249, 483 and 246 at round 3; 1272, 508 and 246 at HEAD. Phase 21 adds 23 unit cases and 25 integration cases: the migration spec (4), `return-beside-withdrawal.spec.ts` (4), `stock-operation-steps.spec.ts` (7), `withdrawal-compensation.spec.ts` (2) and the adapter spec (8).
+
+The step tables of `workshop_test`: `work_order_stock_steps` held the six inert `DONE` `WRITE_OFF` rows (ids 2659, 2672, 2685, 2698, 2711 and 2724) and nothing else before the gate, after the integration and e2e suites, after the five isolated runs and at the end of the round; `customer_account_steps` held 0 rows each time. The suites added no row and left the six rows alone, as the user decided.
+
+---
+
+### Discrimination sensor
+
+Expanded tier, CA-10 as the critical path. Every mutant ran in a detached `git worktree` of `f7d021d` under the scratchpad, with `node_modules` linked and `.env.test` set to `DATABASE_NAME=workshop_mut_test` and `REDIS_DB=13`. Before each mutant the scratch database was dropped and created again (the global setup migrates it) and Redis DB 13 emptied. Each mutation was an exact text replacement that refused to apply unless its target occurred once, and the file was checked out again after the run. Each mutant ran the unit, integration and e2e suites in full, then the round's probes; a failing suite kills it. Nothing touched `workshop` or `workshop_test`.
+
+| # | File:line | Mutation | Outcome (failing cases per suite) |
+| --- | --- | --- | --- |
+| C1 | `src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:200` | The confirmation's `confirmed_at IS NULL` guard removed: a repeat overwrites the time | KILLED (integration 1: `stock-operation-steps.spec.ts:634`) |
+| C2 | `typeorm-inventory-item.repository.ts:200` | The confirmation's scope widened to the unconfirmed consumptions of every operation | KILLED (integration 2: `stock-operation-steps.spec.ts:608`, `:652`) |
+| C3 | `typeorm-inventory-item.repository.ts:200` | The confirmation's scope widened from consumptions to every movement of the operation | KILLED (integration 1: `stock-operation-steps.spec.ts:664`) |
+| F1 | `typeorm-inventory-item.repository.ts:129` | The restore's draw reads unconfirmed consumptions | KILLED (integration 4: `return-beside-withdrawal.spec.ts:493`, `:553`, `:621`, `stock-operation-steps.spec.ts:721`) |
+| F2 | `typeorm-inventory-item.repository.ts:222` | The settlement reads unconfirmed consumptions | KILLED (integration 1: `stock-operation-steps.spec.ts:744`) |
+| F3 | `typeorm-inventory-item.repository.ts:254` | The write-off reads unconfirmed consumptions | KILLED (integration 2: `return-beside-withdrawal.spec.ts:621`, `stock-operation-steps.spec.ts:763`) |
+| N0 | `typeorm-inventory-item.repository.ts:55` | The `operation_id IS NULL` clause removed: a consumption no step tagged no longer counts | KILLED (integration 14: ten cases of `inventory-item.repository.spec.ts`, one of `repository-own-transaction.spec.ts`, `stock-operation-steps.spec.ts:721`, `:744`, `:763`) |
+| U1 | `src/modules/work-orders/infrastructure/persistence/typeorm-pending-stock-steps.ts:44` | The undo's exemption removed on the waiting side: an undo waits for the older steps | KILLED (integration 4: `work-order-stock-steps.adapter.spec.ts:708` in its three states, `:740`) |
+| U2 | `typeorm-pending-stock-steps.ts:49` | The undo's exemption removed on the holding side: an undo holds the later steps | KILLED (integration 3: `work-order-stock-steps.adapter.spec.ts:724` in its three states) |
+| O1 | `typeorm-pending-stock-steps.ts:49` | The confirmation exempted on the holding side: a pending or failed confirmation holds no later step | SURVIVED (unit 0 of 1272, integration 0 of 508, e2e 0 of 246; probes N1, N2 and N4 fail) |
+| E1 | `src/modules/work-orders/application/commands/withdraw-parts/withdraw-parts.use-case.ts:101` | The confirmation enqueued after the save's transaction committed | KILLED (unit 1: `withdraw-parts.use-case.spec.ts:224`) |
+| E2 | `withdraw-parts.use-case.ts:109` | No attempt at the confirmation after the commit | KILLED (unit 2, integration 2, e2e 7) |
+| A1 | `src/modules/work-orders/application/services/stock-step-applier.ts:87` | The applier confirms under the step's own operation id, which tags no consumption | KILLED (unit 2, integration 5, e2e 7) |
+| MB | `src/shared/infrastructure/database/migrations/1787702400010-add-consumption-confirmation.ts:14` | The backfill sets `confirmed_at` on every movement | KILLED (integration 1: `consumption-confirmation-schema.migration.spec.ts:145`) |
+| R1 | `withdraw-parts.use-case.ts:98` | The disarm's result ignored, so a claimed step answers no 409 | KILLED (unit 2, integration 2) |
+| R2 | `withdraw-parts.use-case.ts:105` | No compensation of the request's own when a later step fails | KILLED (unit 4, integration 6, e2e 3) |
+| P1 | `typeorm-pending-stock-steps.ts:48` | Order reversed (`older.id > candidate.id`): a step waits for the newer steps of its work order | KILLED (integration 10) |
+| S22 | `typeorm-inventory-item.repository.ts:221` | The settlement updates consumptions of any status | KILLED (integration 3) |
+| R4 | `typeorm-inventory-item.repository.ts:266` | The write-off updates every candidate, pending or not | KILLED (integration 2) |
+| R5 | `src/shared/infrastructure/database/typeorm-transaction-runner.ts:42` | `run` no longer refuses to nest | KILLED (integration 5) |
+| R6 | `stock-step-applier.ts:111` | Delay read one slot later (5 s after the first failure) | KILLED (unit 14) |
+| R7 | `stock-step-applier.ts:105` | Attempt limit reached one attempt late | KILLED (unit 1, integration 1) |
+
+The sensor depth is expanded. 22 mutants ran: fourteen on phase 21 (the confirmation's guard and two scopes, the confirmed filter on each of the three reads and its `operation_id IS NULL` clause, the undo's exemption both ways, the confirmation's place in the order, the confirmation enqueued outside the save's transaction or never attempted after it, the applier's mapping of the new kind, and the backfill) and eight on phases 19 and 20 (the disarm and its 409, the request's own compensation, the order condition, the pending-only updates of the settlement and the write-off, the nesting check, the backoff and the attempt limit). 21 die and O1 survives.
+
+F1 also fails six of the round's probes (AB1, AB2, AB3, AB5, UB2 and UB3), so the probes discriminate round 3's finding. AB4 passes on F1, as B4 does, and fails on A1.
+
+The real tree's `git status --porcelain` was empty before the sensor and still empty after it; the only files this round changed afterwards are this report and the two files `lessons.py` writes. Once the probes and the acceptance checks were done, the worktree was removed and pruned, `workshop_mut_test` dropped, Redis DB 13 emptied (`DBSIZE` 0), and no other scratch database was left: only `workshop` and `workshop_test` remain. No `git stash` was used.
+
+---
+
+### Probes
+
+Throwaway specs in the scratch worktree, on the unmutated code and the scratch database, removed with the worktree. The use-case probes build `WithdrawPartsUseCase`, `ReturnPartsUseCase`, `CancelWorkOrderUseCase` and `DeliverVehicleUseCase` from the application's own providers and wrap a dependency only to fix the order of events. The adapter probes call the real `TypeOrmPendingStockSteps`, the real ledger and the real applier in the order the use cases call them. The processor is the test support's drain of one work order, its clock moved past a wait or a grace period.
+
+#### Round 3's probes on HEAD
+
+The work order has a consumption of 3 that reached it and was confirmed. A return of 2 and a withdrawal of 4 then meet, and the withdrawal never reaches the work order. Due: 1 unit outstanding, the shelf 1 unit below its opening stock, and a cancellation that writes off 1 unit.
+
+| Probe | Order of events | Layer | Round 3 (`f65d7f9`) | HEAD | Due |
+| --- | --- | --- | --- | --- | --- |
+| B1 | The withdrawal arms its undo and consumes 4; the return records its restore and attempts it; the withdrawal's save fails and it compensates; a drain | Adapter | 9 (the restore waited behind the armed undo) | The armed undo holds nothing, so the restore is claimed at once and draws 2 from the confirmed 3 (shelf 5); the compensation returns 4: shelf 9, consumptions of 3 with 1 outstanding and of 4 with 0; cancellation `WRITTEN_OFF` 1; five steps `DONE` | 9 |
+| B2 | The return records its restore; the withdrawal arms and consumes 4; the restore applies; the save answers 409 and the withdrawal compensates; then a cancellation | Adapter | 7; cancellation `WRITTEN_OFF` 3 | Shelf 5 after the restore, 9 after the compensation; cancellation `WRITTEN_OFF` 1; five steps `DONE` | 9; 1 |
+| B2 | The withdrawal loads the work order; the return saves and records its restore; the withdrawal arms and consumes 4; the processor applies the restore; the save answers 409 | Use cases | 17 | The withdrawal rejects with `ConcurrentModificationError`; shelf 13 after the in-flight consumption, 15 after the restore, 19 at the end; work order 1, inventory 1; cancellation `WRITTEN_OFF` 1; five steps `DONE` | 19 |
+| B3 | The restore's first attempt fails; a withdrawal of 4 consumes and stalls; the processor runs past the restore's wait, then past the grace period | Adapter | 5, then 7 | 5 after the first run (the restore drew from the confirmed 3), 9 after the undo; 409 when the withdrawal resumes; cancellation `WRITTEN_OFF` 1 | 9 |
+| B3 | The same | Use cases | 17 | 15 after the first run, 19 after the grace period; 409; work order 1, inventory 1; the restore `DONE` in 2 attempts, the undo in 1; cancellation `WRITTEN_OFF` 1 | 19 |
+| B4 | The restore's first attempt fails; a withdrawal consumes 4, its save and its own undo fail, so it releases the step; the processor runs twice | Adapter | 7 | 7 after the first run (the released undo applied; the restore was not due yet), 9 after the second; cancellation `WRITTEN_OFF` 1 | 9 |
+| B5 | The restore's first attempt fails; a withdrawal of 4 consumes and stalls; a cancellation is saved and attempted; the processor runs past the waits | Adapter | 7; `WRITTEN_OFF` 3 | The write-off is held behind the pending restore (`PENDING`, 0 attempts, no transition); the first run applies the restore (shelf 5) and then the write-off, `WRITTEN_OFF` 1, while the withdrawal is still in flight; the undo after the grace period: 9; every step `DONE` | 9; 1 |
+
+#### New orders: a step behind a confirmation that failed
+
+A withdrawal of 3 on a shelf of 20, whose confirmation's first attempt meets an inventory that fails.
+
+| Probe | Then | Layer | HEAD | Mutant O1 |
+| --- | --- | --- | --- | --- |
+| N1 | The work order is completed and delivered, the delivery's attempt runs, then the processor past the confirmation's wait | Use cases | The settlement waits behind the confirmation (`SETTLE` `PENDING` with 0 attempts, `CONFIRM_CONSUMPTION` `PENDING` with 1), no transition; then the confirmation applies (2 attempts) and the settlement (1): the consumption `SETTLED` and confirmed, one `SETTLED` transition, shelf 17, every step `DONE` | The settlement applies at once and settles nothing; the confirmation applies after it; the consumption stays `PENDING` on a delivered work order, no transition, every step `DONE` |
+| N2 | A cancellation in place of the delivery | Use cases | The write-off waits, then writes off 3; shelf 17 | The write-off applies at once and writes off nothing; no transition |
+| N3 | A return of 2 in place of the delivery, then a cancellation | Use cases | The restore waits (0 attempts, shelf 17), then applies: shelf 19; work order 1, inventory 1; `WRITTEN_OFF` 1 | Passes: the restore's first attempt finds no confirmed consumption and fails, and the retry applies it |
+| N4 | The confirmation fails for good, a delivery follows, an operator sets the confirmation back to pending | Use cases | `CONFIRM_CONSUMPTION` `FAILED` and `SETTLE` `PENDING` behind it, the consumption unconfirmed; after the release both apply: `SETTLED` | The settlement applies while the confirmation is `FAILED` and settles nothing |
+
+Cause. CA-10 AC10 puts the confirmation in the order of its work order. A settlement or a write-off recorded after the save of a withdrawal has to wait for that withdrawal's confirmation, because both read confirmed consumptions only, and one that applies first closes nothing of that withdrawal and is done for good. The claim gets this right: only the undo stands outside the order (`typeorm-pending-stock-steps.ts:43` to `:52`). The cases that pin the order use restores, settlements and write-offs (`work-order-stock-steps.adapter.spec.ts:571` to `:687`), and in every use-case case, regression case and e2e case the confirmation applies at once, so no test meets a step held behind a confirmation. A restore held this way would heal itself (N3), since it fails while nothing is confirmed and applies on a later attempt.
+
+---
+
+### Adversarial review
+
+#### The confirmation and the order
+
+- A confirmation step exists only when the disarm succeeded in the save's transaction (`withdraw-parts.use-case.ts:97` to `:103`), so none is recorded for an operation whose undo can still apply. The undo reads its own operation's consumptions whatever their confirmation (`typeorm-inventory-item.repository.ts:136` to `:180`), and the three other reads take the confirmed consumptions and those no step tagged (`:55`). An undo and the other steps of its work order therefore touch different consumptions, which is what lets one claim take an undo with the oldest other step of its work order (`work-order-stock-steps.adapter.spec.ts:740` to `:755`).
+- A restore recorded before a withdrawal's save applies before that withdrawal's confirmation and does not see its consumption; a restore recorded after waits for it (ADR 0033 `:30`; probes B2 and N3).
+- The confirmation is one statement that joins an ambient transaction when one is open (`typeorm-inventory-item.repository.ts:196`), where the other five stock use cases open their own through `TransactionRunner`, which refuses to nest. No caller runs it inside a transaction: the request applies it after its commit (`withdraw-parts.use-case.ts:109`), the processor holds none, and `withdraw-parts.use-case.spec.ts:297` pins `insideTransaction: false`. Observation only.
+- The migration confirms every consumption already recorded (`1787702400010-add-consumption-confirmation.ts:13` to `:15`), as design C16 decides. That includes the consumption of a withdrawal whose process stopped between its consumption and its last step, if one exists when the migration runs, and until the processor's undo applies, a return of the same work order could draw from it. It is a one-time window at deploy and needs an orphaned withdrawal. Observation only.
+- A confirmation without `consumptionOperationId` fails visibly and runs out its attempts (`stock-step-applier.ts:82` to `:86`, `stock-step-applier.spec.ts:259` to `:273`).
+
+#### Test support and the never-truncate convention
+
+- `FakePendingStockSteps` still claims by due time alone, and the in-memory inventory repository implements the confirmed read (`test/support/fakes/in-memory-inventory-item.repository.ts:177` to `:193`), as the user decided.
+- `return-beside-withdrawal.spec.ts:112` to `:122` opens any gate a failed case left and removes the steps of its work orders; the migration spec runs on a database of its own and drops it. Phase 21 added no `TRUNCATE`.
+- `drainStockStepsOfWorkOrder` (`test/support/outbox.ts:72` to `:94`) still returns: each round applies a step, counts an attempt, or leaves the list unchanged.
+
+#### The documents
+
+- ADR 0033 and the designs say what the code does (CA-09). AD-017 records the confirmation (`.specs/STATE.md:151`), while its status line still reads "active (T68 to T75)".
+- ADR 0015 keeps `Accepted`. The confirmation time is set once on a consumption and appends no transition, as `docs/architecture/low-level-design/inventory.md:21` and `high-level-design.md:180` state.
+- No ADR or repo document names a split of the system into separate services or a future migration of the system. ADR 0001:29 names "Distributed services" as an alternative, and the user decided that the sentence stays as written.
+
+---
+
+### Code quality
+
+| Check | Status |
+| --- | --- |
+| No features beyond what was asked | Pass. T79 to T84 touch only what their tasks name; `135e4cf` corrects two documents outside the list |
+| No abstractions for single-use code | Pass. `CONFIRMED_CONSUMPTION` is one SQL fragment the three reads share |
+| No unnecessary flexibility | Pass |
+| Only touched files the tasks required | Pass |
+| Did not "improve" unrelated code | Pass |
+| Matches existing patterns and style | Pass. `ConfirmConsumptionUseCase` follows the shape and the wiring of `UndoConsumptionUseCase` |
+| Tests map to criteria and are not shallow | Pass with a gap: no case holds a step behind a confirmation (finding 1) |
+| Spec-anchored outcome check | 57 of 58; gap CA-10 AC10; 27 of 27 edge cases |
+| Per-layer coverage expectation | Pass for the confirmation itself (the use case on fakes, the adapter, the repository, the migration and the use cases on the database); the order rule has no case with a confirmation |
+| Every test maps to a requirement | Pass |
+| Documented guidelines followed | `.specs/STATE.md` Conventions, the Test Coverage Matrix, the `vitest.config.ts` thresholds. The never-truncate convention holds |
+
+---
+
+### Fix plans
+
+#### Fix 1 (Major): a test that holds a step behind a confirmation
+
+Root cause in the Probes section. Fix task: add integration cases that put a confirmation in the order of its work order.
+
+- On `TypeOrmPendingStockSteps`: a confirmation that is pending or failed holds a later restore, settlement and write-off of its work order, and a confirmation recorded after a pending or failed restore waits for it (the shape of `work-order-stock-steps.adapter.spec.ts:571` to `:620`, with a `CONFIRM_CONSUMPTION` step on one side).
+- Through the use cases: a withdrawal whose confirmation fails once, then a delivery and, in a second case, a cancellation of the same work order, each attempted at once and then drained past the wait (the order of probes N1 and N2).
+
+Done when the delivery ends with the consumption `SETTLED` and one `SETTLED` transition, the cancellation with `WRITTEN_OFF` 3, every step `DONE`, and mutant O1 (`typeorm-pending-stock-steps.ts:49` reading `AND older.kind NOT IN ('UNDO_CONSUMPTION', 'CONFIRM_CONSUMPTION')`) fails a suite. Requirement: CA-10 AC10. No production code changes.
+
+Observations that need no fix in this feature: the backfill of a consumption whose withdrawal stopped before its last step, the confirmation's statement joining an open transaction, AD-017's status line, and the teardown's match on the `DONE` steps another process writes during a run, as in rounds 2 and 3. Decided by the user and left as they are: the ADR 0001 sentence on distributed services and the six inert `DONE` rows in `workshop_test`.
+
+---
+
+### Requirement traceability update
+
+Proposed for `spec.md`; the orchestrator applies it.
+
+| Requirement | Previous status | New status |
+| --- | --- | --- |
+| CA-01 | In Tasks | Verified |
+| CA-02 | In Tasks | Verified |
+| CA-03 | In Tasks | Verified |
+| CA-04 | In Tasks | Verified |
+| CA-05 | In Tasks | Verified |
+| CA-06 | In Tasks | Verified |
+| CA-07 | In Tasks | Verified |
+| CA-08 | In Tasks | Verified |
+| CA-09 | In Tasks | Verified |
+| CA-10 | In Tasks | Needs fix (AC10, the confirmation clause; Fix 1) |
+
+---
+
+### Summary
+
+| Area | Outcome |
+| --- | --- |
+| Overall | Not ready |
+| Round 3's gap | Closed: B1 to B5 end at 19 of 20 (9 of 10 on the adapters), 1 unit outstanding on both sides, a write-off of 1, every step `DONE` |
+| Spec-anchored check | 57 of 58 criteria match; no new spec-precision gap; 27 of 27 edge cases |
+| Sensor | 22 mutants, 21 killed: 13 of 14 on phase 21 and 8 of 8 on phases 19 and 20; O1 survives |
+| Gate | Lint, build, unit (1272), integration (508), e2e (246, contract included), coverage and docs pass on `workshop_test`; the concurrency file passes 5 of 5 isolated runs |
+
+Phase 21 does what round 3 asked: the restore, the settlement and the write-off read only the consumptions their work order confirmed, a withdrawal confirms its consumption through a step recorded with its save, and an undo applies once it is due whatever the other steps of its work order are doing. The one defect left is in the tests: none holds a step behind a confirmation, so the suites cannot tell when a confirmation drops out of the order.
+
+Next: Fix 1 needs one or two integration cases and no production change. This round already runs past the loop's bound, so the orchestrator routes it to an implementer or to the user.
+
+---
+
+### Lessons
+
+`lessons.py` recorded two candidates from this round: L-030 (mutant O1: every step kind an ordering rule names needs its own case that holds a later step) and L-031 (the gap in CA-10 AC10: each kind a criterion lists needs its own Done-when case). No spec-precision gap and no gate failure appeared, so neither produced a lesson. No confirmed lesson recurred, so none was penalized: the new edge case has its owning task (T82), as L-002 asks, and L-003 saw no repeat.
+
+---
+
+# Round 3 history (2026-10-31)
+
+Round 3's report follows as it was written. It is history: the verdict of round 4 above governs.
+
 ## Round 3
 
 **Date**: 2026-10-31
