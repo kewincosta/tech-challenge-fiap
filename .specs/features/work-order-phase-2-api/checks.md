@@ -210,5 +210,5 @@ Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 - **Settled mid-build:** none
 - **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`
-- **Boundary:** C1-C25 closed at `a0fbcea`
+- **Boundary:** C1-C25 closed at `8d16ccd`
 - **Abandoned:** none
