@@ -297,6 +297,6 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** none
+- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `a654fd7`
 - **Boundary:** none yet
 - **Abandoned:** none
