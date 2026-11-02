@@ -1212,6 +1212,12 @@
       },
       "WorkOrderBudgetResponseDto": {
         "properties": {
+          "approvalUrl": {
+            "description": "POST here with the customer token to approve this budget. Null unless the budget is pending",
+            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval",
+            "nullable": true,
+            "type": "string"
+          },
           "decidedAt": {
             "nullable": true,
             "type": "object"
@@ -1229,6 +1235,12 @@
             "format": "uuid",
             "type": "string"
           },
+          "rejectionUrl": {
+            "description": "POST here with the customer token to reject this budget. Null unless the budget is pending",
+            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection",
+            "nullable": true,
+            "type": "string"
+          },
           "round": {
             "example": 1,
             "type": "number"
@@ -1243,7 +1255,15 @@
             "type": "number"
           }
         },
-        "required": ["id", "round", "totalCents", "status", "generatedAt"],
+        "required": [
+          "id",
+          "round",
+          "totalCents",
+          "status",
+          "generatedAt",
+          "approvalUrl",
+          "rejectionUrl"
+        ],
         "type": "object"
       },
       "WorkOrderPageResponseDto": {
@@ -4833,6 +4853,152 @@
           }
         ],
         "summary": "Submit a supplementary budget over the draft items added during execution",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/budgets/{budgetId}/approval": {
+      "post": {
+        "description": "The address `approvalUrl` carries on a pending budget. Allowed to the owning customer or to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "operationId": "WorkOrdersController_approveBudgetByLink_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "budgetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve one budget, the one a link names",
+        "tags": ["work-orders"]
+      }
+    },
+    "/api/v1/work-orders/{number}/budgets/{budgetId}/rejection": {
+      "post": {
+        "description": "The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer or to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "operationId": "WorkOrdersController_rejectBudgetByLink_v1",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "budgetId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject one budget, the one a link names",
         "tags": ["work-orders"]
       }
     },

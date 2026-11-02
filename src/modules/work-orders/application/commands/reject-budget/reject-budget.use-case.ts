@@ -2,6 +2,7 @@ import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { BudgetDecisionAuthorizer } from '../../services/budget-decision.authorizer';
 import { RejectBudgetCommand } from './reject-budget.command';
@@ -26,7 +27,11 @@ export class RejectBudgetUseCase {
 
     // Round one returns to IN_DIAGNOSIS; a later round returns to IN_EXECUTION and records
     // ExecutionStarted too. The aggregate decides which, not this use case.
-    workOrder.rejectBudget({ actorUserId: command.actorUserId, now: this.clock.now() });
+    workOrder.rejectBudget({
+      budgetId: command.budgetId === undefined ? undefined : BudgetId.create(command.budgetId),
+      actorUserId: command.actorUserId,
+      now: this.clock.now(),
+    });
     await this.workOrders.save(workOrder);
     this.events.publish(workOrder.pullDomainEvents());
   }

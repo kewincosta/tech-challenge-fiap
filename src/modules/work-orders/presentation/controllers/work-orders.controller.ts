@@ -59,6 +59,7 @@ import { SubmitSupplementaryBudgetUseCase } from '../../application/commands/sub
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
 import { WithdrawPartsUseCase } from '../../application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
+  WorkOrderBudgetDto,
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
@@ -74,6 +75,7 @@ import { GetWorkOrderUseCase } from '../../application/queries/get-work-order/ge
 import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-work-order.query';
 import { ListWorkOrdersUseCase } from '../../application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
+import { BudgetStatus } from '../../domain/budget-status';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
@@ -86,10 +88,12 @@ import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
 import {
   AverageExecutionTimeResponseDto,
   CreatedWorkOrderResponseDto,
+  WorkOrderBudgetResponseDto,
   WorkOrderPageResponseDto,
   WorkOrderResponseDto,
   WorkOrderTrailEntryResponseDto,
 } from '../dtos/work-order.response.dto';
+import { HttpBudgetDecisionLinks } from '../http-budget-decision-links';
 import { workOrderStatusLabel } from '../mappers/work-order-status-label';
 
 @ApiTags('work-orders')
@@ -118,6 +122,7 @@ export class WorkOrdersController {
     private readonly getMyWorkOrdersUseCase: GetMyWorkOrdersUseCase,
     private readonly getMyWorkOrderUseCase: GetMyWorkOrderUseCase,
     private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeUseCase,
+    private readonly budgetLinks: HttpBudgetDecisionLinks,
   ) {}
 
   @Post()
@@ -496,6 +501,66 @@ export class WorkOrdersController {
     );
   }
 
+  // No @RequirePermissions here - see approveBudget above. This pair is what `approvalUrl` and
+  // `rejectionUrl` point at: the same decision as the round-less pair, but of the budget the link
+  // names, so an old link cannot decide a round the customer never saw.
+  @Post(':number/budgets/:budgetId/approval')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Approve one budget, the one a link names',
+    description:
+      'The address `approvalUrl` carries on a pending budget. Allowed to the owning customer or to ' +
+      'a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is ' +
+      "not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no " +
+      'longer pending answers 422 BUDGET_INVALID_STATE.',
+  })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async approveBudgetByLink(
+    @Param('number') number: string,
+    @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.approveBudgetUseCase.execute(
+      new ApproveBudgetCommand(number, principal.userId, budgetId),
+    );
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
+  }
+
+  // No @RequirePermissions here - see approveBudget above.
+  @Post(':number/budgets/:budgetId/rejection')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reject one budget, the one a link names',
+    description:
+      'The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer or ' +
+      'to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that ' +
+      "is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no " +
+      'longer pending answers 422 BUDGET_INVALID_STATE.',
+  })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async rejectBudgetByLink(
+    @Param('number') number: string,
+    @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.rejectBudgetUseCase.execute(
+      new RejectBudgetCommand(number, principal.userId, budgetId),
+    );
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
+  }
+
   // work-orders:read is the route-level gate - every actor able to reach it holds it, so the
   // work order's existence is not a secret from them. WorkOrderCompletionAuthorizer narrows to
   // the assigned mechanic or an administrator inside the use case (design.md).
@@ -610,7 +675,9 @@ export class WorkOrdersController {
       vehicleYear: workOrder.vehicleYear,
       serviceItems: workOrder.serviceItems,
       partItems: workOrder.partItems,
-      budgets: workOrder.budgets,
+      budgets: workOrder.budgets.map((budget) =>
+        this.toBudgetResponseDto(workOrder.number, budget),
+      ),
       chargedTotalCents: workOrder.chargedTotalCents,
       discountCents: workOrder.discountCents,
       discountNote: workOrder.discountNote,
@@ -618,6 +685,22 @@ export class WorkOrdersController {
       deliveredAt: workOrder.deliveredAt,
       canceledAt: workOrder.canceledAt,
       cancellationReason: workOrder.cancellationReason,
+    };
+  }
+
+  // The links go on the pending budget only: a decided one has nothing left to decide.
+  private toBudgetResponseDto(
+    workOrderNumber: string,
+    budget: WorkOrderBudgetDto,
+  ): WorkOrderBudgetResponseDto {
+    const links =
+      (budget.status as BudgetStatus) === BudgetStatus.Pending
+        ? this.budgetLinks.of(workOrderNumber, budget.id)
+        : null;
+    return {
+      ...budget,
+      approvalUrl: links?.approvalUrl ?? null,
+      rejectionUrl: links?.rejectionUrl ?? null,
     };
   }
 

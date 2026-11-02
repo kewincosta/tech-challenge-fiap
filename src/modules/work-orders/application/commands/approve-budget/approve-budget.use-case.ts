@@ -2,6 +2,7 @@ import { Clock } from '../../../../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../../../../shared/application/ports/domain-event-publisher.port';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderRepository } from '../../ports/work-order.repository';
+import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { BudgetDecisionAuthorizer } from '../../services/budget-decision.authorizer';
 import { ApproveBudgetCommand } from './approve-budget.command';
@@ -26,7 +27,11 @@ export class ApproveBudgetUseCase {
     // reaches save (design.md).
     await this.authorizer.assertMayDecide(workOrder, command.actorUserId);
 
-    workOrder.approveBudget({ actorUserId: command.actorUserId, now: this.clock.now() });
+    workOrder.approveBudget({
+      budgetId: command.budgetId === undefined ? undefined : BudgetId.create(command.budgetId),
+      actorUserId: command.actorUserId,
+      now: this.clock.now(),
+    });
     await this.workOrders.save(workOrder);
     this.events.publish(workOrder.pullDomainEvents());
   }

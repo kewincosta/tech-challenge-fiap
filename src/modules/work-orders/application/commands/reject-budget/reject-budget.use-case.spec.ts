@@ -9,6 +9,8 @@ import { BudgetStatus } from '../../../domain/budget-status';
 import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderServiceItem } from '../../../domain/entities/work-order-service-item';
+import { BudgetStateError } from '../../../domain/errors/budget-state.error';
+import { WorkOrderBudgetNotFoundError } from '../../../domain/errors/work-order-budget-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { BudgetRejected } from '../../../domain/events/budget-rejected.event';
@@ -104,6 +106,56 @@ function buildReceivedWorkOrder(): WorkOrder {
   });
 }
 
+const BUDGET_ID = '88888888-8888-4888-8888-888888888888';
+const SECOND_ROUND_BUDGET_ID = '99999999-9999-4999-8999-999999999999';
+const BUDGET_OF_ANOTHER_WORK_ORDER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+/** Round 1 approved and round 2 awaiting a decision: the stage an old link for round 1 meets. */
+function restoreAwaitingApprovalOnRoundTwo(): WorkOrder {
+  const decidedRoundOne = Budget.restore({
+    id: BudgetId.create(BUDGET_ID),
+    round: 1,
+    total: Money.fromCents(15099),
+    status: BudgetStatus.Approved,
+    generatedAt: NOW,
+    decidedAt: NOW,
+    decidedByUserId: CUSTOMER_ACTOR_ID,
+  });
+  const pendingRoundTwo = Budget.restore({
+    id: BudgetId.create(SECOND_ROUND_BUDGET_ID),
+    round: 2,
+    total: Money.fromCents(5000),
+    status: BudgetStatus.Pending,
+    generatedAt: NOW,
+    decidedAt: null,
+    decidedByUserId: null,
+  });
+  return WorkOrder.restore({
+    id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
+    number: WorkOrderNumber.create(NUMBER),
+    customerId: CUSTOMER_ID,
+    vehicleId: VEHICLE_ID,
+    assignedMechanicUserId: null,
+    createdByUserId: CREATOR_ID,
+    status: WorkOrderStatus.AwaitingApproval,
+    customerName: 'Jane Doe',
+    vehiclePlate: 'ABC1234',
+    vehicleBrand: 'Toyota',
+    vehicleModel: 'Corolla',
+    vehicleYear: 2020,
+    createdAt: NOW,
+    updatedAt: NOW,
+    serviceItems: [],
+    partItems: [],
+    diagnosisStartedAt: NOW,
+    diagnosisCompletedAt: NOW,
+    budgets: [decidedRoundOne, pendingRoundTwo],
+    budgetDecidedAt: NOW,
+    budgetDecidedByUserId: CUSTOMER_ACTOR_ID,
+    executionStartedAt: NOW,
+  });
+}
+
 function makeUseCase(authorizer: BudgetDecisionAuthorizer) {
   const workOrders = new InMemoryWorkOrderRepository();
   const clock = new FakeClock();
@@ -184,6 +236,63 @@ describe('RejectBudgetUseCase', () => {
     await expect(
       useCase.execute(new RejectBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID)),
     ).rejects.toThrow(WorkOrderStateError);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('rejects the budget the command names', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await useCase.execute(
+      new RejectBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, SECOND_ROUND_BUDGET_ID),
+    );
+
+    const updated = workOrders.workOrders[0];
+    expect(updated.budgets[1].status).toBe(BudgetStatus.Rejected);
+    expect(updated.status).toBe(WorkOrderStatus.InExecution);
+  });
+
+  it('refuses a budget id the work order does not hold with WorkOrderBudgetNotFoundError, publishing nothing', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders, events } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await expect(
+      useCase.execute(
+        new RejectBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, BUDGET_OF_ANOTHER_WORK_ORDER_ID),
+      ),
+    ).rejects.toThrow(WorkOrderBudgetNotFoundError);
+    expect(workOrders.workOrders[0].budgets[1].status).toBe(BudgetStatus.Pending);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('refuses a budget that is no longer pending with BudgetStateError and leaves the pending one alone', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders, events } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await expect(
+      useCase.execute(new RejectBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, BUDGET_ID)),
+    ).rejects.toThrow(BudgetStateError);
+    expect(workOrders.workOrders[0].budgets.map((budget) => budget.status)).toEqual([
+      BudgetStatus.Approved,
+      BudgetStatus.Pending,
+    ]);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('asks the authorizer before it looks for the budget, so a stranger learns nothing about budget ids', async () => {
+    const otherCustomerId = '66666666-6666-4666-8666-666666666666';
+    const authorizer = makeAuthorizer({}, otherCustomerId);
+    const { useCase, workOrders, events } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await expect(
+      useCase.execute(
+        new RejectBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, BUDGET_OF_ANOTHER_WORK_ORDER_ID),
+      ),
+    ).rejects.toThrow(WorkOrderNotFoundError);
     expect(events.published).toHaveLength(0);
   });
 });

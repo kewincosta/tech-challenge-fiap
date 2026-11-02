@@ -2,6 +2,7 @@ import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
+import { BudgetStateError } from '../errors/budget-state.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { DiscountExceedsChargedTotalError } from '../errors/discount-exceeds-charged-total.error';
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
@@ -9,6 +10,7 @@ import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
 import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
 import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
+import { WorkOrderBudgetNotFoundError } from '../errors/work-order-budget-not-found.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -168,6 +170,8 @@ interface CompleteDiagnosisInput {
 interface DecideBudgetActionInput {
   actorUserId: string;
   now: Date;
+  /** The budget a link names. Left out, the pending round is the one decided. */
+  budgetId?: BudgetId;
 }
 
 interface SubmitSupplementaryBudgetInput {
@@ -466,8 +470,7 @@ export class WorkOrder extends AggregateRoot {
    * (section 9's invariants).
    */
   approveBudget(input: DecideBudgetActionInput): void {
-    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
-    const budget = this.pendingBudget();
+    const budget = this.budgetToDecide(input.budgetId);
     budget.approve({ actorUserId: input.actorUserId, at: input.now });
     this.props.status = WorkOrderStatus.InExecution;
     this.props.budgetDecidedAt = input.now;
@@ -486,8 +489,7 @@ export class WorkOrder extends AggregateRoot {
    * execution, distinct from `executionStartedAt`, which stays at its first value (H38).
    */
   rejectBudget(input: DecideBudgetActionInput): void {
-    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
-    const budget = this.pendingBudget();
+    const budget = this.budgetToDecide(input.budgetId);
     budget.reject({ actorUserId: input.actorUserId, at: input.now });
     const destination =
       budget.round === 1 ? WorkOrderStatus.InDiagnosis : WorkOrderStatus.InExecution;
@@ -524,6 +526,29 @@ export class WorkOrder extends AggregateRoot {
       new SupplementaryBudgetGenerated(this.props.id.value, input.actorUserId, input.now),
     );
     this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+  }
+
+  /**
+   * The budget a decision applies to. With no id it is the pending round, which only exists while
+   * the work order awaits approval. With an id, a link names the budget: it has to be one of this
+   * work order's and still pending, and a budget already decided answers `BUDGET_INVALID_STATE`
+   * whatever the status of the work order, so an old link reports the budget and not the stage
+   * the work order has reached since.
+   */
+  private budgetToDecide(budgetId: BudgetId | undefined): Budget {
+    if (budgetId === undefined) {
+      this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+      return this.pendingBudget();
+    }
+    const budget = this.props.budgets.find((candidate) => candidate.id.equals(budgetId));
+    if (!budget) {
+      throw new WorkOrderBudgetNotFoundError();
+    }
+    if (budget.status !== BudgetStatus.Pending) {
+      throw new BudgetStateError(budget.status);
+    }
+    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+    return budget;
   }
 
   private pendingBudget(): Budget {

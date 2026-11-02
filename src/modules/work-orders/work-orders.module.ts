@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { appConfig } from '../../config/app.config';
 import { outboxConfig } from '../../config/outbox.config';
 import { Clock } from '../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
@@ -90,6 +91,7 @@ import { TypeOrmWorkOrderQueryAdapter } from './infrastructure/persistence/typeo
 import { TypeOrmWorkOrderRepository } from './infrastructure/persistence/typeorm-work-order.repository';
 import { WorkOrderOrmEntity } from './infrastructure/persistence/work-order.orm-entity';
 import { WorkOrdersController } from './presentation/controllers/work-orders.controller';
+import { HttpBudgetDecisionLinks } from './presentation/http-budget-decision-links';
 
 @Module({
   imports: [
@@ -435,6 +437,12 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
     { provide: WORK_ORDER_ACTORS, useClass: WorkOrderActorsGateway },
     { provide: PENDING_STOCK_STEPS, useClass: TypeOrmPendingStockSteps },
     { provide: STOCK_STEP_LOG, useClass: NestStockStepLog },
+    {
+      provide: HttpBudgetDecisionLinks,
+      useFactory: (config: ConfigType<typeof appConfig>) =>
+        new HttpBudgetDecisionLinks(config.publicUrl),
+      inject: [appConfig.KEY],
+    },
     {
       provide: OUTBOX_SETTINGS,
       useFactory: (config: ConfigType<typeof outboxConfig>): OutboxSettings => ({

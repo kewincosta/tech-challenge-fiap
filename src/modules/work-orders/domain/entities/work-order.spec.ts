@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
+import { BudgetStateError } from '../errors/budget-state.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { DiscountExceedsChargedTotalError } from '../errors/discount-exceeds-charged-total.error';
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
@@ -9,6 +10,7 @@ import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
 import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
 import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
+import { WorkOrderBudgetNotFoundError } from '../errors/work-order-budget-not-found.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -736,6 +738,147 @@ describe('WorkOrder.approveBudget and rejectBudget', () => {
 
     expect(workOrder.budgetDecidedAt).toEqual(NOW);
     expect(workOrder.budgetDecidedByUserId).toBe(CUSTOMER_ID);
+  });
+});
+
+describe('WorkOrder budget decided by the id a link names', () => {
+  const ROUND_ONE_ID = BudgetId.create('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  const ROUND_TWO_ID = BudgetId.create('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
+  const OTHER_WORK_ORDER_BUDGET_ID = BudgetId.create('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');
+
+  function budgetOfRound(round: number, id: BudgetId, status: BudgetStatus): Budget {
+    return Budget.restore({
+      id,
+      round,
+      total: Money.fromCents(15099),
+      status,
+      generatedAt: NOW,
+      decidedAt: status === BudgetStatus.Pending ? null : NOW,
+      decidedByUserId: status === BudgetStatus.Pending ? null : CUSTOMER_ID,
+    });
+  }
+
+  function workOrderWith(status: WorkOrderStatus, budgets: Budget[]): WorkOrder {
+    return WorkOrder.restore({
+      id: WORK_ORDER_ID,
+      number: WorkOrderNumber.create('A1B090-2026'),
+      customerId: CUSTOMER_ID,
+      vehicleId: VEHICLE_ID,
+      assignedMechanicUserId: MECHANIC_ID,
+      createdByUserId: CREATOR_ID,
+      status,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: NOW,
+      updatedAt: NOW,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: NOW,
+      diagnosisCompletedAt: NOW,
+      budgets,
+      budgetDecidedAt: null,
+      budgetDecidedByUserId: null,
+      executionStartedAt: NOW,
+    });
+  }
+
+  function awaitingApprovalOnRoundTwo(): WorkOrder {
+    return workOrderWith(WorkOrderStatus.AwaitingApproval, [
+      budgetOfRound(1, ROUND_ONE_ID, BudgetStatus.Approved),
+      budgetOfRound(2, ROUND_TWO_ID, BudgetStatus.Pending),
+    ]);
+  }
+
+  it('approves the budget the id names', () => {
+    const workOrder = awaitingApprovalOnRoundTwo();
+
+    workOrder.approveBudget({ budgetId: ROUND_TWO_ID, actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
+    expect(workOrder.budgets.map((budget) => budget.status)).toEqual([
+      BudgetStatus.Approved,
+      BudgetStatus.Approved,
+    ]);
+    expect(workOrder.budgets[1].decidedByUserId).toBe(CUSTOMER_ID);
+  });
+
+  it('rejects the budget the id names, round 1 to IN_DIAGNOSIS and a later round to IN_EXECUTION', () => {
+    const roundOne = workOrderWith(WorkOrderStatus.AwaitingApproval, [
+      budgetOfRound(1, ROUND_ONE_ID, BudgetStatus.Pending),
+    ]);
+    const roundTwo = awaitingApprovalOnRoundTwo();
+
+    roundOne.rejectBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW });
+    roundTwo.rejectBudget({ budgetId: ROUND_TWO_ID, actorUserId: CUSTOMER_ID, now: NOW });
+
+    expect(roundOne.status).toBe(WorkOrderStatus.InDiagnosis);
+    expect(roundOne.budgets[0].status).toBe(BudgetStatus.Rejected);
+    expect(roundTwo.status).toBe(WorkOrderStatus.InExecution);
+    expect(roundTwo.budgets[1].status).toBe(BudgetStatus.Rejected);
+  });
+
+  it('refuses an id the work order does not hold, and changes nothing', () => {
+    const workOrder = awaitingApprovalOnRoundTwo();
+
+    expect(() =>
+      workOrder.approveBudget({
+        budgetId: OTHER_WORK_ORDER_BUDGET_ID,
+        actorUserId: CUSTOMER_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderBudgetNotFoundError);
+    expect(() =>
+      workOrder.rejectBudget({
+        budgetId: OTHER_WORK_ORDER_BUDGET_ID,
+        actorUserId: CUSTOMER_ID,
+        now: NOW,
+      }),
+    ).toThrow(WorkOrderBudgetNotFoundError);
+    expect(workOrder.status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(workOrder.budgets[1].status).toBe(BudgetStatus.Pending);
+    expect(workOrder.pullDomainEvents()).toHaveLength(0);
+  });
+
+  it('refuses a named budget that is no longer pending, and leaves the pending one alone', () => {
+    const workOrder = awaitingApprovalOnRoundTwo();
+
+    expect(() =>
+      workOrder.approveBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW }),
+    ).toThrow(BudgetStateError);
+    expect(() =>
+      workOrder.rejectBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW }),
+    ).toThrow(BudgetStateError);
+    expect(workOrder.status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(workOrder.budgets.map((budget) => budget.status)).toEqual([
+      BudgetStatus.Approved,
+      BudgetStatus.Pending,
+    ]);
+  });
+
+  it('answers the budget state, not the work order state, for a decided budget after the work order moved on', () => {
+    const workOrder = workOrderWith(WorkOrderStatus.InExecution, [
+      budgetOfRound(1, ROUND_ONE_ID, BudgetStatus.Approved),
+    ]);
+
+    expect(() =>
+      workOrder.approveBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW }),
+    ).toThrow(BudgetStateError);
+    expect(() =>
+      workOrder.rejectBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW }),
+    ).toThrow(BudgetStateError);
+  });
+
+  it('refuses a pending budget on a work order that is no longer awaiting approval', () => {
+    const workOrder = workOrderWith(WorkOrderStatus.Canceled, [
+      budgetOfRound(1, ROUND_ONE_ID, BudgetStatus.Pending),
+    ]);
+
+    expect(() =>
+      workOrder.approveBudget({ budgetId: ROUND_ONE_ID, actorUserId: CUSTOMER_ID, now: NOW }),
+    ).toThrow(WorkOrderStateError);
   });
 });
 
