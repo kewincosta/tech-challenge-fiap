@@ -216,6 +216,6 @@ Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity a
 ## Handoff
 
 - **Settled mid-build:** 2026-11-01, on a work order canceled while awaiting approval, whose budget stays `PENDING`: user chose "Links só aguardando aprovação (Recomendado)"; AC 11 amended and C51 appended
-- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`; fix for C51 (Sonnet sub-agent) at `455e8e1`
-- **Boundary:** C1-C50 closed at `7616bc0`
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`; fix for C51 (Sonnet sub-agent) at `c64bb07`, returned at `7b4638a`
+- **Boundary:** C1-C51 closed at `7b4638a`
 - **Abandoned:** none
