@@ -2229,6 +2229,217 @@
               }
             }
           ]
+        },
+        {
+          "name": "Budget decision by link",
+          "description": "The customer decides a budget the way the e-mail asks: signs in, reads the work order, and calls the approval address it carries with their own token. Run it after the cancellation above, which frees the vehicle. It leaves the work order in execution.",
+          "item": [
+            {
+              "name": "Open a work order to decide by link",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{advisorToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/work-orders",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["work-orders"]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customerId\": \"{{newCustomerId}}\",\n  \"vehicleId\": \"{{newVehicleId}}\",\n  \"services\": [\n    {\n      \"serviceId\": \"{{catalogServiceId}}\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "A third work order for the new customer's vehicle, which the earlier ones left free. It opens with the catalog service, so the diagnosis has an item to quote."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 201', () => pm.response.to.have.status(201));",
+                      "pm.collectionVariables.set('linkWorkOrderNumber', pm.response.json().number);",
+                      "pm.test('is born with a number of its own', () => pm.expect(pm.response.json().number).to.be.a('string'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Start the diagnosis",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{mechanicToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/work-orders/{{linkWorkOrderNumber}}/diagnosis",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["work-orders", "{{linkWorkOrderNumber}}", "diagnosis"]
+                },
+                "description": "The customer receives an e-mail at each of these steps. In local development Mailpit shows them at http://localhost:8025."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                      "pm.test('moves to IN_DIAGNOSIS', () => pm.expect(pm.response.json().status).to.eql('IN_DIAGNOSIS'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Complete the diagnosis and send the budget",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{mechanicToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/work-orders/{{linkWorkOrderNumber}}/diagnosis/completion",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["work-orders", "{{linkWorkOrderNumber}}", "diagnosis", "completion"]
+                },
+                "description": "Round 1 is generated and the customer receives the e-mail that carries the total and the two links."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                      "pm.test('moves to AWAITING_APPROVAL', () => pm.expect(pm.response.json().status).to.eql('AWAITING_APPROVAL'));"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "The customer reads the work order and its links",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{newCustomerToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/work-orders/me/{{linkWorkOrderNumber}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["work-orders", "me", "{{linkWorkOrderNumber}}"]
+                },
+                "description": "The pending budget carries approvalUrl and rejectionUrl, the same two addresses the e-mail carries. They start with APP_PUBLIC_URL, so change that setting when the API answers at another address. Every other budget carries null in both."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "const pending = body.budgets.find((budget) => budget.status === 'PENDING');",
+                      "pm.test('the pending budget carries both links', () => { pm.expect(pending).to.be.an('object'); pm.expect(pending.approvalUrl).to.match(new RegExp('/work-orders/' + body.number + '/budgets/' + pending.id + '/approval$')); pm.expect(pending.rejectionUrl).to.match(new RegExp('/work-orders/' + body.number + '/budgets/' + pending.id + '/rejection$')); });",
+                      "pm.collectionVariables.set('approvalUrl', pending.approvalUrl);",
+                      "pm.collectionVariables.set('rejectionUrl', pending.rejectionUrl);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "The customer approves through the link",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{newCustomerToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{approvalUrl}}",
+                  "host": ["{{approvalUrl}}"]
+                },
+                "description": "POST to the address read above, with the customer's own token and no body. The link approves that budget and no other. The owning customer or a holder of work-orders:decide can use it, and anyone else gets a 404."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "pm.test('moves to IN_EXECUTION, named in Portuguese', () => { pm.expect(body.status).to.eql('IN_EXECUTION'); pm.expect(body.statusLabel).to.eql('Execução'); });",
+                      "pm.test('the customer is recorded as the decider', () => { pm.expect(body.budgets[0].status).to.eql('APPROVED'); pm.expect(body.budgets[0].decidedByUserId).to.eql(pm.collectionVariables.get('newCustomerUserId')); });",
+                      "pm.test('a decided budget carries no links', () => { pm.expect(body.budgets[0].approvalUrl).to.be.null; pm.expect(body.budgets[0].rejectionUrl).to.be.null; });"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "The same link refuses a budget already decided",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{newCustomerToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{approvalUrl}}",
+                  "host": ["{{approvalUrl}}"]
+                },
+                "description": "A budget that is no longer pending answers 422, so the link in an old e-mail cannot decide a later round."
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('answers 422', () => pm.response.to.have.status(422));",
+                      "pm.test('names the budget state', () => pm.expect(pm.response.json().code).to.eql('BUDGET_INVALID_STATE'));"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },
