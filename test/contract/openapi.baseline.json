@@ -534,6 +534,16 @@
         "required": ["id", "sku", "name", "kind", "unitPriceCents", "quantityOnHand", "status"],
         "type": "object"
       },
+      "LiveResponseDto": {
+        "properties": {
+          "status": {
+            "enum": ["ok"],
+            "type": "string"
+          }
+        },
+        "required": ["status"],
+        "type": "object"
+      },
       "LoginRequestDto": {
         "properties": {
           "email": {
@@ -590,6 +600,34 @@
           }
         },
         "required": ["inventoryItemId", "quantity"],
+        "type": "object"
+      },
+      "ReadinessChecksDto": {
+        "properties": {
+          "database": {
+            "enum": ["up", "down"],
+            "type": "string"
+          },
+          "redis": {
+            "enum": ["up", "down"],
+            "type": "string"
+          }
+        },
+        "required": ["database", "redis"],
+        "type": "object"
+      },
+      "ReadinessResponseDto": {
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/ReadinessChecksDto"
+          },
+          "status": {
+            "description": "ok only when every check is up",
+            "enum": ["ok", "error"],
+            "type": "string"
+          }
+        },
+        "required": ["status", "checks"],
         "type": "object"
       },
       "RefreshTokenRequestDto": {
@@ -5997,6 +6035,56 @@
         ],
         "summary": "Withdraw a batch of approved planned parts from stock",
         "tags": ["work-orders"]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Liveness: the process is running and answering",
+        "tags": ["health"]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Readiness: the database and Redis answer within 2 seconds",
+        "tags": ["health"]
       }
     }
   },

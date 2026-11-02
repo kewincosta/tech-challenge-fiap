@@ -14,6 +14,7 @@ import { mailConfig } from './config/mail.config';
 import { outboxConfig } from './config/outbox.config';
 import { rateLimitConfig } from './config/rate-limit.config';
 import { redisConfig } from './config/redis.config';
+import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './modules/identity/authentication/presentation/guards/jwt-auth.guard';
 import { PendingPasswordGuard } from './modules/identity/authentication/presentation/guards/pending-password.guard';
 import { PermissionsGuard } from './modules/identity/authorization/presentation/guards/permissions.guard';
@@ -83,6 +84,7 @@ import { SharedModule } from './shared/shared.module';
         storage: new ThrottlerStorageRedisService(redis),
       }),
     }),
+    HealthModule,
     IdentityModule,
     CustomersModule,
     VehiclesModule,

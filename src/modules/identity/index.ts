@@ -4,6 +4,7 @@ export type { EffectiveAccessDto } from './authorization/application/dtos/effect
 export { GetUserEffectiveAccessUseCase } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.use-case';
 export { GetUserEffectiveAccessQuery } from './authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 export { CurrentUser } from './authentication/presentation/decorators/current-user.decorator';
+export { Public } from './authentication/presentation/decorators/public.decorator';
 export type { Principal } from './authentication/presentation/principal';
 export { RequirePermissions } from './authorization/presentation/decorators/require-permissions.decorator';
 export type { UserDto } from './users/application/dtos/user.dto';
