@@ -154,14 +154,16 @@ function board(page: number, pageSize: number, statuses: WorkOrderStatus[] = [])
 
 describe('Board listing on its own database', () => {
   it("lists only the open statuses in the brief's order by default", async () => {
-    // Created in the order the board must not list them in, so only the status can sort them.
-    const received = await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(1));
-    const canceled = await saveWorkOrder(WorkOrderStatus.Canceled, minutesAfterBase(2));
-    const inDiagnosis = await saveWorkOrder(WorkOrderStatus.InDiagnosis, minutesAfterBase(3));
-    const delivered = await saveWorkOrder(WorkOrderStatus.Delivered, minutesAfterBase(4));
-    const awaiting = await saveWorkOrder(WorkOrderStatus.AwaitingApproval, minutesAfterBase(5));
-    const completed = await saveWorkOrder(WorkOrderStatus.Completed, minutesAfterBase(6));
+    // The open ones are created at minutes 7, 4, 6 and 2 along the board's order, which is neither
+    // oldest first nor newest first, and they are saved in neither of those orders, so only the
+    // status can sort them. The closed ones are interleaved with them in time.
+    const inDiagnosis = await saveWorkOrder(WorkOrderStatus.InDiagnosis, minutesAfterBase(6));
+    const canceled = await saveWorkOrder(WorkOrderStatus.Canceled, minutesAfterBase(1));
     const inExecution = await saveWorkOrder(WorkOrderStatus.InExecution, minutesAfterBase(7));
+    const delivered = await saveWorkOrder(WorkOrderStatus.Delivered, minutesAfterBase(5));
+    const received = await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(2));
+    const completed = await saveWorkOrder(WorkOrderStatus.Completed, minutesAfterBase(3));
+    const awaiting = await saveWorkOrder(WorkOrderStatus.AwaitingApproval, minutesAfterBase(4));
 
     const page = await board(1, 20);
 
@@ -229,14 +231,15 @@ describe('Board listing on its own database', () => {
   });
 
   it('orders all seven statuses when the filter names them all', async () => {
-    // Created newest to oldest in the order the board lists them, and named out of order.
-    const canceled = await saveWorkOrder(WorkOrderStatus.Canceled, minutesAfterBase(1));
-    const delivered = await saveWorkOrder(WorkOrderStatus.Delivered, minutesAfterBase(2));
-    const completed = await saveWorkOrder(WorkOrderStatus.Completed, minutesAfterBase(3));
-    const received = await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(4));
-    const inDiagnosis = await saveWorkOrder(WorkOrderStatus.InDiagnosis, minutesAfterBase(5));
-    const awaiting = await saveWorkOrder(WorkOrderStatus.AwaitingApproval, minutesAfterBase(6));
-    const inExecution = await saveWorkOrder(WorkOrderStatus.InExecution, minutesAfterBase(7));
+    // Created at minutes 4, 7, 2, 5, 1, 6 and 3 along the board's order, which is neither oldest
+    // first nor newest first, saved in neither of those orders, and named out of order below.
+    const received = await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(5));
+    const canceled = await saveWorkOrder(WorkOrderStatus.Canceled, minutesAfterBase(3));
+    const inExecution = await saveWorkOrder(WorkOrderStatus.InExecution, minutesAfterBase(4));
+    const delivered = await saveWorkOrder(WorkOrderStatus.Delivered, minutesAfterBase(6));
+    const awaiting = await saveWorkOrder(WorkOrderStatus.AwaitingApproval, minutesAfterBase(7));
+    const completed = await saveWorkOrder(WorkOrderStatus.Completed, minutesAfterBase(1));
+    const inDiagnosis = await saveWorkOrder(WorkOrderStatus.InDiagnosis, minutesAfterBase(2));
 
     const page = await board(1, 20, [
       WorkOrderStatus.Received,
