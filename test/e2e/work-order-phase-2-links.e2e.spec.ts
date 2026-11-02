@@ -464,7 +464,7 @@ describe('Budget decision links', () => {
     expect(boardItems[boardItems.length - 1].budgets[0]).toMatchObject(links);
   });
 
-  it('answers 400 for a budget id that is not a UUID on both links', async () => {
+  it('answers 400 BAD_REQUEST for a budget id that is not a UUID on both links', async () => {
     const workOrder = await quoteRoundOne();
 
     for (const decision of ['approval', 'rejection']) {
@@ -474,6 +474,7 @@ describe('Budget decision links', () => {
       );
 
       expect(response.status, decision).toBe(400);
+      expect(response.body, decision).toMatchObject({ code: 'BAD_REQUEST' });
     }
     expect((await getWorkOrder(workOrder.number)).status).toBe('AWAITING_APPROVAL');
   });
