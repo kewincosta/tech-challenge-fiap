@@ -250,9 +250,10 @@ describe('Status e-mails', () => {
       // 150.99 of the service and 2 x 25.00 of the part.
       expect(body).toContain('R$ 200,99');
     }
-    // What the e-mail names is what decides the budget.
+    // What the e-mail names is what decides the budget: the address with its query, called with POST.
+    const { pathname, search } = new URL(budget.approvalUrl!);
     const approved = await api(app)
-      .post(new URL(budget.approvalUrl!).pathname)
+      .post(`${pathname}${search}`)
       .set('Authorization', `Bearer ${customer.owner.accessToken}`);
     expect(approved.status).toBe(200);
     expect(approved.body).toMatchObject({ status: 'IN_EXECUTION' });

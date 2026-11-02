@@ -91,10 +91,11 @@ export class WorkOrderBudgetResponseDto {
     type: String,
     nullable: true,
     example:
-      'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval',
+      'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval?link=3c64ce548c17bb2d06154d75289431b2',
     description:
-      'POST here with the customer token to approve this budget. Null unless the budget is ' +
-      'pending and its work order awaits approval',
+      'POST here with the customer token to approve this budget. The link hash at the end ' +
+      'belongs to the budget as it was generated, so the address stops working if the budget ' +
+      'is generated again. Null unless the budget is pending and its work order awaits approval',
   })
   approvalUrl!: string | null;
 
@@ -102,10 +103,11 @@ export class WorkOrderBudgetResponseDto {
     type: String,
     nullable: true,
     example:
-      'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection',
+      'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection?link=3c64ce548c17bb2d06154d75289431b2',
     description:
-      'POST here with the customer token to reject this budget. Null unless the budget is ' +
-      'pending and its work order awaits approval',
+      'POST here with the customer token to reject this budget. The link hash at the end ' +
+      'belongs to the budget as it was generated, so the address stops working if the budget ' +
+      'is generated again. Null unless the budget is pending and its work order awaits approval',
   })
   rejectionUrl!: string | null;
 }

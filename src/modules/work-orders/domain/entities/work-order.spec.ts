@@ -826,6 +826,16 @@ describe('WorkOrder budget decided by the id a link names', () => {
     expect(roundTwo.budgets[1].status).toBe(BudgetStatus.Rejected);
   });
 
+  it('answers the budget of an id whatever its status, and refuses an id the work order does not hold', () => {
+    const workOrder = awaitingApprovalOnRoundTwo();
+
+    expect(workOrder.budgetById(ROUND_ONE_ID)).toBe(workOrder.budgets[0]);
+    expect(workOrder.budgetById(ROUND_TWO_ID)).toBe(workOrder.budgets[1]);
+    expect(() => workOrder.budgetById(OTHER_WORK_ORDER_BUDGET_ID)).toThrow(
+      WorkOrderBudgetNotFoundError,
+    );
+  });
+
   it('refuses an id the work order does not hold, and changes nothing', () => {
     const workOrder = awaitingApprovalOnRoundTwo();
 

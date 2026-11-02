@@ -39,9 +39,10 @@ export function composeStatusMail(
   ];
 
   if (event.budgetToDecide !== null) {
-    const { approvalUrl, rejectionUrl } = links.of(event.workOrderNumber, event.budgetToDecide.id);
+    const { id, generatedAt, totalCents } = event.budgetToDecide;
+    const { approvalUrl, rejectionUrl } = links.of(event.workOrderNumber, id, generatedAt);
     paragraphs.push(
-      `O orçamento é de ${formatReais(event.budgetToDecide.totalCents)} e espera a sua decisão.`,
+      `O orçamento é de ${formatReais(totalCents)} e espera a sua decisão.`,
       `Aprovar: POST ${approvalUrl}`,
       `Recusar: POST ${rejectionUrl}`,
       'Chame cada endereço com o método POST e o seu token de acesso no cabeçalho Authorization (Bearer).',

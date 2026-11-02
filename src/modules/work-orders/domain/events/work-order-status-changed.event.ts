@@ -5,6 +5,11 @@ import { WorkOrderStatus } from '../work-order-status';
 export interface BudgetToDecide {
   readonly id: string;
   readonly totalCents: number;
+  /**
+   * When this round was generated. A rejected round 1 is generated again under the same id, so the
+   * moment is what tells one generation of it from the next.
+   */
+  readonly generatedAt: Date;
 }
 
 /**

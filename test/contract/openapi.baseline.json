@@ -1214,8 +1214,8 @@
       "WorkOrderBudgetResponseDto": {
         "properties": {
           "approvalUrl": {
-            "description": "POST here with the customer token to approve this budget. Null unless the budget is pending and its work order awaits approval",
-            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval",
+            "description": "POST here with the customer token to approve this budget. The link hash at the end belongs to the budget as it was generated, so the address stops working if the budget is generated again. Null unless the budget is pending and its work order awaits approval",
+            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval?link=3c64ce548c17bb2d06154d75289431b2",
             "nullable": true,
             "type": "string"
           },
@@ -1237,8 +1237,8 @@
             "type": "string"
           },
           "rejectionUrl": {
-            "description": "POST here with the customer token to reject this budget. Null unless the budget is pending and its work order awaits approval",
-            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection",
+            "description": "POST here with the customer token to reject this budget. The link hash at the end belongs to the budget as it was generated, so the address stops working if the budget is generated again. Null unless the budget is pending and its work order awaits approval",
+            "example": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection?link=3c64ce548c17bb2d06154d75289431b2",
             "nullable": true,
             "type": "string"
           },
@@ -4859,7 +4859,7 @@
     },
     "/api/v1/work-orders/{number}/budgets/{budgetId}/approval": {
       "post": {
-        "description": "The address `approvalUrl` carries on a pending budget. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "description": "The address `approvalUrl` carries on a pending budget, with its `link` hash. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, because the budget was generated again after the address was sent, answers 422 WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.",
         "operationId": "WorkOrdersController_approveBudgetByLink_v1",
         "parameters": [
           {
@@ -4875,6 +4875,16 @@
             "name": "budgetId",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The hash that ends the address in the e-mail and in the work order answer. It tells one generation of the budget from the next, so an address sent before the budget was generated again is refused with 422 WORK_ORDER_BUDGET_LINK_OUTDATED",
+            "in": "query",
+            "name": "link",
+            "required": true,
+            "schema": {
+              "example": "3c64ce548c17bb2d06154d75289431b2",
               "type": "string"
             }
           }
@@ -4932,7 +4942,7 @@
     },
     "/api/v1/work-orders/{number}/budgets/{budgetId}/rejection": {
       "post": {
-        "description": "The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "description": "The address `rejectionUrl` carries on a pending budget, with its `link` hash. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, because the budget was generated again after the address was sent, answers 422 WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.",
         "operationId": "WorkOrdersController_rejectBudgetByLink_v1",
         "parameters": [
           {
@@ -4948,6 +4958,16 @@
             "name": "budgetId",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The hash that ends the address in the e-mail and in the work order answer. It tells one generation of the budget from the next, so an address sent before the budget was generated again is refused with 422 WORK_ORDER_BUDGET_LINK_OUTDATED",
+            "in": "query",
+            "name": "link",
+            "required": true,
+            "schema": {
+              "example": "3c64ce548c17bb2d06154d75289431b2",
               "type": "string"
             }
           }

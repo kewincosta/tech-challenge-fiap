@@ -38,6 +38,7 @@ import { SubmitSupplementaryBudgetUseCase } from './application/commands/submit-
 import { WithdrawPartsUseCase } from './application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
   BUDGET_DECISION_LINKS,
+  BUDGET_LINK_VERIFIER,
   CUSTOMER_DIRECTORY,
   MAILER,
   OUTBOX_SETTINGS,
@@ -55,7 +56,10 @@ import {
   WORK_ORDER_REPOSITORY,
 } from './work-orders.tokens';
 import { OutboxSettings } from './application/outbox-settings';
-import { BudgetDecisionLinks } from './application/ports/budget-decision-links.port';
+import {
+  BudgetDecisionLinks,
+  BudgetLinkVerifier,
+} from './application/ports/budget-decision-links.port';
 import { CustomerDirectory } from './application/ports/customer-directory.port';
 import { Mailer } from './application/ports/mailer.port';
 import { PartCatalog } from './application/ports/part-catalog.port';
@@ -227,20 +231,34 @@ import { HttpBudgetDecisionLinks } from './presentation/http-budget-decision-lin
       useFactory: (
         workOrders: WorkOrderRepository,
         authorizer: BudgetDecisionAuthorizer,
+        links: BudgetLinkVerifier,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new ApproveBudgetUseCase(workOrders, authorizer, clock, events),
-      inject: [WORK_ORDER_REPOSITORY, BudgetDecisionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
+      ) => new ApproveBudgetUseCase(workOrders, authorizer, links, clock, events),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        BudgetDecisionAuthorizer,
+        BUDGET_LINK_VERIFIER,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
     },
     {
       provide: RejectBudgetUseCase,
       useFactory: (
         workOrders: WorkOrderRepository,
         authorizer: BudgetDecisionAuthorizer,
+        links: BudgetLinkVerifier,
         clock: Clock,
         events: DomainEventPublisher,
-      ) => new RejectBudgetUseCase(workOrders, authorizer, clock, events),
-      inject: [WORK_ORDER_REPOSITORY, BudgetDecisionAuthorizer, CLOCK, DOMAIN_EVENT_PUBLISHER],
+      ) => new RejectBudgetUseCase(workOrders, authorizer, links, clock, events),
+      inject: [
+        WORK_ORDER_REPOSITORY,
+        BudgetDecisionAuthorizer,
+        BUDGET_LINK_VERIFIER,
+        CLOCK,
+        DOMAIN_EVENT_PUBLISHER,
+      ],
     },
     {
       provide: WithdrawPartsUseCase,
@@ -456,6 +474,7 @@ import { HttpBudgetDecisionLinks } from './presentation/http-budget-decision-lin
       inject: [appConfig.KEY],
     },
     { provide: BUDGET_DECISION_LINKS, useExisting: HttpBudgetDecisionLinks },
+    { provide: BUDGET_LINK_VERIFIER, useExisting: HttpBudgetDecisionLinks },
     {
       provide: MAILER,
       useFactory: (config: ConfigType<typeof mailConfig>) => SmtpMailer.create(config),

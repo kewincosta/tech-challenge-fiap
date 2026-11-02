@@ -309,9 +309,47 @@ describe('WorkOrder status change events', () => {
     );
 
     // 150.99 for the service and 2 x 25.00 for the part, then 150.99 and 2 x 25.00 again.
-    expect(roundOne.budgetToDecide).toEqual({ id: ROUND_ONE_ID.value, totalCents: 20099 });
-    expect(roundTwo.budgetToDecide).toEqual({ id: ROUND_TWO_ID.value, totalCents: 20099 });
+    expect(roundOne.budgetToDecide).toEqual({
+      id: ROUND_ONE_ID.value,
+      totalCents: 20099,
+      generatedAt: NOW,
+    });
+    expect(roundTwo.budgetToDecide).toEqual({
+      id: ROUND_TWO_ID.value,
+      totalCents: 20099,
+      generatedAt: NOW,
+    });
     expect(approved.budgetToDecide).toBeNull();
+  });
+
+  it('carries the new generation, under the same id, when round 1 is generated again after a rejection', () => {
+    const [first] = statusChangesOf(
+      afterBuilding(inDiagnosis, (workOrder) =>
+        workOrder.completeDiagnosis({
+          budgetId: ROUND_ONE_ID,
+          actorUserId: MECHANIC_ID,
+          now: OPENED_AT,
+        }),
+      ),
+    );
+    const [again] = statusChangesOf(
+      afterBuilding(
+        () => {
+          const workOrder = awaitingApprovalOnRoundOne();
+          workOrder.rejectBudget({ actorUserId: CUSTOMER_ID, now: OPENED_AT });
+          return workOrder;
+        },
+        (workOrder) =>
+          workOrder.completeDiagnosis({
+            budgetId: ROUND_TWO_ID,
+            actorUserId: MECHANIC_ID,
+            now: NOW,
+          }),
+      ),
+    );
+
+    expect(first.budgetToDecide).toMatchObject({ id: ROUND_ONE_ID.value, generatedAt: OPENED_AT });
+    expect(again.budgetToDecide).toMatchObject({ id: ROUND_ONE_ID.value, generatedAt: NOW });
   });
 
   it('records none for an action that keeps the status, nor for a transition the status refuses', () => {

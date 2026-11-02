@@ -553,14 +553,20 @@ export class WorkOrder extends AggregateRoot {
       this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
       return this.pendingBudget();
     }
-    const budget = this.props.budgets.find((candidate) => candidate.id.equals(budgetId));
-    if (!budget) {
-      throw new WorkOrderBudgetNotFoundError();
-    }
+    const budget = this.budgetById(budgetId);
     if (budget.status !== BudgetStatus.Pending) {
       throw new BudgetStateError(budget.status);
     }
     this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+    return budget;
+  }
+
+  /** One of this work order's budgets, whatever its status. */
+  budgetById(budgetId: BudgetId): Budget {
+    const budget = this.props.budgets.find((candidate) => candidate.id.equals(budgetId));
+    if (!budget) {
+      throw new WorkOrderBudgetNotFoundError();
+    }
     return budget;
   }
 
@@ -765,7 +771,13 @@ export class WorkOrder extends AggregateRoot {
         this.props.vehiclePlate,
         fromStatus,
         this.props.status,
-        pending ? { id: pending.id.value, totalCents: pending.total.cents } : null,
+        pending
+          ? {
+              id: pending.id.value,
+              totalCents: pending.total.cents,
+              generatedAt: pending.generatedAt,
+            }
+          : null,
         now,
       ),
     );

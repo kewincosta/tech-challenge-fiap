@@ -136,7 +136,11 @@ describe('SubmitSupplementaryBudgetUseCase', () => {
         'ABC1234',
         WorkOrderStatus.InExecution,
         WorkOrderStatus.AwaitingApproval,
-        { id: updated.budgets[1].id.value, totalCents: updated.budgets[1].total.cents },
+        {
+          id: updated.budgets[1].id.value,
+          totalCents: updated.budgets[1].total.cents,
+          generatedAt: clock.now(),
+        },
         clock.now(),
       ),
     ]);

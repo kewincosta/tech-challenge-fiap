@@ -14,3 +14,4 @@ export const OUTBOX_SETTINGS = Symbol('OutboxSettings');
 export const MAILER = Symbol('Mailer');
 export const STATUS_MAIL_LOG = Symbol('StatusMailLog');
 export const BUDGET_DECISION_LINKS = Symbol('BudgetDecisionLinks');
+export const BUDGET_LINK_VERIFIER = Symbol('BudgetLinkVerifier');

@@ -82,6 +82,7 @@ import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.req
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
 import { AverageExecutionTimeQueryDto } from '../dtos/average-execution-time.request.dto';
+import { BudgetDecisionLinkQueryDto } from '../dtos/budget-decision-link.request.dto';
 import { CancellationRequestDto } from '../dtos/cancellation.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
 import { ListWorkOrdersQueryDto } from '../dtos/list-work-orders.request.dto';
@@ -511,10 +512,13 @@ export class WorkOrdersController {
   @ApiOperation({
     summary: 'Approve one budget, the one a link names',
     description:
-      'The address `approvalUrl` carries on a pending budget. Allowed to the owning customer and to a ' +
-      'holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not ' +
-      "one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer " +
-      'pending answers 422 BUDGET_INVALID_STATE.',
+      'The address `approvalUrl` carries on a pending budget, with its `link` hash. Allowed to the ' +
+      'owning customer and to a holder of work-orders:decide; anyone else gets 404 ' +
+      "WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 " +
+      'WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, ' +
+      'because the budget was generated again after the address was sent, answers 422 ' +
+      'WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 ' +
+      'BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.',
   })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
@@ -523,10 +527,11 @@ export class WorkOrdersController {
   async approveBudgetByLink(
     @Param('number') number: string,
     @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @Query() query: BudgetDecisionLinkQueryDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.approveBudgetUseCase.execute(
-      new ApproveBudgetCommand(number, principal.userId, budgetId),
+      new ApproveBudgetCommand(number, principal.userId, budgetId, query.link),
     );
     return this.toResponseDto(
       await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
@@ -540,10 +545,13 @@ export class WorkOrdersController {
   @ApiOperation({
     summary: 'Reject one budget, the one a link names',
     description:
-      'The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer and to a ' +
-      'holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not ' +
-      "one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer " +
-      'pending answers 422 BUDGET_INVALID_STATE.',
+      'The address `rejectionUrl` carries on a pending budget, with its `link` hash. Allowed to the ' +
+      'owning customer and to a holder of work-orders:decide; anyone else gets 404 ' +
+      "WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 " +
+      'WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, ' +
+      'because the budget was generated again after the address was sent, answers 422 ' +
+      'WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 ' +
+      'BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.',
   })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
@@ -552,10 +560,11 @@ export class WorkOrdersController {
   async rejectBudgetByLink(
     @Param('number') number: string,
     @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @Query() query: BudgetDecisionLinkQueryDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
     await this.rejectBudgetUseCase.execute(
-      new RejectBudgetCommand(number, principal.userId, budgetId),
+      new RejectBudgetCommand(number, principal.userId, budgetId, query.link),
     );
     return this.toResponseDto(
       await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
@@ -697,7 +706,9 @@ export class WorkOrdersController {
     const decidable =
       (workOrder.status as WorkOrderStatus) === WorkOrderStatus.AwaitingApproval &&
       (budget.status as BudgetStatus) === BudgetStatus.Pending;
-    const links = decidable ? this.budgetLinks.of(workOrder.number, budget.id) : null;
+    const links = decidable
+      ? this.budgetLinks.of(workOrder.number, budget.id, budget.generatedAt)
+      : null;
     return {
       ...budget,
       approvalUrl: links?.approvalUrl ?? null,

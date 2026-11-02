@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { FakeCustomerDirectory } from '../../../../../test/support/fakes/fake-customer-directory';
 import { FailingMailer, RecordingMailer } from '../../../../../test/support/fakes/recording-mailer';
 import { RecordingStatusMailLog } from '../../../../../test/support/fakes/recording-status-mail-log';
-import { WorkOrderStatusChanged } from '../../domain/events/work-order-status-changed.event';
+import {
+  BudgetToDecide,
+  WorkOrderStatusChanged,
+} from '../../domain/events/work-order-status-changed.event';
 import { WorkOrderStatus } from '../../domain/work-order-status';
 import { BudgetDecisionLinks } from '../ports/budget-decision-links.port';
 import { CustomerRef } from '../ports/customer-directory.port';
@@ -33,7 +36,7 @@ const LINKS: BudgetDecisionLinks = {
 function statusChange(
   toStatus: WorkOrderStatus,
   fromStatus: WorkOrderStatus | null = WorkOrderStatus.Received,
-  budgetToDecide: { id: string; totalCents: number } | null = null,
+  budgetToDecide: BudgetToDecide | null = null,
 ): WorkOrderStatusChanged {
   return new WorkOrderStatusChanged(
     WORK_ORDER_ID,
@@ -48,7 +51,11 @@ function statusChange(
 }
 
 function makeSubscriber(
-  options: { failingMailer?: FailingMailer; customer?: CustomerRef | null } = {},
+  options: {
+    failingMailer?: FailingMailer;
+    customer?: CustomerRef | null;
+    links?: BudgetDecisionLinks;
+  } = {},
 ) {
   const customers = new FakeCustomerDirectory();
   if (options.customer !== null) {
@@ -59,7 +66,7 @@ function makeSubscriber(
   const subscriber = new StatusMailSubscriber(
     customers,
     options.failingMailer ?? mailer,
-    LINKS,
+    options.links ?? LINKS,
     log,
   );
   return { subscriber, mailer, log };
@@ -115,6 +122,7 @@ describe('StatusMailSubscriber', () => {
       statusChange(WorkOrderStatus.AwaitingApproval, WorkOrderStatus.InDiagnosis, {
         id: BUDGET_ID,
         totalCents: 123456,
+        generatedAt: NOW,
       }),
     );
 
@@ -126,6 +134,31 @@ describe('StatusMailSubscriber', () => {
       expect(body).toContain(approvalUrl);
       expect(body).toContain(rejectionUrl);
     }
+  });
+
+  it('asks for the links of the generation of the budget the event carries', async () => {
+    const asked: Array<{ number: string; budgetId: string; generatedAt: Date }> = [];
+    const links: BudgetDecisionLinks = {
+      of: (number, budgetId, generatedAt) => {
+        asked.push({ number, budgetId, generatedAt });
+        return {
+          approvalUrl: 'https://oficina.example/a',
+          rejectionUrl: 'https://oficina.example/r',
+        };
+      },
+    };
+    const { subscriber } = makeSubscriber({ links });
+    const generatedAt = new Date('2026-09-01T08:15:30.250Z');
+
+    await subscriber.handle(
+      statusChange(WorkOrderStatus.AwaitingApproval, WorkOrderStatus.InDiagnosis, {
+        id: BUDGET_ID,
+        totalCents: 123456,
+        generatedAt,
+      }),
+    );
+
+    expect(asked).toEqual([{ number: NUMBER, budgetId: BUDGET_ID, generatedAt }]);
   });
 
   it('adds neither a total nor a link to a status that awaits no decision', async () => {

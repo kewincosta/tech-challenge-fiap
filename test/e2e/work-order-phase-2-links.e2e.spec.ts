@@ -1,14 +1,16 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import type { Response } from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestApp } from '../support/app';
+import type { RecordingMailer } from '../support/fakes/recording-mailer';
 import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { uniqueServiceName } from '../support/factories/service.factory';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { api, grantRole, login, registerUser, type AuthenticatedClient } from '../support/http';
 
 let app: INestApplication;
+let mailer: RecordingMailer;
 let close: () => Promise<void>;
 let admin: AuthenticatedClient;
 let serviceAdvisor: AuthenticatedClient;
@@ -17,6 +19,7 @@ let mechanic: AuthenticatedClient;
 beforeAll(async () => {
   const testApp = await createTestApp();
   app = testApp.app;
+  mailer = testApp.mailer;
   close = testApp.close;
 
   const adminCredentials = await registerUser(app);
@@ -41,6 +44,7 @@ interface BudgetView {
   round: number;
   status: string;
   totalCents: number;
+  generatedAt: string;
   decidedByUserId: string | null;
   approvalUrl: string | null;
   rejectionUrl: string | null;
@@ -58,21 +62,46 @@ interface QuotedWorkOrder {
   id: string;
   owner: AuthenticatedClient;
   customerId: string;
+  /** Where the customer's e-mails go: the address of their account. */
+  email: string;
 }
 
 const PUBLIC_URL = process.env.APP_PUBLIC_URL;
 
-function approvalUrlOf(number: string, budgetId: string): string {
-  return `${PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval`;
+type Generation = Pick<BudgetView, 'id' | 'generatedAt'>;
+
+/**
+ * What the plan says the links carry: the first 32 hexadecimal characters of the SHA-256 of
+ * "<budget id>:<the moment the round was generated, in epoch milliseconds>".
+ */
+function linkHashOf(budget: Generation): string {
+  return createHash('sha256')
+    .update(`${budget.id}:${new Date(budget.generatedAt).getTime()}`)
+    .digest('hex')
+    .slice(0, 32);
 }
 
-function rejectionUrlOf(number: string, budgetId: string): string {
-  return `${PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/rejection`;
+function approvalUrlOf(number: string, budget: Generation): string {
+  return `${PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budget.id}/approval?link=${linkHashOf(budget)}`;
 }
 
-/** The link as the e-mail and the answer carry it, called the way a client would: its path, POST. */
+function rejectionUrlOf(number: string, budget: Generation): string {
+  return `${PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budget.id}/rejection?link=${linkHashOf(budget)}`;
+}
+
+/** The address an e-mail names for a decision: the one that ends in `/approval` or `/rejection` and its hash. */
+function addressInMail(text: string, decision: 'approval' | 'rejection'): string {
+  const match = new RegExp(`https?://\\S+/${decision}\\?link=[0-9a-f]{32}`).exec(text);
+  if (match === null) {
+    throw new Error(`The e-mail names no ${decision} address with a link hash:\n${text}`);
+  }
+  return match[0];
+}
+
+/** The link as the e-mail and the answer carry it, called the way a client would: path and query, POST. */
 async function postLink(url: string, token?: string): Promise<Response> {
-  const request = api(app).post(new URL(url).pathname);
+  const { pathname, search } = new URL(url);
+  const request = api(app).post(`${pathname}${search}`);
   return token === undefined ? request : request.set('Authorization', `Bearer ${token}`);
 }
 
@@ -107,6 +136,7 @@ async function registerCustomerWithVehicle(): Promise<{
   customerId: string;
   vehicleId: string;
   owner: AuthenticatedClient;
+  email: string;
 }> {
   const credentials = await registerUser(app);
   const customer = await api(app)
@@ -128,12 +158,17 @@ async function registerCustomerWithVehicle(): Promise<{
       year: 2020,
     })
     .expect(201);
-  return { customerId, vehicleId: (vehicle.body as { id: string }).id, owner };
+  return {
+    customerId,
+    vehicleId: (vehicle.body as { id: string }).id,
+    owner,
+    email: credentials.email,
+  };
 }
 
 /** Opens a work order with a service and a part, and takes it to AWAITING_APPROVAL on round 1. */
 async function quoteRoundOne(): Promise<QuotedWorkOrder> {
-  const { customerId, vehicleId, owner } = await registerCustomerWithVehicle();
+  const { customerId, vehicleId, owner, email } = await registerCustomerWithVehicle();
   const serviceId = await createCatalogService(15099);
   const inventoryItemId = await createInventoryItem(2500);
   const opened = await api(app)
@@ -155,7 +190,7 @@ async function quoteRoundOne(): Promise<QuotedWorkOrder> {
     .post(`/api/v1/work-orders/${number}/diagnosis/completion`)
     .set('Authorization', `Bearer ${mechanic.accessToken}`)
     .expect(200);
-  return { number, id, owner, customerId };
+  return { number, id, owner, customerId, email };
 }
 
 /** Adds a service during the execution and sends it as round 2, leaving it AWAITING_APPROVAL. */
@@ -192,9 +227,11 @@ describe('Budget decision links', () => {
     expect(detail.budgets).toHaveLength(1);
     const [round1] = detail.budgets;
     expect(round1.status).toBe('PENDING');
-    expect(round1.approvalUrl).toBe(approvalUrlOf(workOrder.number, round1.id));
-    expect(round1.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, round1.id));
-    expect(round1.rejectionUrl!.endsWith('/rejection')).toBe(true);
+    expect(round1.approvalUrl).toBe(approvalUrlOf(workOrder.number, round1));
+    expect(round1.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, round1));
+    expect(linkHashOf(round1)).toMatch(/^[0-9a-f]{32}$/);
+    expect(new URL(round1.approvalUrl!).pathname).toMatch(/\/budgets\/[^/]+\/approval$/);
+    expect(new URL(round1.rejectionUrl!).pathname).toMatch(/\/budgets\/[^/]+\/rejection$/);
   });
 
   it('moves the links to round 2 once round 1 is decided', async () => {
@@ -209,16 +246,16 @@ describe('Budget decision links', () => {
     const [round1, round2] = detail.budgets;
     expect(round1.approvalUrl).toBeNull();
     expect(round1.rejectionUrl).toBeNull();
-    expect(round2.approvalUrl).toBe(approvalUrlOf(workOrder.number, round2.id));
-    expect(round2.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, round2.id));
+    expect(round2.approvalUrl).toBe(approvalUrlOf(workOrder.number, round2));
+    expect(round2.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, round2));
   });
 
   it('answers null links on the pending budget of a canceled work order', async () => {
     const workOrder = await quoteRoundOne();
     const [awaiting] = (await getWorkOrder(workOrder.number)).budgets;
     expect(awaiting.status).toBe('PENDING');
-    expect(awaiting.approvalUrl).toBe(approvalUrlOf(workOrder.number, awaiting.id));
-    expect(awaiting.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, awaiting.id));
+    expect(awaiting.approvalUrl).toBe(approvalUrlOf(workOrder.number, awaiting));
+    expect(awaiting.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, awaiting));
 
     const cancellation = await api(app)
       .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
@@ -297,9 +334,7 @@ describe('Budget decision links', () => {
       [1, 'APPROVED'],
       [2, 'PENDING'],
     ]);
-    expect(detail.budgets[1].approvalUrl).toBe(
-      approvalUrlOf(workOrder.number, detail.budgets[1].id),
-    );
+    expect(detail.budgets[1].approvalUrl).toBe(approvalUrlOf(workOrder.number, detail.budgets[1]));
   });
 
   it('refuses the rejection link of a budget that is not pending with 422', async () => {
@@ -346,7 +381,7 @@ describe('Budget decision links', () => {
     const budgetOfSecond = (await getWorkOrder(second.number)).budgets[0];
 
     const refused = await postLink(
-      approvalUrlOf(first.number, budgetOfSecond.id),
+      approvalUrlOf(first.number, budgetOfSecond),
       first.owner.accessToken,
     );
 
@@ -362,7 +397,7 @@ describe('Budget decision links', () => {
     const budgetOfSecond = (await getWorkOrder(second.number)).budgets[0];
 
     const refused = await postLink(
-      rejectionUrlOf(first.number, budgetOfSecond.id),
+      rejectionUrlOf(first.number, budgetOfSecond),
       first.owner.accessToken,
     );
 
@@ -381,7 +416,7 @@ describe('Budget decision links', () => {
     const strangerRejection = await postLink(rejectionUrl!, stranger.accessToken);
     // A stranger who guesses wrong learns no more than one who has the right address.
     const strangerGuess = await postLink(
-      approvalUrlOf(workOrder.number, randomUUID()),
+      approvalUrlOf(workOrder.number, { id: randomUUID(), generatedAt: new Date().toISOString() }),
       stranger.accessToken,
     );
     const anonymousApproval = await postLink(approvalUrl!);
@@ -453,8 +488,8 @@ describe('Budget decision links', () => {
       .expect(200);
 
     const links = {
-      approvalUrl: approvalUrlOf(workOrder.number, expected.id),
-      rejectionUrl: rejectionUrlOf(workOrder.number, expected.id),
+      approvalUrl: approvalUrlOf(workOrder.number, expected),
+      rejectionUrl: rejectionUrlOf(workOrder.number, expected),
     };
     expect((ownDetail.body as WorkOrderView).budgets[0]).toMatchObject(links);
     const listed = (ownList.body as WorkOrderView[]).find((row) => row.id === workOrder.id);
@@ -464,12 +499,107 @@ describe('Budget decision links', () => {
     expect(boardItems[boardItems.length - 1].budgets[0]).toMatchObject(links);
   });
 
+  it('refuses a link from before round 1 was generated again and accepts the new one', async () => {
+    const workOrder = await quoteRoundOne();
+    // The customer holds the e-mails: the third one quotes round 1 for the first time.
+    const [, , firstQuote] = await mailer.waitForMailTo(workOrder.email, 3);
+    const oldApprovalUrl = addressInMail(firstQuote.text, 'approval');
+    const oldRejectionUrl = addressInMail(firstQuote.text, 'rejection');
+    const quoted = (await getWorkOrder(workOrder.number)).budgets[0];
+    expect(oldApprovalUrl).toBe(quoted.approvalUrl);
+
+    // The customer rejects round 1, the workshop adds a service of 500.00 and completes the
+    // diagnosis again: round 1 comes back pending under the same id, at a new total.
+    const rejected = await postLink(oldRejectionUrl, workOrder.owner.accessToken);
+    expect(rejected.status).toBe(200);
+    expect(rejected.body).toMatchObject({ status: 'IN_DIAGNOSIS' });
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/services`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ serviceId: await createCatalogService(50000) })
+      .expect(200);
+    await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/diagnosis/completion`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .expect(200);
+    const requoted = (await getWorkOrder(workOrder.number)).budgets[0];
+    // 150.99 and 2 x 25.00 as before, plus 500.00.
+    expect(requoted).toMatchObject({ id: quoted.id, status: 'PENDING', totalCents: 70099 });
+    const mails = await mailer.waitForMailTo(workOrder.email, 5);
+    const newApprovalUrl = addressInMail(mails[4].text, 'approval');
+    expect(newApprovalUrl).toBe(requoted.approvalUrl);
+    expect(newApprovalUrl).not.toBe(oldApprovalUrl);
+
+    const oldApproval = await postLink(oldApprovalUrl, workOrder.owner.accessToken);
+    const oldRejection = await postLink(oldRejectionUrl, workOrder.owner.accessToken);
+
+    for (const refused of [oldApproval, oldRejection]) {
+      expect(refused.status).toBe(422);
+      expect(refused.body).toMatchObject({ code: 'WORK_ORDER_BUDGET_LINK_OUTDATED' });
+    }
+    const awaiting = await getWorkOrder(workOrder.number);
+    expect(awaiting.status).toBe('AWAITING_APPROVAL');
+    expect(awaiting.budgets).toHaveLength(1);
+    expect(awaiting.budgets[0]).toMatchObject({ status: 'PENDING', totalCents: 70099 });
+
+    const approved = await postLink(newApprovalUrl, workOrder.owner.accessToken);
+
+    expect(approved.status).toBe(200);
+    expect(approved.body).toMatchObject({
+      status: 'IN_EXECUTION',
+      budgets: [{ id: quoted.id, status: 'APPROVED', totalCents: 70099 }],
+    });
+  });
+
+  it('refuses a tampered or missing link hash on both links', async () => {
+    const workOrder = await quoteRoundOne();
+    const budget = (await getWorkOrder(workOrder.number)).budgets[0];
+    const hash = linkHashOf(budget);
+    const firstCharacterChanged = `${hash.startsWith('0') ? '1' : '0'}${hash.slice(1)}`;
+    const lastCharacterChanged = `${hash.slice(0, -1)}${hash.endsWith('0') ? '1' : '0'}`;
+
+    for (const decision of ['approval', 'rejection']) {
+      const address = `${PUBLIC_URL}/api/v1/work-orders/${workOrder.number}/budgets/${budget.id}/${decision}`;
+
+      for (const tampered of [firstCharacterChanged, lastCharacterChanged]) {
+        const refused = await postLink(`${address}?link=${tampered}`, workOrder.owner.accessToken);
+
+        expect(refused.status, `${decision} with ${tampered}`).toBe(422);
+        expect(refused.body, `${decision} with ${tampered}`).toMatchObject({
+          code: 'WORK_ORDER_BUDGET_LINK_OUTDATED',
+        });
+      }
+      for (const missing of [address, `${address}?link=`]) {
+        const refused = await postLink(missing, workOrder.owner.accessToken);
+
+        expect(refused.status, `${decision} at ${missing}`).toBe(400);
+        expect(refused.body, `${decision} at ${missing}`).toMatchObject({
+          code: 'VALIDATION_ERROR',
+        });
+      }
+    }
+
+    const detail = await getWorkOrder(workOrder.number);
+    expect(detail.status).toBe('AWAITING_APPROVAL');
+    expect(detail.budgets).toHaveLength(1);
+    expect(detail.budgets[0]).toMatchObject({
+      status: 'PENDING',
+      approvalUrl: budget.approvalUrl,
+      rejectionUrl: budget.rejectionUrl,
+    });
+    // The refusals consumed nothing: the genuine link still decides the budget.
+    const approved = await postLink(budget.approvalUrl!, workOrder.owner.accessToken);
+    expect(approved.status).toBe(200);
+    expect(approved.body).toMatchObject({ status: 'IN_EXECUTION' });
+  });
+
   it('answers 400 BAD_REQUEST for a budget id that is not a UUID on both links', async () => {
     const workOrder = await quoteRoundOne();
 
     for (const decision of ['approval', 'rejection']) {
+      // The address carries a link, so only the budget id is wrong.
       const response = await postLink(
-        `${PUBLIC_URL}/api/v1/work-orders/${workOrder.number}/budgets/not-an-id/${decision}`,
+        `${PUBLIC_URL}/api/v1/work-orders/${workOrder.number}/budgets/not-an-id/${decision}?link=${'0'.repeat(32)}`,
         workOrder.owner.accessToken,
       );
 

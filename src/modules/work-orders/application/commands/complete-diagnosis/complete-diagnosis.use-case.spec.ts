@@ -112,7 +112,11 @@ describe('CompleteDiagnosisUseCase', () => {
         'ABC1234',
         WorkOrderStatus.InDiagnosis,
         WorkOrderStatus.AwaitingApproval,
-        { id: updated.budgets[0].id.value, totalCents: updated.budgets[0].total.cents },
+        {
+          id: updated.budgets[0].id.value,
+          totalCents: updated.budgets[0].total.cents,
+          generatedAt: clock.now(),
+        },
         clock.now(),
       ),
     ]);

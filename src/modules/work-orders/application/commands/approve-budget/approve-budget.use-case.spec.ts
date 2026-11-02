@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FakeBudgetLinks } from '../../../../../../test/support/fakes/fake-budget-links';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeCustomerDirectory } from '../../../../../../test/support/fakes/fake-customer-directory';
 import { FakeWorkOrderActors } from '../../../../../../test/support/fakes/fake-work-order-actors';
@@ -10,6 +11,7 @@ import { Budget } from '../../../domain/entities/budget';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderServiceItem } from '../../../domain/entities/work-order-service-item';
 import { BudgetStateError } from '../../../domain/errors/budget-state.error';
+import { WorkOrderBudgetLinkOutdatedError } from '../../../domain/errors/work-order-budget-link-outdated.error';
 import { WorkOrderBudgetNotFoundError } from '../../../domain/errors/work-order-budget-not-found.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
@@ -163,8 +165,9 @@ function makeUseCase(authorizer: BudgetDecisionAuthorizer) {
   const workOrders = new InMemoryWorkOrderRepository();
   const clock = new FakeClock();
   const events = new RecordingDomainEventPublisher();
-  const useCase = new ApproveBudgetUseCase(workOrders, authorizer, clock, events);
-  return { useCase, workOrders, clock, events };
+  const links = new FakeBudgetLinks();
+  const useCase = new ApproveBudgetUseCase(workOrders, authorizer, links, clock, events);
+  return { useCase, workOrders, clock, events, links };
 }
 
 describe('ApproveBudgetUseCase', () => {
@@ -230,11 +233,16 @@ describe('ApproveBudgetUseCase', () => {
 
   it('approves the budget the command names', async () => {
     const authorizer = makeAuthorizer({}, CUSTOMER_ID);
-    const { useCase, workOrders } = makeUseCase(authorizer);
+    const { useCase, workOrders, links } = makeUseCase(authorizer);
     await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
 
     await useCase.execute(
-      new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, SECOND_ROUND_BUDGET_ID),
+      new ApproveBudgetCommand(
+        NUMBER,
+        CUSTOMER_ACTOR_ID,
+        SECOND_ROUND_BUDGET_ID,
+        links.linkOf(SECOND_ROUND_BUDGET_ID, NOW),
+      ),
     );
 
     const updated = workOrders.workOrders[0];
@@ -258,11 +266,18 @@ describe('ApproveBudgetUseCase', () => {
 
   it('refuses a budget that is no longer pending with BudgetStateError and leaves the pending one alone', async () => {
     const authorizer = makeAuthorizer({}, CUSTOMER_ID);
-    const { useCase, workOrders, events } = makeUseCase(authorizer);
+    const { useCase, workOrders, events, links } = makeUseCase(authorizer);
     await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
 
     await expect(
-      useCase.execute(new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, BUDGET_ID)),
+      useCase.execute(
+        new ApproveBudgetCommand(
+          NUMBER,
+          CUSTOMER_ACTOR_ID,
+          BUDGET_ID,
+          links.linkOf(BUDGET_ID, NOW),
+        ),
+      ),
     ).rejects.toThrow(BudgetStateError);
     expect(workOrders.workOrders[0].budgets.map((budget) => budget.status)).toEqual([
       BudgetStatus.Approved,
@@ -283,5 +298,86 @@ describe('ApproveBudgetUseCase', () => {
       ),
     ).rejects.toThrow(WorkOrderNotFoundError);
     expect(events.published).toHaveLength(0);
+  });
+
+  it('refuses the link of an earlier generation of the budget with WorkOrderBudgetLinkOutdatedError, leaving it pending', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders, events, links } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+    const earlier = new Date(NOW.getTime() - 60_000);
+
+    await expect(
+      useCase.execute(
+        new ApproveBudgetCommand(
+          NUMBER,
+          CUSTOMER_ACTOR_ID,
+          SECOND_ROUND_BUDGET_ID,
+          links.linkOf(SECOND_ROUND_BUDGET_ID, earlier),
+        ),
+      ),
+    ).rejects.toThrow(WorkOrderBudgetLinkOutdatedError);
+    const unchanged = workOrders.workOrders[0];
+    expect(unchanged.status).toBe(WorkOrderStatus.AwaitingApproval);
+    expect(unchanged.budgets[1].status).toBe(BudgetStatus.Pending);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('refuses a command that names a budget and carries no link, or the link of another budget', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders, events, links } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await expect(
+      useCase.execute(new ApproveBudgetCommand(NUMBER, CUSTOMER_ACTOR_ID, SECOND_ROUND_BUDGET_ID)),
+    ).rejects.toThrow(WorkOrderBudgetLinkOutdatedError);
+    await expect(
+      useCase.execute(
+        new ApproveBudgetCommand(
+          NUMBER,
+          CUSTOMER_ACTOR_ID,
+          SECOND_ROUND_BUDGET_ID,
+          links.linkOf(BUDGET_ID, NOW),
+        ),
+      ),
+    ).rejects.toThrow(WorkOrderBudgetLinkOutdatedError);
+    expect(workOrders.workOrders[0].budgets[1].status).toBe(BudgetStatus.Pending);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('asks the authorizer before it compares the link, so a stranger learns nothing about the generation', async () => {
+    const otherCustomerId = '66666666-6666-4666-8666-666666666666';
+    const authorizer = makeAuthorizer({}, otherCustomerId);
+    const { useCase, workOrders, events, links } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+    const earlier = new Date(NOW.getTime() - 60_000);
+
+    await expect(
+      useCase.execute(
+        new ApproveBudgetCommand(
+          NUMBER,
+          CUSTOMER_ACTOR_ID,
+          SECOND_ROUND_BUDGET_ID,
+          links.linkOf(SECOND_ROUND_BUDGET_ID, earlier),
+        ),
+      ),
+    ).rejects.toThrow(WorkOrderNotFoundError);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('looks for the budget before the link, so a budget the work order does not hold is a 404 whatever the link says', async () => {
+    const authorizer = makeAuthorizer({}, CUSTOMER_ID);
+    const { useCase, workOrders } = makeUseCase(authorizer);
+    await workOrders.save(restoreAwaitingApprovalOnRoundTwo());
+
+    await expect(
+      useCase.execute(
+        new ApproveBudgetCommand(
+          NUMBER,
+          CUSTOMER_ACTOR_ID,
+          BUDGET_OF_ANOTHER_WORK_ORDER_ID,
+          'not-a-link',
+        ),
+      ),
+    ).rejects.toThrow(WorkOrderBudgetNotFoundError);
   });
 });
