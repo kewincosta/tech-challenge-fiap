@@ -104,3 +104,43 @@ describe('mail settings', () => {
     );
   });
 });
+
+describe('TLS settings', () => {
+  it('leaves DATABASE_SSL, DATABASE_SSL_CA and REDIS_TLS optional', () => {
+    const env = validateEnv(REQUIRED);
+
+    expect([env.DATABASE_SSL, env.DATABASE_SSL_CA, env.REDIS_TLS]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('keeps "true" and "false" as the strings they are, so "false" never reads as true', () => {
+    const on = validateEnv({ ...REQUIRED, DATABASE_SSL: 'true', REDIS_TLS: 'true' });
+    const off = validateEnv({ ...REQUIRED, DATABASE_SSL: 'false', REDIS_TLS: 'false' });
+
+    expect([on.DATABASE_SSL, on.REDIS_TLS]).toEqual(['true', 'true']);
+    expect([off.DATABASE_SSL, off.REDIS_TLS]).toEqual(['false', 'false']);
+  });
+
+  it('reads the bundle of the database as a path', () => {
+    const env = validateEnv({ ...REQUIRED, DATABASE_SSL_CA: '/app/certs/rds-global-bundle.pem' });
+
+    expect(env.DATABASE_SSL_CA).toBe('/app/certs/rds-global-bundle.pem');
+  });
+
+  it.each([
+    ['DATABASE_SSL', 'yes'],
+    ['DATABASE_SSL', '1'],
+    ['DATABASE_SSL', 'TRUE'],
+    ['DATABASE_SSL', ''],
+    ['REDIS_TLS', 'on'],
+    ['REDIS_TLS', '0'],
+    ['REDIS_TLS', ''],
+  ])('refuses %s set to "%s", which would leave TLS off without saying so', (name, value) => {
+    expect(() => validateEnv({ ...REQUIRED, [name]: value })).toThrow(
+      new RegExp(`Invalid environment configuration: .*${name}`),
+    );
+  });
+});

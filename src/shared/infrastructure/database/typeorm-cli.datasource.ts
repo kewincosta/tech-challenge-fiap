@@ -1,13 +1,12 @@
 import 'dotenv/config';
+import { join } from 'node:path';
 import { DataSource } from 'typeorm';
+import { databaseConfig, postgresConnection } from '../../../config/database.config';
 
+// The entities and migrations are found from this file, so the same data source serves the
+// TypeScript sources under ts-node and the compiled files in the production image.
 export default new DataSource({
-  type: 'postgres',
-  host: process.env.DATABASE_HOST ?? 'localhost',
-  port: Number(process.env.DATABASE_PORT ?? 5432),
-  username: process.env.DATABASE_USER ?? 'workshop',
-  password: process.env.DATABASE_PASSWORD ?? 'workshop',
-  database: process.env.DATABASE_NAME ?? 'workshop',
-  entities: ['src/**/*.orm-entity.ts'],
-  migrations: ['src/shared/infrastructure/database/migrations/*.ts'],
+  ...postgresConnection(databaseConfig()),
+  entities: [join(__dirname, '../../../**/*.orm-entity.{ts,js}')],
+  migrations: [join(__dirname, 'migrations/*.{ts,js}')],
 });

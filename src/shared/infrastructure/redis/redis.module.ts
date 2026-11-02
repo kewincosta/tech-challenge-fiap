@@ -1,7 +1,7 @@
 import { Inject, Injectable, Module, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import Redis from 'ioredis';
-import { redisConfig } from '../../../config/redis.config';
+import { redisClientOptions, redisConfig } from '../../../config/redis.config';
 
 export const REDIS_CLIENT = Symbol('RedisClient');
 
@@ -19,13 +19,7 @@ class RedisShutdown implements OnApplicationShutdown {
     {
       provide: REDIS_CLIENT,
       inject: [redisConfig.KEY],
-      useFactory: (cfg: ConfigType<typeof redisConfig>) =>
-        new Redis({
-          host: cfg.host,
-          port: cfg.port,
-          db: cfg.db,
-          maxRetriesPerRequest: 2,
-        }),
+      useFactory: (cfg: ConfigType<typeof redisConfig>) => new Redis(redisClientOptions(cfg)),
     },
     RedisShutdown,
   ],
