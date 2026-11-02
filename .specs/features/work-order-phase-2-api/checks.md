@@ -225,6 +225,6 @@ Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity a
 ## Handoff
 
 - **Settled mid-build:** 2026-11-01, on a work order canceled while awaiting approval, whose budget stays `PENDING`: user chose "Links só aguardando aprovação (Recomendado)"; AC 11 amended and C51 appended. 2026-11-02, on the verification's finding that an old e-mail's link approved a regenerated round 1: user: "O link pode ser unico com algum hash"; AC 11 and door 4 amended, AC 20 added, C26 renegotiated, C52 to C54 appended
-- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`; fix for C51 (Sonnet sub-agent) at `c64bb07`, returned at `7b4638a`; Verifier (fresh sub-agent, default model) at `8e5233a`, over `1c876a1..8e5233a`, with `proofs.md` 53 pass at `8e5233a`, returned FAIL with 5 findings; fix pass (Sonnet sub-agent) at `97b176c`
-- **Boundary:** C1-C51 closed at `7b4638a`
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`; fix for C51 (Sonnet sub-agent) at `c64bb07`, returned at `7b4638a`; Verifier (fresh sub-agent, default model) at `8e5233a`, over `1c876a1..8e5233a`, with `proofs.md` 53 pass at `8e5233a`, returned FAIL with 5 findings; fix pass (Sonnet sub-agent) at `97b176c`, returned at `4b4cf01`
+- **Boundary:** C1-C54 closed at `041a41c`
 - **Abandoned:** none
