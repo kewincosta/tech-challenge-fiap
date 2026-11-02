@@ -96,13 +96,15 @@ not cover invoicing, supplier management or scheduling.
 
 ### Work orders
 
-- Opened from the customer and the vehicle, with one vehicle per open order
-- Catalog services and inventory parts added to the order
+- Opened from the customer and the vehicle, with one vehicle per open order, carrying the services and parts the customer asks for
+- Catalog services and inventory parts added to the order, parts from the reception on
 - Budget summed inside the aggregate, from the services and the planned parts
 - Numbered budget rounds, for extra work found during execution
 - Approval or rejection by the customer, or by whoever holds the permission to decide
 - Part withdrawal from stock, consumed first and given back when the order cannot be saved
 - Return of what was left over, cancellation with a definitive write-off, discount with a reason
+- A board that lists the work in progress first and oldest first, one page at a time, and leaves the finished orders out unless a filter asks for them
+- Every work order answer names its status in Portuguese beside the code
 - Seven states, changed only as the consequence of an action:
 
 ```mermaid
@@ -473,11 +475,12 @@ TOKEN=$(curl -s -X POST http://localhost:13000/api/v1/auth/sessions \
   -d '{"email":"admin@oficina.local","password":"Str0ngPassword"}' \
   | jq -r .accessToken)
 
-curl -s http://localhost:13000/api/v1/work-orders \
+curl -s "http://localhost:13000/api/v1/work-orders?page=1&pageSize=20" \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
-Opening a work order starting from the customer's CPF:
+Opening a work order starting from the customer's CPF, with a service and a part the customer asks
+for:
 
 ```bash
 CUSTOMER=$(curl -s "http://localhost:13000/api/v1/customers?document=11144477735" \
@@ -486,10 +489,50 @@ CUSTOMER=$(curl -s "http://localhost:13000/api/v1/customers?document=11144477735
 VEHICLE=$(curl -s "http://localhost:13000/api/v1/vehicles?customerId=$CUSTOMER" \
   -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
 
+SERVICE=$(curl -s http://localhost:13000/api/v1/services \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
+PART=$(curl -s "http://localhost:13000/api/v1/inventory-items?kind=PART" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
 curl -s -X POST http://localhost:13000/api/v1/work-orders \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d "{\"customerId\":\"$CUSTOMER\",\"vehicleId\":\"$VEHICLE\"}" | jq
+  -d "{\"customerId\":\"$CUSTOMER\",\"vehicleId\":\"$VEHICLE\",\"services\":[{\"serviceId\":\"$SERVICE\"}],\"parts\":[{\"inventoryItemId\":\"$PART\",\"quantity\":2}]}" | jq
 ```
+
+`services` and `parts` are optional. Each service and each part becomes a draft item, as if
+`POST /work-orders/:number/services` or `POST /work-orders/:number/parts` had followed the opening
+([ADR 0034](docs/adr/0034-parts-can-be-planned-at-reception.md)). One item that cannot be added, an
+unknown or deactivated service or inventory item, refuses the whole opening, and the answer is the
+one the separate route gives for it. The answer is `{ id, number }`, and the work order starts
+`RECEIVED`. The mechanic keeps, removes or adds items during the diagnosis, and the budget the
+diagnosis generates is what the customer approves.
+
+The board takes `page` (from 1) and `pageSize` (1 to 100), both required, and answers the page with
+its totals ([ADR 0035](docs/adr/0035-paginated-listings-answer-a-page-envelope.md)):
+
+```json
+{ "items": [], "page": 1, "pageSize": 20, "totalItems": 135, "totalPages": 7 }
+```
+
+Without `status` it lists the work in progress: `IN_EXECUTION`, `AWAITING_APPROVAL`, `IN_DIAGNOSIS`
+and `RECEIVED`, in that order and the oldest first within each. `status` takes one or more statuses
+separated by commas, as in `status=CANCELED,DELIVERED`, and lists exactly those, in the same order
+with `COMPLETED`, `DELIVERED` and `CANCELED` after the open ones. A page past the last answers 200
+with `items` empty. A missing or out-of-range `page` or `pageSize`, an unknown status and an unknown
+query parameter answer 400.
+
+Every work order answer carries `statusLabel` beside `status`:
+
+| `status`            | `statusLabel`          |
+| ------------------- | ---------------------- |
+| `RECEIVED`          | `Recebida`             |
+| `IN_DIAGNOSIS`      | `Diagnóstico`          |
+| `AWAITING_APPROVAL` | `Aguardando Aprovação` |
+| `IN_EXECUTION`      | `Execução`             |
+| `COMPLETED`         | `Finalizada`           |
+| `DELIVERED`         | `Entregue`             |
+| `CANCELED`          | `Cancelada`            |
 
 Every monetary value travels as an integer number of cents, on the way in and on the way out.
 
@@ -524,7 +567,7 @@ editing. It requires `npm run seed` to have been applied.
 | 01. Customer onboarding   | Account, role, customer record, vehicle, `me` routes                      |
 | 02. User management       | Permissions, roles, staff account with a temporary password, deactivation |
 | 03. Inventory management  | Item CRUD, replenishment, adjustment, movements, shortages, deactivation  |
-| 04. Work order management | From the customer's CPF to delivery, plus a cancellation                  |
+| 04. Work order management | CPF lookup, opening with items, delivery, the board, a cancellation       |
 | 05. Customer tracking     | The customer reading their own orders, and the 404 for someone else's     |
 | 06. Metrics and audit     | Average execution time and the work order trail                           |
 | 07. Wrap-up               | Logout, which drops every session of the user                             |
@@ -838,18 +881,18 @@ Where each mandatory capability of the Tech Challenge is met.
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Customer identification by CPF/CNPJ             | `GET /customers?document=`, validated by check digit in `PersonDocument`                                                  |
 | Vehicle registration (plate, make, model, year) | `POST /vehicles`, with `LicensePlate` in the old and Mercosul formats                                                     |
-| Adding the requested services                   | `POST /work-orders/:number/services`                                                                                      |
-| Adding parts and supplies                       | `POST /work-orders/:number/parts`                                                                                         |
+| Adding the requested services                   | `POST /work-orders/:number/services`, or `services` in `POST /work-orders`                                                |
+| Adding parts and supplies                       | `POST /work-orders/:number/parts`, or `parts` in `POST /work-orders`                                                      |
 | Budget generated automatically                  | `POST /work-orders/:number/diagnosis/completion`, summed inside the aggregate                                             |
 | Sending the budget to the customer for approval | The status moves to `AWAITING_APPROVAL` and the customer reads it at `GET /work-orders/me/:number` (see the caveat below) |
-| The six work order statuses                     | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts)                                             |
+| The six work order statuses                     | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts), named in Portuguese by `statusLabel`       |
 | Automatic status changes                        | Every transition follows from an aggregate method; no route writes a status                                               |
 | Customer tracking through the API               | `GET /work-orders/me` and `GET /work-orders/me/:number`                                                                   |
 | Customer CRUD                                   | `/customers`                                                                                                              |
 | Vehicle CRUD                                    | `/vehicles`                                                                                                               |
 | Service CRUD                                    | `/services`                                                                                                               |
 | Part and supply CRUD with stock control         | `/inventory-items`, plus replenishment, adjustment, movements and shortages                                               |
-| Work order listing and detail                   | `GET /work-orders` and `GET /work-orders/:number`                                                                         |
+| Work order listing and detail                   | `GET /work-orders?page=&pageSize=&status=` and `GET /work-orders/:number`                                                 |
 | Average execution time monitoring               | `GET /work-orders/metrics/average-execution-time`                                                                         |
 | JWT authentication on the administrative APIs   | Global `JwtAuthGuard`; only three routes are public                                                                       |
 | Sensitive data validation (CPF/CNPJ, plate)     | `PersonDocument` and `LicensePlate`, each with its own unit tests                                                         |

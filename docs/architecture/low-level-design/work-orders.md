@@ -32,6 +32,7 @@ Invariants it holds:
 - The vehicle must belong to the customer the work order names.
 - Items belong to a budget round. Items of an approved or rejected round are frozen; new items go into the draft round ([0018](../../adr/0018-numbered-budget-rounds.md)).
 - A budget total is always the sum of its own round's items, never a value supplied from outside, and never changes after approval.
+- A service or a part can be added while the work order is `RECEIVED`, `IN_DIAGNOSIS` or `IN_EXECUTION`, so the customer can ask for a part at reception ([0034](../../adr/0034-parts-can-be-planned-at-reception.md)).
 - The diagnosis cannot be completed with an empty item list.
 - A withdrawal cannot exceed what the round planned, and a return cannot exceed what was withdrawn.
 - A discount cannot exceed the charged total.
@@ -52,7 +53,7 @@ Sixteen command use cases, in lifecycle order. Each command is run by the use ca
 
 | Command                            | What it does                                                                             |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- |
-| `CreateWorkOrderCommand`           | Opens the work order against a customer and one of their vehicles.                       |
+| `CreateWorkOrderCommand`           | Opens the work order, with the services and parts the customer asks for.                 |
 | `AddRequestedServiceCommand`       | Adds a service item, freezing the catalog price into the draft round.                    |
 | `PlanPartCommand`                  | Plans a part. Touches no stock ([0014](../../adr/0014-stock-consumed-at-withdrawal.md)). |
 | `RemoveWorkOrderItemCommand`       | Removes a draft item. A budgeted item is not removable.                                  |
@@ -68,6 +69,14 @@ Sixteen command use cases, in lifecycle order. Each command is run by the use ca
 | `DeliverVehicleCommand`            | Moves to `DELIVERED` and records a settle step.                                          |
 | `CancelWorkOrderCommand`           | Moves to `CANCELED` and records a write-off step.                                        |
 | `ApplyDiscountCommand`             | Reduces the charged total, with an actor and a reason.                                   |
+
+`CreateWorkOrderUseCase` takes the customer and the vehicle, as before, and the optional `services`
+and `parts` of the call. It reads every service and every part through `ServiceCatalog` and
+`PartCatalog` before the work order exists, checking a part's quantity before the catalog read as
+`PlanPartUseCase` does. Then it opens the aggregate and calls `addService` and `planPart` once per
+item, so an unknown or deactivated item stops the opening with nothing saved, and the repository
+saves the work order once, with its trail: `WORK_ORDER_CREATED`, then one entry per item. Each item
+is a draft item with no budget round. The errors are the ones the separate routes answer.
 
 Four of these move stock in `inventory`: withdrawal, return, delivery and cancellation. None of
 them holds a transaction that writes stock. Each module commits its own tables, and the stock side
@@ -92,7 +101,7 @@ permission catalog:
 | Query                          | Answers                                                                                                                                                                                           |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GetWorkOrderQuery`            | One work order in full, by number. Throws `WorkOrderNotFoundError` when there is none.                                                                                                            |
-| `ListWorkOrdersQuery`          | The board, filtered by status.                                                                                                                                                                    |
+| `ListWorkOrdersQuery`          | One page of the board: the open work orders by default, the statuses named otherwise, with the totals.                                                                                            |
 | `GetWorkOrderTrailQuery`       | The append-only trail. Throws `WorkOrderNotFoundError` for an unknown number.                                                                                                                     |
 | `GetMyWorkOrdersQuery`         | The caller's own work orders, resolving the customer from the token.                                                                                                                              |
 | `GetMyWorkOrderQuery`          | One of the caller's own, by number. Throws the same `WorkOrderNotFoundError` for "no customer", "no such number" and "not yours", so a stranger's number is indistinguishable from a missing one. |
@@ -119,6 +128,50 @@ logs a step that reached its attempt limit.
 A gateway turns the provider's not-found error into `null`, and the use case raises its own error,
 such as `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`. A customer that exists but is deactivated is still
 found, with `active` false, which is what separates a 404 from a 422.
+
+### The board
+
+`GET /work-orders` reads one page of the board through `WorkOrderQueryPort.listBoard`
+([0035](../../adr/0035-paginated-listings-answer-a-page-envelope.md)). `ListWorkOrdersUseCase`
+decides what the page holds and answers it:
+
+- With no status in the query it lists `IN_EXECUTION`, `AWAITING_APPROVAL`, `IN_DIAGNOSIS` and
+  `RECEIVED`. With statuses it lists exactly those, so `COMPLETED`, `DELIVERED` and `CANCELED` come
+  only when asked for.
+- It hands the port the statuses in the board's order: `IN_EXECUTION`, `AWAITING_APPROVAL`,
+  `IN_DIAGNOSIS`, `RECEIVED`, `COMPLETED`, `DELIVERED`, `CANCELED`.
+- It answers `{ items, page, pageSize, totalItems, totalPages }`, with `totalPages` the total
+  divided by `pageSize`, rounded up, and 0 when nothing matches.
+
+`TypeOrmWorkOrderQueryAdapter.listBoard` filters on those statuses, sorts by the position of the
+status in that list, then by `created_at` and `id`, so the oldest work order comes first within a
+status, and reads one page with `LIMIT` and `OFFSET`. A second query counts every match, so a page
+past the last answers 200 with `items` empty and the same totals. The two queries share no
+snapshot.
+
+`ListWorkOrdersQueryDto` in `presentation/dtos` validates the route's query. `page` (an integer, 1
+or more) and `pageSize` (an integer, 1 to 100) are required, and `status` is optional and takes
+statuses separated by commas. A missing or out-of-range value, an unknown status and an unknown
+query parameter answer 400 `VALIDATION_ERROR`. The validation runs after the permission guard, so a
+caller without `work-orders:read` still gets 403.
+
+### Status labels
+
+Every route that answers a work order adds `statusLabel` beside `status`. The label comes from one
+map, `presentation/mappers/work-order-status-label.ts`, which the controller applies to each work
+order it answers, the items of the board included:
+
+| `status`            | `statusLabel`          |
+| ------------------- | ---------------------- |
+| `RECEIVED`          | `Recebida`             |
+| `IN_DIAGNOSIS`      | `Diagnóstico`          |
+| `AWAITING_APPROVAL` | `Aguardando Aprovação` |
+| `IN_EXECUTION`      | `Execução`             |
+| `COMPLETED`         | `Finalizada`           |
+| `DELIVERED`         | `Entregue`             |
+| `CANCELED`          | `Cancelada`            |
+
+The domain, the database and the board's `status` filter use the code.
 
 ## Stock steps
 
@@ -356,6 +409,11 @@ A step stays in the table after it is done or failed. A failed one waits there f
 | `POST /work-orders/:number/delivery`                | `work-orders:manage`                                     |
 | `POST /work-orders/:number/cancellation`            | `work-orders:cancel`, then `CancellationAuthorizer`      |
 | `POST /work-orders/:number/discount`                | `work-orders:discount`                                   |
+
+`POST /work-orders` takes `customerId` and `vehicleId`, and optionally `services`, a list of
+`{ serviceId }`, and `parts`, a list of `{ inventoryItemId, quantity }`. It answers 201 with
+`{ id, number }`. `GET /work-orders` requires `page` and `pageSize`, as [The board](#the-board)
+describes.
 
 `me`, `me/:number` and `metrics/average-execution-time` are declared before `:number`, or the
 literals would be read as work order numbers.

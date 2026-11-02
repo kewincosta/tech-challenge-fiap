@@ -58,5 +58,5 @@ The adapter reads a page and counts the matches in two queries with no shared sn
 order opened between the two can leave `totalItems` one off from the rows of the page.
 
 The sort runs over the matching work orders on every page, and the table has no index for it. With
-tens of thousands of work orders a page takes about 20 milliseconds to read. An index on status and
-creation time is a migration of its own if the table grows far beyond that.
+tens of thousands of work orders a page takes about 20 milliseconds to read. A schema change that
+adds an index on status and creation time is worth planning if the table grows far beyond that.
