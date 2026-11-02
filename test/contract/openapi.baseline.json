@@ -585,6 +585,7 @@
           },
           "quantity": {
             "example": 2,
+            "maximum": 2147483647,
             "type": "number"
           }
         },

@@ -290,6 +290,43 @@ describe('Opening a work order with items', () => {
     expect(detail.partItems).toMatchObject([{ inventoryItemId, plannedQuantity: 1 }]);
   });
 
+  it('refuses a part quantity above the integer limit with 400 on the opening and on the parts route', async () => {
+    const { customerId, vehicleId } = await createCustomerWithVehicle();
+    const inventoryItemId = await createInventoryItem();
+    const limit = 2147483647;
+
+    const onOpening = await openWith({
+      customerId,
+      vehicleId,
+      parts: [{ inventoryItemId, quantity: limit + 1 }],
+    });
+
+    expect(onOpening.status).toBe(400);
+    expect(onOpening.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+    // The refused opening saved nothing, so the same vehicle opens a work order now.
+    const reopened = await openWith({ customerId, vehicleId });
+    expect(reopened.status).toBe(201);
+    const number = (reopened.body as { number: string }).number;
+
+    const onPartsRoute = await api(app)
+      .post(`/api/v1/work-orders/${number}/parts`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ inventoryItemId, quantity: limit + 1 });
+
+    expect(onPartsRoute.status).toBe(400);
+    expect(onPartsRoute.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect((await getWorkOrder(number)).partItems).toEqual([]);
+    // The limit itself still fits the column.
+    const atTheLimit = await api(app)
+      .post(`/api/v1/work-orders/${number}/parts`)
+      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+      .send({ inventoryItemId, quantity: limit });
+    expect(atTheLimit.status).toBe(200);
+    expect((await getWorkOrder(number)).partItems).toMatchObject([
+      { inventoryItemId, plannedQuantity: limit },
+    ]);
+  });
+
   it('plans a part on a RECEIVED work order and refuses it on a COMPLETED one', async () => {
     const { customerId, vehicleId } = await createCustomerWithVehicle();
     const inventoryItemId = await createInventoryItem();
