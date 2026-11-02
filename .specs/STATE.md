@@ -30,9 +30,8 @@
 
 Found during earlier features and left outside them, to plan when someone takes one:
 
-- The Phase 2 API changes are the next feature, with their documentation and a Postman collection: opening a work order with services and parts, the status lookup, an endpoint for external budget approval notifications, the listing order and exclusion, and status updates by e-mail. Its open decisions are parts at reception (`PART_PLANNABLE_STATES` forbids them today), customer and vehicle data or ids at opening, where `CANCELED` goes in the listing, and how the external system authenticates on the approval route.
 - Both step tables lack an index on `(status, due_at)`, `work_order_stock_steps` lacks one on `(work_order_id, id)`, and `DONE` steps have no retention rule.
-- Two e2e cases fail now and then on random data: a CPF collision in `role-escalation` and a plate collision in `work-order-closing`.
+- e2e cases fail now and then on random data, and more often as `workshop_test` grows: the shared `registerUser` helper draws a CPF from 10^9 values against about 96,000 users (roughly one run in ten collides, as the first proof run of `work-order-phase-2-api` did), and plates collide in `work-order-closing`. Drawing again on a 409 would end it.
 - `docs/roteiro-video.md:95-100` and `:361` and `security/scripts/deliverable.ts:255` still name CQRS and the buses, and the video script counts nine migrations.
 - `FindUserByDocumentUseCase` is unused, and some spec variables are still named `handler`.
 - The inventory stock use cases publish their item events inside their transaction, before the commit. Nothing subscribes to them today.

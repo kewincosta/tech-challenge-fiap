@@ -102,6 +102,36 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: O1 (typeorm-pending-stock-steps.ts:49), validation.md round 4 (outbox)
 - last seen: 2026-11-01T12:41:12Z
 
+### L-032 - Bind a link to the generation of the record it decides when that record can be regenerated in place, or an old copy of the link acts on the new version.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `links` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 1; src/modules/work-orders/domain/entities/budget.ts:59-61 (links)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-033 - Give ordering fixtures creation times where the required order differs from both oldest first and newest first, so the test cannot pass on the order it replaced.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 2; C13, C17 (query-adapters)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-034 - When a criterion promises one side effect per change, assert the exact count after each change, so a duplicate fails the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `notifications` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 3; C41 (notifications)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-035 - Assert the error code beside the status for every refusal a Surface row lists, so a different refusal with the same status fails.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `routes` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 4; C54 (routes)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-036 - Check every criterion against the exclusions of the binding brief, and list each departure in Differences from the source with its decision before the plan is approved.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 5; plan.md Differences from the source (planning)
+- last seen: 2026-11-02T08:57:44Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

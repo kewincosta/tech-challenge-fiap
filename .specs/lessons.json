@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 32,
+  "next_id": 37,
   "lessons": [
     {
       "id": "L-003",
@@ -281,6 +281,96 @@
       ],
       "created": "2026-11-01T12:41:12Z",
       "last_seen": "2026-11-01T12:41:12Z"
+    },
+    {
+      "id": "L-032",
+      "key": "ac_gap::bind a link to the generation of the record it decides when that record can be regenerated in place or an old copy of the link acts on the new version",
+      "text": "Bind a link to the generation of the record it decides when that record can be regenerated in place, or an old copy of the link acts on the new version.",
+      "signal": "ac_gap",
+      "scope": "links",
+      "status": "candidate",
+      "features": [
+        "work-order-phase-2-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 1; src/modules/work-orders/domain/entities/budget.ts:59-61 (links)"
+      ],
+      "created": "2026-11-02T08:57:44Z",
+      "last_seen": "2026-11-02T08:57:44Z"
+    },
+    {
+      "id": "L-033",
+      "key": "weak_test::give ordering fixtures creation times where the required order differs from both oldest first and newest first so the test cannot pass on the order it replaced",
+      "text": "Give ordering fixtures creation times where the required order differs from both oldest first and newest first, so the test cannot pass on the order it replaced.",
+      "signal": "weak_test",
+      "scope": "query-adapters",
+      "status": "candidate",
+      "features": [
+        "work-order-phase-2-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 2; C13, C17 (query-adapters)"
+      ],
+      "created": "2026-11-02T08:57:44Z",
+      "last_seen": "2026-11-02T08:57:44Z"
+    },
+    {
+      "id": "L-034",
+      "key": "weak_test::when a criterion promises one side effect per change assert the exact count after each change so a duplicate fails the test",
+      "text": "When a criterion promises one side effect per change, assert the exact count after each change, so a duplicate fails the test.",
+      "signal": "weak_test",
+      "scope": "notifications",
+      "status": "candidate",
+      "features": [
+        "work-order-phase-2-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 3; C41 (notifications)"
+      ],
+      "created": "2026-11-02T08:57:44Z",
+      "last_seen": "2026-11-02T08:57:44Z"
+    },
+    {
+      "id": "L-035",
+      "key": "weak_test::assert the error code beside the status for every refusal a surface row lists so a different refusal with the same status fails",
+      "text": "Assert the error code beside the status for every refusal a Surface row lists, so a different refusal with the same status fails.",
+      "signal": "weak_test",
+      "scope": "routes",
+      "status": "candidate",
+      "features": [
+        "work-order-phase-2-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 4; C54 (routes)"
+      ],
+      "created": "2026-11-02T08:57:44Z",
+      "last_seen": "2026-11-02T08:57:44Z"
+    },
+    {
+      "id": "L-036",
+      "key": "spec_deviation::check every criterion against the exclusions of the binding brief and list each departure in differences from the source with its decision before the plan is approved",
+      "text": "Check every criterion against the exclusions of the binding brief, and list each departure in Differences from the source with its decision before the plan is approved.",
+      "signal": "spec_deviation",
+      "scope": "planning",
+      "status": "candidate",
+      "features": [
+        "work-order-phase-2-api"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "verification.md finding 5; plan.md Differences from the source (planning)"
+      ],
+      "created": "2026-11-02T08:57:44Z",
+      "last_seen": "2026-11-02T08:57:44Z"
     }
   ]
 }
