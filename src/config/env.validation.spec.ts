@@ -8,6 +8,10 @@ const REQUIRED = {
   DATABASE_NAME: 'workshop',
   REDIS_HOST: 'localhost',
   JWT_SECRET: 'a-secret-of-at-least-thirty-two-characters',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: '1025',
+  MAIL_FROM: 'Oficina <no-reply@workshop.local>',
+  APP_PUBLIC_URL: 'http://localhost:13000',
 };
 
 describe('validateEnv outbox settings', () => {
@@ -50,6 +54,51 @@ describe('validateEnv outbox settings', () => {
     ['OUTBOX_MAX_ATTEMPTS', '0'],
     ['OUTBOX_MAX_ATTEMPTS', 'many'],
   ])('refuses %s set to %s', (name, value) => {
+    expect(() => validateEnv({ ...REQUIRED, [name]: value })).toThrow(
+      /Invalid environment configuration/,
+    );
+  });
+});
+
+describe('mail settings', () => {
+  const MAIL_AND_URL = ['SMTP_HOST', 'SMTP_PORT', 'MAIL_FROM', 'APP_PUBLIC_URL'] as const;
+
+  it('requires the mail settings and the public URL', () => {
+    expect(validateEnv(REQUIRED)).toMatchObject({
+      SMTP_HOST: 'localhost',
+      SMTP_PORT: 1025,
+      MAIL_FROM: 'Oficina <no-reply@workshop.local>',
+      APP_PUBLIC_URL: 'http://localhost:13000',
+    });
+    for (const name of MAIL_AND_URL) {
+      const without: Record<string, string> = { ...REQUIRED };
+      delete without[name];
+
+      expect(() => validateEnv(without), `${name} missing`).toThrow(
+        new RegExp(`Invalid environment configuration: .*${name}`),
+      );
+    }
+  });
+
+  it('leaves the login of the mail server optional', () => {
+    const env = validateEnv({ ...REQUIRED, SMTP_USER: 'oficina', SMTP_PASSWORD: 'secret' });
+
+    expect([env.SMTP_USER, env.SMTP_PASSWORD]).toEqual(['oficina', 'secret']);
+    expect([validateEnv(REQUIRED).SMTP_USER, validateEnv(REQUIRED).SMTP_PASSWORD]).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it.each([
+    ['SMTP_PORT', 'smtp'],
+    ['SMTP_PORT', '0'],
+    ['SMTP_HOST', ''],
+    ['MAIL_FROM', ''],
+    ['APP_PUBLIC_URL', 'localhost:13000'],
+    ['APP_PUBLIC_URL', 'ftp://oficina.example.com'],
+    ['APP_PUBLIC_URL', ''],
+  ])('refuses %s set to "%s"', (name, value) => {
     expect(() => validateEnv({ ...REQUIRED, [name]: value })).toThrow(
       /Invalid environment configuration/,
     );
