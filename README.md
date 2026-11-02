@@ -680,7 +680,7 @@ excludes the test files.
 │   ├── integration/               persistence against the real PostgreSQL
 │   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       31 architecture decision records
+│   ├── adr/                       35 architecture decision records
 │   ├── architecture/              overview, high level, low level per module
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── postman/                       collection and environment
@@ -758,7 +758,7 @@ rejected across the project, the record of the language decisions and the consis
 
 ## Technical decisions
 
-Thirty-one numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+Thirty-five numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
 context, the decision and the consequences. The seven below shape the system the most.
 
 ### Why PostgreSQL
