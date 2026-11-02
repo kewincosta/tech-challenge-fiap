@@ -90,6 +90,7 @@ import {
   WorkOrderResponseDto,
   WorkOrderTrailEntryResponseDto,
 } from '../dtos/work-order.response.dto';
+import { workOrderStatusLabel } from '../mappers/work-order-status-label';
 
 @ApiTags('work-orders')
 @Controller('work-orders')
@@ -601,6 +602,7 @@ export class WorkOrdersController {
       assignedMechanicUserId: workOrder.assignedMechanicUserId,
       createdByUserId: workOrder.createdByUserId,
       status: workOrder.status,
+      statusLabel: workOrderStatusLabel(workOrder.status),
       customerName: workOrder.customerName,
       vehiclePlate: workOrder.vehiclePlate,
       vehicleBrand: workOrder.vehicleBrand,

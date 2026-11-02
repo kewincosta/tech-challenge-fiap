@@ -1414,6 +1414,11 @@
             "example": "RECEIVED",
             "type": "string"
           },
+          "statusLabel": {
+            "description": "The status named in Portuguese",
+            "example": "Recebida",
+            "type": "string"
+          },
           "vehicleBrand": {
             "example": "Toyota",
             "type": "string"
@@ -1442,6 +1447,7 @@
           "vehicleId",
           "createdByUserId",
           "status",
+          "statusLabel",
           "customerName",
           "vehiclePlate",
           "vehicleBrand",

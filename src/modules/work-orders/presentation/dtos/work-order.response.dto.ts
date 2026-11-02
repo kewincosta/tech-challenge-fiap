@@ -110,6 +110,9 @@ export class WorkOrderResponseDto {
   @ApiProperty({ example: 'RECEIVED' })
   status!: string;
 
+  @ApiProperty({ example: 'Recebida', description: 'The status named in Portuguese' })
+  statusLabel!: string;
+
   @ApiProperty({ example: 'Jane Doe' })
   customerName!: string;
 
