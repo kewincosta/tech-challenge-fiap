@@ -26,7 +26,12 @@ export class CustomerDirectoryGateway implements CustomerDirectory {
     try {
       const customer = await this.getCustomer.execute(new GetCustomerQuery(customerId));
       return customer
-        ? { id: customer.id, name: customer.name, active: customer.status === ACTIVE_STATUS }
+        ? {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            active: customer.status === ACTIVE_STATUS,
+          }
         : null;
     } catch (error) {
       if (error instanceof CustomerNotFoundError) {

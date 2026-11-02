@@ -34,7 +34,10 @@ function makeAuthorizer(
 ): { authorizer: BudgetDecisionAuthorizer; customers: FakeCustomerDirectory } {
   const customers = new FakeCustomerDirectory();
   if (customerOfActor) {
-    customers.add({ id: customerOfActor, name: 'Jane Doe', active: true }, ACTOR_ID);
+    customers.add(
+      { id: customerOfActor, name: 'Jane Doe', email: 'jane@example.com', active: true },
+      ACTOR_ID,
+    );
   }
   return { authorizer: new BudgetDecisionAuthorizer(actors, customers), customers };
 }

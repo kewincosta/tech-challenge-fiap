@@ -76,6 +76,7 @@ import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-
 import { ListWorkOrdersUseCase } from '../../application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
 import { BudgetStatus } from '../../domain/budget-status';
+import { workOrderStatusLabel } from '../../domain/work-order-status-label';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
@@ -94,7 +95,6 @@ import {
   WorkOrderTrailEntryResponseDto,
 } from '../dtos/work-order.response.dto';
 import { HttpBudgetDecisionLinks } from '../http-budget-decision-links';
-import { workOrderStatusLabel } from '../mappers/work-order-status-label';
 
 @ApiTags('work-orders')
 @Controller('work-orders')

@@ -44,12 +44,17 @@ function gatewayOver(byId: Answer, byUserId: Answer = null): CustomerDirectoryGa
 
 describe('CustomerDirectoryGateway', () => {
   describe('findById', () => {
-    it('should map the customers module answer to the id, the name and an active flag', async () => {
+    it('should map the customers module answer to the id, the name, the e-mail and an active flag', async () => {
       const directory = gatewayOver(ACTIVE_CUSTOMER);
 
       const customer = await directory.findById(CUSTOMER_ID);
 
-      expect(customer).toEqual({ id: CUSTOMER_ID, name: 'Jane Doe', active: true });
+      expect(customer).toEqual({
+        id: CUSTOMER_ID,
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        active: true,
+      });
     });
 
     it('should report a deactivated customer as found and not active', async () => {
@@ -57,7 +62,12 @@ describe('CustomerDirectoryGateway', () => {
 
       const customer = await directory.findById(CUSTOMER_ID);
 
-      expect(customer).toEqual({ id: CUSTOMER_ID, name: 'Jane Doe', active: false });
+      expect(customer).toEqual({
+        id: CUSTOMER_ID,
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        active: false,
+      });
     });
 
     it('should answer null when the customers module answers null', async () => {

@@ -11,7 +11,10 @@ const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 function directoryOf(customerId: string | null): FakeCustomerDirectory {
   const customers = new FakeCustomerDirectory();
   if (customerId) {
-    customers.add({ id: customerId, name: 'Jane Doe', active: true }, USER_ID);
+    customers.add(
+      { id: customerId, name: 'Jane Doe', email: 'jane@example.com', active: true },
+      USER_ID,
+    );
   }
   return customers;
 }

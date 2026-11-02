@@ -1,7 +1,11 @@
-/** What work orders read of a customer: who it is, and whether it can still open work orders. */
+/**
+ * What work orders read of a customer: who it is, where to write to it, and whether it can still
+ * open work orders.
+ */
 export interface CustomerRef {
   id: string;
   name: string;
+  email: string;
   active: boolean;
 }
 

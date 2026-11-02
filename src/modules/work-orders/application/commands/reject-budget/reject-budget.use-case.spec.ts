@@ -42,7 +42,10 @@ function makeAuthorizer(
   const actors = new FakeWorkOrderActors().withCapabilities(CUSTOMER_ACTOR_ID, capabilities);
   const customers = new FakeCustomerDirectory();
   if (customerOfActor) {
-    customers.add({ id: customerOfActor, name: 'Jane Doe', active: true }, CUSTOMER_ACTOR_ID);
+    customers.add(
+      { id: customerOfActor, name: 'Jane Doe', email: 'jane@example.com', active: true },
+      CUSTOMER_ACTOR_ID,
+    );
   }
   return new BudgetDecisionAuthorizer(actors, customers);
 }

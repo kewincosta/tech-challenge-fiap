@@ -38,7 +38,12 @@ const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
 const VEHICLE_ID = '33333333-3333-4333-8333-333333333333';
 const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
 
-const ACTIVE_CUSTOMER: CustomerRef = { id: CUSTOMER_ID, name: 'Jane Doe', active: true };
+const ACTIVE_CUSTOMER: CustomerRef = {
+  id: CUSTOMER_ID,
+  name: 'Jane Doe',
+  email: 'jane@example.com',
+  active: true,
+};
 
 const OWNED_VEHICLE: VehicleRef = {
   id: VEHICLE_ID,

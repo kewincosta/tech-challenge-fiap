@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WorkOrderStatus } from '../../domain/work-order-status';
+import { WorkOrderStatus } from './work-order-status';
 import { workOrderStatusLabel } from './work-order-status-label';
 
 describe('Work order status labels', () => {

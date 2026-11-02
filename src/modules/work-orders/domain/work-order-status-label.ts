@@ -1,6 +1,9 @@
-import { WorkOrderStatus } from '../../domain/work-order-status';
+import { WorkOrderStatus } from './work-order-status';
 
-/** The status named as the Phase 2 brief names it, for every answer that carries a work order. */
+/**
+ * The status named as the Phase 2 brief names it, for every answer and every e-mail that carries a
+ * work order.
+ */
 const STATUS_LABELS: Record<WorkOrderStatus, string> = {
   [WorkOrderStatus.Received]: 'Recebida',
   [WorkOrderStatus.InDiagnosis]: 'Diagnóstico',
