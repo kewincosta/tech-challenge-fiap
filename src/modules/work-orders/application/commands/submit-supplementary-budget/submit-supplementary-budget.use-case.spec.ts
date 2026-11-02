@@ -12,6 +12,7 @@ import { EmptyDraftBudgetError } from '../../../domain/errors/empty-draft-budget
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { BudgetSent } from '../../../domain/events/budget-sent.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { SupplementaryBudgetGenerated } from '../../../domain/events/supplementary-budget-generated.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
@@ -128,6 +129,16 @@ describe('SubmitSupplementaryBudgetUseCase', () => {
     expect(events.published).toEqual([
       new SupplementaryBudgetGenerated(updated.id.value, CREATOR_ID, clock.now()),
       new BudgetSent(updated.id.value, CREATOR_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.InExecution,
+        WorkOrderStatus.AwaitingApproval,
+        { id: updated.budgets[1].id.value, totalCents: updated.budgets[1].total.cents },
+        clock.now(),
+      ),
     ]);
   });
 

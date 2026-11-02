@@ -15,6 +15,7 @@ import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-fo
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { BudgetRejected } from '../../../domain/events/budget-rejected.event';
 import { ExecutionStarted } from '../../../domain/events/execution-started.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -181,6 +182,16 @@ describe('RejectBudgetUseCase', () => {
         WorkOrderStatus.InDiagnosis,
         clock.now(),
       ),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.AwaitingApproval,
+        WorkOrderStatus.InDiagnosis,
+        null,
+        clock.now(),
+      ),
     ]);
   });
 
@@ -201,6 +212,16 @@ describe('RejectBudgetUseCase', () => {
         clock.now(),
       ),
       new ExecutionStarted(updated.id.value, CUSTOMER_ACTOR_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.AwaitingApproval,
+        WorkOrderStatus.InExecution,
+        null,
+        clock.now(),
+      ),
     ]);
   });
 

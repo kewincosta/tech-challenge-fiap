@@ -32,6 +32,7 @@ import { VehicleDelivered } from '../events/vehicle-delivered.event';
 import { WorkOrderCanceled } from '../events/work-order-canceled.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
+import { WorkOrderStatusChanged } from '../events/work-order-status-changed.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderId } from '../value-objects/work-order-id';
@@ -117,8 +118,9 @@ describe('WorkOrder', () => {
     expect(workOrder.vehicleYear).toBe(2020);
     expect(workOrder.createdByUserId).toBe(CREATOR_ID);
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0]).toBeInstanceOf(WorkOrderCreated);
+    expect(events[1]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('should rebuild from persisted props with its items and no trail via restore', () => {
@@ -384,8 +386,9 @@ describe('WorkOrder', () => {
     workOrder.startDiagnosis({ actorUserId: MECHANIC_ID, now: NOW });
 
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0]).toBeInstanceOf(DiagnosisStarted);
+    expect(events[1]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('should rebuild diagnosisStartedAt via restore', () => {
@@ -601,10 +604,11 @@ describe('WorkOrder.completeDiagnosis', () => {
     workOrder.completeDiagnosis({ budgetId: BUDGET_ID, actorUserId: MECHANIC_ID, now: NOW });
 
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(4);
     expect(events[0]).toBeInstanceOf(DiagnosisCompleted);
     expect(events[1]).toBeInstanceOf(BudgetGenerated);
     expect(events[2]).toBeInstanceOf(BudgetSent);
+    expect(events[3]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 });
 
@@ -694,9 +698,10 @@ describe('WorkOrder.approveBudget and rejectBudget', () => {
     expect(workOrder.status).toBe(WorkOrderStatus.InExecution);
     expect(workOrder.executionStartedAt).toEqual(firstEntry);
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(3);
     expect(events[0]).toBeInstanceOf(BudgetRejected);
     expect(events[1]).toBeInstanceOf(ExecutionStarted);
+    expect(events[2]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it("keeps a rejected round's items attached with their budgeted price intact", () => {
@@ -726,9 +731,10 @@ describe('WorkOrder.approveBudget and rejectBudget', () => {
     workOrder.approveBudget({ actorUserId: CUSTOMER_ID, now: NOW });
 
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(3);
     expect(events[0]).toBeInstanceOf(BudgetApproved);
     expect(events[1]).toBeInstanceOf(ExecutionStarted);
+    expect(events[2]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('mirrors the latest decision on budgetDecidedAt and budgetDecidedByUserId', () => {
@@ -1011,9 +1017,10 @@ describe('WorkOrder.submitSupplementaryBudget', () => {
     });
 
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(2);
+    expect(events).toHaveLength(3);
     expect(events[0]).toBeInstanceOf(SupplementaryBudgetGenerated);
     expect(events[1]).toBeInstanceOf(BudgetSent);
+    expect(events[2]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('a full cycle from execution through approval back to execution ends with two rounds and one unchanged executionStartedAt', () => {
@@ -2011,8 +2018,9 @@ describe('WorkOrder.complete', () => {
     expect(workOrder.status).toBe(WorkOrderStatus.Completed);
     expect(workOrder.completedAt).toBe(NOW);
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0]).toBeInstanceOf(WorkOrderCompleted);
+    expect(events[1]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('stores the pre-discount total minus the recorded discount as the charged total', () => {
@@ -2154,8 +2162,9 @@ describe('WorkOrder.deliver', () => {
     expect(workOrder.deliveredAt).toBe(NOW);
     expect(workOrder.deliveredByUserId).toBe(CREATOR_ID);
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0]).toBeInstanceOf(VehicleDelivered);
+    expect(events[1]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('refuses from RECEIVED (spec.md edge case)', () => {
@@ -2230,8 +2239,9 @@ describe('WorkOrder.cancel', () => {
     expect(workOrder.canceledByUserId).toBe(CREATOR_ID);
     expect(workOrder.canceledAt).toBe(NOW);
     const events = workOrder.pullDomainEvents();
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(2);
     expect(events[0]).toBeInstanceOf(WorkOrderCanceled);
+    expect(events[1]).toBeInstanceOf(WorkOrderStatusChanged);
   });
 
   it('cancels from IN_DIAGNOSIS', () => {

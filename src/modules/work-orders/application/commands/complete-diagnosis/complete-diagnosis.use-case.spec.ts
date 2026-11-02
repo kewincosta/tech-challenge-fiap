@@ -11,6 +11,7 @@ import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-fo
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { BudgetGenerated } from '../../../domain/events/budget-generated.event';
 import { BudgetSent } from '../../../domain/events/budget-sent.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { DiagnosisCompleted } from '../../../domain/events/diagnosis-completed.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -90,7 +91,7 @@ function makeUseCase() {
 }
 
 describe('CompleteDiagnosisUseCase', () => {
-  it('mints a BudgetId, generates round one, and publishes all three recorded events', async () => {
+  it('mints a BudgetId, generates round one, and publishes the recorded events', async () => {
     const { useCase, workOrders, clock, events } = makeUseCase();
     await workOrders.save(restoreInDiagnosis(true));
 
@@ -104,6 +105,16 @@ describe('CompleteDiagnosisUseCase', () => {
       new DiagnosisCompleted(updated.id.value, CREATOR_ID, clock.now()),
       new BudgetGenerated(updated.id.value, CREATOR_ID, clock.now()),
       new BudgetSent(updated.id.value, CREATOR_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.InDiagnosis,
+        WorkOrderStatus.AwaitingApproval,
+        { id: updated.budgets[0].id.value, totalCents: updated.budgets[0].total.cents },
+        clock.now(),
+      ),
     ]);
   });
 

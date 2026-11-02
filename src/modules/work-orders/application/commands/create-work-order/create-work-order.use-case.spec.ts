@@ -22,6 +22,7 @@ import { WorkOrderNumberTakenError } from '../../../domain/errors/work-order-num
 import { PartPlannedForWorkOrder } from '../../../domain/events/part-planned-for-work-order.event';
 import { ServiceAddedToWorkOrder } from '../../../domain/events/service-added-to-work-order.event';
 import { WorkOrderCreated } from '../../../domain/events/work-order-created.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { WorkOrderTrailEvent } from '../../../domain/events/work-order-trail.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
@@ -167,10 +168,20 @@ describe('CreateWorkOrderUseCase', () => {
       new CreateWorkOrderCommand(CUSTOMER_ID, VEHICLE_ID, CREATOR_ID),
     );
 
-    expect(events.published).toHaveLength(1);
-    const [event] = events.published;
+    expect(events.published).toHaveLength(2);
+    const [event, statusChange] = events.published;
     expect(event).toBeInstanceOf(WorkOrderCreated);
     expect(event).toMatchObject({ workOrderId: result.id, actorUserId: CREATOR_ID });
+    expect(statusChange).toBeInstanceOf(WorkOrderStatusChanged);
+    expect(statusChange).toMatchObject({
+      workOrderId: result.id,
+      workOrderNumber: result.number,
+      customerId: CUSTOMER_ID,
+      vehiclePlate: 'ABC1234',
+      fromStatus: null,
+      toStatus: 'RECEIVED',
+      budgetToDecide: null,
+    });
     expect(workOrders.workOrders[0].id.value).toBe(result.id);
   });
 
@@ -229,7 +240,7 @@ describe('CreateWorkOrderUseCase', () => {
       'AAAA01-2026',
       'AAAA02-2026',
     ]);
-    expect(events.published).toHaveLength(1);
+    expect(events.published).toHaveLength(2);
   });
 
   it('should succeed on the fifth drawn number when the first four are taken', async () => {
@@ -349,11 +360,15 @@ describe('CreateWorkOrderUseCase with services and parts', () => {
 
     expect(events.published.map((event) => event.constructor)).toEqual([
       WorkOrderCreated,
+      WorkOrderStatusChanged,
       ServiceAddedToWorkOrder,
       ServiceAddedToWorkOrder,
       PartPlannedForWorkOrder,
     ]);
-    expect(events.published.map((event) => (event as WorkOrderTrailEvent).actorUserId)).toEqual([
+    const trailEvents = events.published.filter(
+      (event): event is WorkOrderTrailEvent => event instanceof WorkOrderTrailEvent,
+    );
+    expect(trailEvents.map((event) => event.actorUserId)).toEqual([
       CREATOR_ID,
       CREATOR_ID,
       CREATOR_ID,

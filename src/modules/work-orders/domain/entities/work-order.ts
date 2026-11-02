@@ -32,6 +32,7 @@ import { VehicleDelivered } from '../events/vehicle-delivered.event';
 import { WorkOrderCanceled } from '../events/work-order-canceled.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
+import { WorkOrderStatusChanged } from '../events/work-order-status-changed.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderId } from '../value-objects/work-order-id';
@@ -278,6 +279,7 @@ export class WorkOrder extends AggregateRoot {
       version: 0,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
+    workOrder.recordStatusChange(null, input.now);
     return workOrder;
   }
 
@@ -360,6 +362,7 @@ export class WorkOrder extends AggregateRoot {
 
   startDiagnosis(input: StartDiagnosisInput): void {
     this.assertStateAllows([WorkOrderStatus.Received]);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.InDiagnosis;
     this.props.diagnosisStartedAt = input.now;
     if (this.props.assignedMechanicUserId === null) {
@@ -367,6 +370,7 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new DiagnosisStarted(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -381,6 +385,7 @@ export class WorkOrder extends AggregateRoot {
     if (!this.hasItemsForRound(1)) {
       throw new DiagnosisWithoutItemsError();
     }
+    const fromStatus = this.props.status;
     const total = this.generateRound(1);
     const existingRoundOne = this.props.budgets.find((budget) => budget.round === 1);
     if (existingRoundOne) {
@@ -396,6 +401,7 @@ export class WorkOrder extends AggregateRoot {
     this.record(new DiagnosisCompleted(this.props.id.value, input.actorUserId, input.now));
     this.record(new BudgetGenerated(this.props.id.value, input.actorUserId, input.now));
     this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /** True when at least one item is either a draft or already attached to `round`. */
@@ -472,6 +478,7 @@ export class WorkOrder extends AggregateRoot {
   approveBudget(input: DecideBudgetActionInput): void {
     const budget = this.budgetToDecide(input.budgetId);
     budget.approve({ actorUserId: input.actorUserId, at: input.now });
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.InExecution;
     this.props.budgetDecidedAt = input.now;
     this.props.budgetDecidedByUserId = input.actorUserId;
@@ -481,6 +488,8 @@ export class WorkOrder extends AggregateRoot {
     this.props.updatedAt = input.now;
     this.record(new BudgetApproved(this.props.id.value, input.actorUserId, input.now));
     this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
+    // One status change though the trail keeps two facts of the approval.
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -493,6 +502,7 @@ export class WorkOrder extends AggregateRoot {
     budget.reject({ actorUserId: input.actorUserId, at: input.now });
     const destination =
       budget.round === 1 ? WorkOrderStatus.InDiagnosis : WorkOrderStatus.InExecution;
+    const fromStatus = this.props.status;
     this.props.status = destination;
     this.props.budgetDecidedAt = input.now;
     this.props.budgetDecidedByUserId = input.actorUserId;
@@ -501,6 +511,7 @@ export class WorkOrder extends AggregateRoot {
     if (destination === WorkOrderStatus.InExecution) {
       this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
     }
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -516,6 +527,7 @@ export class WorkOrder extends AggregateRoot {
     if (!this.hasItemsForRound(nextRound)) {
       throw new EmptyDraftBudgetError();
     }
+    const fromStatus = this.props.status;
     const total = this.generateRound(nextRound);
     this.props.budgets.push(
       Budget.generate({ id: input.budgetId, round: nextRound, total, generatedAt: input.now }),
@@ -526,6 +538,7 @@ export class WorkOrder extends AggregateRoot {
       new SupplementaryBudgetGenerated(this.props.id.value, input.actorUserId, input.now),
     );
     this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -691,10 +704,12 @@ export class WorkOrder extends AggregateRoot {
       throw new DiscountExceedsChargedTotalError();
     }
     this.props.chargedTotal = preDiscountTotal.subtract(this.props.discount);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.Completed;
     this.props.completedAt = input.now;
     this.props.updatedAt = input.now;
     this.record(new WorkOrderCompleted(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -705,11 +720,13 @@ export class WorkOrder extends AggregateRoot {
    */
   deliver(input: CloseActionInput): void {
     this.assertStateAllows([WorkOrderStatus.Completed]);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.Delivered;
     this.props.deliveredAt = input.now;
     this.props.deliveredByUserId = input.actorUserId;
     this.props.updatedAt = input.now;
     this.record(new VehicleDelivered(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -727,6 +744,30 @@ export class WorkOrder extends AggregateRoot {
     this.props.updatedAt = input.now;
     this.record(
       new WorkOrderCanceled(this.props.id.value, input.actorUserId, fromStatus, input.now),
+    );
+    this.recordStatusChange(fromStatus, input.now);
+  }
+
+  /**
+   * Records the one status change of a transition, after the facts it consists of. The event
+   * carries the figures of the e-mail the customer gets, the pending budget among them.
+   */
+  private recordStatusChange(fromStatus: WorkOrderStatus | null, now: Date): void {
+    const pending =
+      this.props.status === WorkOrderStatus.AwaitingApproval
+        ? this.props.budgets.find((budget) => budget.status === BudgetStatus.Pending)
+        : undefined;
+    this.record(
+      new WorkOrderStatusChanged(
+        this.props.id.value,
+        this.props.number.value,
+        this.props.customerId,
+        this.props.vehiclePlate,
+        fromStatus,
+        this.props.status,
+        pending ? { id: pending.id.value, totalCents: pending.total.cents } : null,
+        now,
+      ),
     );
   }
 

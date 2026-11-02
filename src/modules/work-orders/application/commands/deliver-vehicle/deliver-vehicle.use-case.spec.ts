@@ -12,6 +12,7 @@ import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { VehicleDelivered } from '../../../domain/events/vehicle-delivered.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
@@ -161,6 +162,16 @@ describe('DeliverVehicleUseCase', () => {
 
     expect(events.published).toEqual([
       new VehicleDelivered(workOrders.workOrders[0].id.value, CREATOR_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        workOrders.workOrders[0].id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.Completed,
+        WorkOrderStatus.Delivered,
+        null,
+        clock.now(),
+      ),
     ]);
     expect(transactionRunner.callsInside).not.toContain('events.publish');
   });
@@ -180,7 +191,7 @@ describe('DeliverVehicleUseCase', () => {
       lastError: 'boom',
       dueAt: new Date(clock.now().getTime() + 1000),
     });
-    expect(events.published).toHaveLength(1);
+    expect(events.published).toHaveLength(2);
   });
 
   it('answers with the saved work order when the claim of the step fails, leaving the step pending', async () => {
@@ -195,6 +206,6 @@ describe('DeliverVehicleUseCase', () => {
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Delivered);
     expect(stockLedger.settled).toEqual([]);
     expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 0 });
-    expect(events.published).toHaveLength(1);
+    expect(events.published).toHaveLength(2);
   });
 });

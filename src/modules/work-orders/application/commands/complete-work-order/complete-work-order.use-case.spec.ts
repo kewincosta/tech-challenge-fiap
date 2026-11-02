@@ -13,6 +13,7 @@ import { DiscountExceedsChargedTotalError } from '../../../domain/errors/discoun
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { WorkOrderCompleted } from '../../../domain/events/work-order-completed.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { BudgetId } from '../../../domain/value-objects/budget-id';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -101,6 +102,16 @@ describe('CompleteWorkOrderUseCase', () => {
     expect(updated.status).toBe(WorkOrderStatus.Completed);
     expect(events.published).toEqual([
       new WorkOrderCompleted(updated.id.value, MECHANIC_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.InExecution,
+        WorkOrderStatus.Completed,
+        null,
+        clock.now(),
+      ),
     ]);
   });
 

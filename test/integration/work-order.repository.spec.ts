@@ -401,7 +401,8 @@ describe('TypeOrmWorkOrderRepository', () => {
 
     // Proves save() read through the non-draining domainEvents getter, not pullDomainEvents -
     // otherwise the use case's own pullDomainEvents() after save would find nothing to publish.
-    expect(workOrder.pullDomainEvents()).toHaveLength(1);
+    // The opening records WorkOrderCreated and the status change that e-mails the customer.
+    expect(workOrder.pullDomainEvents()).toHaveLength(2);
   });
 
   it("should carry the event type, the actor's internal key, the from/to statuses and the moment on a freshly created work order's trail entry", async () => {

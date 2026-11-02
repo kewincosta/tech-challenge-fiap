@@ -14,6 +14,7 @@ import { WorkOrderPartItem } from '../../../domain/entities/work-order-part-item
 import { CancelInExecutionForbiddenError } from '../../../domain/errors/cancel-in-execution-forbidden.error';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderCanceled } from '../../../domain/events/work-order-canceled.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { PlannedQuantity } from '../../../domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../../domain/value-objects/work-order-item-id';
@@ -220,7 +221,7 @@ describe('CancelWorkOrderUseCase', () => {
       lastError: 'boom',
       dueAt: new Date(clock.now().getTime() + 1000),
     });
-    expect(events.published).toHaveLength(1);
+    expect(events.published).toHaveLength(2);
   });
 
   it('answers with the saved work order when the claim of the step fails, leaving the step pending', async () => {
@@ -236,7 +237,7 @@ describe('CancelWorkOrderUseCase', () => {
     expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Canceled);
     expect(stockLedger.writtenOff).toEqual([]);
     expect(steps.stateOf(OPERATION_ID)).toMatchObject({ status: 'PENDING', attempts: 0 });
-    expect(events.published).toHaveLength(1);
+    expect(events.published).toHaveLength(2);
   });
 
   it('publishes the recorded events after the transaction', async () => {
@@ -251,6 +252,16 @@ describe('CancelWorkOrderUseCase', () => {
         workOrders.workOrders[0].id.value,
         ACTOR_ID,
         WorkOrderStatus.InExecution,
+        clock.now(),
+      ),
+      new WorkOrderStatusChanged(
+        workOrders.workOrders[0].id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.InExecution,
+        WorkOrderStatus.Canceled,
+        null,
         clock.now(),
       ),
     ]);

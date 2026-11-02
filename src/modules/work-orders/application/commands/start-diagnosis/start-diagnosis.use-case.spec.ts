@@ -6,6 +6,7 @@ import { WorkOrder } from '../../../domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
 import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
 import { DiagnosisStarted } from '../../../domain/events/diagnosis-started.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../../domain/work-order-status';
@@ -83,6 +84,16 @@ describe('StartDiagnosisUseCase', () => {
     expect(updated.status).toBe(WorkOrderStatus.InDiagnosis);
     expect(events.published).toEqual([
       new DiagnosisStarted(updated.id.value, MECHANIC_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.Received,
+        WorkOrderStatus.InDiagnosis,
+        null,
+        clock.now(),
+      ),
     ]);
   });
 
