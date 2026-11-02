@@ -38,7 +38,7 @@ Provisioning, with Terraform:
 
 Operation, from the user's machine:
 
-11. the user's `kubectl` (door 1) -> a pod in the `prod` cluster -> RDS with the database user from Secrets Manager (door 3) - a session to create the SUPER_ADMIN by hand, or `scripts/seed-admin.ts` (exists), compiled in the image
+11. the user's `kubectl` (door 1) -> a pod in the `prod` cluster -> RDS with the database user from Secrets Manager (door 3) - a session to create the SUPER_ADMIN by hand, or the admin seed (`src/seed-admin.ts`, which `scripts/seed-admin.ts` runs for development), compiled in the image as `dist/seed-admin.js`
 
 Load demonstration:
 
@@ -60,7 +60,7 @@ flowchart LR
     CD --> HELM["8. helm upgrade: chart, migration Job (door 5)"]
     BS["9. infra/bootstrap (door 1)"] --> CD
     HELM --> DP
-    OPS["11. kubectl, scripts/seed-admin.ts (exists) to RDS (door 3)"]
+    OPS["11. kubectl, src/seed-admin.ts compiled in the image (exists) to RDS (door 3)"]
     K6["12. k6 script (new)"] --> LB
 ```
 
