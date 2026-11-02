@@ -4859,7 +4859,7 @@
     },
     "/api/v1/work-orders/{number}/budgets/{budgetId}/approval": {
       "post": {
-        "description": "The address `approvalUrl` carries on a pending budget. Allowed to the owning customer or to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "description": "The address `approvalUrl` carries on a pending budget. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
         "operationId": "WorkOrdersController_approveBudgetByLink_v1",
         "parameters": [
           {
@@ -4932,7 +4932,7 @@
     },
     "/api/v1/work-orders/{number}/budgets/{budgetId}/rejection": {
       "post": {
-        "description": "The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer or to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
+        "description": "The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer and to a holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer pending answers 422 BUDGET_INVALID_STATE.",
         "operationId": "WorkOrdersController_rejectBudgetByLink_v1",
         "parameters": [
           {

@@ -501,19 +501,19 @@ export class WorkOrdersController {
     );
   }
 
-  // No @RequirePermissions here - see approveBudget above. This pair is what `approvalUrl` and
-  // `rejectionUrl` point at: the same decision as the round-less pair, but of the budget the link
-  // names, so an old link cannot decide a round the customer never saw.
+  // No @RequirePermissions here, for the reason given at approveBudget above. This pair is what
+  // `approvalUrl` and `rejectionUrl` point at: the same decision as the round-less pair, but of the
+  // budget the link names, so an old link cannot decide a round the customer never saw.
   @Post(':number/budgets/:budgetId/approval')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Approve one budget, the one a link names',
     description:
-      'The address `approvalUrl` carries on a pending budget. Allowed to the owning customer or to ' +
-      'a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that is ' +
-      "not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no " +
-      'longer pending answers 422 BUDGET_INVALID_STATE.',
+      'The address `approvalUrl` carries on a pending budget. Allowed to the owning customer and to a ' +
+      'holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not ' +
+      "one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer " +
+      'pending answers 422 BUDGET_INVALID_STATE.',
   })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
@@ -532,17 +532,17 @@ export class WorkOrdersController {
     );
   }
 
-  // No @RequirePermissions here - see approveBudget above.
+  // No @RequirePermissions here, for the reason given at approveBudget above.
   @Post(':number/budgets/:budgetId/rejection')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Reject one budget, the one a link names',
     description:
-      'The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer or ' +
-      'to a holder of work-orders:decide, who answer 404, not 403, to anyone else. A budget that ' +
-      "is not one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no " +
-      'longer pending answers 422 BUDGET_INVALID_STATE.',
+      'The address `rejectionUrl` carries on a pending budget. Allowed to the owning customer and to a ' +
+      'holder of work-orders:decide; anyone else gets 404 WORK_ORDER_NOT_FOUND. A budget that is not ' +
+      "one of the work order's answers 404 WORK_ORDER_BUDGET_NOT_FOUND, and one that is no longer " +
+      'pending answers 422 BUDGET_INVALID_STATE.',
   })
   @ApiOkResponse({ type: WorkOrderResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponseDto })
