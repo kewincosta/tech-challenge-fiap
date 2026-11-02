@@ -93,7 +93,8 @@ export class WorkOrderBudgetResponseDto {
     example:
       'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/approval',
     description:
-      'POST here with the customer token to approve this budget. Null unless the budget is pending',
+      'POST here with the customer token to approve this budget. Null unless the budget is ' +
+      'pending and its work order awaits approval',
   })
   approvalUrl!: string | null;
 
@@ -103,7 +104,8 @@ export class WorkOrderBudgetResponseDto {
     example:
       'http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/0b0c8c2e-5f3c-4d0e-9f6e-6a1f2f1f7c11/rejection',
     description:
-      'POST here with the customer token to reject this budget. Null unless the budget is pending',
+      'POST here with the customer token to reject this budget. Null unless the budget is ' +
+      'pending and its work order awaits approval',
   })
   rejectionUrl!: string | null;
 }

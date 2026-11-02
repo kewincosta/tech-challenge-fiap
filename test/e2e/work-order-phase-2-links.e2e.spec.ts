@@ -213,6 +213,28 @@ describe('Budget decision links', () => {
     expect(round2.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, round2.id));
   });
 
+  it('answers null links on the pending budget of a canceled work order', async () => {
+    const workOrder = await quoteRoundOne();
+    const [awaiting] = (await getWorkOrder(workOrder.number)).budgets;
+    expect(awaiting.status).toBe('PENDING');
+    expect(awaiting.approvalUrl).toBe(approvalUrlOf(workOrder.number, awaiting.id));
+    expect(awaiting.rejectionUrl).toBe(rejectionUrlOf(workOrder.number, awaiting.id));
+
+    const cancellation = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/cancellation`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ reason: 'Customer decided to postpone the service' })
+      .expect(200);
+
+    // The cancellation leaves the budget pending, and a link on it could only be refused.
+    const expected = { id: awaiting.id, status: 'PENDING', approvalUrl: null, rejectionUrl: null };
+    expect(cancellation.body).toMatchObject({ status: 'CANCELED', budgets: [expected] });
+    const detail = await getWorkOrder(workOrder.number);
+    expect(detail.status).toBe('CANCELED');
+    expect(detail.budgets).toHaveLength(1);
+    expect(detail.budgets[0]).toMatchObject(expected);
+  });
+
   it("approves the pending budget through its approval link with the customer's token", async () => {
     const workOrder = await quoteRoundOne();
     const { approvalUrl } = (await getWorkOrder(workOrder.number)).budgets[0];

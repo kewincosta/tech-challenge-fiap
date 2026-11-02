@@ -551,8 +551,9 @@ Every work order answer carries `statusLabel` beside `status`:
 
 ### Deciding a budget through its links
 
-The budget that awaits a decision carries two addresses in every work order answer. Every other
-budget carries `null` in both:
+The pending budget of a work order that awaits approval carries two addresses in every work order
+answer. Every other budget carries `null` in both, the pending budget of a work order canceled while
+it awaited approval included:
 
 ```json
 {

@@ -183,8 +183,8 @@ The domain, the database and the board's `status` filter use the code.
 
 ### Budget decision links
 
-The pending budget of every work order answer carries `approvalUrl` and `rejectionUrl`, and every
-other budget carries null in both:
+Every work order answer carries `approvalUrl` and `rejectionUrl` on the pending budget of a work
+order that awaits approval, and null in both on every other budget:
 
 ```
 ${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval
@@ -193,7 +193,9 @@ ${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/rejection
 
 `HttpBudgetDecisionLinks` in `presentation` builds them, from the `APP_PUBLIC_URL` setting and the
 routes `WorkOrdersController` declares, and the controller applies it in the one place that maps a
-work order to its response. The customer calls an address with `POST` and their own bearer token.
+work order to its response. A work order canceled while it awaited approval keeps its budget
+`PENDING`, and the controller leaves both links null on it, because a call would answer
+`WORK_ORDER_INVALID_STATE`. The customer calls an address with `POST` and their own bearer token.
 The two routes run `ApproveBudgetUseCase` and `RejectBudgetUseCase` with the budget id, and
 `BudgetDecisionAuthorizer` checks the caller first, so a stranger gets `WORK_ORDER_NOT_FOUND` even
 for a budget id that does not exist. The routes `POST /work-orders/:number/budget/approval` and

@@ -76,6 +76,7 @@ import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-
 import { ListWorkOrdersUseCase } from '../../application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
 import { BudgetStatus } from '../../domain/budget-status';
+import { WorkOrderStatus } from '../../domain/work-order-status';
 import { workOrderStatusLabel } from '../../domain/work-order-status-label';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
@@ -675,9 +676,7 @@ export class WorkOrdersController {
       vehicleYear: workOrder.vehicleYear,
       serviceItems: workOrder.serviceItems,
       partItems: workOrder.partItems,
-      budgets: workOrder.budgets.map((budget) =>
-        this.toBudgetResponseDto(workOrder.number, budget),
-      ),
+      budgets: workOrder.budgets.map((budget) => this.toBudgetResponseDto(workOrder, budget)),
       chargedTotalCents: workOrder.chargedTotalCents,
       discountCents: workOrder.discountCents,
       discountNote: workOrder.discountNote,
@@ -688,15 +687,17 @@ export class WorkOrdersController {
     };
   }
 
-  // The links go on the pending budget only: a decided one has nothing left to decide.
+  // The links go on the pending budget of a work order that awaits approval. A decided budget has
+  // nothing left to decide, and a work order canceled while it awaited approval keeps its budget
+  // pending, where a link could only be refused.
   private toBudgetResponseDto(
-    workOrderNumber: string,
+    workOrder: WorkOrderSummaryDto,
     budget: WorkOrderBudgetDto,
   ): WorkOrderBudgetResponseDto {
-    const links =
-      (budget.status as BudgetStatus) === BudgetStatus.Pending
-        ? this.budgetLinks.of(workOrderNumber, budget.id)
-        : null;
+    const decidable =
+      (workOrder.status as WorkOrderStatus) === WorkOrderStatus.AwaitingApproval &&
+      (budget.status as BudgetStatus) === BudgetStatus.Pending;
+    const links = decidable ? this.budgetLinks.of(workOrder.number, budget.id) : null;
     return {
       ...budget,
       approvalUrl: links?.approvalUrl ?? null,

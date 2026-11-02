@@ -35,8 +35,9 @@ gains `statusLabel` beside `status`, from one map: `Recebida`, `Diagnóstico`, `
 `Execução`, `Finalizada`, `Entregue` and `Cancelada`. The brief names six statuses, and `Cancelada`
 follows their wording. The domain, the database and the `status` filter of the board keep the code.
 
-The external approval is a pair of links. Every work order answer carries, on the pending budget,
-`approvalUrl` and `rejectionUrl`, and null on every other budget:
+The external approval is a pair of links. Every work order answer carries `approvalUrl` and
+`rejectionUrl` on the pending budget of a work order that awaits approval, and null on every other
+budget:
 
 ```
 ${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval
@@ -81,5 +82,7 @@ The links are API calls. A mail client that opens one sends GET and gets 404, so
 call the address with POST and the bearer token. A front end that shows the budget and calls the
 links is the way to improve this.
 
-A work order canceled while it awaits approval keeps its pending budget, so the answer keeps the
-links on it and calling one answers 422 `WORK_ORDER_INVALID_STATE`.
+A work order canceled while it awaits approval keeps its budget `PENDING`, because the cancellation
+leaves the budgets as they are. `approvalUrl` and `rejectionUrl` are null once the work order no
+longer awaits approval, a canceled one included, so no answer carries a link that cannot work. An
+e-mail sent earlier still holds the links, and calling one answers 422 `WORK_ORDER_INVALID_STATE`.
