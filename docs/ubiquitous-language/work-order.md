@@ -26,24 +26,24 @@ never asks them again.
 
 ## 2. Domain concepts
 
-| Term                  | Definition                                                                                               | Example                                  | Notes                                                                          |
-| --------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------ |
-| **Work order**        | The record of one visit of a vehicle, of what was done and of what was charged                           | The work order for Joana's Corolla       | A vehicle has at most one open work order                                      |
-| **Work order number** | The identifier the customer receives and uses to follow along                                            | `A1B090-2026`                            | Drawn, not sequential: it does not reveal the shop's volume                    |
-| **Requested service** | A catalog service added to this work order, with the price copied at the moment it was added             | Oil change, R$ 150.99                    | The price does not change later, even if the catalog does                      |
-| **Planned part**      | A part or supply the customer asks for or the mechanic expects to use, with the quantity                 | 2 oil filters                            | Planning takes nothing off the shelf                                           |
-| **Budget round**      | A set of items quoted at once, with one total and one customer decision                                  | Round 1, R$ 320.00, approved             | Numbered in sequence. Round one comes out of the diagnosis                     |
-| **Draft item**        | A service or part already on the order but not yet attached to a round                                   | A part added during the work             | Counts toward no total until it is quoted                                      |
-| **Budgeted total**    | The sum of a round's items, the figure the customer approves                                             | R$ 320.00                                | A service counts once; a part counts price times planned qty                   |
-| **Charged total**     | What the customer pays: approved services plus withdrawn parts, at the budgeted price, less the discount | R$ 285.00                                | Frozen at completion. Diverges from the budgeted total when a part goes unused |
-| **Discount**          | A reduction of the charged total, with a mandatory reason                                                | R$ 10.00, "courtesy for the delay"       | Never exceeds the charged total                                                |
-| **Withdrawal**        | Taking a planned part off the shelf, at the moment it is about to be used                                | Withdraw the 2 filters                   | This is where stock goes down, not at planning                                 |
-| **Return**            | Putting a withdrawn and unused part back on the shelf                                                    | Return 1 filter                          | Never exceeds what was withdrawn                                               |
-| **Assigned mechanic** | The mechanic responsible for executing this work order                                                   | Marcos                                   | Can be changed while the order is neither delivered nor cancelled              |
-| **Trail**             | The chronological, immutable record of everything that happened to the order                             | 12 entries, from opening to delivery     | Written in the same transaction that changes the order                         |
-| **Status label**      | The name of a stage in Portuguese, answered beside the code                                              | `Aguardando Aprovação`                   | The domain and the database keep the code                                      |
-| **Decision link**     | The API address that approves or rejects one pending budget round                                        | `POST .../budgets/{id}/approval`         | Called with the customer's own token. A decided round has none                 |
-| **Status e-mail**     | The message that tells the customer their order changed stage                                            | `Ordem de serviço A1B090-2026: Execução` | One per change, the opening included. A failed one is logged, not resent       |
+| Term                  | Definition                                                                                               | Example                                      | Notes                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Work order**        | The record of one visit of a vehicle, of what was done and of what was charged                           | The work order for Joana's Corolla           | A vehicle has at most one open work order                                                                       |
+| **Work order number** | The identifier the customer receives and uses to follow along                                            | `A1B090-2026`                                | Drawn, not sequential: it does not reveal the shop's volume                                                     |
+| **Requested service** | A catalog service added to this work order, with the price copied at the moment it was added             | Oil change, R$ 150.99                        | The price does not change later, even if the catalog does                                                       |
+| **Planned part**      | A part or supply the customer asks for or the mechanic expects to use, with the quantity                 | 2 oil filters                                | Planning takes nothing off the shelf                                                                            |
+| **Budget round**      | A set of items quoted at once, with one total and one customer decision                                  | Round 1, R$ 320.00, approved                 | Numbered in sequence. Round one comes out of the diagnosis                                                      |
+| **Draft item**        | A service or part already on the order but not yet attached to a round                                   | A part added during the work                 | Counts toward no total until it is quoted                                                                       |
+| **Budgeted total**    | The sum of a round's items, the figure the customer approves                                             | R$ 320.00                                    | A service counts once; a part counts price times planned qty                                                    |
+| **Charged total**     | What the customer pays: approved services plus withdrawn parts, at the budgeted price, less the discount | R$ 285.00                                    | Frozen at completion. Diverges from the budgeted total when a part goes unused                                  |
+| **Discount**          | A reduction of the charged total, with a mandatory reason                                                | R$ 10.00, "courtesy for the delay"           | Never exceeds the charged total                                                                                 |
+| **Withdrawal**        | Taking a planned part off the shelf, at the moment it is about to be used                                | Withdraw the 2 filters                       | This is where stock goes down, not at planning                                                                  |
+| **Return**            | Putting a withdrawn and unused part back on the shelf                                                    | Return 1 filter                              | Never exceeds what was withdrawn                                                                                |
+| **Assigned mechanic** | The mechanic responsible for executing this work order                                                   | Marcos                                       | Can be changed while the order is neither delivered nor cancelled                                               |
+| **Trail**             | The chronological, immutable record of everything that happened to the order                             | 12 entries, from opening to delivery         | Written in the same transaction that changes the order                                                          |
+| **Status label**      | The name of a stage in Portuguese, answered beside the code                                              | `Aguardando Aprovação`                       | The domain and the database keep the code                                                                       |
+| **Decision link**     | The API address that approves or rejects one pending budget round                                        | `POST .../budgets/{id}/approval?link={hash}` | Called with the customer's own token. A decided round has none. The hash belongs to one generation of the round |
+| **Status e-mail**     | The message that tells the customer their order changed stage                                            | `Ordem de serviço A1B090-2026: Execução`     | One per change, the opening included. A failed one is logged, not resent                                        |
 
 ### Work order
 
@@ -232,28 +232,29 @@ or at the submission of a supplementary budget.
 through the API. What tells the customer is the status e-mail that follows Work order status
 changed: for Awaiting approval it carries the round's total and its decision links. A work order
 that moves from execution to Awaiting approval again, with a supplementary round, sends that
-e-mail again with the links of the new round.
+e-mail again with the links of the new round. So does a round 1 that is rejected and generated again,
+and the links of the earlier e-mail stop working.
 
 ## 6. Policies and business rules
 
-| Rule                                             | Description                                                                               |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| One vehicle, one open order                      | A vehicle cannot have two orders in flight at the same time                               |
-| An inactive customer opens no order              | A deactivated customer gets no new order, though the old ones stay valid                  |
-| The diagnosis does not complete empty            | Completing the diagnosis requires at least one item on the order                          |
-| The system sums, nobody supplies the total       | No command accepts a budget figure; the total is summed inside the aggregate              |
-| The budgeted price is frozen                     | An item's price enters the round and never changes, even if the catalog or the shelf does |
-| A quoted item cannot be removed                  | Once attached to a round, the item stays on the order                                     |
-| A withdrawal never exceeds the plan              | The sum of withdrawals of a part never exceeds the planned quantity                       |
-| A return never exceeds the withdrawal            | The sum of returns never exceeds what was withdrawn                                       |
-| Only a part on an approved round is withdrawable | A draft part, or one on a rejected round, does not leave the shelf                        |
-| What is charged is what was withdrawn            | A part planned and never withdrawn does not count toward the charged total                |
-| A discount requires a reason                     | The discount has a mandatory reason and never exceeds the charged total                   |
-| Cancelling in execution is elevated              | Cancelling an order that already withdrew parts requires a permission of its own          |
-| Delivery and cancellation are terminal           | There is no way out of Delivered or Cancelled                                             |
-| The trail is immutable                           | No trail entry is altered or erased                                                       |
-| A decision link names its budget                 | A round that is no longer pending refuses its link, so an old e-mail decides nothing      |
-| The customer hears of every change               | The opening and each stage change send an e-mail; a failed one is logged, not resent      |
+| Rule                                             | Description                                                                                                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One vehicle, one open order                      | A vehicle cannot have two orders in flight at the same time                                                                                       |
+| An inactive customer opens no order              | A deactivated customer gets no new order, though the old ones stay valid                                                                          |
+| The diagnosis does not complete empty            | Completing the diagnosis requires at least one item on the order                                                                                  |
+| The system sums, nobody supplies the total       | No command accepts a budget figure; the total is summed inside the aggregate                                                                      |
+| The budgeted price is frozen                     | An item's price enters the round and never changes, even if the catalog or the shelf does                                                         |
+| A quoted item cannot be removed                  | Once attached to a round, the item stays on the order                                                                                             |
+| A withdrawal never exceeds the plan              | The sum of withdrawals of a part never exceeds the planned quantity                                                                               |
+| A return never exceeds the withdrawal            | The sum of returns never exceeds what was withdrawn                                                                                               |
+| Only a part on an approved round is withdrawable | A draft part, or one on a rejected round, does not leave the shelf                                                                                |
+| What is charged is what was withdrawn            | A part planned and never withdrawn does not count toward the charged total                                                                        |
+| A discount requires a reason                     | The discount has a mandatory reason and never exceeds the charged total                                                                           |
+| Cancelling in execution is elevated              | Cancelling an order that already withdrew parts requires a permission of its own                                                                  |
+| Delivery and cancellation are terminal           | There is no way out of Delivered or Cancelled                                                                                                     |
+| The trail is immutable                           | No trail entry is altered or erased                                                                                                               |
+| A decision link names its budget and generation  | A round that is no longer pending refuses its link, and so does a round generated again after the link was sent, so an old e-mail decides nothing |
+| The customer hears of every change               | The opening and each stage change send an e-mail; a failed one is logged, not resent                                                              |
 
 ### The system sums, nobody supplies the total
 
@@ -395,37 +396,37 @@ Work order
 
 ## 10. Domain vocabulary and technical vocabulary
 
-| Domain (business)  | Technical (code)                                                | Note                                                     |
-| ------------------ | --------------------------------------------------------------- | -------------------------------------------------------- |
-| Work order         | `WorkOrder`, `/work-orders`                                     | -                                                        |
-| Work order number  | `WorkOrderNumber`, `number`                                     | Format `AAAAAA-YYYY`                                     |
-| Stage              | `WorkOrderStatus`, `status`                                     | The business says stage; the code says status            |
-| Received           | `RECEIVED`                                                      | -                                                        |
-| In diagnosis       | `IN_DIAGNOSIS`                                                  | -                                                        |
-| Awaiting approval  | `AWAITING_APPROVAL`                                             | -                                                        |
-| In execution       | `IN_EXECUTION`                                                  | -                                                        |
-| Completed          | `COMPLETED`                                                     | -                                                        |
-| Delivered          | `DELIVERED`                                                     | -                                                        |
-| Cancelled          | `CANCELED`                                                      | Spelled with one L in the code, matching the enum        |
-| Requested service  | `WorkOrderServiceItem`, `serviceItems`                          | -                                                        |
-| Planned part       | `WorkOrderPartItem`, `partItems`                                | -                                                        |
-| Planned quantity   | `plannedQuantity`                                               | -                                                        |
-| Withdrawn quantity | `withdrawnQuantity`                                             | -                                                        |
-| Budget round       | `Budget`, `round`                                               | `Budget` is the round, not the total                     |
-| Pending round      | `BudgetStatus.Pending`                                          | -                                                        |
-| Budgeted total     | `Budget.totalCents`                                             | Integer cents                                            |
-| Charged total      | `chargedTotalCents`                                             | Integer cents. Null before completion                    |
-| Discount           | `discountCents`, `discountNote`                                 | -                                                        |
-| Draft item         | `isDraft`, `budgetRound === null`                               | There is no "draft" column: it is the item with no round |
-| Assigned mechanic  | `assignedMechanicUserId`                                        | Points at the user account, not at a Mechanic aggregate  |
-| Trail              | `work_order_events`, `GET /work-orders/:number/trail`           | -                                                        |
-| Status label       | `statusLabel`, `workOrderStatusLabel`                           | The label is `Cancelada` for the code `CANCELED`         |
-| Decision link      | `approvalUrl`, `rejectionUrl`                                   | On the pending round only, null on the others            |
-| Status e-mail      | `StatusMailSubscriber`, `Mailer`, `WorkOrderStatusChanged`      | Not a trail entry                                        |
-| Withdraw parts     | `WithdrawPartsCommand`, `POST /work-orders/:number/withdrawals` | -                                                        |
-| Return parts       | `ReturnPartsCommand`, `POST /work-orders/:number/returns`       | -                                                        |
-| Complete           | `CompleteWorkOrderCommand`                                      | Not to be confused with deliver                          |
-| Deliver            | `DeliverVehicleCommand`                                         | -                                                        |
+| Domain (business)  | Technical (code)                                                | Note                                                                           |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Work order         | `WorkOrder`, `/work-orders`                                     | -                                                                              |
+| Work order number  | `WorkOrderNumber`, `number`                                     | Format `AAAAAA-YYYY`                                                           |
+| Stage              | `WorkOrderStatus`, `status`                                     | The business says stage; the code says status                                  |
+| Received           | `RECEIVED`                                                      | -                                                                              |
+| In diagnosis       | `IN_DIAGNOSIS`                                                  | -                                                                              |
+| Awaiting approval  | `AWAITING_APPROVAL`                                             | -                                                                              |
+| In execution       | `IN_EXECUTION`                                                  | -                                                                              |
+| Completed          | `COMPLETED`                                                     | -                                                                              |
+| Delivered          | `DELIVERED`                                                     | -                                                                              |
+| Cancelled          | `CANCELED`                                                      | Spelled with one L in the code, matching the enum                              |
+| Requested service  | `WorkOrderServiceItem`, `serviceItems`                          | -                                                                              |
+| Planned part       | `WorkOrderPartItem`, `partItems`                                | -                                                                              |
+| Planned quantity   | `plannedQuantity`                                               | -                                                                              |
+| Withdrawn quantity | `withdrawnQuantity`                                             | -                                                                              |
+| Budget round       | `Budget`, `round`                                               | `Budget` is the round, not the total                                           |
+| Pending round      | `BudgetStatus.Pending`                                          | -                                                                              |
+| Budgeted total     | `Budget.totalCents`                                             | Integer cents                                                                  |
+| Charged total      | `chargedTotalCents`                                             | Integer cents. Null before completion                                          |
+| Discount           | `discountCents`, `discountNote`                                 | -                                                                              |
+| Draft item         | `isDraft`, `budgetRound === null`                               | There is no "draft" column: it is the item with no round                       |
+| Assigned mechanic  | `assignedMechanicUserId`                                        | Points at the user account, not at a Mechanic aggregate                        |
+| Trail              | `work_order_events`, `GET /work-orders/:number/trail`           | -                                                                              |
+| Status label       | `statusLabel`, `workOrderStatusLabel`                           | The label is `Cancelada` for the code `CANCELED`                               |
+| Decision link      | `approvalUrl`, `rejectionUrl`                                   | On the pending round only, null on the others. Both end in `?link=` and a hash |
+| Status e-mail      | `StatusMailSubscriber`, `Mailer`, `WorkOrderStatusChanged`      | Not a trail entry                                                              |
+| Withdraw parts     | `WithdrawPartsCommand`, `POST /work-orders/:number/withdrawals` | -                                                                              |
+| Return parts       | `ReturnPartsCommand`, `POST /work-orders/:number/returns`       | -                                                                              |
+| Complete           | `CompleteWorkOrderCommand`                                      | Not to be confused with deliver                                                |
+| Deliver            | `DeliverVehicleCommand`                                         | -                                                                              |
 
 ## 11. Phrases from the domain
 

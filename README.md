@@ -560,12 +560,15 @@ it awaited approval included:
   "round": 1,
   "status": "PENDING",
   "totalCents": 20099,
-  "approvalUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/approval",
-  "rejectionUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/rejection"
+  "approvalUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/approval?link=<hash>",
+  "rejectionUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/rejection?link=<hash>"
 }
 ```
 
-The same two addresses arrive in the e-mail of the budget. The customer calls one with `POST`, no
+The same two addresses arrive in the e-mail of the budget. `<hash>` is the first 32 hexadecimal
+characters of the SHA-256 of the budget id and the moment the round was generated, in epoch
+milliseconds, joined by a colon. A rejected round 1 is generated again under the same id, and its
+hash changes with it. The customer calls one address whole, query string included, with `POST`, no
 body and their own bearer token. This signs in as the seeded customer, reads the pending budget of a
 work order that awaits approval (`$NUMBER` is the number the opening answered, after the diagnosis
 started and completed) and approves it:
@@ -586,9 +589,12 @@ curl -s -X POST "$APPROVAL_URL" -H "Authorization: Bearer $CUSTOMER_TOKEN" | jq 
 The link approves or rejects that budget and no other, and the person who called it is recorded as
 the decider. The owning customer and a holder of `work-orders:decide` can use it, and anyone else
 gets 404 `WORK_ORDER_NOT_FOUND`. A budget the work order does not hold answers 404
-`WORK_ORDER_BUDGET_NOT_FOUND`. A budget that is no longer pending answers 422 `BUDGET_INVALID_STATE`,
-so the link in an old e-mail cannot decide a later round. `POST /work-orders/:number/budget/approval`
-and `/rejection` stay as they were, and they decide whichever round is pending
+`WORK_ORDER_BUDGET_NOT_FOUND`. A call without `link` answers 400 `VALIDATION_ERROR`. A `link` that is
+not the hash of the budget as it stands now, such as the one in the e-mail of a round 1 that was
+rejected and generated again, answers 422 `WORK_ORDER_BUDGET_LINK_OUTDATED` and changes nothing. A
+budget that is no longer pending answers 422 `BUDGET_INVALID_STATE`. So the link in an old e-mail
+cannot decide a later round or a regenerated one. `POST /work-orders/:number/budget/approval` and
+`/rejection` stay as they were, and they decide whichever round is pending
 ([ADR 0037](docs/adr/0037-how-the-phase-2-briefs-api-items-are-read.md)).
 
 ### Status e-mails

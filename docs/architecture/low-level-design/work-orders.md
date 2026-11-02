@@ -34,7 +34,7 @@ Invariants it holds:
 - Items belong to a budget round. Items of an approved or rejected round are frozen; new items go into the draft round ([0018](../../adr/0018-numbered-budget-rounds.md)).
 - A budget total is always the sum of its own round's items, never a value supplied from outside, and never changes after approval.
 - A service or a part can be added while the work order is `RECEIVED`, `IN_DIAGNOSIS` or `IN_EXECUTION`, so the customer can ask for a part at reception ([0034](../../adr/0034-parts-can-be-planned-at-reception.md)).
-- A decision can name its budget. The budget has to be one of the work order's (`WORK_ORDER_BUDGET_NOT_FOUND`, 404) and still pending (`BUDGET_INVALID_STATE`, 422, whatever the status of the work order). Left unnamed, the pending round is the one decided.
+- A decision can name its budget. The budget has to be one of the work order's (`WORK_ORDER_BUDGET_NOT_FOUND`, 404), the link that names it has to be the one of its current generation (`WORK_ORDER_BUDGET_LINK_OUTDATED`, 422, checked by the use case) and the budget has to be pending (`BUDGET_INVALID_STATE`, 422, whatever the status of the work order). Left unnamed, the pending round is the one decided.
 - Every transition, the opening included, records one `WorkOrderStatusChanged` with the old and the new status, after the facts it consists of. An approval records it once, though the trail keeps `BudgetApproved` and `ExecutionStarted`. The event feeds no `work_order_events` row ([0036](../../adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).
 - The diagnosis cannot be completed with an empty item list.
 - A withdrawal cannot exceed what the round planned, and a return cannot exceed what was withdrawn.
@@ -187,19 +187,32 @@ Every work order answer carries `approvalUrl` and `rejectionUrl` on the pending 
 order that awaits approval, and null in both on every other budget:
 
 ```
-${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval
-${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/rejection
+${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval?link=${linkHash}
+${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/rejection?link=${linkHash}
 ```
 
-`HttpBudgetDecisionLinks` in `presentation` builds them, from the `APP_PUBLIC_URL` setting and the
-routes `WorkOrdersController` declares, and the controller applies it in the one place that maps a
-work order to its response. A work order canceled while it awaited approval keeps its budget
-`PENDING`, and the controller leaves both links null on it, because a call would answer
-`WORK_ORDER_INVALID_STATE`. The customer calls an address with `POST` and their own bearer token.
-The two routes run `ApproveBudgetUseCase` and `RejectBudgetUseCase` with the budget id, and
-`BudgetDecisionAuthorizer` checks the caller first, so a stranger gets `WORK_ORDER_NOT_FOUND` even
-for a budget id that does not exist. The routes `POST /work-orders/:number/budget/approval` and
-`/rejection` stay, and they decide whichever round is pending
+`linkHash` is the first 32 hexadecimal characters of the SHA-256 of
+`${budgetId}:${generatedAt in epoch milliseconds}`. A rejected round 1 is generated again under the
+same id with a new `generatedAt`, so the hash is what tells the links of one generation from the next.
+`link` is a required query parameter (`BudgetDecisionLinkQueryDto`), and a call without it answers 400
+`VALIDATION_ERROR`.
+
+`HttpBudgetDecisionLinks` in `presentation` builds the addresses, from the `APP_PUBLIC_URL` setting and
+the routes `WorkOrdersController` declares, and computes the hash in one place. The controller applies
+it in the one place that maps a work order to its response, and the status e-mail uses the same class
+through the `BudgetDecisionLinks` port. A work order canceled while it awaited approval keeps its
+budget `PENDING`, and the controller leaves both links null on it, because a call would answer
+`WORK_ORDER_INVALID_STATE`.
+
+The customer calls an address with `POST` and their own bearer token. The two routes run
+`ApproveBudgetUseCase` and `RejectBudgetUseCase` with the budget id and the `link`.
+`BudgetDecisionAuthorizer` checks the caller first, so a stranger gets `WORK_ORDER_NOT_FOUND` even for
+a budget id that does not exist. The use case then finds the budget (`WorkOrder.budgetById`, 404
+`WORK_ORDER_BUDGET_NOT_FOUND`), recomputes the hash from its current `generatedAt` through the
+`BudgetLinkVerifier` port, which `HttpBudgetDecisionLinks` implements, and compares it with the
+request's through `timingSafeEqual`. A difference answers 422 `WORK_ORDER_BUDGET_LINK_OUTDATED`, before
+the aggregate checks that the budget is pending. The routes `POST /work-orders/:number/budget/approval`
+and `/rejection` carry no link and skip the check, and they decide whichever round is pending
 ([0037](../../adr/0037-how-the-phase-2-briefs-api-items-are-read.md)).
 
 ### Status e-mails
@@ -210,7 +223,8 @@ for a budget id that does not exist. The routes `POST /work-orders/:number/budge
    `DomainEventPublisher`. The dispatcher starts the subscribers of `WorkOrderStatusChanged` and does
    not wait for them. `WorkOrdersModule` registers `StatusMailSubscriber` on it in `onModuleInit`.
 2. The event carries the work order's number, customer and plate, the old and the new status, and the
-   pending budget (its id and total) when the new status is `AWAITING_APPROVAL`.
+   pending budget (its id, total and the moment it was generated) when the new status is
+   `AWAITING_APPROVAL`.
 3. The subscriber reads the customer's name and e-mail through `CustomerDirectory`, composes the
    message in `status-mail.message.ts` and calls `Mailer.send`. The subject is
    `Ordem de serviço ${number}: ${statusLabel}`. The body names the customer, the number, the plate
@@ -474,13 +488,13 @@ literals would be read as work order numbers.
 
 ## Errors
 
-| Code                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Status |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| `WORK_ORDER_INVALID_NUMBER`, `WORK_ORDER_INVALID_PLANNED_QUANTITY`                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 400    |
-| `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`, `WORK_ORDER_COMPLETION_FORBIDDEN`                                                                                                                                                                                                                                                                                                                                                                                                                                               | 403    |
-| `WORK_ORDER_NOT_FOUND`, `WORK_ORDER_BUDGET_NOT_FOUND`, `WORK_ORDER_ITEM_NOT_FOUND`, `WORK_ORDER_ASSIGNED_MECHANIC_NOT_FOUND`, `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`, `WORK_ORDER_REFERENCED_VEHICLE_NOT_FOUND`, `WORK_ORDER_REFERENCED_SERVICE_NOT_FOUND`, `WORK_ORDER_REFERENCED_INVENTORY_ITEM_NOT_FOUND`                                                                                                                                                                                                            | 404    |
-| `WORK_ORDER_NUMBER_TAKEN`, `WORK_ORDER_VEHICLE_ALREADY_HAS_ACTIVE_WORK_ORDER`                                                                                                                                                                                                                                                                                                                                                                                                                                               | 409    |
-| `WORK_ORDER_INVALID_STATE`, `BUDGET_INVALID_STATE`, `WORK_ORDER_DIAGNOSIS_WITHOUT_ITEMS`, `WORK_ORDER_EMPTY_DRAFT_BUDGET`, `WORK_ORDER_BUDGETED_ITEM_NOT_REMOVABLE`, `WORK_ORDER_WITHDRAWAL_EXCEEDS_PLANNED`, `WORK_ORDER_RETURN_EXCEEDS_WITHDRAWN`, `WORK_ORDER_PART_NOT_WITHDRAWABLE`, `WORK_ORDER_DISCOUNT_EXCEEDS_CHARGED_TOTAL`, `WORK_ORDER_DUPLICATE_BATCH_LINE`, `WORK_ORDER_CUSTOMER_INACTIVE`, `WORK_ORDER_SERVICE_INACTIVE`, `WORK_ORDER_VEHICLE_NOT_OWNED_BY_CUSTOMER`, `WORK_ORDER_ASSIGNED_USER_NOT_MECHANIC` | 422    |
+| Code                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Status |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `WORK_ORDER_INVALID_NUMBER`, `WORK_ORDER_INVALID_PLANNED_QUANTITY`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 400    |
+| `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`, `WORK_ORDER_COMPLETION_FORBIDDEN`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 403    |
+| `WORK_ORDER_NOT_FOUND`, `WORK_ORDER_BUDGET_NOT_FOUND`, `WORK_ORDER_ITEM_NOT_FOUND`, `WORK_ORDER_ASSIGNED_MECHANIC_NOT_FOUND`, `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`, `WORK_ORDER_REFERENCED_VEHICLE_NOT_FOUND`, `WORK_ORDER_REFERENCED_SERVICE_NOT_FOUND`, `WORK_ORDER_REFERENCED_INVENTORY_ITEM_NOT_FOUND`                                                                                                                                                                                                                                               | 404    |
+| `WORK_ORDER_NUMBER_TAKEN`, `WORK_ORDER_VEHICLE_ALREADY_HAS_ACTIVE_WORK_ORDER`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 409    |
+| `WORK_ORDER_INVALID_STATE`, `BUDGET_INVALID_STATE`, `WORK_ORDER_BUDGET_LINK_OUTDATED`, `WORK_ORDER_DIAGNOSIS_WITHOUT_ITEMS`, `WORK_ORDER_EMPTY_DRAFT_BUDGET`, `WORK_ORDER_BUDGETED_ITEM_NOT_REMOVABLE`, `WORK_ORDER_WITHDRAWAL_EXCEEDS_PLANNED`, `WORK_ORDER_RETURN_EXCEEDS_WITHDRAWN`, `WORK_ORDER_PART_NOT_WITHDRAWABLE`, `WORK_ORDER_DISCOUNT_EXCEEDS_CHARGED_TOTAL`, `WORK_ORDER_DUPLICATE_BATCH_LINE`, `WORK_ORDER_CUSTOMER_INACTIVE`, `WORK_ORDER_SERVICE_INACTIVE`, `WORK_ORDER_VEHICLE_NOT_OWNED_BY_CUSTOMER`, `WORK_ORDER_ASSIGNED_USER_NOT_MECHANIC` | 422    |
 
 A concurrent write answers 409 through `ConcurrentModificationError`, which lives in the shared
 kernel rather than here.
