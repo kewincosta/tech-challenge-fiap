@@ -389,6 +389,19 @@ describe('Budget decision links', () => {
     });
   });
 
+  it('lets a holder of work-orders:decide use the rejection link', async () => {
+    const workOrder = await quoteRoundOne();
+    const { rejectionUrl } = (await getWorkOrder(workOrder.number)).budgets[0];
+
+    const rejected = await postLink(rejectionUrl!, serviceAdvisor.accessToken);
+
+    expect(rejected.status).toBe(200);
+    expect(rejected.body).toMatchObject({
+      status: 'IN_DIAGNOSIS',
+      budgets: [{ status: 'REJECTED', decidedByUserId: serviceAdvisor.userId }],
+    });
+  });
+
   it('answers the links on the customer routes and on the board', async () => {
     const workOrder = await quoteRoundOne();
     const expected = (await getWorkOrder(workOrder.number)).budgets[0];
@@ -429,15 +442,17 @@ describe('Budget decision links', () => {
     expect(boardItems[boardItems.length - 1].budgets[0]).toMatchObject(links);
   });
 
-  it('answers 400 for a budget id that is not a UUID', async () => {
+  it('answers 400 for a budget id that is not a UUID on both links', async () => {
     const workOrder = await quoteRoundOne();
 
-    const response = await postLink(
-      `${PUBLIC_URL}/api/v1/work-orders/${workOrder.number}/budgets/not-an-id/approval`,
-      workOrder.owner.accessToken,
-    );
+    for (const decision of ['approval', 'rejection']) {
+      const response = await postLink(
+        `${PUBLIC_URL}/api/v1/work-orders/${workOrder.number}/budgets/not-an-id/${decision}`,
+        workOrder.owner.accessToken,
+      );
 
-    expect(response.status).toBe(400);
+      expect(response.status, decision).toBe(400);
+    }
     expect((await getWorkOrder(workOrder.number)).status).toBe('AWAITING_APPROVAL');
   });
 });
