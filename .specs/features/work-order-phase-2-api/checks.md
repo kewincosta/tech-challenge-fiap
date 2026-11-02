@@ -213,6 +213,6 @@ Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity a
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `ef5b587`
-- **Boundary:** C1-C25 closed at `8d16ccd`
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`
+- **Boundary:** C1-C50 closed at `7616bc0`
 - **Abandoned:** none

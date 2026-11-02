@@ -12,7 +12,7 @@ When this ships, the front desk opens a work order with the services and parts t
 
 ## Shape
 
-This reuses the work order aggregate's own item rules (`addService`, `planPart`, `removeItem`), the existing budget decisions and their authorizer, the in-process domain event dispatcher for side effects (AD-016), and the work-orders query adapter for the listing. The rules that change an outcome (parts at `RECEIVED`, the order and the default exclusion of the listing, the pagination bounds, the budget a link may decide, which change sends which e-mail, the status labels) run in the domain, the application use cases, the query adapter and one presentation mapper, all reached by the unit and integration suites.
+This reuses the work order aggregate's own item rules (`addService`, `planPart`, `removeItem`), the existing budget decisions and their authorizer, the in-process domain event dispatcher for side effects (AD-016), and the work-orders query adapter for the listing. The rules that change an outcome (parts at `RECEIVED`, the order and the default exclusion of the listing, the pagination bounds, the budget a link may decide, which change sends which e-mail, the status labels) run in the domain (the label map included), the application use cases, the query adapter and the response mapper of the controller, all reached by the unit and integration suites.
 
 Opening:
 
@@ -37,8 +37,8 @@ Budget decision by link:
 
 Status e-mails:
 
-10. `StatusMailSubscriber` (new) - receives the status change event the use case published after the commit, reads the customer's name and e-mail through `CustomerDirectory` (exists), composes the Portuguese message, with the budget total and both links when the status is AWAITING_APPROVAL, and hands it to `Mailer` (door 5)
-11. `SmtpMailer` (door 5) - sends through the configured server, Mailpit (door 6) in local development; a failure is caught and logged at error level with the work order number, and never reaches the request
+10. `StatusMailSubscriber` (new) - receives the status change event the use case published after the commit, reads the customer's name and e-mail through `CustomerDirectory` (exists), composes the Portuguese message, with the budget total and both links when the status is AWAITING_APPROVAL, and hands it to `Mailer` (door 5); a failure of the lookup or of the send is caught here and logged at error level with the work order number, and never reaches the request
+11. `SmtpMailer` (door 5) - sends through the configured server, Mailpit (door 6) in local development, and rejects when the server refuses the message
 12. out: ADRs 0034 to 0037, the README, the work-orders low-level design and the Postman collection describe the opening with items, the labels, the listing, the links and the e-mails
 
 ```mermaid
@@ -126,6 +126,7 @@ Every transition above, the opening included, sends the customer one e-mail.
 | `POST /api/v1/work-orders/:number/budgets/:budgetId/approval` | none | the work order | 200; 404 `WORK_ORDER_NOT_FOUND` for an unknown number and for a caller who is neither the owning customer nor a holder of `work-orders:decide`; 404 `WORK_ORDER_BUDGET_NOT_FOUND` for a budget the work order does not have; 422 `BUDGET_INVALID_STATE` for a budget that is not pending; 401 without a token | the owning customer, or a holder of `work-orders:decide` |
 | `POST /api/v1/work-orders/:number/budgets/:budgetId/rejection` | none | the work order | 200; 404 `WORK_ORDER_NOT_FOUND` for an unknown number and for a caller who is neither the owning customer nor a holder of `work-orders:decide`; 404 `WORK_ORDER_BUDGET_NOT_FOUND`; 422 `BUDGET_INVALID_STATE`; 401 without a token | the owning customer, or a holder of `work-orders:decide` |
 | every route that answers a work order (`GET /work-orders/:number`, `GET /work-orders/me`, `GET /work-orders/me/:number`, the transitions) | unchanged | the work order gains `statusLabel`, and each budget gains `approvalUrl` and `rejectionUrl`, null unless the budget is pending | 200; 401 without a token; 403 or 404 for a caller each route refuses today | the callers each route allows today |
+| `POST /api/v1/work-orders/:number/budgets/:budgetId/approval` and `.../rejection`, with a `budgetId` that is not a UUID | none | the error | 400 `BAD_REQUEST`; 401 without a token | any caller with a token |
 
 ## Landing
 
