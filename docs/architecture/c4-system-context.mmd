@@ -1,6 +1,6 @@
 %% C4 level 1, system context - Workshop Management API
-%% Four business actors and one system. No external system: this MVP integrates with no
-%% payment provider, no notification channel and no supplier. See architecture-overview.md.
+%% Four business actors and one system. One external system, an SMTP server that takes the status
+%% e-mails. This MVP integrates with no payment provider and no supplier. See architecture-overview.md.
 
 C4Context
   title System context - Workshop Management API
@@ -11,10 +11,12 @@ C4Context
   Person(admin, "Administrator", "Manages the catalog, the inventory, the staff accounts, applies discounts, reads metrics and trails")
 
   System(api, "Workshop Management API", "Centralises attendance, diagnosis, budgeting, execution, stock and delivery around the work order")
+  System_Ext(mail, "SMTP server", "Mailpit in local development; takes the e-mail the customer receives at every status change")
 
   Rel(customer, api, "Follows work orders, decides on budgets", "HTTPS/JSON")
   Rel(advisor, api, "Registers, opens, assigns, delivers, cancels", "HTTPS/JSON")
   Rel(mechanic, api, "Diagnoses, withdraws parts, completes", "HTTPS/JSON")
   Rel(admin, api, "Administers the catalog, stock, staff and reads metrics", "HTTPS/JSON")
+  Rel(api, mail, "Sends the status e-mails of a work order", "SMTP")
 
   UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")

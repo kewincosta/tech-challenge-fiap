@@ -100,11 +100,12 @@ not cover invoicing, supplier management or scheduling.
 - Catalog services and inventory parts added to the order, parts from the reception on
 - Budget summed inside the aggregate, from the services and the planned parts
 - Numbered budget rounds, for extra work found during execution
-- Approval or rejection by the customer, or by whoever holds the permission to decide
+- Approval or rejection by the customer, or by whoever holds the permission to decide, through the links the pending budget carries
 - Part withdrawal from stock, consumed first and given back when the order cannot be saved
 - Return of what was left over, cancellation with a definitive write-off, discount with a reason
 - A board that lists the work in progress first and oldest first, one page at a time, and leaves the finished orders out unless a filter asks for them
 - Every work order answer names its status in Portuguese beside the code
+- An e-mail to the customer at the opening and at every status change, with the total and the links that decide the budget when it awaits approval
 - Seven states, changed only as the consequence of an action:
 
 ```mermaid
@@ -297,6 +298,7 @@ is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 | API documentation | `@nestjs/swagger` 11 (OpenAPI 3)         |
 | Validation        | `class-validator` and `zod` (env)        |
 | Password hashing  | `argon2` (Argon2id)                      |
+| E-mail            | `nodemailer` over SMTP, Mailpit locally  |
 | HTTP headers      | `helmet`                                 |
 | Logging           | `nestjs-pino`                            |
 | Testing           | Vitest 3, `supertest`, `@faker-js/faker` |
@@ -308,9 +310,10 @@ is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 
 - **Node.js 22 or newer** (the `engines` field in `package.json`; the Docker image uses Node 24)
 - **npm** (the repository versions `package-lock.json`)
-- **Docker** and **Docker Compose**, for PostgreSQL and Redis
+- **Docker** and **Docker Compose**, for PostgreSQL, Redis and Mailpit
 
-There is no need to install PostgreSQL or Redis on the machine: `docker-compose.yml` starts both.
+There is no need to install PostgreSQL, Redis or a mail server on the machine: `docker-compose.yml`
+starts them.
 
 ## Getting started
 
@@ -342,10 +345,13 @@ npm run seed
 
 After that the API answers at `http://localhost:13000`, Swagger at
 `http://localhost:13000/api/docs`, and the database holds one user per role plus a catalog, stock,
-a customer and demo vehicles.
+a customer and demo vehicles. Mailpit shows every e-mail the application sends at
+`http://localhost:8025`.
 
 `.env.example` already carries values that match `docker-compose.yml`. In a local environment
-nothing needs changing beyond `JWT_SECRET`, if you want to.
+nothing needs changing beyond `JWT_SECRET`, if you want to. A `.env` made before the status e-mails
+has none of the mail settings, and the application refuses to start until you copy the `SMTP_*`,
+`MAIL_FROM` and `APP_PUBLIC_URL` lines from `.env.example`.
 
 > The compose `app` service runs the image built at the time of the `up`. After changing code, use
 > `docker compose up -d --build`, otherwise the container keeps serving the previous version.
@@ -363,6 +369,8 @@ brings the application down with the field's message, rather than failing later.
 | `APP_HOST_PORT`                | No       | `13000`          | The API port published on the host                                         |
 | `POSTGRES_HOST_PORT`           | No       | `15432`          | The PostgreSQL port published on the host                                  |
 | `REDIS_HOST_PORT`              | No       | `16379`          | The Redis port published on the host                                       |
+| `MAILPIT_SMTP_HOST_PORT`       | No       | `1025`           | The Mailpit SMTP port published on the host                                |
+| `MAILPIT_UI_HOST_PORT`         | No       | `8025`           | The Mailpit inbox port published on the host                               |
 | `DATABASE_HOST`                | Yes      | -                | PostgreSQL host                                                            |
 | `DATABASE_PORT`                | No       | `5432`           | PostgreSQL port                                                            |
 | `DATABASE_USER`                | Yes      | -                | PostgreSQL user                                                            |
@@ -381,6 +389,12 @@ brings the application down with the field's message, rather than failing later.
 | `OUTBOX_POLL_INTERVAL_MS`      | No       | `5000`           | How often a processor looks for due steps, in ms; 0 turns it off           |
 | `OUTBOX_GRACE_SECONDS`         | No       | `300`            | How long an armed step waits before the processor compensates it           |
 | `OUTBOX_MAX_ATTEMPTS`          | No       | `10`             | Attempts before a step that keeps failing is marked failed                 |
+| `SMTP_HOST`                    | Yes      | -                | Host of the SMTP server that sends the e-mails; Mailpit locally            |
+| `SMTP_PORT`                    | Yes      | -                | Port of that server; Mailpit takes 1025                                    |
+| `SMTP_USER`                    | No       | -                | Login of that server, left empty when it asks for none                     |
+| `SMTP_PASSWORD`                | No       | -                | Password of that login                                                     |
+| `MAIL_FROM`                    | Yes      | -                | Sender of the e-mails, such as `Oficina <no-reply@workshop.local>`         |
+| `APP_PUBLIC_URL`               | Yes      | -                | Address customers reach the API at; the links in the e-mails start with it |
 | `ADMIN_EMAIL`                  | No       | -                | Email of the `SUPER_ADMIN` the seeds create                                |
 | `ADMIN_PASSWORD`               | No       | -                | Password of the `SUPER_ADMIN`, at least 8 characters, read by `seed:admin` |
 | `ADMIN_DOCUMENT`               | No       | -                | CPF or CNPJ of the `SUPER_ADMIN`, read by `seed:admin`                     |
@@ -445,20 +459,21 @@ npm run build        # compiles to dist/
 npm run start:prod   # runs the compiled build
 ```
 
-Through Docker, compose starts all three services at once:
+Through Docker, compose starts all four services at once:
 
 ```bash
-docker compose up -d          # postgres, redis and the application
+docker compose up -d          # postgres, redis, mailpit and the application
 docker compose up -d --build  # rebuilds the image before starting
 docker compose logs -f app
 docker compose down           # stops everything, keeping the PostgreSQL volume
 ```
 
-The application waits for the PostgreSQL and Redis healthchecks before starting.
+The application waits for the PostgreSQL and Redis healthchecks before starting. It does not wait for
+Mailpit to answer, and an e-mail it cannot send is logged.
 
 ## API
 
-Every route sits under the `/api/v1` prefix. There are 49 paths and 73 operations, across 10
+Every route sits under the `/api/v1` prefix. There are 51 paths and 75 operations, across 10
 controllers.
 
 **Swagger UI:** `http://localhost:13000/api/docs`
@@ -534,6 +549,64 @@ Every work order answer carries `statusLabel` beside `status`:
 | `DELIVERED`         | `Entregue`             |
 | `CANCELED`          | `Cancelada`            |
 
+### Deciding a budget through its links
+
+The budget that awaits a decision carries two addresses in every work order answer. Every other
+budget carries `null` in both:
+
+```json
+{
+  "round": 1,
+  "status": "PENDING",
+  "totalCents": 20099,
+  "approvalUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/approval",
+  "rejectionUrl": "http://localhost:13000/api/v1/work-orders/A1B090-2026/budgets/<budget id>/rejection"
+}
+```
+
+The same two addresses arrive in the e-mail of the budget. The customer calls one with `POST`, no
+body and their own bearer token. This signs in as the seeded customer, reads the pending budget of a
+work order that awaits approval (`$NUMBER` is the number the opening answered, after the diagnosis
+started and completed) and approves it:
+
+```bash
+CUSTOMER_TOKEN=$(curl -s -X POST http://localhost:13000/api/v1/auth/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"cliente@oficina.local","password":"Str0ngPassword"}' \
+  | jq -r .accessToken)
+
+APPROVAL_URL=$(curl -s "http://localhost:13000/api/v1/work-orders/me/$NUMBER" \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+  | jq -r '.budgets[] | select(.status == "PENDING") | .approvalUrl')
+
+curl -s -X POST "$APPROVAL_URL" -H "Authorization: Bearer $CUSTOMER_TOKEN" | jq '{status, statusLabel}'
+```
+
+The link approves or rejects that budget and no other, and the person who called it is recorded as
+the decider. The owning customer and a holder of `work-orders:decide` can use it, and anyone else
+gets 404 `WORK_ORDER_NOT_FOUND`. A budget the work order does not hold answers 404
+`WORK_ORDER_BUDGET_NOT_FOUND`. A budget that is no longer pending answers 422 `BUDGET_INVALID_STATE`,
+so the link in an old e-mail cannot decide a later round. `POST /work-orders/:number/budget/approval`
+and `/rejection` stay as they were, and they decide whichever round is pending
+([ADR 0037](docs/adr/0037-how-the-phase-2-briefs-api-items-are-read.md)).
+
+### Status e-mails
+
+The customer receives an e-mail when the work order is opened and at every status change after it.
+The subject is `Ordem de serviço A1B090-2026: Execução`, and the body names the customer, the work
+order number, the vehicle plate and the new status. When the status is `AWAITING_APPROVAL`, the
+e-mail also carries the budget total in reais and the two links above.
+
+The links are API calls. A mail client that opens one sends `GET` and gets 404, so the e-mail asks for
+a `POST` with the customer's token. The repository has no user interface to put behind them.
+
+In local development Mailpit catches every e-mail, and its inbox is at `http://localhost:8025`.
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` and `MAIL_FROM` name the server and the
+sender, and `APP_PUBLIC_URL` is the address the links start with
+([environment variables](#environment-variables)). An e-mail that cannot be sent is logged at error
+level with the work order number and sent no more: the request that changed the status answers as
+it would without the e-mail ([ADR 0036](docs/adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).
+
 Every monetary value travels as an integer number of cents, on the way in and on the way out.
 
 Errors follow one shape, and the kind of the domain error decides the status:
@@ -561,16 +634,16 @@ Import both into Postman and run the folders top to bottom with the Collection R
 request stores what the next one needs in a variable, so the whole sequence works without manual
 editing. It requires `npm run seed` to have been applied.
 
-| Folder                    | What it covers                                                            |
-| ------------------------- | ------------------------------------------------------------------------- |
-| 00. Authentication        | Signing in as each actor, renewing the token pair, active sessions        |
-| 01. Customer onboarding   | Account, role, customer record, vehicle, `me` routes                      |
-| 02. User management       | Permissions, roles, staff account with a temporary password, deactivation |
-| 03. Inventory management  | Item CRUD, replenishment, adjustment, movements, shortages, deactivation  |
-| 04. Work order management | CPF lookup, opening with items, delivery, the board, a cancellation       |
-| 05. Customer tracking     | The customer reading their own orders, and the 404 for someone else's     |
-| 06. Metrics and audit     | Average execution time and the work order trail                           |
-| 07. Wrap-up               | Logout, which drops every session of the user                             |
+| Folder                    | What it covers                                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| 00. Authentication        | Signing in as each actor, renewing the token pair, active sessions                                  |
+| 01. Customer onboarding   | Account, role, customer record, vehicle, `me` routes                                                |
+| 02. User management       | Permissions, roles, staff account with a temporary password, deactivation                           |
+| 03. Inventory management  | Item CRUD, replenishment, adjustment, movements, shortages, deactivation                            |
+| 04. Work order management | CPF lookup, opening with items, delivery, the board, a cancellation, the budget decided by its link |
+| 05. Customer tracking     | The customer reading their own orders, and the 404 for someone else's                               |
+| 06. Metrics and audit     | Average execution time and the work order trail                                                     |
+| 07. Wrap-up               | Logout, which drops every session of the user                                                       |
 
 From the command line:
 
@@ -599,7 +672,8 @@ Three suites, each with its own configuration file:
 The unit suite needs nothing beyond `npm install`. The integration and e2e suites need PostgreSQL
 and Redis answering, which `npm run setup` leaves ready; on an environment already set up,
 `docker compose up -d` is enough. They do not need the `app` container, because each one boots its
-own instance of the application in process.
+own instance of the application in process, and they need no mail server, because the end-to-end
+suites replace the `Mailer` with a fake that records what it was asked to send.
 
 Those two suites read `.env.test`, which is versioned on purpose because it carries no secret, and
 run their own migrations on `workshop_test` before starting
@@ -680,7 +754,7 @@ excludes the test files.
 │   ├── integration/               persistence against the real PostgreSQL
 │   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       35 architecture decision records
+│   ├── adr/                       37 architecture decision records
 │   ├── architecture/              overview, high level, low level per module
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── postman/                       collection and environment
@@ -884,7 +958,7 @@ Where each mandatory capability of the Tech Challenge is met.
 | Adding the requested services                   | `POST /work-orders/:number/services`, or `services` in `POST /work-orders`                                                |
 | Adding parts and supplies                       | `POST /work-orders/:number/parts`, or `parts` in `POST /work-orders`                                                      |
 | Budget generated automatically                  | `POST /work-orders/:number/diagnosis/completion`, summed inside the aggregate                                             |
-| Sending the budget to the customer for approval | The status moves to `AWAITING_APPROVAL` and the customer reads it at `GET /work-orders/me/:number` (see the caveat below) |
+| Sending the budget to the customer for approval | The status moves to `AWAITING_APPROVAL` and the customer gets an e-mail with the total and the links to approve or reject |
 | The six work order statuses                     | [`work-order-status.ts`](src/modules/work-orders/domain/work-order-status.ts), named in Portuguese by `statusLabel`       |
 | Automatic status changes                        | Every transition follows from an aggregate method; no route writes a status                                               |
 | Customer tracking through the API               | `GET /work-orders/me` and `GET /work-orders/me/:number`                                                                   |
@@ -901,15 +975,14 @@ Where each mandatory capability of the Tech Challenge is met.
 | Database justification                          | [Why PostgreSQL](#why-postgresql)                                                                                         |
 | Documented RESTful API                          | Swagger at `/api/docs`                                                                                                    |
 | Dockerfile                                      | [`Dockerfile`](Dockerfile), multi-stage                                                                                   |
-| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), three services with healthchecks                                              |
+| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), four services, three of them with healthchecks                                |
 | Minimum 80% coverage on the critical domains    | Per-path thresholds in [`vitest.config.ts`](vitest.config.ts), see [Coverage](#coverage)                                  |
 | Simple local setup                              | [Getting started](#getting-started)                                                                                       |
 
-**An honest caveat about sending the budget.** The system records the `BudgetSent` event in the
-trail and moves the order to `AWAITING_APPROVAL`, and the customer reads it and decides through
-the API. There is no active outbound channel: no email, push or webhook starts here. The model is
-pull, not push. Adding a channel means consuming the event that is already recorded, without
-touching the aggregate.
+The customer receives the budget by e-mail, with the total and a link to approve it and a link to
+reject it, and can also read it at `GET /work-orders/me/:number`. The links are API calls that take a
+`POST` and the customer's bearer token. No page sits behind them, because the repository has no user
+interface ([ADR 0037](docs/adr/0037-how-the-phase-2-briefs-api-items-are-read.md)).
 
 ## Security
 

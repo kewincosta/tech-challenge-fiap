@@ -26,21 +26,24 @@ never asks them again.
 
 ## 2. Domain concepts
 
-| Term                  | Definition                                                                                               | Example                              | Notes                                                                          |
-| --------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
-| **Work order**        | The record of one visit of a vehicle, of what was done and of what was charged                           | The work order for Joana's Corolla   | A vehicle has at most one open work order                                      |
-| **Work order number** | The identifier the customer receives and uses to follow along                                            | `A1B090-2026`                        | Drawn, not sequential: it does not reveal the shop's volume                    |
-| **Requested service** | A catalog service added to this work order, with the price copied at the moment it was added             | Oil change, R$ 150.99                | The price does not change later, even if the catalog does                      |
-| **Planned part**      | A part or supply the mechanic expects to use, with the expected quantity                                 | 2 oil filters                        | Planning takes nothing off the shelf                                           |
-| **Budget round**      | A set of items quoted at once, with one total and one customer decision                                  | Round 1, R$ 320.00, approved         | Numbered in sequence. Round one comes out of the diagnosis                     |
-| **Draft item**        | A service or part already on the order but not yet attached to a round                                   | A part added during the work         | Counts toward no total until it is quoted                                      |
-| **Budgeted total**    | The sum of a round's items, the figure the customer approves                                             | R$ 320.00                            | A service counts once; a part counts price times planned qty                   |
-| **Charged total**     | What the customer pays: approved services plus withdrawn parts, at the budgeted price, less the discount | R$ 285.00                            | Frozen at completion. Diverges from the budgeted total when a part goes unused |
-| **Discount**          | A reduction of the charged total, with a mandatory reason                                                | R$ 10.00, "courtesy for the delay"   | Never exceeds the charged total                                                |
-| **Withdrawal**        | Taking a planned part off the shelf, at the moment it is about to be used                                | Withdraw the 2 filters               | This is where stock goes down, not at planning                                 |
-| **Return**            | Putting a withdrawn and unused part back on the shelf                                                    | Return 1 filter                      | Never exceeds what was withdrawn                                               |
-| **Assigned mechanic** | The mechanic responsible for executing this work order                                                   | Marcos                               | Can be changed while the order is neither delivered nor cancelled              |
-| **Trail**             | The chronological, immutable record of everything that happened to the order                             | 12 entries, from opening to delivery | Written in the same transaction that changes the order                         |
+| Term                  | Definition                                                                                               | Example                                  | Notes                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------ |
+| **Work order**        | The record of one visit of a vehicle, of what was done and of what was charged                           | The work order for Joana's Corolla       | A vehicle has at most one open work order                                      |
+| **Work order number** | The identifier the customer receives and uses to follow along                                            | `A1B090-2026`                            | Drawn, not sequential: it does not reveal the shop's volume                    |
+| **Requested service** | A catalog service added to this work order, with the price copied at the moment it was added             | Oil change, R$ 150.99                    | The price does not change later, even if the catalog does                      |
+| **Planned part**      | A part or supply the customer asks for or the mechanic expects to use, with the quantity                 | 2 oil filters                            | Planning takes nothing off the shelf                                           |
+| **Budget round**      | A set of items quoted at once, with one total and one customer decision                                  | Round 1, R$ 320.00, approved             | Numbered in sequence. Round one comes out of the diagnosis                     |
+| **Draft item**        | A service or part already on the order but not yet attached to a round                                   | A part added during the work             | Counts toward no total until it is quoted                                      |
+| **Budgeted total**    | The sum of a round's items, the figure the customer approves                                             | R$ 320.00                                | A service counts once; a part counts price times planned qty                   |
+| **Charged total**     | What the customer pays: approved services plus withdrawn parts, at the budgeted price, less the discount | R$ 285.00                                | Frozen at completion. Diverges from the budgeted total when a part goes unused |
+| **Discount**          | A reduction of the charged total, with a mandatory reason                                                | R$ 10.00, "courtesy for the delay"       | Never exceeds the charged total                                                |
+| **Withdrawal**        | Taking a planned part off the shelf, at the moment it is about to be used                                | Withdraw the 2 filters                   | This is where stock goes down, not at planning                                 |
+| **Return**            | Putting a withdrawn and unused part back on the shelf                                                    | Return 1 filter                          | Never exceeds what was withdrawn                                               |
+| **Assigned mechanic** | The mechanic responsible for executing this work order                                                   | Marcos                                   | Can be changed while the order is neither delivered nor cancelled              |
+| **Trail**             | The chronological, immutable record of everything that happened to the order                             | 12 entries, from opening to delivery     | Written in the same transaction that changes the order                         |
+| **Status label**      | The name of a stage in Portuguese, answered beside the code                                              | `Aguardando Aprovação`                   | The domain and the database keep the code                                      |
+| **Decision link**     | The API address that approves or rejects one pending budget round                                        | `POST .../budgets/{id}/approval`         | Called with the customer's own token. A decided round has none                 |
+| **Status e-mail**     | The message that tells the customer their order changed stage                                            | `Ordem de serviço A1B090-2026: Execução` | One per change, the opening included. A failed one is logged, not resent       |
 
 ### Work order
 
@@ -91,11 +94,14 @@ total.
 
 ### Planned part
 
-**Definition.** A part or supply the mechanic expects to use on this order, with the expected
-quantity and the price copied from inventory at the moment of planning.
+**Definition.** A part or supply the customer asks for or the mechanic expects to use on this
+order, with the expected quantity and the price copied from inventory at the moment of planning.
 
 **Characteristics:**
 
+- Can be planned from Received on, so a customer who asks for new brake pads at reception has the
+  request on the order before any diagnosis. The diagnosis keeps it, removes it or adds items
+  around it, and the budget generated at its end is what the customer approves
 - Planning **neither holds nor removes** a single unit from the shelf
 - Carries two quantities: the **planned** one and the **withdrawn** one, which start out different
 - Only the part actually withdrawn counts toward the charged total
@@ -105,24 +111,26 @@ quantity and the price copied from inventory at the moment of planning.
 
 > "Plan two filters on the order; we withdraw them when we assemble."
 
+> "She wants new brake pads. Open the order with them, and the diagnosis confirms or drops them."
+
 ## 3. Actors
 
-| Actor               | Who they are                                        | Responsibility in the domain                                                                            |
-| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Service advisor** | Works the counter and bridges to the customer       | Opens the order, adds requested services, assigns the mechanic, delivers the vehicle, cancels the order |
-| **Mechanic**        | Does the work on the shop floor                     | Starts and completes the diagnosis, plans parts, withdraws and returns parts, completes the order       |
-| **Customer**        | The owner of the vehicle                            | Approves or rejects the budget round, follows their own orders                                          |
-| **Administrator**   | Answers for the operation                           | Applies discounts, cancels an order in execution, reads metrics and trails                              |
-| **System**          | What the application does on its own, with no human | Draws the order number, sums the budget, applies the stage transition, writes the trail                 |
+| Actor               | Who they are                                        | Responsibility in the domain                                                                                      |
+| ------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Service advisor** | Works the counter and bridges to the customer       | Opens the order, adds requested services and parts, assigns the mechanic, delivers the vehicle, cancels the order |
+| **Mechanic**        | Does the work on the shop floor                     | Starts and completes the diagnosis, plans parts, withdraws and returns parts, completes the order                 |
+| **Customer**        | The owner of the vehicle                            | Approves or rejects the budget round, follows their own orders                                                    |
+| **Administrator**   | Answers for the operation                           | Applies discounts, cancels an order in execution, reads metrics and trails                                        |
+| **System**          | What the application does on its own, with no human | Draws the order number, sums the budget, applies the stage transition, writes the trail, e-mails the customer     |
 
 ## 4. Commands
 
 | Command                         | Actor                             | What it means                                        | Expected outcome                                        |
 | ------------------------------- | --------------------------------- | ---------------------------------------------------- | ------------------------------------------------------- |
-| **Open work order**             | Advisor                           | Register the arrival of a vehicle for service        | Order created in Received, with a number of its own     |
+| **Open work order**             | Advisor                           | Register the arrival of a vehicle for service        | Order created in Received, with a number and the items  |
 | **Start diagnosis**             | Mechanic                          | Begin assessing what the vehicle needs               | Order moves to In diagnosis                             |
 | **Add requested service**       | Advisor / Mechanic                | Put a catalog service on the order                   | Draft service item, with the price frozen               |
-| **Plan part**                   | Mechanic                          | Anticipate the use of a part, without withdrawing it | Draft part item, with a planned quantity                |
+| **Plan part**                   | Advisor / Mechanic                | Anticipate the use of a part, without withdrawing it | Draft part item, with a planned quantity                |
 | **Remove item**                 | Advisor / Mechanic                | Take an unquoted service or part off the order       | Item removed; an already quoted item is refused         |
 | **Assign mechanic**             | Advisor                           | Say who answers for the execution                    | Assigned mechanic recorded on the order                 |
 | **Complete diagnosis**          | Mechanic                          | Close the assessment and generate the budget         | Round 1 generated, order moves to Awaiting approval     |
@@ -205,6 +213,7 @@ leaves. The three writes happen in the same transaction.
 | **Work order completed**           | The work finished and the charged total was frozen     | On completing the order                                |
 | **Vehicle delivered**              | The car went back to the customer                      | On delivering the vehicle                              |
 | **Work order cancelled**           | The order ended without a delivery                     | On cancelling the order                                |
+| **Work order status changed**      | The order was opened or moved to another stage         | On every transition, the opening included              |
 
 ### Budget sent
 
@@ -219,10 +228,11 @@ or at the submission of a supplementary budget.
 - Actor who generated the round
 - Moment it was sent
 
-**An important caveat.** "Sent" describes the budget becoming available to the customer, who reads
-it and decides through the API. No outbound channel starts here: there is no email, push or
-webhook in this system. When a channel is added, it consumes this event, which is already
-recorded.
+**Note.** "Sent" describes the budget becoming available to the customer, who reads it and decides
+through the API. What tells the customer is the status e-mail that follows Work order status
+changed: for Awaiting approval it carries the round's total and its decision links. A work order
+that moves from execution to Awaiting approval again, with a supplementary round, sends that
+e-mail again with the links of the new round.
 
 ## 6. Policies and business rules
 
@@ -242,6 +252,8 @@ recorded.
 | Cancelling in execution is elevated              | Cancelling an order that already withdrew parts requires a permission of its own          |
 | Delivery and cancellation are terminal           | There is no way out of Delivered or Cancelled                                             |
 | The trail is immutable                           | No trail entry is altered or erased                                                       |
+| A decision link names its budget                 | A round that is no longer pending refuses its link, so an old e-mail decides nothing      |
+| The customer hears of every change               | The opening and each stage change send an e-mail; a failed one is logged, not resent      |
 
 ### The system sums, nobody supplies the total
 
@@ -407,6 +419,9 @@ Work order
 | Draft item         | `isDraft`, `budgetRound === null`                               | There is no "draft" column: it is the item with no round |
 | Assigned mechanic  | `assignedMechanicUserId`                                        | Points at the user account, not at a Mechanic aggregate  |
 | Trail              | `work_order_events`, `GET /work-orders/:number/trail`           | -                                                        |
+| Status label       | `statusLabel`, `workOrderStatusLabel`                           | The label is `Cancelada` for the code `CANCELED`         |
+| Decision link      | `approvalUrl`, `rejectionUrl`                                   | On the pending round only, null on the others            |
+| Status e-mail      | `StatusMailSubscriber`, `Mailer`, `WorkOrderStatusChanged`      | Not a trail entry                                        |
 | Withdraw parts     | `WithdrawPartsCommand`, `POST /work-orders/:number/withdrawals` | -                                                        |
 | Return parts       | `ReturnPartsCommand`, `POST /work-orders/:number/returns`       | -                                                        |
 | Complete           | `CompleteWorkOrderCommand`                                      | Not to be confused with deliver                          |
@@ -458,3 +473,4 @@ AT: Advisor   | CMD: Deliver vehicle        | EV: Vehicle delivered            |
 3. A part leaves the shelf between approval and completion, never before
 4. The figure the customer approves and the figure they pay are distinct quantities
 5. Every step above writes a trail entry, in the same transaction that changes the order
+6. Opening the order and each stage change send the customer an e-mail, after the change is saved

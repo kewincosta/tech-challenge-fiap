@@ -6,7 +6,8 @@ largest module in the system.
 
 This is the module that spans others. It reads customers, vehicles, services and users through ports
 it declares itself, and it moves stock in `inventory` through steps of its own: it records each step
-in its outbox and `inventory` commits the stock side in a transaction of its own.
+in its outbox and `inventory` commits the stock side in a transaction of its own. It also tells the
+customer, by e-mail, each time a work order changes status.
 
 Conventions this page does not repeat are in [the high level design](../high-level-design.md).
 
@@ -33,6 +34,8 @@ Invariants it holds:
 - Items belong to a budget round. Items of an approved or rejected round are frozen; new items go into the draft round ([0018](../../adr/0018-numbered-budget-rounds.md)).
 - A budget total is always the sum of its own round's items, never a value supplied from outside, and never changes after approval.
 - A service or a part can be added while the work order is `RECEIVED`, `IN_DIAGNOSIS` or `IN_EXECUTION`, so the customer can ask for a part at reception ([0034](../../adr/0034-parts-can-be-planned-at-reception.md)).
+- A decision can name its budget. The budget has to be one of the work order's (`WORK_ORDER_BUDGET_NOT_FOUND`, 404) and still pending (`BUDGET_INVALID_STATE`, 422, whatever the status of the work order). Left unnamed, the pending round is the one decided.
+- Every transition, the opening included, records one `WorkOrderStatusChanged` with the old and the new status, after the facts it consists of. An approval records it once, though the trail keeps `BudgetApproved` and `ExecutionStarted`. The event feeds no `work_order_events` row ([0036](../../adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).
 - The diagnosis cannot be completed with an empty item list.
 - A withdrawal cannot exceed what the round planned, and a return cannot exceed what was withdrawn.
 - A discount cannot exceed the charged total.
@@ -43,7 +46,7 @@ Invariants it holds:
 | Value object                                 | Rule                                                                                 |
 | -------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `WorkOrderNumber`                            | `AAAAAA-YYYY`, six characters and a year. Unique. `WORK_ORDER_INVALID_NUMBER` (400). |
-| `PlannedQuantity`                            | A positive whole number. `WORK_ORDER_INVALID_PLANNED_QUANTITY` (400).                |
+| `PlannedQuantity`                            | A whole number from 1 to 2147483647. `WORK_ORDER_INVALID_PLANNED_QUANTITY` (400).    |
 | `WorkOrderId`, `WorkOrderItemId`, `BudgetId` | External UUIDs.                                                                      |
 
 ## Commands
@@ -51,24 +54,24 @@ Invariants it holds:
 Sixteen command use cases, in lifecycle order. Each command is run by the use case of the same name,
 `CreateWorkOrderCommand` by `CreateWorkOrderUseCase`, and so on.
 
-| Command                            | What it does                                                                             |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- |
-| `CreateWorkOrderCommand`           | Opens the work order, with the services and parts the customer asks for.                 |
-| `AddRequestedServiceCommand`       | Adds a service item, freezing the catalog price into the draft round.                    |
-| `PlanPartCommand`                  | Plans a part. Touches no stock ([0014](../../adr/0014-stock-consumed-at-withdrawal.md)). |
-| `RemoveWorkOrderItemCommand`       | Removes a draft item. A budgeted item is not removable.                                  |
-| `AssignMechanicCommand`            | Assigns a mechanic, checking the target actually holds the role.                         |
-| `StartDiagnosisCommand`            | `RECEIVED` to `IN_DIAGNOSIS`.                                                            |
-| `CompleteDiagnosisCommand`         | Prices round one and moves to `AWAITING_APPROVAL`.                                       |
-| `ApproveBudgetCommand`             | Approves the pending round and moves to `IN_EXECUTION`.                                  |
-| `RejectBudgetCommand`              | Rejects it and returns to the previous scope.                                            |
-| `SubmitSupplementaryBudgetCommand` | Prices the next round from execution and returns to `AWAITING_APPROVAL`.                 |
-| `WithdrawPartsCommand`             | Consumes the parts in `inventory` and saves the work order, as compensated steps.        |
-| `ReturnPartsCommand`               | Returns unused parts. Saves the work order and records a restore step.                   |
-| `CompleteWorkOrderCommand`         | Computes the charged total and moves to `COMPLETED`.                                     |
-| `DeliverVehicleCommand`            | Moves to `DELIVERED` and records a settle step.                                          |
-| `CancelWorkOrderCommand`           | Moves to `CANCELED` and records a write-off step.                                        |
-| `ApplyDiscountCommand`             | Reduces the charged total, with an actor and a reason.                                   |
+| Command                            | What it does                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `CreateWorkOrderCommand`           | Opens the work order, with the services and parts the customer asks for.                              |
+| `AddRequestedServiceCommand`       | Adds a service item, freezing the catalog price into the draft round.                                 |
+| `PlanPartCommand`                  | Plans a part. Touches no stock ([0014](../../adr/0014-stock-consumed-at-withdrawal.md)).              |
+| `RemoveWorkOrderItemCommand`       | Removes a draft item. A budgeted item is not removable.                                               |
+| `AssignMechanicCommand`            | Assigns a mechanic, checking the target actually holds the role.                                      |
+| `StartDiagnosisCommand`            | `RECEIVED` to `IN_DIAGNOSIS`.                                                                         |
+| `CompleteDiagnosisCommand`         | Prices round one and moves to `AWAITING_APPROVAL`.                                                    |
+| `ApproveBudgetCommand`             | Approves the pending round, or the budget its optional `budgetId` names, and moves to `IN_EXECUTION`. |
+| `RejectBudgetCommand`              | Rejects it, or the budget its optional `budgetId` names, and returns to the previous scope.           |
+| `SubmitSupplementaryBudgetCommand` | Prices the next round from execution and returns to `AWAITING_APPROVAL`.                              |
+| `WithdrawPartsCommand`             | Consumes the parts in `inventory` and saves the work order, as compensated steps.                     |
+| `ReturnPartsCommand`               | Returns unused parts. Saves the work order and records a restore step.                                |
+| `CompleteWorkOrderCommand`         | Computes the charged total and moves to `COMPLETED`.                                                  |
+| `DeliverVehicleCommand`            | Moves to `DELIVERED` and records a settle step.                                                       |
+| `CancelWorkOrderCommand`           | Moves to `CANCELED` and records a write-off step.                                                     |
+| `ApplyDiscountCommand`             | Reduces the charged total, with an actor and a reason.                                                |
 
 `CreateWorkOrderUseCase` takes the customer and the vehicle, as before, and the optional `services`
 and `parts` of the call. It reads every service and every part through `ServiceCatalog` and
@@ -90,11 +93,11 @@ may do from the `WorkOrderActors` port, which maps the permissions `work-orders:
 `work-orders:cancel-in-execution` and `work-orders:manage` to three flags, so this module imports no
 permission catalog:
 
-| Authorizer                      | Rule                                                                                                                                                     |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BudgetDecisionAuthorizer`      | The owning customer, or a holder of `work-orders:decide`. The budget approval and rejection routes therefore carry no `@RequirePermissions`.             |
-| `WorkOrderCompletionAuthorizer` | The assigned mechanic, or a holder of `work-orders:manage`.                                                                                              |
-| `CancellationAuthorizer`        | Who may cancel, and from which state. Cancelling from `IN_EXECUTION` is `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN` (403) for an actor without the right. |
+| Authorizer                      | Rule                                                                                                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BudgetDecisionAuthorizer`      | The owning customer, or a holder of `work-orders:decide`. The budget approval and rejection routes, with or without a budget id, therefore carry no `@RequirePermissions`. |
+| `WorkOrderCompletionAuthorizer` | The assigned mechanic, or a holder of `work-orders:manage`.                                                                                                                |
+| `CancellationAuthorizer`        | Who may cancel, and from which state. Cancelling from `IN_EXECUTION` is `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN` (403) for an actor without the right.                   |
 
 ## Queries and ports
 
@@ -113,17 +116,22 @@ Ports, all in `application/ports`. Two are the usual ones for a module's own dat
 `infrastructure/gateways` implements each by calling the other module's public API
 ([0027](../../adr/0027-ports-between-modules.md)):
 
-| Port                | Gateway                    | Calls                                                                              |
-| ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
-| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`               |
-| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                                  |
-| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                                  |
-| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                                           |
-| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, undo, confirm, settle and write-off use cases of `inventory` |
-| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity`             |
+| Port                | Gateway                    | Calls                                                                                             |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `CustomerDirectory` | `CustomerDirectoryGateway` | `GetCustomerUseCase` and `GetCustomerByUserIdUseCase` of `customers`, for the name and the e-mail |
+| `VehicleDirectory`  | `VehicleDirectoryGateway`  | `GetVehicleUseCase` of `vehicles`                                                                 |
+| `ServiceCatalog`    | `ServiceCatalogGateway`    | `GetServiceUseCase` of `services`                                                                 |
+| `PartCatalog`       | `PartCatalogGateway`       | `GetInventoryItemUseCase` of `inventory`                                                          |
+| `StockLedger`       | `StockLedgerGateway`       | The consume, restore, undo, confirm, settle and write-off use cases of `inventory`                |
+| `WorkOrderActors`   | `WorkOrderActorsGateway`   | `GetUserEffectiveAccessUseCase` and `GetUserByIdUseCase` of `identity`                            |
 
 Two more ports belong to the stock steps: `PendingStockSteps`, the outbox, and `StockStepLog`, which
 logs a step that reached its attempt limit.
+
+Three belong to the status e-mails ([Status e-mails](#status-e-mails)): `Mailer`, which sends one
+message, `StatusMailLog`, which logs an e-mail that did not go out, and `BudgetDecisionLinks`, which
+answers the two addresses that decide a budget. The HTTP adapter owns the last one, and the
+subscriber depends on the port.
 
 A gateway turns the provider's not-found error into `null`, and the use case raises its own error,
 such as `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`. A customer that exists but is deactivated is still
@@ -158,8 +166,8 @@ caller without `work-orders:read` still gets 403.
 ### Status labels
 
 Every route that answers a work order adds `statusLabel` beside `status`. The label comes from one
-map, `presentation/mappers/work-order-status-label.ts`, which the controller applies to each work
-order it answers, the items of the board included:
+map, `domain/work-order-status-label.ts`, which the controller applies to each work order it answers,
+the items of the board included, and the status e-mail uses for its subject:
 
 | `status`            | `statusLabel`          |
 | ------------------- | ---------------------- |
@@ -172,6 +180,48 @@ order it answers, the items of the board included:
 | `CANCELED`          | `Cancelada`            |
 
 The domain, the database and the board's `status` filter use the code.
+
+### Budget decision links
+
+The pending budget of every work order answer carries `approvalUrl` and `rejectionUrl`, and every
+other budget carries null in both:
+
+```
+${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/approval
+${APP_PUBLIC_URL}/api/v1/work-orders/${number}/budgets/${budgetId}/rejection
+```
+
+`HttpBudgetDecisionLinks` in `presentation` builds them, from the `APP_PUBLIC_URL` setting and the
+routes `WorkOrdersController` declares, and the controller applies it in the one place that maps a
+work order to its response. The customer calls an address with `POST` and their own bearer token.
+The two routes run `ApproveBudgetUseCase` and `RejectBudgetUseCase` with the budget id, and
+`BudgetDecisionAuthorizer` checks the caller first, so a stranger gets `WORK_ORDER_NOT_FOUND` even
+for a budget id that does not exist. The routes `POST /work-orders/:number/budget/approval` and
+`/rejection` stay, and they decide whichever round is pending
+([0037](../../adr/0037-how-the-phase-2-briefs-api-items-are-read.md)).
+
+### Status e-mails
+
+[0036](../../adr/0036-email-goes-through-a-mailer-port-over-smtp.md) holds the reasoning. The flow:
+
+1. A use case saves the work order, and after the commit hands its recorded events to the
+   `DomainEventPublisher`. The dispatcher starts the subscribers of `WorkOrderStatusChanged` and does
+   not wait for them. `WorkOrdersModule` registers `StatusMailSubscriber` on it in `onModuleInit`.
+2. The event carries the work order's number, customer and plate, the old and the new status, and the
+   pending budget (its id and total) when the new status is `AWAITING_APPROVAL`.
+3. The subscriber reads the customer's name and e-mail through `CustomerDirectory`, composes the
+   message in `status-mail.message.ts` and calls `Mailer.send`. The subject is
+   `Ordem de serviço ${number}: ${statusLabel}`. The body names the customer, the number, the plate
+   and the label, in plain text and as HTML with every value escaped. For `AWAITING_APPROVAL` it adds
+   the total in reais and the two decision links, written as text because they are `POST` calls.
+4. `SmtpMailer` (`infrastructure/mail`) sends through `nodemailer` to `SMTP_HOST` and `SMTP_PORT`,
+   with the login of `SMTP_USER` and `SMTP_PASSWORD` when they are set, from `MAIL_FROM`.
+5. A failure in step 3 or 4 is caught in the subscriber and logged at error level, with the work order
+   number and the error, by `NestStatusMailLog`. Nothing sends the e-mail again and the request
+   answers as it would without it.
+
+In local development Mailpit takes the e-mails (`docker compose up -d mailpit`), and its inbox is at
+`http://localhost:8025`. The end-to-end suites replace the `Mailer` with a recording fake.
 
 ## Stock steps
 
@@ -385,30 +435,32 @@ A step stays in the table after it is done or failed. A failed one waits there f
 
 `/api/v1/work-orders`. The work order is addressed by its `number`, not by a UUID.
 
-| Route                                               | Permission                                               |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| `POST /work-orders`                                 | `work-orders:manage`                                     |
-| `GET /work-orders`                                  | `work-orders:read`                                       |
-| `GET /work-orders/me`                               | `work-orders:read-own`                                   |
-| `GET /work-orders/me/:number`                       | `work-orders:read-own`                                   |
-| `GET /work-orders/metrics/average-execution-time`   | `metrics:read`                                           |
-| `GET /work-orders/:number`                          | `work-orders:read`                                       |
-| `GET /work-orders/:number/trail`                    | `audit:read`                                             |
-| `POST /work-orders/:number/services`                | `work-orders:manage`                                     |
-| `POST /work-orders/:number/parts`                   | `work-orders:manage`                                     |
-| `DELETE /work-orders/:number/items/:itemExternalId` | `work-orders:manage`                                     |
-| `PUT /work-orders/:number/mechanic`                 | `work-orders:manage`                                     |
-| `POST /work-orders/:number/diagnosis`               | `work-orders:execute`                                    |
-| `POST /work-orders/:number/diagnosis/completion`    | `work-orders:execute`                                    |
-| `POST /work-orders/:number/budget/supplementary`    | `work-orders:execute`                                    |
-| `POST /work-orders/:number/budget/approval`         | none: `BudgetDecisionAuthorizer` decides                 |
-| `POST /work-orders/:number/budget/rejection`        | none: `BudgetDecisionAuthorizer` decides                 |
-| `POST /work-orders/:number/withdrawals`             | `work-orders:execute`                                    |
-| `POST /work-orders/:number/returns`                 | `work-orders:execute`                                    |
-| `POST /work-orders/:number/completion`              | `work-orders:read`, then `WorkOrderCompletionAuthorizer` |
-| `POST /work-orders/:number/delivery`                | `work-orders:manage`                                     |
-| `POST /work-orders/:number/cancellation`            | `work-orders:cancel`, then `CancellationAuthorizer`      |
-| `POST /work-orders/:number/discount`                | `work-orders:discount`                                   |
+| Route                                                   | Permission                                               |
+| ------------------------------------------------------- | -------------------------------------------------------- |
+| `POST /work-orders`                                     | `work-orders:manage`                                     |
+| `GET /work-orders`                                      | `work-orders:read`                                       |
+| `GET /work-orders/me`                                   | `work-orders:read-own`                                   |
+| `GET /work-orders/me/:number`                           | `work-orders:read-own`                                   |
+| `GET /work-orders/metrics/average-execution-time`       | `metrics:read`                                           |
+| `GET /work-orders/:number`                              | `work-orders:read`                                       |
+| `GET /work-orders/:number/trail`                        | `audit:read`                                             |
+| `POST /work-orders/:number/services`                    | `work-orders:manage`                                     |
+| `POST /work-orders/:number/parts`                       | `work-orders:manage`                                     |
+| `DELETE /work-orders/:number/items/:itemExternalId`     | `work-orders:manage`                                     |
+| `PUT /work-orders/:number/mechanic`                     | `work-orders:manage`                                     |
+| `POST /work-orders/:number/diagnosis`                   | `work-orders:execute`                                    |
+| `POST /work-orders/:number/diagnosis/completion`        | `work-orders:execute`                                    |
+| `POST /work-orders/:number/budget/supplementary`        | `work-orders:execute`                                    |
+| `POST /work-orders/:number/budget/approval`             | none: `BudgetDecisionAuthorizer` decides                 |
+| `POST /work-orders/:number/budget/rejection`            | none: `BudgetDecisionAuthorizer` decides                 |
+| `POST /work-orders/:number/budgets/:budgetId/approval`  | none: `BudgetDecisionAuthorizer` decides                 |
+| `POST /work-orders/:number/budgets/:budgetId/rejection` | none: `BudgetDecisionAuthorizer` decides                 |
+| `POST /work-orders/:number/withdrawals`                 | `work-orders:execute`                                    |
+| `POST /work-orders/:number/returns`                     | `work-orders:execute`                                    |
+| `POST /work-orders/:number/completion`                  | `work-orders:read`, then `WorkOrderCompletionAuthorizer` |
+| `POST /work-orders/:number/delivery`                    | `work-orders:manage`                                     |
+| `POST /work-orders/:number/cancellation`                | `work-orders:cancel`, then `CancellationAuthorizer`      |
+| `POST /work-orders/:number/discount`                    | `work-orders:discount`                                   |
 
 `POST /work-orders` takes `customerId` and `vehicleId`, and optionally `services`, a list of
 `{ serviceId }`, and `parts`, a list of `{ inventoryItemId, quantity }`. It answers 201 with
@@ -424,7 +476,7 @@ literals would be read as work order numbers.
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | `WORK_ORDER_INVALID_NUMBER`, `WORK_ORDER_INVALID_PLANNED_QUANTITY`                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 400    |
 | `WORK_ORDER_CANCEL_IN_EXECUTION_FORBIDDEN`, `WORK_ORDER_COMPLETION_FORBIDDEN`                                                                                                                                                                                                                                                                                                                                                                                                                                               | 403    |
-| `WORK_ORDER_NOT_FOUND`, `WORK_ORDER_ITEM_NOT_FOUND`, `WORK_ORDER_ASSIGNED_MECHANIC_NOT_FOUND`, `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`, `WORK_ORDER_REFERENCED_VEHICLE_NOT_FOUND`, `WORK_ORDER_REFERENCED_SERVICE_NOT_FOUND`, `WORK_ORDER_REFERENCED_INVENTORY_ITEM_NOT_FOUND`                                                                                                                                                                                                                                           | 404    |
+| `WORK_ORDER_NOT_FOUND`, `WORK_ORDER_BUDGET_NOT_FOUND`, `WORK_ORDER_ITEM_NOT_FOUND`, `WORK_ORDER_ASSIGNED_MECHANIC_NOT_FOUND`, `WORK_ORDER_REFERENCED_CUSTOMER_NOT_FOUND`, `WORK_ORDER_REFERENCED_VEHICLE_NOT_FOUND`, `WORK_ORDER_REFERENCED_SERVICE_NOT_FOUND`, `WORK_ORDER_REFERENCED_INVENTORY_ITEM_NOT_FOUND`                                                                                                                                                                                                            | 404    |
 | `WORK_ORDER_NUMBER_TAKEN`, `WORK_ORDER_VEHICLE_ALREADY_HAS_ACTIVE_WORK_ORDER`                                                                                                                                                                                                                                                                                                                                                                                                                                               | 409    |
 | `WORK_ORDER_INVALID_STATE`, `BUDGET_INVALID_STATE`, `WORK_ORDER_DIAGNOSIS_WITHOUT_ITEMS`, `WORK_ORDER_EMPTY_DRAFT_BUDGET`, `WORK_ORDER_BUDGETED_ITEM_NOT_REMOVABLE`, `WORK_ORDER_WITHDRAWAL_EXCEEDS_PLANNED`, `WORK_ORDER_RETURN_EXCEEDS_WITHDRAWN`, `WORK_ORDER_PART_NOT_WITHDRAWABLE`, `WORK_ORDER_DISCOUNT_EXCEEDS_CHARGED_TOTAL`, `WORK_ORDER_DUPLICATE_BATCH_LINE`, `WORK_ORDER_CUSTOMER_INACTIVE`, `WORK_ORDER_SERVICE_INACTIVE`, `WORK_ORDER_VEHICLE_NOT_OWNED_BY_CUSTOMER`, `WORK_ORDER_ASSIGNED_USER_NOT_MECHANIC` | 422    |
 

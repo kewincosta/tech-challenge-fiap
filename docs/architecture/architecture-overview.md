@@ -53,15 +53,16 @@ modules belong to which context is in [the high level design](high-level-design.
 Vehicles live with customers rather than in a context of their own, because a vehicle exists in
 this system only as something a customer brings in.
 
-## The three runtime pieces
+## The four runtime pieces
 
 | Piece                  | What it holds                                                                                                                                                                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The NestJS application | Every module, in one deployable process. It is a modular monolith ([0001](../adr/0001-modular-monolith-with-cqrs.md)).                                                               |
 | PostgreSQL             | The system of record. Everything durable ([0002](../adr/0002-postgresql-as-the-relational-database.md)).                                                                             |
 | Redis                  | The effective access cache, the revoked session list, and rate limit counters. Nothing that cannot be rebuilt ([0003](../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)). |
+| Mailpit                | The SMTP server of local development. It catches the status e-mails, and its inbox is at port 8025 ([0036](../adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).              |
 
-`docker-compose.yml` starts all three. The application waits on healthchecks for the other two.
+`docker-compose.yml` starts all four. The application waits on the healthchecks of PostgreSQL and Redis.
 
 ## What shaped it
 
