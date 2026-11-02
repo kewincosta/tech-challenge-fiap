@@ -8,7 +8,7 @@ Plan: `.specs/features/work-order-phase-2-api/plan.md`
 
 The integration and e2e runs select their files by name, so every spec this feature adds under `test/integration/` or `test/e2e/` starts with `work-order-phase-2-`. The board's order, exclusion and paging run in an integration spec against a database the spec creates and drops, the way `test/integration/seed.script.spec.ts` does, because the shared test database is never truncated and keeps growing.
 
-49 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
+50 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
 
 ## Checks
 
@@ -171,6 +171,9 @@ Proof: `docker compose config | grep -A20 '^  mailpit:' | grep -q 'target: 1025'
 **C49** - The whole unit, integration and e2e suites pass, the OpenAPI contract case against the regenerated baseline included (every criterion; the changed readers of the plan's `Changes underneath`)
 Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
+**C50** - A part quantity above 2147483647 answers 400 `VALIDATION_ERROR` on the opening and on `POST /work-orders/:number/parts`, and plans nothing (AC 3; appended after build A's edge probe found a 500)
+Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity above the integer limit with 400 on the opening and on the parts route
+
 ## Coverage
 
 | Set (size) | Member -> proof | Unproven |
@@ -180,6 +183,7 @@ Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 | `POST /api/v1/work-orders/:number/budgets/:budgetId/approval` statuses (5) | 200 C28 · 200 for `work-orders:decide` C35 · 404 `WORK_ORDER_BUDGET_NOT_FOUND` C32 · 404 `WORK_ORDER_NOT_FOUND` C34 · 422 C30 · 401 C34 | - |
 | `POST /api/v1/work-orders/:number/budgets/:budgetId/rejection` statuses (5) | 200 C29 · 404 `WORK_ORDER_BUDGET_NOT_FOUND` C33 · 404 `WORK_ORDER_NOT_FOUND` C34 · 422 C31 · 401 C34 | - |
 | every route that answers a work order: the new fields (4 routes) | `GET /work-orders/:number` C25, C26 · `GET /work-orders/me/:number` C25 · `GET /work-orders/me` C25 · `GET /work-orders` C25; their other statuses are unchanged and stay under C49 | - |
+| part quantity bounds, AC 3 (3 examples) | 0 C7 · 1 C7 · 2147483648 C50 | - |
 | opening rule, AC 1 and AC 2 (5 examples) | two services and a part C1 · no lists C2 · third service unknown C3 · inactive item C6 · quantity 1 C7 | - |
 | planning a part by status, door 1 (2 examples) | `RECEIVED` C8, C9 · `COMPLETED` C8 | - |
 | status order of the board (7) | `IN_EXECUTION` C13, C17 · `AWAITING_APPROVAL` C13, C17 · `IN_DIAGNOSIS` C13, C17 · `RECEIVED` C13, C17 · `COMPLETED` C16, C17 · `DELIVERED` C15, C17 · `CANCELED` C15, C17 | - |
@@ -196,7 +200,7 @@ Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 
 ## Swept
 
-- validation: C7, C20
+- validation: C7, C20, C50
 - failure modes: C3, C4, C5, C6 (a refused opening saves nothing), C43
 - idempotency: C30, C31 (deciding a budget that is no longer pending answers 422 and changes nothing)
 - authorization: C12, C23, C34, C35
@@ -209,6 +213,6 @@ Proof: `npm run test:unit && npm run test:integration && npm run test:e2e`
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `ef5b587`
 - **Boundary:** C1-C25 closed at `8d16ccd`
 - **Abandoned:** none
