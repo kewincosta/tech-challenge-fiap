@@ -166,13 +166,18 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
    * instant. The total counts every match, so a page past the last still knows how many there are.
    */
   async listBoard(filter: WorkOrderBoardFilter): Promise<WorkOrderBoardPage> {
-    const fetchRows: Promise<WorkOrderRow[]> = this.dataSource.query(
-      `${SELECT_WORK_ORDERS}
-        WHERE wo.status = ANY($1::text[])
-        ORDER BY array_position($1::text[], wo.status::text), wo.created_at ASC, wo.id ASC
-        LIMIT $2 OFFSET $3`,
-      [filter.statuses, filter.pageSize, (filter.page - 1) * filter.pageSize],
-    );
+    const offset = (filter.page - 1) * filter.pageSize;
+    // The database refuses an offset it cannot hold, and no table holds that many rows, so a page
+    // that far out is an empty one.
+    const fetchRows: Promise<WorkOrderRow[]> = Number.isSafeInteger(offset)
+      ? this.dataSource.query(
+          `${SELECT_WORK_ORDERS}
+            WHERE wo.status = ANY($1::text[])
+            ORDER BY array_position($1::text[], wo.status::text), wo.created_at ASC, wo.id ASC
+            LIMIT $2 OFFSET $3`,
+          [filter.statuses, filter.pageSize, offset],
+        )
+      : Promise.resolve([]);
     const fetchTotal: Promise<Array<{ total: string }>> = this.dataSource.query(
       `SELECT count(*) AS total FROM work_orders wo WHERE wo.status = ANY($1::text[])`,
       [filter.statuses],

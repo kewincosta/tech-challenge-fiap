@@ -286,6 +286,15 @@ describe('Board listing on its own database', () => {
     }
   });
 
+  it('answers an empty page for a page number beyond any offset a query can take', async () => {
+    await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(1));
+    await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(2));
+
+    const beyond = await board(1e20, 20);
+
+    expect(beyond).toEqual({ items: [], page: 1e20, pageSize: 20, totalItems: 2, totalPages: 1 });
+  });
+
   it('answers zero items and zero pages when nothing matches', async () => {
     await saveWorkOrder(WorkOrderStatus.Received, minutesAfterBase(1));
     await saveWorkOrder(WorkOrderStatus.InExecution, minutesAfterBase(2));

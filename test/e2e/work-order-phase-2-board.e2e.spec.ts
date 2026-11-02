@@ -199,6 +199,20 @@ describe('The paginated board', () => {
     }
   });
 
+  it('answers an empty page for a page number beyond any offset a query can take', async () => {
+    const first = await readBoardPage({ page: 1, pageSize: 20 });
+
+    const beyond = await readBoard({ page: 100000000000000000000, pageSize: 20 });
+
+    expect(beyond.status).toBe(200);
+    expect(beyond.body).toMatchObject({
+      items: [],
+      pageSize: 20,
+      totalItems: first.totalItems,
+      totalPages: first.totalPages,
+    });
+  });
+
   it('answers the page envelope with the newest RECEIVED work order last', async () => {
     const opened = await createWorkOrderAt('RECEIVED');
 
