@@ -59,6 +59,9 @@
 | C49 | lone proof: `npm run test:unit && npm run test:integration && npm run test:e2e` | yes: `openapi-contract.e2e.spec.ts` compares the document with the committed baseline |
 | C50 | `work-order-phase-2-opening.e2e.spec.ts` `Opening a work order with items > refuses a part quantity above the integer limit with 400 on the opening and on the parts route` | yes |
 | C51 | `work-order-phase-2-links.e2e.spec.ts` `Budget decision links > answers null links on the pending budget of a canceled work order` | yes: the cancellation answer and the detail both carry null links on the `PENDING` budget |
+| C52 | `work-order-phase-2-links.e2e.spec.ts` `Budget decision links > refuses a link from before round 1 was generated again and accepts the new one` | yes: takes both old addresses from the first e-mail that quotes round 1, asserts 422 `WORK_ORDER_BUDGET_LINK_OUTDATED` on each after round 1 comes back at 70099, finds the work order still `AWAITING_APPROVAL` with the budget `PENDING`, and approves 70099 under the same id with the new e-mail's link |
+| C53 | `work-order-phase-2-links.e2e.spec.ts` `Budget decision links > refuses a tampered or missing link hash on both links` | yes: changes the first and the last character on both links (422), sends no `link` and an empty one (400 `VALIDATION_ERROR`), then finds the budget `PENDING` with the same links and approves it with the genuine one; the tampered hashes come from the test's copy of the formula, which C26 pins to the API's |
+| C54 | `work-order-phase-2-links.e2e.spec.ts` `Budget decision links > answers 400 BAD_REQUEST for a budget id that is not a UUID on both links` | yes: the address carries a well-formed `link`, so only the budget id can cause the 400, and the test asserts the code `BAD_REQUEST` on both links |
 
 ## Findings
 
