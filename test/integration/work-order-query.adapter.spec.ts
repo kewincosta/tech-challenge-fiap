@@ -17,7 +17,7 @@ import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
-import { buildWorkOrderRepository } from '../support/work-order-adapters';
+import { buildWorkOrderRepository, readLastBoardPage } from '../support/work-order-adapters';
 
 // Records which method of which key resolver the adapter calls, so a spec can show that a request
 // reads each owner in one batch call.
@@ -288,16 +288,6 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     expect(await queryAdapter.getByNumber('ZZZZZZ-2026')).toBeNull();
   });
 
-  it('should list every work order when no status is supplied', async () => {
-    const fixture = await seedWorkOrderRefs();
-    const workOrder = openWorkOrder(fixture);
-    await repository.save(workOrder);
-
-    const found = await queryAdapter.listByStatus();
-
-    expect(found.some((row) => row.id === workOrder.id.value)).toBe(true);
-  });
-
   it('should filter the list by status when one is supplied', async () => {
     const receivedFixture = await seedWorkOrderRefs();
     const received = openWorkOrder(receivedFixture, WorkOrderStatus.Received);
@@ -306,7 +296,7 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     const inDiagnosis = openWorkOrder(diagnosisFixture, WorkOrderStatus.InDiagnosis);
     await repository.save(inDiagnosis);
 
-    const found = await queryAdapter.listByStatus('RECEIVED');
+    const found = await readLastBoardPage(queryAdapter, [WorkOrderStatus.Received]);
 
     const ids = found.map((row) => row.id);
     expect(ids).toContain(received.id.value);
@@ -371,7 +361,7 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     );
   });
 
-  it('should return prices as numbers on both getByNumber and listByStatus', async () => {
+  it('should return prices as numbers on both getByNumber and listBoard', async () => {
     const fixture = await seedWorkOrderRefs();
     const service = await insertService();
     const workOrder = openWorkOrder(fixture, WorkOrderStatus.InDiagnosis);
@@ -386,7 +376,7 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     await repository.save(workOrder);
 
     const found = await queryAdapter.getByNumber(workOrder.number.value);
-    const listed = await queryAdapter.listByStatus('IN_DIAGNOSIS');
+    const listed = await readLastBoardPage(queryAdapter, [WorkOrderStatus.InDiagnosis]);
     const listedRow = listed.find((row) => row.id === workOrder.id.value);
 
     expect(typeof found?.serviceItems[0].unitPriceCents).toBe('number');
@@ -416,7 +406,7 @@ describe('TypeOrmWorkOrderQueryAdapter', () => {
     );
   });
 
-  it('should return the same shape listByStatus returns, items and budgets and closing fields included', async () => {
+  it('should return the same shape listBoard returns, items and budgets and closing fields included', async () => {
     const fixture = await seedWorkOrderRefs();
     const service = await insertService();
     const workOrder = openWorkOrder(fixture, WorkOrderStatus.InDiagnosis);

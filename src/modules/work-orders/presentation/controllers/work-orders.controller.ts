@@ -21,7 +21,6 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
@@ -81,11 +80,13 @@ import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
 import { AverageExecutionTimeQueryDto } from '../dtos/average-execution-time.request.dto';
 import { CancellationRequestDto } from '../dtos/cancellation.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
+import { ListWorkOrdersQueryDto } from '../dtos/list-work-orders.request.dto';
 import { PlanPartRequestDto } from '../dtos/plan-part.request.dto';
 import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
 import {
   AverageExecutionTimeResponseDto,
   CreatedWorkOrderResponseDto,
+  WorkOrderPageResponseDto,
   WorkOrderResponseDto,
   WorkOrderTrailEntryResponseDto,
 } from '../dtos/work-order.response.dto';
@@ -155,13 +156,22 @@ export class WorkOrdersController {
   @Get()
   @RequirePermissions(AppPermission.WorkOrdersRead)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List the work order board, filtered by status' })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiOkResponse({ type: [WorkOrderResponseDto] })
+  @ApiOperation({
+    summary: 'List the work order board, one page at a time',
+    description:
+      'Without a status, lists the work still open: IN_EXECUTION, AWAITING_APPROVAL, ' +
+      'IN_DIAGNOSIS and RECEIVED, in that order and the oldest first within each. A status ' +
+      'filter lists exactly the statuses it names, in the same order, completed, delivered and ' +
+      'canceled ones included. A page past the last answers 200 with no items.',
+  })
+  @ApiOkResponse({ type: WorkOrderPageResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
-  async list(@Query('status') status?: string): Promise<WorkOrderResponseDto[]> {
-    const workOrders = await this.listWorkOrdersUseCase.execute(new ListWorkOrdersQuery(status));
-    return workOrders.map((workOrder) => this.toResponseDto(workOrder));
+  async list(@Query() query: ListWorkOrdersQueryDto): Promise<WorkOrderPageResponseDto> {
+    const page = await this.listWorkOrdersUseCase.execute(
+      new ListWorkOrdersQuery(query.page, query.pageSize, query.status ?? []),
+    );
+    return { ...page, items: page.items.map((workOrder) => this.toResponseDto(workOrder)) };
   }
 
   // Declared before every :number route - "me" would otherwise be read as a work order number

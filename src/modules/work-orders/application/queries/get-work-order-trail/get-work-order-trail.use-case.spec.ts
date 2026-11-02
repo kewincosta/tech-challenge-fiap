@@ -39,7 +39,7 @@ function portHolding(trail: WorkOrderTrailEntryDto[]): WorkOrderQueryPort {
     getByNumber: vi.fn((number: string) =>
       Promise.resolve(number === NUMBER ? (held as WorkOrderSummaryDto) : null),
     ),
-    listByStatus: vi.fn(),
+    listBoard: vi.fn(),
     listByCustomerId: vi.fn(),
     listTrail: vi.fn((number: string) => Promise.resolve(number === NUMBER ? trail : [])),
   };

@@ -28,7 +28,7 @@ function workOrder(customerId: string): WorkOrderSummaryDto {
 function fakePort(result: WorkOrderSummaryDto | null): WorkOrderQueryPort {
   return {
     getByNumber: vi.fn((number: string) => Promise.resolve(number === NUMBER ? result : null)),
-    listByStatus: vi.fn(),
+    listBoard: vi.fn(),
     listByCustomerId: vi.fn(),
     listTrail: vi.fn(),
   };

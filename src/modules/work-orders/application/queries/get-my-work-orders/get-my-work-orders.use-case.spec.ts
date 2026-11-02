@@ -19,7 +19,7 @@ function directoryOf(customerId: string | null): FakeCustomerDirectory {
 function fakePort(result: WorkOrderSummaryDto[]): WorkOrderQueryPort {
   return {
     getByNumber: vi.fn(),
-    listByStatus: vi.fn(),
+    listBoard: vi.fn(),
     listByCustomerId: vi.fn().mockResolvedValue(result),
     listTrail: vi.fn(),
   };

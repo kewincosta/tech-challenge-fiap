@@ -7,6 +7,8 @@ import { InventoryItemKeyResolver } from '../../../inventory';
 import { ServiceKeyResolver } from '../../../services';
 import { VehicleKeyResolver } from '../../../vehicles';
 import {
+  WorkOrderBoardFilter,
+  WorkOrderBoardPage,
   WorkOrderBudgetDto,
   WorkOrderPartItemDto,
   WorkOrderQueryPort,
@@ -158,12 +160,25 @@ export class TypeOrmWorkOrderQueryAdapter implements WorkOrderQueryPort {
     return workOrder ?? null;
   }
 
-  async listByStatus(status?: string): Promise<WorkOrderSummaryDto[]> {
-    const rows: WorkOrderRow[] = await this.dataSource.query(
-      `${SELECT_WORK_ORDERS} WHERE ($1::varchar IS NULL OR wo.status = $1) ORDER BY wo.created_at DESC`,
-      [status ?? null],
+  /**
+   * One page of the board. The statuses come in the order to list them in, so a work order sorts
+   * by the position of its status, then oldest first; `id` settles two created in the same
+   * instant. The total counts every match, so a page past the last still knows how many there are.
+   */
+  async listBoard(filter: WorkOrderBoardFilter): Promise<WorkOrderBoardPage> {
+    const fetchRows: Promise<WorkOrderRow[]> = this.dataSource.query(
+      `${SELECT_WORK_ORDERS}
+        WHERE wo.status = ANY($1::text[])
+        ORDER BY array_position($1::text[], wo.status::text), wo.created_at ASC, wo.id ASC
+        LIMIT $2 OFFSET $3`,
+      [filter.statuses, filter.pageSize, (filter.page - 1) * filter.pageSize],
     );
-    return this.toDtos(rows);
+    const fetchTotal: Promise<Array<{ total: string }>> = this.dataSource.query(
+      `SELECT count(*) AS total FROM work_orders wo WHERE wo.status = ANY($1::text[])`,
+      [filter.statuses],
+    );
+    const [rows, [{ total }]] = await Promise.all([fetchRows, fetchTotal]);
+    return { items: await this.toDtos(rows), totalItems: Number(total) };
   }
 
   /** Whatever the status - a customer's own list includes a cancelled or delivered work order. */

@@ -97,6 +97,25 @@ async function createWorkOrder(): Promise<{ number: string; id: string }> {
   return { number: body.number, id: body.id };
 }
 
+/** The ids on the last page the board lists for `query`, at 100 a page. The test database keeps
+ * every work order any run opened, so the one a test just created is not on the first page; the
+ * board lists the oldest first, so the newest work order of a status closes its last page. */
+async function lastPageIds(query: Record<string, string>): Promise<string[]> {
+  const read = async (
+    page: number,
+  ): Promise<{ items: Array<{ id: string }>; totalPages: number }> =>
+    (
+      await api(app)
+        .get('/api/v1/work-orders')
+        .query({ ...query, page, pageSize: 100 })
+        .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+        .expect(200)
+    ).body as { items: Array<{ id: string }>; totalPages: number };
+  const first = await read(1);
+  const last = first.totalPages > 1 ? await read(first.totalPages) : first;
+  return last.items.map((row) => row.id);
+}
+
 describe('Work orders', () => {
   it('should create a work order as a service advisor', async () => {
     const { customerId } = await registerCustomer();
@@ -293,18 +312,8 @@ describe('Work orders', () => {
   it('should list the board and filter by status', async () => {
     const { id } = await createWorkOrder();
 
-    const listed = await api(app)
-      .get('/api/v1/work-orders')
-      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
-      .expect(200);
-    expect((listed.body as Array<{ id: string }>).map((row) => row.id)).toContain(id);
-
-    const filtered = await api(app)
-      .get('/api/v1/work-orders')
-      .query({ status: 'RECEIVED' })
-      .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
-      .expect(200);
-    expect((filtered.body as Array<{ id: string }>).map((row) => row.id)).toContain(id);
+    expect(await lastPageIds({})).toContain(id);
+    expect(await lastPageIds({ status: 'RECEIVED' })).toContain(id);
   });
 
   it('should return one work order by number, and 404 for an unknown number', async () => {

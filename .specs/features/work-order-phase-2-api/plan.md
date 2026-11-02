@@ -24,7 +24,7 @@ Opening:
 Listing:
 
 5. GET /work-orders with page, pageSize and an optional status -> `WorkOrdersController` (exists) - refuses a missing or out-of-range page or pageSize and an unknown status with 400
-6. `ListWorkOrdersUseCase` (exists) -> `WorkOrderQueryPort` (exists) - the query adapter keeps the open statuses when no status is given, orders by status rank and then oldest first, counts the total and answers the page envelope (door 2)
+6. `ListWorkOrdersUseCase` (exists) -> `WorkOrderQueryPort` (exists) - the use case keeps the open statuses when no status is given, puts the statuses in the board's order and answers the page envelope; the query adapter reads the work orders in those statuses ordered by the position of their status and then oldest first, one page of them and the total (door 2)
 
 Every work order answer:
 

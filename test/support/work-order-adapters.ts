@@ -4,6 +4,11 @@ import { UserKeyResolver } from '../../src/modules/identity';
 import { InventoryItemKeyResolver } from '../../src/modules/inventory';
 import { ServiceKeyResolver } from '../../src/modules/services';
 import { VehicleKeyResolver } from '../../src/modules/vehicles';
+import {
+  WorkOrderQueryPort,
+  WorkOrderSummaryDto,
+} from '../../src/modules/work-orders/application/ports/work-order-query.port';
+import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
@@ -37,4 +42,23 @@ export function buildWorkOrderQueryAdapter(dataSource: DataSource): TypeOrmWorkO
     new ServiceKeyResolver(dataSource),
     new InventoryItemKeyResolver(dataSource),
   );
+}
+
+/**
+ * The last page of the board for `statuses`, at 100 a page. The test database keeps every work
+ * order any run opened, tens of thousands of them, so a spec cannot find the one it just saved on
+ * the first page. The board lists the oldest first, so the newest work order of a status closes
+ * its last page.
+ */
+export async function readLastBoardPage(
+  queryAdapter: Pick<WorkOrderQueryPort, 'listBoard'>,
+  statuses: WorkOrderStatus[],
+): Promise<WorkOrderSummaryDto[]> {
+  const pageSize = 100;
+  const first = await queryAdapter.listBoard({ statuses, page: 1, pageSize });
+  const lastPage = Math.ceil(first.totalItems / pageSize);
+  if (lastPage <= 1) {
+    return first.items;
+  }
+  return (await queryAdapter.listBoard({ statuses, page: lastPage, pageSize })).items;
 }

@@ -8,6 +8,7 @@ import { GetWorkOrderTrailUseCase } from '../../src/modules/work-orders/applicat
 import { GetWorkOrderTrailQuery } from '../../src/modules/work-orders/application/queries/get-work-order-trail/get-work-order-trail.query';
 import { ListWorkOrdersUseCase } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.query';
+import { WorkOrderSummaryDto } from '../../src/modules/work-orders/application/ports/work-order-query.port';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
 import { WorkOrderNotFoundError } from '../../src/modules/work-orders/domain/errors/work-order-not-found.error';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
@@ -154,13 +155,27 @@ function restoreWorkOrder(fixture: Fixture, status: WorkOrderStatus): WorkOrder 
   });
 }
 
+/** The last page the use case lists for `statuses`, at 100 a page. The test database keeps every
+ * work order any run opened, so the one a spec just saved is not on the first page; the board
+ * lists the oldest first, so the newest work order of a status closes its last page. */
+async function listLastPage(statuses: WorkOrderStatus[] = []): Promise<WorkOrderSummaryDto[]> {
+  const first = await listWorkOrders.execute(new ListWorkOrdersQuery(1, 100, statuses));
+  if (first.totalPages <= 1) {
+    return first.items;
+  }
+  const last = await listWorkOrders.execute(
+    new ListWorkOrdersQuery(first.totalPages, 100, statuses),
+  );
+  return last.items;
+}
+
 describe('Work order read queries', () => {
-  it('should list every work order via ListWorkOrdersQuery when no status is supplied', async () => {
+  it('should list the open work orders via ListWorkOrdersQuery when no status is supplied', async () => {
     const fixture = await seedWorkOrderRefs();
     const workOrder = openWorkOrder(fixture);
     await repository.save(workOrder);
 
-    const found = await listWorkOrders.execute(new ListWorkOrdersQuery());
+    const found = await listLastPage();
 
     expect(found.some((row) => row.id === workOrder.id.value)).toBe(true);
   });
@@ -173,7 +188,7 @@ describe('Work order read queries', () => {
     const inDiagnosis = restoreWorkOrder(diagnosisFixture, WorkOrderStatus.InDiagnosis);
     await repository.save(inDiagnosis);
 
-    const found = await listWorkOrders.execute(new ListWorkOrdersQuery('RECEIVED'));
+    const found = await listLastPage([WorkOrderStatus.Received]);
 
     const ids = found.map((row) => row.id);
     expect(ids).toContain(received.id.value);

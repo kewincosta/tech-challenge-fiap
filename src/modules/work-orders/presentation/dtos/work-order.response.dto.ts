@@ -161,6 +161,23 @@ export class WorkOrderResponseDto {
   cancellationReason!: string | null;
 }
 
+export class WorkOrderPageResponseDto {
+  @ApiProperty({ type: [WorkOrderResponseDto] })
+  items!: WorkOrderResponseDto[];
+
+  @ApiProperty({ example: 1, description: 'The page that was read, counted from 1' })
+  page!: number;
+
+  @ApiProperty({ example: 20, description: 'How many work orders a page holds at most' })
+  pageSize!: number;
+
+  @ApiProperty({ example: 135, description: 'Every work order the listing matches' })
+  totalItems!: number;
+
+  @ApiProperty({ example: 7, description: 'Zero when nothing matches' })
+  totalPages!: number;
+}
+
 export class WorkOrderTrailEntryResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
