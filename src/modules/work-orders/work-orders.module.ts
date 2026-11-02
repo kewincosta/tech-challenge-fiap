@@ -1,12 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { appConfig } from '../../config/app.config';
+import { mailConfig } from '../../config/mail.config';
 import { outboxConfig } from '../../config/outbox.config';
 import { Clock } from '../../shared/application/ports/clock.port';
 import { DomainEventPublisher } from '../../shared/application/ports/domain-event-publisher.port';
 import { IdGenerator } from '../../shared/application/ports/id-generator.port';
 import { TransactionRunner } from '../../shared/application/ports/transaction-runner.port';
+import { InMemoryDomainEventDispatcher } from '../../shared/infrastructure/events/in-memory-domain-event-dispatcher';
 import {
   CLOCK,
   DOMAIN_EVENT_PUBLISHER,
@@ -35,11 +37,14 @@ import { StartDiagnosisUseCase } from './application/commands/start-diagnosis/st
 import { SubmitSupplementaryBudgetUseCase } from './application/commands/submit-supplementary-budget/submit-supplementary-budget.use-case';
 import { WithdrawPartsUseCase } from './application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
+  BUDGET_DECISION_LINKS,
   CUSTOMER_DIRECTORY,
+  MAILER,
   OUTBOX_SETTINGS,
   PART_CATALOG,
   PENDING_STOCK_STEPS,
   SERVICE_CATALOG,
+  STATUS_MAIL_LOG,
   STOCK_LEDGER,
   STOCK_STEP_LOG,
   VEHICLE_DIRECTORY,
@@ -50,10 +55,13 @@ import {
   WORK_ORDER_REPOSITORY,
 } from './work-orders.tokens';
 import { OutboxSettings } from './application/outbox-settings';
+import { BudgetDecisionLinks } from './application/ports/budget-decision-links.port';
 import { CustomerDirectory } from './application/ports/customer-directory.port';
+import { Mailer } from './application/ports/mailer.port';
 import { PartCatalog } from './application/ports/part-catalog.port';
 import { PendingStockSteps } from './application/ports/pending-stock-steps.port';
 import { ServiceCatalog } from './application/ports/service-catalog.port';
+import { StatusMailLog } from './application/ports/status-mail-log.port';
 import { StockLedger } from './application/ports/stock-ledger.port';
 import { StockStepLog } from './application/ports/stock-step-log.port';
 import { VehicleDirectory } from './application/ports/vehicle-directory.port';
@@ -72,12 +80,16 @@ import { BudgetDecisionAuthorizer } from './application/services/budget-decision
 import { CancellationAuthorizer } from './application/services/cancellation.authorizer';
 import { StockStepApplier } from './application/services/stock-step-applier';
 import { WorkOrderCompletionAuthorizer } from './application/services/work-order-completion.authorizer';
+import { StatusMailSubscriber } from './application/subscribers/status-mail.subscriber';
+import { WorkOrderStatusChanged } from './domain/events/work-order-status-changed.event';
 import { CustomerDirectoryGateway } from './infrastructure/gateways/customer-directory.gateway';
 import { PartCatalogGateway } from './infrastructure/gateways/part-catalog.gateway';
 import { ServiceCatalogGateway } from './infrastructure/gateways/service-catalog.gateway';
 import { StockLedgerGateway } from './infrastructure/gateways/stock-ledger.gateway';
 import { VehicleDirectoryGateway } from './infrastructure/gateways/vehicle-directory.gateway';
 import { WorkOrderActorsGateway } from './infrastructure/gateways/work-order-actors.gateway';
+import { NestStatusMailLog } from './infrastructure/mail/nest-status-mail-log';
+import { SmtpMailer } from './infrastructure/mail/smtp-mailer';
 import { NestStockStepLog } from './infrastructure/outbox/nest-stock-step-log';
 import { StockStepProcessor } from './infrastructure/outbox/stock-step-processor';
 import { RandomWorkOrderNumberGenerator } from './infrastructure/random-work-order-number.generator';
@@ -443,6 +455,23 @@ import { HttpBudgetDecisionLinks } from './presentation/http-budget-decision-lin
         new HttpBudgetDecisionLinks(config.publicUrl),
       inject: [appConfig.KEY],
     },
+    { provide: BUDGET_DECISION_LINKS, useExisting: HttpBudgetDecisionLinks },
+    {
+      provide: MAILER,
+      useFactory: (config: ConfigType<typeof mailConfig>) => SmtpMailer.create(config),
+      inject: [mailConfig.KEY],
+    },
+    { provide: STATUS_MAIL_LOG, useClass: NestStatusMailLog },
+    {
+      provide: StatusMailSubscriber,
+      useFactory: (
+        customers: CustomerDirectory,
+        mailer: Mailer,
+        links: BudgetDecisionLinks,
+        log: StatusMailLog,
+      ) => new StatusMailSubscriber(customers, mailer, links, log),
+      inject: [CUSTOMER_DIRECTORY, MAILER, BUDGET_DECISION_LINKS, STATUS_MAIL_LOG],
+    },
     {
       provide: OUTBOX_SETTINGS,
       useFactory: (config: ConfigType<typeof outboxConfig>): OutboxSettings => ({
@@ -466,4 +495,14 @@ import { HttpBudgetDecisionLinks } from './presentation/http-budget-decision-lin
     StockStepProcessor,
   ],
 })
-export class WorkOrdersModule {}
+export class WorkOrdersModule implements OnModuleInit {
+  constructor(
+    private readonly dispatcher: InMemoryDomainEventDispatcher,
+    private readonly statusMail: StatusMailSubscriber,
+  ) {}
+
+  // Every status change a use case publishes after its commit reaches the customer by e-mail.
+  onModuleInit(): void {
+    this.dispatcher.subscribe(WorkOrderStatusChanged, this.statusMail);
+  }
+}

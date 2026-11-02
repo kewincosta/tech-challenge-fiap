@@ -11,3 +11,6 @@ export const WORK_ORDER_ACTORS = Symbol('WorkOrderActors');
 export const PENDING_STOCK_STEPS = Symbol('PendingStockSteps');
 export const STOCK_STEP_LOG = Symbol('StockStepLog');
 export const OUTBOX_SETTINGS = Symbol('OutboxSettings');
+export const MAILER = Symbol('Mailer');
+export const STATUS_MAIL_LOG = Symbol('StatusMailLog');
+export const BUDGET_DECISION_LINKS = Symbol('BudgetDecisionLinks');
