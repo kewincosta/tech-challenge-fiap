@@ -117,6 +117,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         idGenerator: IdGenerator,
         numberGenerator: WorkOrderNumberGenerator,
         clock: Clock,
+        serviceCatalog: ServiceCatalog,
+        partCatalog: PartCatalog,
         events: DomainEventPublisher,
       ) =>
         new CreateWorkOrderUseCase(
@@ -126,6 +128,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
           idGenerator,
           numberGenerator,
           clock,
+          serviceCatalog,
+          partCatalog,
           events,
         ),
       inject: [
@@ -135,6 +139,8 @@ import { WorkOrdersController } from './presentation/controllers/work-orders.con
         ID_GENERATOR,
         WORK_ORDER_NUMBER_GENERATOR,
         CLOCK,
+        SERVICE_CATALOG,
+        PART_CATALOG,
         DOMAIN_EVENT_PUBLISHER,
       ],
     },

@@ -146,9 +146,23 @@ describe('PlanPartUseCase', () => {
     expect(partCatalog.lookups).toEqual([ITEM_ID]);
   });
 
-  it('should refuse a part planned on a work order in RECEIVED with WorkOrderStateError (L-003, second layer)', async () => {
+  it('should plan a part on a work order in RECEIVED as a draft item, without withdrawing it', async () => {
     const { useCase, workOrders, events } = makeUseCase(ACTIVE_ITEM);
     await workOrders.save(buildWorkOrder(WorkOrderStatus.Received));
+
+    await useCase.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID));
+
+    const [part] = workOrders.workOrders[0].partItems;
+    expect(part.inventoryItemId).toBe(ITEM_ID);
+    expect(part.plannedQuantity.units).toBe(2);
+    expect(part.budgetRound).toBeNull();
+    expect(part.withdrawnQuantity).toBe(0);
+    expect(events.published).toHaveLength(1);
+  });
+
+  it('should refuse a part planned on a work order in COMPLETED with WorkOrderStateError (L-003, second layer)', async () => {
+    const { useCase, workOrders, events } = makeUseCase(ACTIVE_ITEM);
+    await workOrders.save(buildWorkOrder(WorkOrderStatus.Completed));
 
     await expect(
       useCase.execute(new PlanPartCommand(NUMBER, ITEM_ID, 2, CREATOR_ID)),

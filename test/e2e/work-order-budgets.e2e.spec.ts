@@ -145,8 +145,7 @@ async function addPart(number: string, inventoryItemId: string, quantity: number
 
 /**
  * Builds a work order in AWAITING_APPROVAL with one service (150.99) and one part x2 (25.00).
- * Parts can only be planned during the diagnosis, never at reception (`PART_PLANNABLE_STATES`) -
- * the service is added first, in RECEIVED, then the diagnosis starts before the part.
+ * The service is added in RECEIVED and the part once the diagnosis has started.
  */
 async function createAwaitingApprovalWorkOrder(): Promise<CreatedWorkOrder> {
   const workOrder = await createReceivedWorkOrder();

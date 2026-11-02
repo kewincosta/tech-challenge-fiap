@@ -2,20 +2,32 @@ import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
 import { FakeCustomerDirectory } from '../../../../../../test/support/fakes/fake-customer-directory';
 import { FakeIdGenerator } from '../../../../../../test/support/fakes/fake-id-generator';
+import { FakePartCatalog } from '../../../../../../test/support/fakes/fake-part-catalog';
+import { FakeServiceCatalog } from '../../../../../../test/support/fakes/fake-service-catalog';
 import { FakeVehicleDirectory } from '../../../../../../test/support/fakes/fake-vehicle-directory';
 import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
 import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
 import { WorkOrder } from '../../../domain/entities/work-order';
 import { CustomerInactiveError } from '../../../domain/errors/customer-inactive.error';
+import { InvalidPlannedQuantityError } from '../../../domain/errors/invalid-planned-quantity.error';
+import { InventoryItemInactiveError } from '../../../domain/errors/inventory-item-inactive.error';
 import { ReferencedCustomerNotFoundError } from '../../../domain/errors/referenced-customer-not-found.error';
+import { ReferencedInventoryItemNotFoundError } from '../../../domain/errors/referenced-inventory-item-not-found.error';
+import { ReferencedServiceNotFoundError } from '../../../domain/errors/referenced-service-not-found.error';
 import { ReferencedVehicleNotFoundError } from '../../../domain/errors/referenced-vehicle-not-found.error';
+import { ServiceInactiveError } from '../../../domain/errors/service-inactive.error';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../../domain/errors/vehicle-already-has-active-work-order.error';
 import { VehicleNotOwnedByCustomerError } from '../../../domain/errors/vehicle-not-owned-by-customer.error';
 import { WorkOrderNumberTakenError } from '../../../domain/errors/work-order-number-taken.error';
+import { PartPlannedForWorkOrder } from '../../../domain/events/part-planned-for-work-order.event';
+import { ServiceAddedToWorkOrder } from '../../../domain/events/service-added-to-work-order.event';
 import { WorkOrderCreated } from '../../../domain/events/work-order-created.event';
+import { WorkOrderTrailEvent } from '../../../domain/events/work-order-trail.event';
 import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
 import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
 import { CustomerRef } from '../../ports/customer-directory.port';
+import { PartRef } from '../../ports/part-catalog.port';
+import { ServiceRef } from '../../ports/service-catalog.port';
 import { VehicleRef } from '../../ports/vehicle-directory.port';
 import { WorkOrderNumberGenerator } from '../../ports/work-order-number-generator.port';
 import { CreateWorkOrderCommand } from './create-work-order.command';
@@ -48,14 +60,24 @@ class FakeWorkOrderNumberGenerator implements WorkOrderNumberGenerator {
 }
 
 function makeUseCase(
-  options: { customer?: CustomerRef | null; vehicle?: VehicleRef | null } = {},
+  options: {
+    customer?: CustomerRef | null;
+    vehicle?: VehicleRef | null;
+    services?: ServiceRef[];
+    parts?: PartRef[];
+  } = {},
 ): {
   useCase: CreateWorkOrderUseCase;
   workOrders: InMemoryWorkOrderRepository;
   numbers: FakeWorkOrderNumberGenerator;
   events: RecordingDomainEventPublisher;
 } {
-  const { customer = ACTIVE_CUSTOMER, vehicle = OWNED_VEHICLE } = options;
+  const {
+    customer = ACTIVE_CUSTOMER,
+    vehicle = OWNED_VEHICLE,
+    services = [],
+    parts = [],
+  } = options;
   const customers = new FakeCustomerDirectory();
   if (customer) {
     customers.add(customer);
@@ -64,6 +86,10 @@ function makeUseCase(
   if (vehicle) {
     vehicles.add(vehicle);
   }
+  const serviceCatalog = new FakeServiceCatalog();
+  services.forEach((service) => serviceCatalog.add(service));
+  const partCatalog = new FakePartCatalog();
+  parts.forEach((part) => partCatalog.add(part));
   const workOrders = new InMemoryWorkOrderRepository();
   const numbers = new FakeWorkOrderNumberGenerator();
   const events = new RecordingDomainEventPublisher();
@@ -74,6 +100,8 @@ function makeUseCase(
     new FakeIdGenerator(),
     numbers,
     new FakeClock(),
+    serviceCatalog,
+    partCatalog,
     events,
   );
   return { useCase, workOrders, numbers, events };
@@ -247,5 +275,204 @@ describe('CreateWorkOrderUseCase', () => {
     expect(numbers.drawn).toEqual(['AAAA01-2026']);
     expect(workOrders.workOrders).toHaveLength(1);
     expect(events.published).toHaveLength(0);
+  });
+});
+
+const SERVICE_A: ServiceRef = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  name: 'Troca de oleo',
+  priceCents: 15099,
+  active: true,
+};
+const SERVICE_B: ServiceRef = {
+  id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  name: 'Alinhamento',
+  priceCents: 12000,
+  active: true,
+};
+const PART_P: PartRef = {
+  id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  sku: 'PST-001',
+  name: 'Pastilha de freio',
+  unitPriceCents: 18900,
+  active: true,
+};
+
+describe('CreateWorkOrderUseCase with services and parts', () => {
+  it('should open the work order with one draft item per service and per part, the quantity sent on the part', async () => {
+    const { useCase, workOrders } = makeUseCase({
+      services: [SERVICE_A, SERVICE_B],
+      parts: [PART_P],
+    });
+
+    await useCase.execute(
+      new CreateWorkOrderCommand(
+        CUSTOMER_ID,
+        VEHICLE_ID,
+        CREATOR_ID,
+        [SERVICE_A.id, SERVICE_B.id],
+        [{ inventoryItemId: PART_P.id, quantity: 2 }],
+      ),
+    );
+
+    const created = workOrders.workOrders[0];
+    expect(created.status).toBe('RECEIVED');
+    expect(created.serviceItems.map((item) => item.serviceId)).toEqual([
+      SERVICE_A.id,
+      SERVICE_B.id,
+    ]);
+    expect(created.serviceItems.map((item) => item.unitPrice.cents)).toEqual([15099, 12000]);
+    expect(created.serviceItems.every((item) => item.budgetRound === null)).toBe(true);
+    expect(created.partItems).toHaveLength(1);
+    expect(created.partItems[0].inventoryItemId).toBe(PART_P.id);
+    expect(created.partItems[0].sku).toBe('PST-001');
+    expect(created.partItems[0].plannedQuantity.units).toBe(2);
+    expect(created.partItems[0].withdrawnQuantity).toBe(0);
+    expect(created.partItems[0].budgetRound).toBeNull();
+  });
+
+  it('should publish the creation event and one item event per service and per part, all by the creator', async () => {
+    const { useCase, events } = makeUseCase({
+      services: [SERVICE_A, SERVICE_B],
+      parts: [PART_P],
+    });
+
+    await useCase.execute(
+      new CreateWorkOrderCommand(
+        CUSTOMER_ID,
+        VEHICLE_ID,
+        CREATOR_ID,
+        [SERVICE_A.id, SERVICE_B.id],
+        [{ inventoryItemId: PART_P.id, quantity: 2 }],
+      ),
+    );
+
+    expect(events.published.map((event) => event.constructor)).toEqual([
+      WorkOrderCreated,
+      ServiceAddedToWorkOrder,
+      ServiceAddedToWorkOrder,
+      PartPlannedForWorkOrder,
+    ]);
+    expect(events.published.map((event) => (event as WorkOrderTrailEvent).actorUserId)).toEqual([
+      CREATOR_ID,
+      CREATOR_ID,
+      CREATOR_ID,
+      CREATOR_ID,
+    ]);
+  });
+
+  it('should refuse a service the catalog does not know, even as the third of three, persisting and publishing nothing', async () => {
+    const { useCase, workOrders, events } = makeUseCase({ services: [SERVICE_A, SERVICE_B] });
+
+    await expect(
+      useCase.execute(
+        new CreateWorkOrderCommand(
+          CUSTOMER_ID,
+          VEHICLE_ID,
+          CREATOR_ID,
+          [SERVICE_A.id, SERVICE_B.id, 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'],
+          [],
+        ),
+      ),
+    ).rejects.toThrow(ReferencedServiceNotFoundError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('should refuse a deactivated service with ServiceInactiveError, persisting and publishing nothing', async () => {
+    const { useCase, workOrders, events } = makeUseCase({
+      services: [SERVICE_A, { ...SERVICE_B, active: false }],
+    });
+
+    await expect(
+      useCase.execute(
+        new CreateWorkOrderCommand(
+          CUSTOMER_ID,
+          VEHICLE_ID,
+          CREATOR_ID,
+          [SERVICE_A.id, SERVICE_B.id],
+          [],
+        ),
+      ),
+    ).rejects.toThrow(ServiceInactiveError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('should refuse an inventory item the catalog does not know, persisting and publishing nothing', async () => {
+    const { useCase, workOrders, events } = makeUseCase({ services: [SERVICE_A] });
+
+    await expect(
+      useCase.execute(
+        new CreateWorkOrderCommand(
+          CUSTOMER_ID,
+          VEHICLE_ID,
+          CREATOR_ID,
+          [SERVICE_A.id],
+          [{ inventoryItemId: PART_P.id, quantity: 1 }],
+        ),
+      ),
+    ).rejects.toThrow(ReferencedInventoryItemNotFoundError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('should refuse a deactivated inventory item with InventoryItemInactiveError, persisting and publishing nothing', async () => {
+    const { useCase, workOrders, events } = makeUseCase({
+      parts: [{ ...PART_P, active: false }],
+    });
+
+    await expect(
+      useCase.execute(
+        new CreateWorkOrderCommand(
+          CUSTOMER_ID,
+          VEHICLE_ID,
+          CREATOR_ID,
+          [],
+          [{ inventoryItemId: PART_P.id, quantity: 1 }],
+        ),
+      ),
+    ).rejects.toThrow(InventoryItemInactiveError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('should refuse a quantity below one with InvalidPlannedQuantityError, persisting and publishing nothing', async () => {
+    const { useCase, workOrders, events } = makeUseCase({ parts: [PART_P] });
+
+    await expect(
+      useCase.execute(
+        new CreateWorkOrderCommand(
+          CUSTOMER_ID,
+          VEHICLE_ID,
+          CREATOR_ID,
+          [],
+          [{ inventoryItemId: PART_P.id, quantity: 0 }],
+        ),
+      ),
+    ).rejects.toThrow(InvalidPlannedQuantityError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it('should add the same items to the work order that succeeds after a drawn number collides', async () => {
+    const { useCase, workOrders } = makeUseCase({ services: [SERVICE_A], parts: [PART_P] });
+    await workOrders.save(workOrderHolding('AAAA01-2026'));
+
+    const result = await useCase.execute(
+      new CreateWorkOrderCommand(
+        CUSTOMER_ID,
+        VEHICLE_ID,
+        CREATOR_ID,
+        [SERVICE_A.id],
+        [{ inventoryItemId: PART_P.id, quantity: 3 }],
+      ),
+    );
+
+    const created = workOrders.workOrders.find((workOrder) => workOrder.id.value === result.id);
+    expect(result.number).toBe('AAAA02-2026');
+    expect(created?.serviceItems).toHaveLength(1);
+    expect(created?.partItems).toHaveLength(1);
+    expect(created?.partItems[0].plannedQuantity.units).toBe(3);
   });
 });

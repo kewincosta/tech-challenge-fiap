@@ -214,8 +214,8 @@ describe('WorkOrder', () => {
     expect(events[0]).toBeInstanceOf(PartPlannedForWorkOrder);
   });
 
-  it('should throw WorkOrderStateError when a part is planned in RECEIVED (L-003, first layer)', () => {
-    const workOrder = openWorkOrder();
+  it('should throw WorkOrderStateError when a part is planned in COMPLETED (L-003, first layer)', () => {
+    const workOrder = restoreWorkOrder(WorkOrderStatus.Completed);
 
     expect(() =>
       workOrder.planPart({
@@ -413,6 +413,35 @@ describe('WorkOrder', () => {
     });
 
     expect(workOrder.diagnosisStartedAt).toEqual(NOW);
+  });
+});
+
+describe('WorkOrder parts at reception', () => {
+  it('plans a part while RECEIVED', () => {
+    const workOrder = openWorkOrder();
+    workOrder.pullDomainEvents();
+
+    workOrder.planPart({
+      itemId: WorkOrderItemId.create('88888888-8888-4888-8888-888888888888'),
+      inventoryItemId: '99999999-9999-4999-8999-999999999999',
+      sku: 'PST-001',
+      itemName: 'Pastilha de freio',
+      unitPrice: Money.fromCents(18900),
+      plannedQuantity: PlannedQuantity.create(4),
+      actorUserId: CREATOR_ID,
+      now: NOW,
+    });
+
+    expect(workOrder.status).toBe(WorkOrderStatus.Received);
+    expect(workOrder.partItems).toHaveLength(1);
+    const [part] = workOrder.partItems;
+    expect(part.inventoryItemId).toBe('99999999-9999-4999-8999-999999999999');
+    expect(part.plannedQuantity.units).toBe(4);
+    expect(part.withdrawnQuantity).toBe(0);
+    expect(part.budgetRound).toBeNull();
+    const events = workOrder.pullDomainEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toBeInstanceOf(PartPlannedForWorkOrder);
   });
 });
 

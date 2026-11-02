@@ -187,7 +187,7 @@ describe('Work orders', () => {
     expect(response.body).toMatchObject({ serviceItems: [{ serviceId }] });
   });
 
-  it('should refuse a part planned on a RECEIVED work order with 422, and refuse a mechanic planning a part with 403', async () => {
+  it('should plan a part on a RECEIVED work order, and refuse a mechanic planning a part with 403', async () => {
     const { number } = await createWorkOrder();
     const inventoryItemId = await createInventoryItem();
     const mechanic = await loginAs('MECHANIC');
@@ -203,8 +203,11 @@ describe('Work orders', () => {
       .post(`/api/v1/work-orders/${number}/parts`)
       .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
       .send({ inventoryItemId, quantity: 1 })
-      .expect(422);
-    expect(response.body).toMatchObject({ code: 'WORK_ORDER_INVALID_STATE' });
+      .expect(200);
+    expect(response.body).toMatchObject({
+      status: 'RECEIVED',
+      partItems: [{ inventoryItemId, plannedQuantity: 1 }],
+    });
   });
 
   it('should remove an item, refusing a mechanic with 403, and refuse an item of another work order with 404', async () => {

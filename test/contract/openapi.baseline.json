@@ -306,6 +306,20 @@
             "format": "uuid",
             "type": "string"
           },
+          "parts": {
+            "description": "Parts the customer asks for. Each becomes a draft item, as if planned by POST /work-orders/{number}/parts right after the opening. One item that cannot be added refuses the whole opening.",
+            "items": {
+              "$ref": "#/components/schemas/PlanPartRequestDto"
+            },
+            "type": "array"
+          },
+          "services": {
+            "description": "Services the customer asks for. Each becomes a draft item, as if added by POST /work-orders/{number}/services right after the opening.",
+            "items": {
+              "$ref": "#/components/schemas/AddRequestedServiceRequestDto"
+            },
+            "type": "array"
+          },
           "vehicleId": {
             "format": "uuid",
             "type": "string"
@@ -4261,6 +4275,7 @@
         "tags": ["work-orders"]
       },
       "post": {
+        "description": "Optionally carries the services and parts the customer asks for, each one a draft item. One item that cannot be added refuses the whole opening and creates no work order.",
         "operationId": "WorkOrdersController_create_v1",
         "parameters": [],
         "requestBody": {
@@ -4279,6 +4294,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CreatedWorkOrderResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
                 }
               }
             },

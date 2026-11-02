@@ -122,8 +122,14 @@ export class WorkOrdersController {
   @RequirePermissions(AppPermission.WorkOrdersManage)
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Open a work order for a customer and their vehicle' })
+  @ApiOperation({
+    summary: 'Open a work order for a customer and their vehicle',
+    description:
+      'Optionally carries the services and parts the customer asks for, each one a draft item. ' +
+      'One item that cannot be added refuses the whole opening and creates no work order.',
+  })
   @ApiCreatedResponse({ type: CreatedWorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
@@ -133,7 +139,16 @@ export class WorkOrdersController {
     @CurrentUser() principal: Principal,
   ): Promise<CreatedWorkOrderResponseDto> {
     return this.createWorkOrderUseCase.execute(
-      new CreateWorkOrderCommand(body.customerId, body.vehicleId, principal.userId),
+      new CreateWorkOrderCommand(
+        body.customerId,
+        body.vehicleId,
+        principal.userId,
+        body.services?.map((service) => service.serviceId) ?? [],
+        body.parts?.map((part) => ({
+          inventoryItemId: part.inventoryItemId,
+          quantity: part.quantity,
+        })) ?? [],
+      ),
     );
   }
 

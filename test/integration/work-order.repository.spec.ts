@@ -131,7 +131,7 @@ function openWorkOrder(
   });
 }
 
-/** `planPart` needs `IN_DIAGNOSIS` or `IN_EXECUTION` - `open` only ever starts `RECEIVED`. */
+/** `open` only ever starts `RECEIVED`, so a work order in `IN_DIAGNOSIS` is restored. */
 function restoreWorkOrderInDiagnosis(fixture: Fixture): WorkOrder {
   return WorkOrder.restore({
     id: WorkOrderId.create(randomUUID()),

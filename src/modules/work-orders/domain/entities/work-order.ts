@@ -226,8 +226,13 @@ const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.InExecution,
 ];
 
-/** `planPart` is narrower: parts are identified during the diagnosis, never at reception. */
-const PART_PLANNABLE_STATES = [WorkOrderStatus.InDiagnosis, WorkOrderStatus.InExecution];
+/** `planPart` allows the states `addService` does: a customer can ask for a part at reception
+ * (AD-018), and the diagnosis keeps or removes what it does not confirm. */
+const PART_PLANNABLE_STATES = [
+  WorkOrderStatus.Received,
+  WorkOrderStatus.InDiagnosis,
+  WorkOrderStatus.InExecution,
+];
 
 const MECHANIC_ASSIGNABLE_TERMINAL_STATES = [WorkOrderStatus.Delivered, WorkOrderStatus.Canceled];
 
