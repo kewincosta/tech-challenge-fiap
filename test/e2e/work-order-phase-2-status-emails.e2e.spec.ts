@@ -186,6 +186,10 @@ describe('Status e-mails', () => {
 
     const rejectionMails = await mailer.waitForMailTo(rejecting.email, 4);
     expect(rejectionMails[3].subject).toBe(`Ordem de serviço ${rejectedNumber}: Diagnóstico`);
+    // The opening, the diagnosis, the quote and the rejection: a second e-mail for the rejection
+    // would arrive after the first.
+    await pause();
+    expect(mailer.sentTo(rejecting.email)).toHaveLength(4);
 
     const supplementing = await registerCustomer();
     const supplementedNumber = await open(supplementing);
@@ -224,6 +228,10 @@ describe('Status e-mails', () => {
 
     const cancellationMails = await mailer.waitForMailTo(supplementing.email, 6);
     expect(cancellationMails[5].subject).toBe(`Ordem de serviço ${supplementedNumber}: Cancelada`);
+    // The opening, the diagnosis, the quote, the approval, the supplementary round and the
+    // cancellation: a second e-mail for the cancellation would arrive after the first.
+    await pause();
+    expect(mailer.sentTo(supplementing.email)).toHaveLength(6);
   });
 
   it("puts the API's decision links in the budget e-mail", async () => {
