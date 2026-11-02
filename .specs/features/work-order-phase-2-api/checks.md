@@ -8,7 +8,7 @@ Plan: `.specs/features/work-order-phase-2-api/plan.md`
 
 The integration and e2e runs select their files by name, so every spec this feature adds under `test/integration/` or `test/e2e/` starts with `work-order-phase-2-`. The board's order, exclusion and paging run in an integration spec against a database the spec creates and drops, the way `test/integration/seed.script.spec.ts` does, because the shared test database is never truncated and keeps growing.
 
-50 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
+51 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
 
 ## Checks
 
@@ -125,6 +125,9 @@ Proof: run e2e | ✓ Budget decision links > answers 404 to another customer and
 **C35** - A holder of `work-orders:decide` approves through the approval link (Surface)
 Proof: run e2e | ✓ Budget decision links > lets a holder of work-orders:decide use the approval link
 
+**C51** - A work order canceled while it awaited approval answers null in both links of its budget, which is still `PENDING` (AC 11, amended during the build)
+Proof: run e2e | ✓ Budget decision links > answers null links on the pending budget of a canceled work order
+
 ### S5 - The customer hears of every status change by e-mail
 
 **C36** - Each of the thirteen transitions of the plan's state diagram, the opening included, records exactly one status change event carrying its old and its new status, and the approval records one although it also records two other events (AC 16)
@@ -191,7 +194,7 @@ Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity a
 | paging rule, AC 8 (4 examples) | full pages C18 · last partial page C18 · page past the last C18 · no match C19 | - |
 | pagination and filter bounds, AC 9 (6 examples) | no `pageSize` C20 · `pageSize` 101 C20 · `pageSize` 100 C20 · `page` 0 C20 · `status=FOO` C20 · `status=RECEIVED,FOO` C20, table-driven over all 6 | - |
 | status labels, door 3 (7) | C24, table-driven over all 7 | - |
-| links by budget state, door 4 (3 examples) | round 1 pending C26 · round 1 decided and round 2 pending C27 · not pending refused C30, C31 | - |
+| links by budget state, door 4 (4 examples) | round 1 pending C26 · round 1 decided and round 2 pending C27 · not pending refused C30, C31 · pending budget of a canceled work order C51 | - |
 | rejection by round, AC 13 (2 examples) | round 1 C29 · round 2 C29 | - |
 | status transitions, each owing one event and one e-mail (13) | C36, table-driven over all 13; one e-mail per event C37; through the routes: opening, diagnosis start, diagnosis completion, approval, completion, delivery C40 · round 1 rejection, supplementary round, cancellation C41 | - |
 | e-mail content (3 parts) | subject and body C37 · budget total and links C38, C42 · failure logged C39, C43 | - |
@@ -212,7 +215,7 @@ Proof: run e2e | ✓ Opening a work order with items > refuses a part quantity a
 
 ## Handoff
 
-- **Settled mid-build:** none
-- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`
+- **Settled mid-build:** 2026-11-01, on a work order canceled while awaiting approval, whose budget stays `PENDING`: user chose "Links só aguardando aprovação (Recomendado)"; AC 11 amended and C51 appended
+- **Dispatched:** build A (Sonnet sub-agent, S1 to S3, C1 to C25) at `1c876a1`, returned at `8d16ccd`; build B (Sonnet sub-agent, S4 to S6, C26 to C50) at `a7dc150`, returned at `7616bc0`; fix for C51 (Sonnet sub-agent) at `455e8e1`
 - **Boundary:** C1-C50 closed at `7616bc0`
 - **Abandoned:** none
