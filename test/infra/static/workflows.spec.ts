@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseAllDocuments } from 'yaml';
 import { validateEnv } from '../../../src/config/env.validation';
 import { REPOSITORY_ROOT, run } from '../support/docker';
@@ -12,7 +12,7 @@ import {
   type Value,
 } from '../support/expressions';
 import { blockArguments, blocks, readText, unquoted, withoutComments } from '../support/hcl';
-import { runJob, type Call, type JobResult, type World } from '../support/runner';
+import { disposeAll, runJob, type Call, type JobResult, type World } from '../support/runner';
 import {
   actionSteps,
   ancestorsOf,
@@ -382,6 +382,9 @@ describe('CI workflow', () => {
 });
 
 describe('CD workflow', () => {
+  // A run that timed out is never disposed of by its test, so the folders go when the group ends.
+  afterAll(disposeAll);
+
   beforeAll(async () => {
     // The scripts of the steps run here as they run on the runner, and the deploy reads JSON with jq.
     const jq = await run('jq', ['--version'], { allowFailure: true });

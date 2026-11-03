@@ -127,6 +127,17 @@ if (kind === 'tool') {
 }
 `;
 
+/** The folders of runs that nobody has disposed of yet. */
+const open = new Set<string>();
+
+/** Removes the folders of every run still open, for a spec to call when it ends, whatever ended it. */
+export function disposeAll(): void {
+  for (const directory of open) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+  open.clear();
+}
+
 function wrapper(kind: string): string {
   return `#!/bin/sh\nexec node "$STUB_DIR/stub.js" ${kind} "$@"\n`;
 }
@@ -193,6 +204,7 @@ export async function runJob(
 ): Promise<JobResult> {
   const job: Job = workflow.jobs[jobId];
   const directory = mkdtempSync(join(tmpdir(), 'workflow-run-'));
+  open.add(directory);
   install(directory, options.world);
   const workspace = join(directory, 'workspace');
   const githubEnvFile = join(directory, 'github-env');
@@ -267,6 +279,9 @@ export async function runJob(
     githubOutput: assignments(githubOutputFile),
     summary: existsSync(summaryFile) ? readFileSync(summaryFile, 'utf8') : '',
     failed: status === 'failure',
-    dispose: () => rmSync(directory, { recursive: true, force: true }),
+    dispose: () => {
+      open.delete(directory);
+      rmSync(directory, { recursive: true, force: true });
+    },
   };
 }
