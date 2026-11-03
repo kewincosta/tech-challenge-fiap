@@ -297,6 +297,6 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `a654fd7`
-- **Boundary:** none yet
+- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`
+- **Boundary:** C1-C18 and C20 closed at `ee0014b`
 - **Abandoned:** none
