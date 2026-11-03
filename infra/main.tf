@@ -54,3 +54,11 @@ module "cluster" {
   vpc_id                     = module.network.vpc_id
   subnet_ids                 = module.network.private_subnet_ids
 }
+
+module "registry" {
+  source = "./modules/registry"
+
+  project              = var.project
+  environment          = var.environment
+  registry_image_count = var.registry_image_count
+}

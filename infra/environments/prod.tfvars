@@ -15,3 +15,6 @@ kubernetes_version         = "1.37"
 node_instance_type         = "t3.medium"
 node_count                 = 2
 cluster_log_retention_days = 7
+
+# Registry: the repository keeps the last 20 images.
+registry_image_count = 20

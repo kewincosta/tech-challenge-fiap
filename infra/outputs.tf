@@ -9,3 +9,8 @@ output "cluster_name" {
   description = "The name of the EKS cluster."
   value       = module.cluster.cluster_name
 }
+
+output "repository_url" {
+  description = "The ECR repository the CD pushes the image to."
+  value       = module.registry.repository_url
+}

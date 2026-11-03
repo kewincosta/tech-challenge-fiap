@@ -76,3 +76,8 @@ variable "cluster_admin_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "registry_image_count" {
+  description = "How many images the repository keeps. Older ones expire."
+  type        = number
+}
