@@ -1,10 +1,12 @@
 # Deploy role immutable subject verification
 
 **Verdict**: FAIL
-**Proofs**: `proofs.md` at 976a74d
+**Proofs**: `proofs.md` at 976a74d for C1 to C5. It has no row for C6 to C10, whose tests I ran at 1945673
 **Verifier**: independent sub-agent (author != verifier)
 
 Judged at 2b6873b, which changes only `.specs` after 976a74d, so the code and the tests are the ones `proofs.md` ran. The feature has no `plan.md`: C1 to C5 are judged against `checks.md` and its `## Intent`, and no capture binds them. The experiments ran in a scratch worktree at 2b6873b with the pinned Terraform 1.17.1 image and the mocked provider of the tests, and the container got no AWS variable and no `~/.aws`. Nothing reached AWS or GitHub.
+
+C6 to C10, appended after the first round, are judged at 1945673, whose code is that of b6476ff, the fix pass; the commits after it touch only `.specs`. `proofs.md` was not written again after the fix pass, so I ran the new tests in a scratch worktree at 1945673: all eleven runs of `bootstrap.tftest.hcl` pass, and so do the tests of C7 and C10. `terraform fmt -check -recursive infra` passes there too. The worktree holds no state, and I did not open `infra/bootstrap/terraform.tfstate`.
 
 ## Checks
 
@@ -15,6 +17,11 @@ Judged at 2b6873b, which changes only `.specs` after 976a74d, so the code and th
 | C3 | `bootstrap.tftest.hcl` `subject_prefix_of_another_repository` | no: its prefix differs from `github_repository` in both the owner and the name, so a validation that compares the owner only (M3) or the name only (M4) passes |
 | C4 | `readme.spec.ts` `names the immutable subject and where its prefix comes from` | yes: the subject sentence, the `gh api` command, the sentence on `sub_claim_prefix` and the apply command are compared exactly, and the name-based subject is refused in the section |
 | C5 | `documents.spec.ts` `records AD-027 as ADR 0043, which amends ADR 0038` | yes: the two status lines, the `Amends` line, the rows of AD-022 and AD-027 and the two index rows are compared exactly |
+| C6 | `bootstrap.tftest.hcl` `deploy_role_trust_follows_the_prefix` | yes: it plans with `repo:kewincosta@1/tech-challenge-fiap@2` and compares the subject exactly, and M1, the subject written out in `main.tf`, fails it |
+| C7 | `terraform.spec.ts` `names sub_claim_prefix where a prefix without the IDs is refused` | no: it picks the validation by the words "owner and repository IDs" in its message, not by the condition that refuses the prefix. With the two messages swapped (M11), the IDs check carries the message about `github_repository`, and this test and all eleven runs pass. M2 fails it |
+| C8 | `bootstrap.tftest.hcl` `subject_prefix_without_repository_id` and `subject_prefix_without_owner_id` | yes: M5 fails both, M12 (the owner's ID optional) fails `subject_prefix_without_owner_id`, and M13 (the repository's ID optional) fails `subject_prefix_without_repository_id` |
+| C9 | `bootstrap.tftest.hcl` `subject_prefix_of_another_owner` and `subject_prefix_of_another_repository_name` | yes: M4 (the name only) fails `subject_prefix_of_another_owner`, and M3 (the owner only) fails `subject_prefix_of_another_repository_name` |
+| C10 | `readme.spec.ts` `lists the Phase 2 records 0038 to 0043` | no: it holds the count in both places, but it looks for the six links in the whole README, not in the list. A summary that says six records and links 0038 to 0042 passes when a link to 0043 sits in another section (M17). M14, M15 and M16 fail it |
 
 ## Findings
 
@@ -25,6 +32,8 @@ Judged at 2b6873b, which changes only `.specs` after 976a74d, so the code and th
 | C3's test passes a check of the owner alone or of the name alone | `bootstrap.tftest.hcl:126` uses `repo:someone-else@1234/other-repository@5678`, which differs from `github_repository` in both halves. M3 compares the owner only at `variables.tf:30`, passes all six runs, and accepts `repo:kewincosta@72565745/other-repository@5678`: the role would trust the `prod` jobs of another repository of the same owner. M4 compares the name only, passes all six runs, and accepts `repo:someone-else@1234/tech-challenge-fiap@1357566072` | refuse one prefix per half: another owner with the same name, `repo:someone-else@1234/tech-challenge-fiap@1357566072`, and the same owner with another name, `repo:kewincosta@72565745/other-repository@5678` | `ba80798`. C9 refuses another owner with the same name and the same owner with another name, and each fails on a check of one half |
 | C71 of `phase-2-infrastructure` still says ADR 0038 is `Accepted`, while its test now requires `Amended by 0043` | b16597c set `documents.spec.ts:18` to `[38, 22, [43, 27]]`, so `records AD-022 to AD-025 as ADRs 0038 to 0041 that name each other`, C71's proof, requires ADR 0038 and its index row to read `Amended by [0043](...)` and AD-022 to read `active, amended by AD-027`. `phase-2-infrastructure/checks.md:267` names only the amendment of 0041. 8e5da7a amended C54's text for this feature, and 9da3341 amended C71's for ADR 0042 | append to C71's parenthetical that ADR 0043 amended 0038 and AD-027 amended AD-022, so their statuses read `Amended by 0043` and `amended by AD-027` | `ce1e285`. C71's text notes that ADR 0043 amended 0038 and AD-027 amended AD-022 |
 | The README still says Phase 2 has five records, 0038 to 0042 | `README.md:328` "Five records in `docs/adr/` hold the decisions" lists 0038 to 0042, and `README.md:1220` reads "The five of Phase 2, 0038 to 0042". fb144cf updated both when it added 0042; b16597c changed only the count on line 1219. Neither names 0043, the record of the subject the deploy role trusts | name 0043 in both places, as six records, with what it decides | `b6476ff`. Both lists name 0038 to 0043 and six records, and C10 fails on a list that stops at 0042 or says five |
+| C7's test passes with the two messages swapped, so a prefix without the IDs can be refused with a message that names no `sub_claim_prefix` | `terraform.spec.ts:221` finds the validation whose message matches `/owner and repository IDs/` and then reads that same message, so the test never ties the message to the condition that refuses `repo:kewincosta/tech-challenge-fiap`. M11 swaps the `error_message` lines at `variables.tf:26` and `variables.tf:31`: this test and all eleven runs pass, and a prefix without the IDs is refused with "The owner and the repository name in github_subject_prefix must be those of github_repository." The plan is still refused, so the cost is the message alone | pick the validation by its condition, the `can(regex(...))` that refuses a prefix without the IDs, and assert its message; or read the message from what `terraform test` prints for a plan with `repo:kewincosta/tech-challenge-fiap` | |
+| C10's test looks for the six links in the whole README, so a summary that says six records and links five passes | `readme.spec.ts:470` matches each `[NNNN](docs/adr/NNNN-...)` against the whole README. Today only the summary, `README.md:330` to `README.md:335`, has such links, so dropping one from it fails the test (M14). M17 drops the link to 0043 from the summary and adds it after the overview's sentence at `README.md:1224`: the test passes while the summary lists 0038 to 0042 under "Six records" | match the six links inside the summary, from "Six records in" to the next heading | |
 
 ## The closed feature's tests
 
@@ -60,3 +69,24 @@ Each changed a copy of `infra/bootstrap` at 2b6873b, and the committed `bootstra
 | M8 | a second principal, `AWS = "arn:aws:iam::123456789012:root"`, beside the provider | `deploy_role_trust` fails |
 | M9 | `StringLike` in place of `StringEquals` | `deploy_role_trust` fails |
 | M10 | `github_repository` defaults to `kewincosta/other-repository` | `state_bucket`, the first run, fails on the second validation, and the rest are skipped |
+
+## Mutants at 1945673
+
+Each changed a copy of `infra/bootstrap`, or the worktree's `README.md`, at 1945673. The committed `bootstrap.tftest.hcl` ran as one file per run, so a failing run skipped no other, and the tests of C7 and C10 ran with vitest.
+
+| Mutant | Change | Result |
+| --- | --- | --- |
+| M1 | as in the first round | `deploy_role_trust_follows_the_prefix` fails, and 10 of 11 runs pass |
+| M2 | as in the first round | C7's test fails |
+| M3 | as in the first round | `subject_prefix_of_another_repository_name` fails |
+| M4 | as in the first round | `subject_prefix_of_another_owner` fails |
+| M5 | as in the first round | `subject_prefix_without_repository_id` and `subject_prefix_without_owner_id` fail |
+| M11 | the `error_message` lines of the two validations swapped | all eleven runs and C7's test pass |
+| M12 | the owner's ID optional in the condition at `variables.tf:25` | `subject_prefix_without_owner_id` fails |
+| M13 | the repository's ID optional in the condition at `variables.tf:25` | `subject_prefix_without_repository_id` fails |
+| M14 | the summary keeps "Six records" and drops the link to 0043 | C10's test fails |
+| M15 | the summary says "Five records in" | C10's test fails |
+| M16 | the overview says "The five of Phase 2, 0038 to 0042," | C10's test fails |
+| M17 | M14, and a link to 0043 after the overview's sentence at `README.md:1224` | C10's test passes |
+
+The summary at `README.md:333` to `README.md:337` now reads "0041 for the pipeline and 0042 for when the CI runs and 0043 for the subject the deploy role trusts". The list of six has two "and"s, and the first should be a comma. No check names the wording, so this is a note, not a finding.
