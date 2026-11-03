@@ -330,7 +330,7 @@ CD deploys. The application gains what a cluster needs: two probes, `GET /health
 [0038](docs/adr/0038-infrastructure-on-aws-provisioned-by-terraform.md) for the infrastructure,
 [0039](docs/adr/0039-database-and-redis-reached-by-configuration.md) for the database and Redis,
 [0040](docs/adr/0040-the-application-runs-in-kubernetes-as-a-helm-chart.md) for the chart,
-[0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) for the pipeline and
+[0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) for the pipeline,
 [0042](docs/adr/0042-the-ci-runs-on-pull-requests-into-main.md) for when the CI runs and
 [0043](docs/adr/0043-the-deploy-role-trusts-the-immutable-oidc-subject.md) for the subject the
 deploy role trusts.

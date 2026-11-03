@@ -465,10 +465,15 @@ describe('README', () => {
   it('lists the Phase 2 records 0038 to 0043', () => {
     const flat = README.replace(/\s+/g, ' ');
 
-    // The summary of Phase 2 counts six records and links each one.
-    expect(flat).toContain('Six records in [`docs/adr/`](docs/adr/README.md) hold the decisions');
+    // The summary of Phase 2 counts six records and links each one, inside the summary itself:
+    // from its count to the end of the paragraph.
+    const start = 'Six records in [`docs/adr/`](docs/adr/README.md) hold the decisions';
+    expect(flat).toContain(start);
+    const at = README.indexOf('Six records in');
+    const end = README.indexOf('\n\n', at);
+    const summary = README.slice(at, end === -1 ? undefined : end).replace(/\s+/g, ' ');
     for (const number of ['0038', '0039', '0040', '0041', '0042', '0043']) {
-      expect(flat, `the summary links ADR ${number}`).toMatch(
+      expect(summary, `the summary links ADR ${number}`).toMatch(
         new RegExp(`\\[${number}\\]\\(docs/adr/${number}-[^)]+\\.md\\)`),
       );
     }
