@@ -14,7 +14,7 @@ Plan: `.specs/features/phase-2-infrastructure/plan.md`
 
 The infra specs run under `vitest.infra.config.ts`, a configuration of their own that `npm run test:unit`, the integration and e2e suites and the CI do not load. Every tool they need (Terraform, Helm, kubectl, kind, kubeconform, actionlint, k6) runs through `scripts/tool.sh` at a pinned version, as a Docker image or as a binary downloaded with its checksum into `.tools/`, so the machine needs only Docker. The static group renders the chart and reads files. The runtime groups start containers and never touch `workshop`, `workshop_test` or their Redis indexes: the image and TLS specs start throwaway PostgreSQL and Redis containers on free ports; the compose spec runs the stack under a compose project of its own, with free host ports and a volume of its own; the cluster spec uses the compose PostgreSQL and Redis with a database it creates and drops and a Redis index of its own, and refuses to start while a kind cluster named `workshop` exists. The unit run selects `src/config` and every spec whose path holds `health`, so the TLS settings are mapped and tested in `src/config`.
 
-72 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
+78 checks in 6 slices · 6 one-way doors · 0 open, of which 0 block
 
 ## Checks
 
@@ -82,6 +82,12 @@ Proof: run image | ✓ Production image > carries the RDS certificate bundle the
 
 **C20** - Under `docker compose up`, the `app` service reports `starting` until `GET /health/ready` answers 200, then `healthy`, and `unhealthy` once Redis stops (AC 7)
 Proof: run compose | ✓ Compose stack > reports the app healthy only while ready answers 200
+
+**C77** - Loading the data source of the compiled migrations and admin seed with `DATABASE_SSL` "TRUE" fails with an error that names `DATABASE_SSL`, so every entry point takes only "true" and "false", as `validateEnv` does (AC 4; appended after the verification's finding 7)
+Proof: run unit | ✓ database config > refuses a DATABASE_SSL other than true or false
+
+**C78** - The production image, with `REDIS_TLS` "true" against a Redis whose certificate an authority it does not trust signed, answers `GET /health/ready` 503 with `redis` "down" and `database` "up" (AC 5, door 3; appended after the verification's finding 3)
+Proof: run tls | ✓ Redis TLS > reports redis down when the authority that signed the Redis is not trusted
 
 ### S2 - The application runs in Kubernetes and scales
 
@@ -212,6 +218,15 @@ Proof: `scripts/tool.sh terraform -chdir=infra/bootstrap init -backend=false -in
 **C60** - The database is destroyed with no final snapshot and with deletion protection off, so `terraform destroy` removes `prod` in one run (AC 27, data lifecycle)
 Proof: run terraform | run "prod_database_lifecycle"... pass
 
+**C74** - A plan whose `cluster_admin_arns` lists one ARN twice succeeds and gives that principal one access entry, two in all with the deploy role's (AC 20; appended after the verification's finding 4)
+Proof: run terraform | run "cluster_access_with_a_repeated_arn"... pass
+
+**C75** - `infra/main.tf` hands the cluster's nodes, the database and the cache the private subnets of the network module (AC 17; appended after the verification's finding 6)
+Proof: run infra | ✓ Terraform files > places the cluster, the database and the cache in the private subnets
+
+**C76** - A plan of the database module with another environment's name gives that name to the instance, its subnet group and its parameter group (AC 19; appended after the verification's finding 6)
+Proof: run terraform | run "another_environment_database"... pass
+
 ### S5 - GitHub Actions builds, tests and deploys
 
 **C61** - The CI workflow runs on every push and every pull request, with the jobs `lint`, `unit` and `build`, none needing another or allowed to fail, running `npm run lint`, `npm run test:unit` and `npm run build` (AC 23)
@@ -238,6 +253,9 @@ Proof: run infra | ✓ CD workflow > points APP_PUBLIC_URL at the load balancer'
 **C68** - `actionlint` passes on both workflows (AC 26)
 Proof: `scripts/tool.sh actionlint`
 
+**C73** - The CD's jobs that call AWS take the deploy role's ARN from the `prod` environment's secret `DEPLOY_ROLE_ARN`, which GitHub masks in the log, and neither workflow reads a role ARN from a variable (AC 25; appended for the user's decision of 2026-11-03 and the verification's finding 5)
+Proof: run infra | ✓ CD workflow > takes the deploy role's ARN from a secret of the prod environment
+
 ### S6 - The README documents the solution
 
 **C69** - The README holds each part the brief and the plan ask for: the solution and this phase's goals; a mermaid drawing of the application's components, the AWS infrastructure and the deploy flow; the resources Terraform creates, with the commands to apply and to destroy them and the warning that destroying `prod` erases its database; running locally with compose and with the local cluster; provisioning and deploying `prod`; reaching the `prod` database through the cluster and creating the SUPER_ADMIN by hand or with the admin seed; the collection's link; and the video's link as a marked placeholder (AC 27)
@@ -260,34 +278,34 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 | `GET /health/ready` statuses (2) | 200 C3, C4 · 503 C5, C15 | - |
 | readiness rule, AC 3 (4 combinations) | C6, table-driven over all 4 · through HTTP: Redis down C5 · database down C5 | - |
 | readiness timeout, door 4 (2 examples) | 1.9 seconds up C7 · 2 seconds down C7 | - |
-| `DATABASE_SSL` examples, AC 4 (4) | true with a bundle C9, C12 · true with no bundle C9, C13 · "false" C9 · unset C9, C14 | - |
-| `REDIS_TLS` examples, AC 5 (2) | true C10, C15 · unset or "false" C10, C15 | - |
-| startup config: database TLS (2 assemblies) | `DatabaseModule` C11 · data source of the compiled migrations and admin seed C11, C16 | - |
+| `DATABASE_SSL` examples, AC 4 (5) | true with a bundle C9, C12 · true with no bundle C9, C13 · "false" C9 · unset C9, C14 · another value such as "TRUE" C77 | - |
+| `REDIS_TLS` examples, AC 5 (3) | true C10, C15 · true against an untrusted authority C78 · unset or "false" C10, C15 | - |
+| startup config: database TLS (2 assemblies) | `DatabaseModule` C11 · data source of the compiled migrations and admin seed C11, C16, C77 | - |
 | startup config: Redis TLS (1 assembly) | `RedisModule` C10, C15 | - |
 | compiled entry points in the image, AC 6 (2) | migrations C16, C35 · admin seed C17, C41 | - |
 | chart objects with the prod values, AC 8 (7) | `Deployment` C21 · `Service` C22 · `ConfigMap` C23, C24 · `Secret` C23, C24, C31 · Mailpit `Deployment` C25 · Mailpit `Service` C25 · `HorizontalPodAutoscaler` C26, C38 | - |
 | chart Jobs, AC 9 (2 values files) | prod: the migration hook only C27, C28 · local: the migration hook only C28, C35 | - |
 | values files (2) | prod C21 to C31 · local C24, C25, C28 to C31, C34 to C40 | - |
 | `scripts/local-cluster.sh` commands (2) | `up` C34, C35, C36, C37 · `down` C39 | - |
-| Terraform resources with `prod.tfvars`, AC 17 (7) | network C42 · cluster and node group C43 · metrics-server C43 · database C44, C60 · cache C45 · secrets C46 · registry C47 | - |
+| Terraform resources with `prod.tfvars`, AC 17 (7) | network C42 · cluster and node group C43, C75 · metrics-server C43 · database C44, C60, C75 · cache C45, C75 · secrets C46 · registry C47 | - |
 | reachability, AC 18 (2) | database C48 · cache C48 | - |
-| environment names, AC 19 (2 proofs) | another environment's plan C49 · no literal C50 | - |
-| cluster access, AC 20 (2 examples) | listed ARNs C51 · empty list C51 | - |
+| environment names, AC 19 (3 proofs) | another environment's plan C49 · the database's names C76 · no literal C50 | - |
+| cluster access, AC 20 (3 examples) | listed ARNs C51 · empty list C51 · an ARN listed twice C74 | - |
 | bootstrap resources, AC 21 (3) | state bucket C52 · OIDC provider C53 · deploy role C54 | - |
 | `terraform fmt` and `validate`, AC 22 (3) | fmt C57 · main stack C58 · bootstrap C59 | - |
 | CI jobs, AC 23 (3) | `lint` C61 · `unit` C61 · `build` C61 | - |
 | CD stages, AC 24 (3) | Terraform C63 · image C63 · chart C63 | - |
 | CD triggers, AC 24 (3 examples) | a failed CI C62 · a pull request or another branch C62 · a second merge during a deploy C64 | - |
 | README parts, AC 27 (8) | C69, table-driven over all 8 · the files they name C70 | - |
-| one-way doors (6) | 1 C42 to C55, C60 · 2 C56 · 3 C9 to C15, C19, C44, C46, C66 · 4 C1 to C8 · 5 C21 to C41 · 6 C61 to C68; their records C71 | - |
+| one-way doors (6) | 1 C42 to C55, C60, C74 to C76 · 2 C56 · 3 C9 to C15, C19, C44, C46, C66, C77, C78 · 4 C1 to C8 · 5 C21 to C41 · 6 C61 to C68, C73; their records C71 | - |
 | plan readers (5) | image entry points and RDS bundle C16 to C19 · compose health check C20 · README and the folder READMEs C69, C70 · ADRs C71 · C4 diagram C72 | - |
 
 ## Swept
 
-- validation: C9 ("false" means no TLS), C24 (the rendered settings pass `validateEnv`), C31 (a render without the secrets fails)
+- validation: C9 ("false" means no TLS), C77 (any other value stops every entry point), C24 (the rendered settings pass `validateEnv`), C31 (a render without the secrets fails)
 - failure modes: C5, C7, C37; existing - Helm stops an upgrade whose pre-upgrade hook fails, so a failed migration leaves the running pods, and `--wait` fails the CD run (C63)
 - idempotency: C16 (a second migration run applies none), C17 (the admin seed twice leaves one), C36 (a second `up` upgrades in place)
-- authorization: C1, C4 (no token), C2, C3 (no rate limit), C48 (the nodes only), C51 (cluster access), C54 (the role's trust), C65 (OIDC, no keys)
+- authorization: C1, C4 (no token), C2, C3 (no rate limit), C48 (the nodes only), C51 (cluster access), C54 (the role's trust), C65 (OIDC, no keys), C73 (the role's ARN in a masked secret)
 - concurrency: C55 (the state lock), C64 (one deploy at a time)
 - dependency failure: C5, C8, C15, C37
 - data lifecycle: C47 (20 images kept), C60 (destroying `prod` erases its database, which C69 has the README say); no stored shape changes
@@ -297,6 +315,6 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 ## Handoff
 
 - **Settled mid-build:** 2026-11-03, on three points raised after the build: C33's "every request answered 200" while the sign-in answers 201; the `tip` job, which calls no AWS API and so sits outside C65's "the CD's jobs"; and `AWS_DEPLOY_ROLE_ARN`, a variable whose value, account id included, GitHub prints in the public log of the credentials step: user: "1, 2 e 3", approving the three recommendations; C33 and C65 amended, door 6 and hop 7 reworded, and the role's ARN moves to a secret of the `prod` environment
-- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`, returned at `b8f0146`; build 3 (Sonnet sub-agent, S2 and S3, C19 and C21 to C41) at `b8f0146`, returned at `99b3ddc`; build 4 (Sonnet sub-agent, S5 and S6, C61 to C72) at `99b3ddc`, stopped by the 5-hour limit at `2ce3b01`, resumed after the reset, returned at `9515068`; Verifier (fresh sub-agent, default model) at `c37b779`, over `8487598..c37b779`, with `proofs.md` 80 pass at `c37b779`, stopped by the 5-hour limit at `c621333` before writing `verification.md`, resumed at `1d5bad2`
+- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`, returned at `b8f0146`; build 3 (Sonnet sub-agent, S2 and S3, C19 and C21 to C41) at `b8f0146`, returned at `99b3ddc`; build 4 (Sonnet sub-agent, S5 and S6, C61 to C72) at `99b3ddc`, stopped by the 5-hour limit at `2ce3b01`, resumed after the reset, returned at `9515068`; Verifier (fresh sub-agent, default model) at `c37b779`, over `8487598..c37b779`, with `proofs.md` 80 pass at `c37b779`, stopped by the 5-hour limit at `c621333` before writing `verification.md`, resumed at `1d5bad2`, returned FAIL with 7 findings at `761b163`; fix of the 7 findings (Sonnet sub-agent, C9 to C11 and C73 to C78) at `761b163`
 - **Boundary:** C1-C18 and C20 closed at `ee0014b`; C42-C60 closed at `b8f0146`; C19 and C21-C41 closed at `99b3ddc`; C61-C72 closed at `9515068`
 - **Abandoned:** none
