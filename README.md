@@ -749,10 +749,10 @@ npm run migration:generate  # generates a new one from the entity differences
 ```
 
 The production image carries no ts-node, so it applies the migrations with `node dist/migrate.js`
-and creates the `SUPER_ADMIN` with `node dist/seed-admin.js`. Both read the same `DATABASE_*`
-variables as the application, and the second reads the `ADMIN_*` ones. In Kubernetes a Job runs the
-first before each install and upgrade, and the second is run by hand
-([the prod database](#the-prod-database)).
+and creates the `SUPER_ADMIN` with `node dist/seed-admin.js`. `dist/` is what `npm run build` writes
+from `src/`, and the image carries it at `/app/dist`. Both read the same `DATABASE_*` variables as the
+application, and the second reads the `ADMIN_*` ones. In Kubernetes a Job runs the first before each
+install and upgrade, and the second is run by hand ([the prod database](#the-prod-database)).
 
 ### Seeds
 
