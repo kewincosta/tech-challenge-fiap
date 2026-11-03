@@ -71,6 +71,42 @@ run "cluster_access" {
   }
 }
 
+# The CD takes the list from a GitHub variable, so a principal can be listed twice.
+run "cluster_access_with_a_repeated_arn" {
+  command = plan
+
+  variables {
+    cluster_admin_arns = [
+      "arn:aws:iam::123456789012:user/alice",
+      "arn:aws:iam::123456789012:user/alice",
+    ]
+  }
+
+  assert {
+    condition = (
+      length(module.cluster.access_entries) == 2 &&
+      toset([for entry in values(module.cluster.access_entries) : entry.principal_arn]) == toset([
+        "arn:aws:iam::123456789012:role/workshop-deploy",
+        "arn:aws:iam::123456789012:user/alice",
+      ])
+    )
+    error_message = "A principal listed twice in cluster_admin_arns must get one access entry, two in all with the deploy role's."
+  }
+
+  assert {
+    condition = (
+      length(module.cluster.access_policy_associations) == 2 &&
+      length([
+        for association in values(module.cluster.access_policy_associations) : association
+        if association.principal_arn == "arn:aws:iam::123456789012:user/alice" &&
+        association.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" &&
+        association.access_scope[0].type == "cluster"
+      ]) == 1
+    )
+    error_message = "The listed user must hold AmazonEKSClusterAdminPolicy at cluster scope, once, and the deploy role the other association."
+  }
+}
+
 run "cluster_access_without_admins" {
   command = plan
 

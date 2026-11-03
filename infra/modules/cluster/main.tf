@@ -19,10 +19,11 @@ locals {
 
   # The deploy role and every principal in cluster_admin_arns administer the cluster, and nobody
   # else gets in: the cluster creator is not added, and the authentication mode leaves out the
-  # aws-auth ConfigMap. The listed principals are keyed by their ARN, which is known when planning.
+  # aws-auth ConfigMap. The listed principals are keyed by their ARN, which is known when planning,
+  # and a principal listed twice counts once: a repeated key would stop the plan.
   administrators = merge(
     { deploy = local.deploy_role_arn },
-    { for arn in var.cluster_admin_arns : arn => arn if arn != local.deploy_role_arn },
+    { for arn in distinct(var.cluster_admin_arns) : arn => arn if arn != local.deploy_role_arn },
   )
 
   access_entries = {
