@@ -48,7 +48,7 @@ Helm starts a hook before it creates the other objects of the release, so the `C
 | `secrets.DATABASE_PASSWORD` | The Secrets Manager secret `workshop-prod/database-password` |
 | `secrets.JWT_SECRET`        | The Secrets Manager secret `workshop-prod/jwt-secret`        |
 
-The load balancer's hostname exists only once the Service does, so the first install passes a placeholder URL for `config.APP_PUBLIC_URL`, and the release is upgraded with the hostname afterwards. Pass each one with `--set-string`. `--set` reads a commit SHA made of digits only, or of digits with an `e` in the middle, as a number.
+The load balancer's hostname exists only once the Service does, so the first install passes the placeholder `http://load-balancer-pending.invalid` for `config.APP_PUBLIC_URL`, and the release is upgraded with the hostname afterwards. Pass each one with `--set-string`. `--set` reads a commit SHA made of digits only, or of digits with an `e` in the middle, as a number.
 
 Every other key of `config` is an environment variable of the pods, so `--set config.RATE_LIMIT_MAX_REQUESTS=100000` changes the rate limit. An empty value leaves the variable out. The chart wraps each value in quotes, so a number from `--set` arrives as the string the application reads.
 
@@ -96,21 +96,23 @@ Run `down` before `docker compose down`, because the node sits on the compose ne
 
 ## Prod
 
-The CD installs the chart on every merge to `main` with `helm upgrade --install`, and passes the values of the section above:
+The CD installs the chart on every merge to `main` that passes the CI, with `helm upgrade --install`, and passes the values of the section above. `COMMIT` is the SHA of the commit the CI tested, which is also the tag of the image:
 
 ```bash
 helm upgrade --install workshop k8s/workshop --namespace workshop --create-namespace \
   --values k8s/workshop/values-prod.yaml \
-  --set-string image.repository="$REPOSITORY_URL" --set-string image.tag="$GITHUB_SHA" \
+  --set-string image.repository="$REPOSITORY_URL" --set-string image.tag="$COMMIT" \
   --set-string config.DATABASE_HOST="$DATABASE_HOST" --set-string config.DATABASE_PORT="$DATABASE_PORT" \
   --set-string config.DATABASE_NAME="$DATABASE_NAME" --set-string config.DATABASE_USER="$DATABASE_USER" \
   --set-string config.REDIS_HOST="$REDIS_HOST" --set-string config.REDIS_PORT="$REDIS_PORT" \
   --set-string config.APP_PUBLIC_URL="$APP_PUBLIC_URL" \
   --set-string secrets.DATABASE_PASSWORD="$DATABASE_PASSWORD" --set-string secrets.JWT_SECRET="$JWT_SECRET" \
-  --wait --timeout 10m
+  --wait --timeout 15m
 ```
 
-The migration runs before the pods change. If it fails, `helm upgrade` stops, the running pods stay, and `--wait` fails the CD run. `kubectl logs job/workshop-migrate --namespace workshop` shows why.
+The timeout covers a first install, which pulls the image, runs the migration (up to 5 minutes) and waits for the load balancer. The deploy passes every value on every upgrade and never `--reuse-values`, so a change made by hand to a release disappears at the next deploy. After the upgrade it reads the hostname of the load balancer, waiting up to 10 minutes for it, and upgrades the release again when `APP_PUBLIC_URL` differs from `http://` and that hostname.
+
+The migration runs before the pods change. If it fails, `helm upgrade` stops, the running pods stay, and `--wait` fails the CD run. `kubectl logs job/workshop-migrate --namespace workshop` shows why, and the CD prints that log when the upgrade fails.
 
 To work in the cluster from your machine, point `kubectl` at it. This needs the AWS CLI, `kubectl` and permission as one of the `cluster_admin_arns`:
 

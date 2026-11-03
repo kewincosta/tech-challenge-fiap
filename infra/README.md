@@ -17,7 +17,7 @@ An environment is one pair of files in `environments/`. Another environment is a
 
 ## Running Terraform
 
-Only Docker has to be installed. `scripts/tool.sh` runs Terraform at the version pinned in the script (1.17.1), as your user, with the repository mounted at its own path. Run it from the repository root:
+Only Docker has to be installed. `scripts/tool.sh` runs the build tools of the repository, each at the version pinned at the top of the script: Terraform (1.17.1), kubeconform, k6 and actionlint as containers, and kind, kubectl and Helm as binaries it downloads and checks against their published checksum. Terraform runs as your user, with the repository mounted at its own path. Run it from the repository root:
 
 ```bash
 scripts/tool.sh terraform -chdir=infra <command>
@@ -106,9 +106,11 @@ Set these in the repository's Settings, under Environments, in an environment na
 
 1. Under "Deployment branches and tags", choose "Selected branches and tags" and add `main`, so no other branch can run a job in the environment.
 2. A variable `AWS_DEPLOY_ROLE_ARN` with the `deploy_role_arn` output of the bootstrap (`scripts/tool.sh terraform -chdir=infra/bootstrap output deploy_role_arn`).
-3. A variable `CLUSTER_ADMIN_ARNS` with a JSON list of the IAM users and roles that may administer the cluster besides the deploy role, such as `["arn:aws:iam::<account-id>:user/<name>"]`. The CD passes it as `TF_VAR_cluster_admin_arns`. A role's ARN carries no path, so write an SSO role as `arn:aws:iam::<account-id>:role/AWSReservedSSO_<permission-set>_<hash>`.
+3. A variable `CLUSTER_ADMIN_ARNS` with a JSON list of the IAM users and roles that may administer the cluster besides the deploy role, such as `["arn:aws:iam::<account-id>:user/<name>"]`. The CD passes it as `TF_VAR_cluster_admin_arns`, and an unset variable means the empty list, so only the deploy role administers the cluster. A role's ARN carries no path, so write an SSO role as `arn:aws:iam::<account-id>:role/AWSReservedSSO_<permission-set>_<hash>`.
 
-The workflows hold no AWS access key. The deploy role is the only way in, and the account id never appears in the repository.
+The CD starts from the copy of `.github/workflows/cd.yml` on `main`, so it runs for the first time after the merge that adds it. Its jobs assume the deploy role through GitHub OIDC, and the workflows hold no AWS access key. The deploy role is the only way in, and the account id never appears in the repository. GitHub prints a variable's value in the log of the step that reads it, and the ARN of the role holds the account id, so a public repository shows the id in the header of the credentials step. The step masks the id in everything after it. To keep the id out of a public log, store the ARN as a secret and read `secrets.AWS_DEPLOY_ROLE_ARN` where `cd.yml` reads `vars.AWS_DEPLOY_ROLE_ARN`.
+
+The role's session lasts the default hour, because `bootstrap/main.tf` sets no `max_session_duration`. Each job of the CD assumes the role on its own and ends before the hour is over: the first apply takes about 20 minutes, and the jobs that apply and deploy stop at 55.
 
 ## Apply and destroy
 
@@ -160,6 +162,9 @@ scripts/tool.sh terraform -chdir=infra validate
 scripts/tool.sh terraform -chdir=infra test -var-file=environments/prod.tfvars
 scripts/tool.sh terraform -chdir=infra/bootstrap init -backend=false -input=false
 scripts/tool.sh terraform -chdir=infra/bootstrap test
+scripts/tool.sh actionlint
 ```
+
+The last one lints the workflows in `.github/workflows`, the scripts of their steps included.
 
 `terraform test` plans each run with mocked providers. A run against the root configuration reaches the root's resources and the outputs of the modules. A run with a `module` block tests one module on its own: it takes the subnets and the security groups the way `main.tf` gives them, and every other variable from `prod.tfvars` through `-var-file`, because the module's variables carry the names the file sets. `test/infra/static/terraform.spec.ts` reads the files for what a plan cannot show: no environment literal in `main.tf` or `modules/`, the state in the bootstrap bucket, exact versions for the community modules, and the wiring from `main.tf` to the modules.
