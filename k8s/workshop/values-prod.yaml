@@ -1,0 +1,18 @@
+# prod, the only environment in AWS. Terraform's outputs and Secrets Manager give the deploy what is
+# missing here: the image, the database and Redis addresses, the public URL and both secrets.
+
+config:
+  DATABASE_SSL: 'true'
+  # The certificate authorities of Amazon RDS, which the image carries.
+  DATABASE_SSL_CA: /app/certs/rds-global-bundle.pem
+  REDIS_TLS: 'true'
+
+# A Network Load Balancer takes the traffic. Local keeps the client's address for the rate limit.
+service:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+mailpit:
+  enabled: true

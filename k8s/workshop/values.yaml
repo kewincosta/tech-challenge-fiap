@@ -1,0 +1,86 @@
+# The values every environment shares. values-prod.yaml and values-local.yaml set what differs, and
+# the deploy passes what only it knows: see k8s/README.md.
+
+image:
+  # The deploy passes the repository and the tag.
+  repository: ''
+  tag: ''
+  pullPolicy: IfNotPresent
+
+# The port the application listens on.
+containerPort: 3000
+
+# The settings of the pods that are not secret. Each key is an environment variable, and an empty
+# value leaves the variable out. Any setting of .env.example can be added here or passed with --set,
+# such as RATE_LIMIT_MAX_REQUESTS. The deploy fills in the database and Redis addresses, the
+# database name and user, and APP_PUBLIC_URL.
+config:
+  DATABASE_HOST: ''
+  DATABASE_PORT: '5432'
+  DATABASE_NAME: ''
+  DATABASE_USER: ''
+  DATABASE_SSL: 'false'
+  DATABASE_SSL_CA: ''
+  REDIS_HOST: ''
+  REDIS_PORT: '6379'
+  REDIS_TLS: 'false'
+  # Empty means the Mailpit of this release, when mailpit.enabled is true.
+  SMTP_HOST: ''
+  SMTP_PORT: '1025'
+  MAIL_FROM: 'Oficina <no-reply@workshop.local>'
+  APP_PUBLIC_URL: ''
+
+# The settings that are secret. No file holds them: the deploy passes both, and a render without
+# them stops.
+secrets:
+  DATABASE_PASSWORD: ''
+  JWT_SECRET: ''
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: '1'
+    memory: 512Mi
+
+# The HorizontalPodAutoscaler keeps the pods between the two bounds, so the Deployment sets no
+# replica count. The utilization is a share of the pod's requests.
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 6
+  cpuUtilization: 70
+  memoryUtilization: 80
+
+service:
+  type: ClusterIP
+  port: 80
+  # Set only for the type NodePort.
+  nodePort: null
+  # Local keeps the client's address, which the rate limit counts by, behind a load balancer.
+  externalTrafficPolicy: ''
+  annotations: {}
+
+# The inbox that catches the e-mails. It keeps them in memory, so a restart empties it.
+mailpit:
+  enabled: false
+  image:
+    repository: axllent/mailpit
+    tag: v1.31
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+# The hook that runs node dist/migrate.js before the pods change.
+migration:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "workshop.fullname" . }}
+  labels:
+    {{- include "workshop.labels" (dict "context" . "component" "api") | nindent 4 }}
+spec:
+  # No replica count: the HorizontalPodAutoscaler sets it, and a deploy would reset it.
+  selector:
+    matchLabels:
+      {{- include "workshop.selectorLabels" (dict "context" . "component" "api") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        {{- include "workshop.labels" (dict "context" . "component" "api") | nindent 8 }}
+      annotations:
+        # The pods roll when a setting or a secret changes, because they read both at start.
+        checksum/config: {{ include "workshop.configData" . | sha256sum }}
+        checksum/secret: {{ include "workshop.secretData" . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # The image's user is named, so the kubelet cannot tell it is not root without the number.
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      # Two pods on one node would lose both with it.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "workshop.selectorLabels" (dict "context" . "component" "api") | nindent 14 }}
+      containers:
+        - name: api
+          image: {{ include "workshop.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "workshop.fullname" . }}
+            - secretRef:
+                name: {{ include "workshop.fullname" . }}
+          # The application takes a few seconds to connect, so liveness waits for the first answer.
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # A check that hangs gives up after 2 seconds, so the probe waits longer than that.
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # The Service takes a moment to stop sending traffic to a pod that is leaving, so the pod
+          # keeps serving for that long before it gets SIGTERM and a rollout drops no request.
+          lifecycle:
+            preStop:
+              exec:
+                command: [sleep, '5']
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

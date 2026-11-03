@@ -1,0 +1,6 @@
+apiVersion: v2
+name: workshop
+description: The workshop management API, with the hook that migrates its database and a Mailpit inbox
+type: application
+version: 0.1.0
+appVersion: '0.1.0'
