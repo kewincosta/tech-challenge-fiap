@@ -133,7 +133,7 @@ describe('Test values', () => {
 
       expect(calls, 'the factory drew again').toBeGreaterThan(numbers.length);
       expect(another, 'the CPF of the active user').not.toBe(document);
-      expect(() => PersonDocument.create(another), 'the other CPF is valid').not.toThrow();
+      expect(PersonDocument.create(another).kind, 'the other document is a valid CPF').toBe('CPF');
     } finally {
       await dataSource.query(`DELETE FROM users WHERE id = $1`, [userId]);
     }
