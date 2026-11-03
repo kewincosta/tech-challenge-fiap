@@ -216,10 +216,12 @@ describe('Bootstrap variables', () => {
     const prefix = variables.find((variable) => variable.labels[0] === 'github_subject_prefix');
     expect(prefix, 'the bootstrap declares github_subject_prefix').toBeDefined();
 
+    // The validation is found by the condition that refuses a prefix without the IDs, so its
+    // message is the one a user reads when the IDs are missing.
     const validations = blocks(prefix?.body ?? '', 'validation');
     const withoutIds = validations.find((validation) =>
-      /owner and repository IDs/.test(
-        unquoted(blockArguments(validation.body).error_message) ?? '',
+      /^can\(regex\("\^repo:.*@\[0-9\]\+\/.*@\[0-9\]\+\$", var\.github_subject_prefix\)\)$/.test(
+        blockArguments(validation.body).condition ?? '',
       ),
     );
     expect(withoutIds, 'a validation refuses a prefix without the IDs').toBeDefined();
