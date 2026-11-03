@@ -1,20 +1,22 @@
 # Low level design
 
-One page per code unit: the six modules under `src/modules`, plus the shared kernel at
-`src/shared`. The `identity` module has a page of its own and one for each of its three areas.
+One page per code unit: the six modules under `src/modules`, the shared kernel at `src/shared` and
+the health module at `src/health`. The `identity` module has a page of its own and one for each of
+its three areas.
 
-| Page                                         | Context             | Holds                                                                                  |
-| -------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
-| [identity](identity/README.md)               | Identity & Access   | The module: its composition root, its public API, how the three areas call one another |
-| [users](identity/users.md)                   | Identity & Access   | The `User` aggregate, the document, the password, the account lifecycle                |
-| [authentication](identity/authentication.md) | Identity & Access   | `Session` and `RefreshToken`, rotation and reuse detection, revocation                 |
-| [authorization](identity/authorization.md)   | Identity & Access   | `Role` and `Permission`, assignment, the escalation rule, effective access             |
-| [customers](customers.md)                    | Customer Management | The `Customer` aggregate, `Address`, `PhoneNumber`                                     |
-| [vehicles](vehicles.md)                      | Customer Management | The `Vehicle` aggregate, `LicensePlate`, `VehicleYear`                                 |
-| [services](services.md)                      | Workshop Catalog    | The `Service` aggregate and the catalog price                                          |
-| [inventory](inventory.md)                    | Inventory           | `InventoryItem`, `StockMovement`, the append-only ledger                               |
-| [work-orders](work-orders.md)                | Workshop Operations | The `WorkOrder` aggregate, its items, its budget rounds, its trail                     |
-| [shared](shared.md)                          | none                | `Money`, `AggregateRoot`, the ports, the error hierarchy, the exception filter         |
+| Page                                         | Context             | Holds                                                                                               |
+| -------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
+| [identity](identity/README.md)               | Identity & Access   | The module: its composition root, its public API, how the three areas call one another              |
+| [users](identity/users.md)                   | Identity & Access   | The `User` aggregate, the document, the password, the account lifecycle                             |
+| [authentication](identity/authentication.md) | Identity & Access   | `Session` and `RefreshToken`, rotation and reuse detection, revocation                              |
+| [authorization](identity/authorization.md)   | Identity & Access   | `Role` and `Permission`, assignment, the escalation rule, effective access                          |
+| [customers](customers.md)                    | Customer Management | The `Customer` aggregate, `Address`, `PhoneNumber`                                                  |
+| [vehicles](vehicles.md)                      | Customer Management | The `Vehicle` aggregate, `LicensePlate`, `VehicleYear`                                              |
+| [services](services.md)                      | Workshop Catalog    | The `Service` aggregate and the catalog price                                                       |
+| [inventory](inventory.md)                    | Inventory           | `InventoryItem`, `StockMovement`, the append-only ledger                                            |
+| [work-orders](work-orders.md)                | Workshop Operations | The `WorkOrder` aggregate, its items, its budget rounds, its trail                                  |
+| [health](health.md)                          | none                | The two probes, the readiness use case and its 2-second limit, the checks of the database and Redis |
+| [shared](shared.md)                          | none                | `Money`, `AggregateRoot`, the ports, the error hierarchy, the exception filter                      |
 
 ## What this level owns
 

@@ -21,7 +21,15 @@ onto them, four of them one to one.
 | Workshop Catalog    | `services`    | What the workshop sells as labour, with its price and estimated duration.                                                                                                                                                                                                            |
 | Inventory           | `inventory`   | Stock, and the append-only ledger of every unit that moved.                                                                                                                                                                                                                          |
 | Workshop Operations | `work-orders` | The work order lifecycle, its items, its budget rounds, and its trail.                                                                                                                                                                                                               |
+| -                   | `health`      | The probes the cluster and the compose stack call: `HealthController`, `CheckReadinessUseCase`, the readiness checks port and its adapter, `DependencyReadinessChecks`. It sits at `src/health`, beside `src/modules`, and holds no table.                                           |
+| -                   | `config`      | The environment validation and the settings each part reads, at `src/config`. `src/config/database.config.ts` and `src/config/redis.config.ts` build the connections that `DatabaseModule`, `RedisModule` and the data source of the migrations share.                               |
 | -                   | `shared`      | What belongs to no context: `Money`, `AggregateRoot`, the error hierarchy, the ports, the event dispatcher, the exception filter.                                                                                                                                                    |
+
+Two entry points sit at the root of `src`, next to `src/main.ts`. `src/migrate.ts` applies the pending
+migrations and ends, and `src/seed-admin.ts` creates the SUPER_ADMIN described by `ADMIN_EMAIL`,
+`ADMIN_PASSWORD` and `ADMIN_DOCUMENT`. The build compiles them to `dist/migrate.js` and
+`dist/seed-admin.js`, because the production image holds no ts-node. The chart's migration Job runs
+the first on each release, and the user runs the second by hand against `prod`.
 
 ## The four layers
 
@@ -215,7 +223,11 @@ that saved.
 
 ## The HTTP surface
 
-Global prefix `api`, URI versioning at `v1`, so every route is `/api/v1/...`. Swagger is served at
-`/api/docs`. Helmet, throttling and pino logging with redaction are applied globally.
+Global prefix `api`, URI versioning at `v1`, so every route except `GET /health/live` and
+`GET /health/ready` is `/api/v1/...`. Those two probes sit outside the `api` prefix and the version
+(`configureApp` in `src/app.setup.ts` excludes them), need no token (`@Public()`) and are not rate
+limited (`@SkipThrottle()`), because the cluster calls them as they are. Swagger is served at
+`/api/docs`. Helmet and pino logging with redaction are applied globally, and throttling to every
+route but the two probes. [The health page](low-level-design/health.md) holds them.
 
 Routes and their shapes belong to the module pages, not here.

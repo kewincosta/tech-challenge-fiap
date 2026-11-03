@@ -1,8 +1,9 @@
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPOSITORY_ROOT } from '../support/docker';
 import { readText } from '../support/hcl';
+import { codeSpans, linkTargets, proseOf, sectionsOf } from '../support/markdown';
 
 const ADR_FOLDER = join(REPOSITORY_ROOT, 'docs/adr');
 const ARCHITECTURE_FOLDER = join(REPOSITORY_ROOT, 'docs/architecture');
@@ -255,5 +256,175 @@ describe('Architecture diagrams', () => {
     // The pieces run in compose and in prod, so neither document calls Mailpit a local piece.
     expect(overview).not.toMatch(/SMTP server of local development/);
     expect(containers).not.toMatch(/Local SMTP server|all started by docker-compose/);
+  });
+});
+
+const HIGH_LEVEL_DESIGN = join(ARCHITECTURE_FOLDER, 'high-level-design.md');
+const HEALTH_PAGE = join(ARCHITECTURE_FOLDER, 'low-level-design/health.md');
+const LOW_LEVEL_INDEX = join(ARCHITECTURE_FOLDER, 'low-level-design/README.md');
+
+/** The text under a heading of a document. */
+function sectionText(file: string, title: string): string {
+  const found = sectionsOf(readText(file)).filter((section) => section.title === title);
+
+  expect(found, `one section titled "${title}" in ${file}`).toHaveLength(1);
+  return found[0].text;
+}
+
+/**
+ * The files and folders a text names in code spans: a span with a slash that is no route, or with a
+ * file extension. Compiled output under `dist` exists only after a build, so it is left out.
+ */
+function pathsNamed(prose: string): string[] {
+  return codeSpans(prose).filter(
+    (span) =>
+      /^[\w.@-]+(\/[\w.@-]+)*(\.\w+)?$/.test(span) &&
+      (span.includes('/') || /\.(ts|js|json|ya?ml|md|hcl|tf)$/.test(span)) &&
+      !span.startsWith('dist/'),
+  );
+}
+
+/** Every path a text names in code spans, and every relative link, exists. */
+function expectPathsToExist(prose: string, folder: string, what: string): void {
+  for (const path of pathsNamed(prose)) {
+    expect(existsSync(join(REPOSITORY_ROOT, path)), `${what} names ${path}`).toBe(true);
+  }
+  for (const target of linkTargets(prose)) {
+    if (/^(https?:|#)/.test(target)) {
+      continue;
+    }
+    const file = resolve(folder, target.split('#')[0]);
+
+    expect(existsSync(file), `${what} links ${target}`).toBe(true);
+  }
+}
+
+describe('Architecture documents', () => {
+  it('names the units Phase 2 added in the high level design', () => {
+    const units = sectionText(HIGH_LEVEL_DESIGN, 'The code units');
+    const rows = units.split('\n').filter((line) => line.startsWith('|'));
+    const rowOf = (module: string): string => {
+      const row = rows.filter((line) => line.split('|')[2]?.trim() === `\`${module}\``);
+
+      expect(row, `one row for ${module}`).toHaveLength(1);
+      return row[0];
+    };
+
+    expect(units).toContain(
+      'Six modules under `src/modules`, plus a shared kernel at `src/shared`',
+    );
+
+    // The health module and what it holds.
+    expect(units).toContain('`src/health`');
+    for (const name of [
+      'HealthController',
+      'CheckReadinessUseCase',
+      'readiness checks port',
+      'DependencyReadinessChecks',
+    ]) {
+      expect(rowOf('health'), `the health row names ${name}`).toContain(name);
+    }
+
+    // The configuration, and the three that share its database and Redis settings.
+    expect(units).toContain('`src/config`');
+    for (const name of [
+      'environment validation',
+      'src/config/database.config.ts',
+      'src/config/redis.config.ts',
+      'DatabaseModule',
+      'RedisModule',
+      'data source of the migrations',
+    ]) {
+      expect(rowOf('config'), `the config row names ${name}`).toContain(name);
+    }
+
+    // The two entry points, which run compiled.
+    const migrate = units.split('\n\n').find((paragraph) => paragraph.includes('`src/migrate.ts`'));
+    expect(migrate, 'a paragraph on the entry points').toBeDefined();
+    expect(migrate).toContain('`src/seed-admin.ts`');
+    expect(migrate).toContain('`dist/migrate.js`');
+    expect(migrate).toContain('`dist/seed-admin.js`');
+    expect(migrate).toMatch(/migration Job[\s\S]*by hand against `prod`/);
+
+    expectPathsToExist(units, dirname(HIGH_LEVEL_DESIGN), 'the code units');
+  });
+
+  it('places the probes outside the API prefix in the high level design', () => {
+    const surface = sectionText(HIGH_LEVEL_DESIGN, 'The HTTP surface');
+    const prose = proseOf(surface).replace(/\s+/g, ' ');
+
+    // The page names the routes that `configureApp` leaves out of the prefix, and no others.
+    const setup = readText(join(REPOSITORY_ROOT, 'src/app.setup.ts'));
+    const excluded = [...(/exclude:\s*\[([^\]]*)\]/.exec(setup)?.[1] ?? '').matchAll(/'([^']+)'/g)]
+      .map((match) => `GET /${match[1]}`)
+      .sort();
+    const named = [
+      ...new Set([...prose.matchAll(/`(GET \/health\/\w+)`/g)].map((match) => match[1])),
+    ].sort();
+    expect(excluded, 'configureApp excludes the two probes').toEqual([
+      'GET /health/live',
+      'GET /health/ready',
+    ]);
+    expect(named, 'the surface names the probes configureApp excludes').toEqual(excluded);
+
+    // Every route but those is under `/api/v1`, and the sentence that says so makes the exception.
+    const rule = prose.split(/(?<=\.)\s/).find((sentence) => sentence.includes('`/api/v1/...`'));
+    expect(rule, 'a sentence on the /api/v1 routes').toBeDefined();
+    expect(rule).toMatch(/every route except `GET \/health\/live` and `GET \/health\/ready`/);
+
+    expect(prose).toMatch(/outside the `api` prefix and the version/);
+    expect(prose).toMatch(/need no token/);
+    expect(prose).toMatch(/not rate limited/);
+  });
+
+  it('gives the health module a low level page the index links', () => {
+    const index = readText(LOW_LEVEL_INDEX);
+    const page = readText(HEALTH_PAGE);
+
+    // The opening sentence and the table of the index name the page.
+    expect(index.split('\n\n')[1], 'the opening sentence names the health module').toContain(
+      '`src/health`',
+    );
+    expect(
+      index.split('\n').some((line) => line.startsWith('| [health](health.md)')),
+      'the table links the page',
+    ).toBe(true);
+
+    // The routes the controller declares, read from its source.
+    const source = readText(join(REPOSITORY_ROOT, 'src/health/presentation/health.controller.ts'));
+    const base = /@Controller\(\{\s*path:\s*'([^']+)'/.exec(source)?.[1];
+    const declared = [...source.matchAll(/@Get\('([^']+)'\)/g)]
+      .map((match) => `GET /${base}/${match[1]}`)
+      .sort();
+    expect(declared, 'the controller declares the two probes').toHaveLength(2);
+
+    // The page names those routes and no other, in code spans and in running text.
+    const prose = proseOf(page);
+    const routes = new Set<string>();
+    for (const span of codeSpans(prose)) {
+      const route = /^(GET|POST|PUT|PATCH|DELETE) (\/\S+)$/.exec(span);
+      if (route !== null) {
+        routes.add(`${route[1]} ${route[2]}`);
+      }
+    }
+    expect([...routes].sort(), 'the routes the page names').toEqual(declared);
+    const bare = new Set(
+      [...prose.matchAll(/(?<![\w.])\/health\/\w+/g)].map((match) => `GET ${match[0]}`),
+    );
+    expect(
+      [...bare].every((route) => declared.includes(route)),
+      'every /health route in the text is declared',
+    ).toBe(true);
+
+    // Their statuses and bodies, and the limit of a check.
+    expect(page).toContain('| `GET /health/live` ');
+    expect(page).toMatch(/\| `GET \/health\/ready`\s*\| 200 /);
+    expect(page).toMatch(/\| `GET \/health\/ready`\s*\| 503 /);
+    expect(page).toMatch(/\| `GET \/health\/live`\s*\| 200 /);
+    expect(page).toContain('"status": "error"');
+    expect(page).toContain('"database": "down"');
+    expect(page).toMatch(/Each check has 2 seconds/);
+
+    expectPathsToExist(page, dirname(HEALTH_PAGE), 'the health page');
   });
 });
