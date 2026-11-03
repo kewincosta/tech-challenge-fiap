@@ -156,6 +156,13 @@ describe('Terraform files', () => {
         'module.network.private_subnet_ids',
       );
     }
+
+    // The output main.tf reads must hold the VPC's private subnets, never its public ones.
+    const outputs = blocks(codeOf('modules/network/outputs.tf'), 'output');
+    const value = (name: string) =>
+      blockArguments(outputs.find((block) => block.labels[0] === name)?.body ?? '').value;
+    expect(value('private_subnet_ids'), 'private_subnet_ids').toBe('module.vpc.private_subnets');
+    expect(value('public_subnet_ids'), 'public_subnet_ids').toBe('module.vpc.public_subnets');
   });
 
   it('gives the database and the cache a security group of their own', () => {
