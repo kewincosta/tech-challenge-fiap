@@ -12,12 +12,14 @@
 #   kind         scripts/tool.sh kind get clusters
 #   kubeconform  helm template ... | scripts/tool.sh kubeconform -strict -kubernetes-version 1.37.0 -
 #   k6           scripts/tool.sh k6 inspect k6/board.js
+#   actionlint   scripts/tool.sh actionlint
 #
-# terraform, kubeconform and k6 run in a container as the caller's user and group. The repository is
-# mounted at its own path and the caller's directory is the working directory, so a relative path or
-# -chdir works as it does on the host. HOME and the tools' caches live under .tools/, which git
-# ignores. The AWS settings of the caller (the AWS_* variables and ~/.aws) and the TF_VAR_*
-# variables reach the container. k6 shares the host's network, so localhost is the caller's.
+# terraform, kubeconform, k6 and actionlint run in a container as the caller's user and group. The
+# repository is mounted at its own path and the caller's directory is the working directory, so a
+# relative path or -chdir works as it does on the host. HOME and the tools' caches live under
+# .tools/, which git ignores. The AWS settings of the caller (the AWS_* variables and ~/.aws) and
+# the TF_VAR_* variables reach the container. k6 shares the host's network, so localhost is the
+# caller's.
 #
 # kind, kubectl and helm ship no image that reaches a kind cluster, so they run on the host: each is
 # a binary downloaded into .tools/bin the first time and checked against the SHA-256 its project
@@ -30,6 +32,7 @@ set -euo pipefail
 TERRAFORM_IMAGE='hashicorp/terraform:1.17.1'
 KUBECONFORM_IMAGE='ghcr.io/yannh/kubeconform:v0.8.0'
 K6_IMAGE='grafana/k6:2.3.0'
+ACTIONLINT_IMAGE='rhysd/actionlint:1.7.12'
 KIND_VERSION='v0.33.0'
 KUBECTL_VERSION='v1.37.2'
 HELM_VERSION='v4.3.1'
@@ -168,6 +171,11 @@ case "$TOOL" in
       --env K6_NO_USAGE_REPORT=true
       "$K6_IMAGE"
     )
+    ;;
+  actionlint)
+    # With no arguments it lints every workflow under .github/workflows, and shellcheck reads the
+    # scripts of their run steps.
+    docker_args+=("$ACTIONLINT_IMAGE")
     ;;
   kind)
     kind="$(binary kind "$KIND_VERSION" \
