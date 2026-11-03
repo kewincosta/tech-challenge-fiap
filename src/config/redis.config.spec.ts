@@ -19,7 +19,9 @@ describe('redis config', () => {
       const options = redisClientOptions(redisConfig());
 
       if (tls) {
-        expect(options.tls, label).toBeDefined();
+        // An empty object is TLS with the defaults of Node, which verify the server. An option that
+        // sets `rejectUnauthorized: false` or another check of its own is not.
+        expect(options.tls, label).toEqual({});
       } else {
         expect(options, label).not.toHaveProperty('tls');
       }
