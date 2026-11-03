@@ -1,10 +1,10 @@
 # Phase 2 infrastructure verification
 
 **Verdict**: FAIL
-**Proofs**: `proofs.md` at c37b779
+**Proofs**: `proofs.md` at c37b779 for C1 to C72, and at 7351442 for C73 to C78
 **Verifier**: independent sub-agent (author != verifier)
 
-Judged at 761b163. Every commit after c37b779 changes only `.specs`, so the code and the tests are the ones `proofs.md` ran. C33 and C65 are judged against the wording c621333 gave them with the user's approval. No capture binds this feature, so no check is judged against a picture.
+Judged at 761b163. Every commit after c37b779 changes only `.specs`, so the code and the tests are the ones `proofs.md` ran. C33 and C65 are judged against the wording c621333 gave them with the user's approval. No capture binds this feature, so no check is judged against a picture. C73 to C78, appended after the first round, are judged at 055f816, whose code is that of b21c99d, the fix pass.
 
 ## Checks
 
@@ -82,10 +82,16 @@ Judged at 761b163. Every commit after c37b779 changes only `.specs`, so the code
 | C70 | `readme.spec.ts` `names only files and scripts that exist` | yes |
 | C71 | `documents.spec.ts` `records AD-022 to AD-025 as ADRs 0038 to 0041 that name each other` | yes |
 | C72 | `documents.spec.ts` `draws the prod deployment` | yes |
+| C73 | `workflows.spec.ts` `takes the deploy role's ARN from a secret of the prod environment` | yes: each job that calls AWS runs in `prod` and resolves `role-to-assume` to the secret whatever the variables hold, and no variable named for a role or an ARN is read but `CLUSTER_ADMIN_ARNS`; M6 and M7 fail it; the masking the claim names is GitHub's own and outside any test |
+| C74 | `cluster.tftest.hcl` `cluster_access_with_a_repeated_arn` | yes: two access entries, the deploy role's and the listed user's, and one administrator association for that user; without `distinct()` the plan stops (M8) |
+| C75 | `terraform.spec.ts` `places the cluster, the database and the cache in the private subnets` | no: it reads the expression `main.tf` passes, `module.network.private_subnet_ids`, and nothing checks what that output holds; with the network module's two ID outputs swapped (M9) it passes while the three get the public subnets |
+| C76 | `database.tftest.hcl` `another_environment_database` | yes: the instance, its subnet group and its parameter group all carry `workshop-staging` |
+| C77 | `database.config.spec.ts` `refuses a DATABASE_SSL other than true or false` | yes: four values, each refused by the migrations' data source and by `DatabaseModule` with an error that names `DATABASE_SSL`; a switch that takes any value (M5) fails it |
+| C78 | `tls.spec.ts` `reports redis down when the authority that signed the Redis is not trusted` | yes: the image's whole ready body, 503 with `redis` down and `database` up; the Redis certificate names the host the image dials, so trust is the one thing that differs from C15's first case, and M3 fails it |
 
 ## Own examples and probes
 
-Run in a scratch worktree at c621333, whose code is that of c37b779, and removed afterwards. Each mutant was reverted after its run.
+Run in a scratch worktree at c621333, whose code is that of c37b779, and removed afterwards. The rows from "Round 2" on ran in a second scratch worktree at 055f816, whose code is that of b21c99d, also removed. Each mutant was reverted after its run.
 
 | Probe | Result |
 | --- | --- |
@@ -99,6 +105,13 @@ Run in a scratch worktree at c621333, whose code is that of c37b779, and removed
 | `DATABASE_SSL=TRUE` | `validateEnv` refuses it, while the data source of `dist/migrate.js` and `dist/seed-admin.js` gets `ssl: false`: finding |
 | The CD's first read of the Service, against a throwaway kind cluster with no `workshop` namespace, then against a LoadBalancer Service with no address yet | exit 0 and an empty hostname both times, which the deploy script expects |
 | Whether EKS offers Kubernetes 1.37 and RDS offers PostgreSQL 16.15 in `us-east-1` | not checked: the plans run against a mocked provider and nothing may reach AWS; `infra/README.md` says each was the newest AWS listed when written |
+| Round 2: M1, M2 and M3 again | C11, C9 and C10 now fail on them |
+| M5: `databaseConfig` takes any `DATABASE_SSL` | C77 fails |
+| M6: one job reads the ARN from `vars.DEPLOY_ROLE_ARN` | C73 and C65 fail |
+| M7: one job reads `secrets.DEPLOY_ROLE_ARN` with `vars.AWS_DEPLOY_ROLE_ARN` as a fallback | C73 and C65 fail |
+| M8: `distinct()` removed from the cluster module | C74 fails with `Duplicate object key` |
+| M9: `private_subnet_ids` and `public_subnet_ids` swapped in `infra/modules/network/outputs.tf` | all 13 Terraform runs and every test of `terraform.spec.ts` pass, C75 among them: finding |
+| A run that overrides the VPC module's private and public subnets with distinct ids during the plan and compares the network module's outputs | fails on M9 and passes at b21c99d |
 
 ## Findings
 
@@ -111,3 +124,4 @@ Run in a scratch worktree at c621333, whose code is that of c37b779, and removed
 | Door 6 now keeps the deploy role's ARN in a secret of the `prod` environment, and the code still reads a variable | c621333 amended door 6; `cd.yml:95`, `:124` and `:157` read `vars.AWS_DEPLOY_ROLE_ARN`, `workflows.spec.ts:667` asserts it, and `README.md:503`, `infra/README.md:108` and ADR 0041 (line 54) tell the user to set a variable | read the ARN from a `prod` secret in the three jobs, and change C65's test and the three documents; the pattern at `workflows.spec.ts:647` refuses any `secrets.AWS` text, so name the secret without that prefix, such as `DEPLOY_ROLE_ARN`, or narrow the pattern | `43dc850`. The three jobs read the secret `DEPLOY_ROLE_ARN`, C65 asserts it, C73 refuses a role ARN from a variable, and the README, `infra/README.md`, ADR 0041 and the bootstrap output's description name the secret |
 | Parts of C44, C45 and C49 rest on tests no proof names | `prod_database` and `prod_cache` run each module alone with made-up subnets, and `terraform.spec.ts:151` is what holds that `main.tf` hands both `module.network.private_subnet_ids`; `another_environment` never reads the database's name, which `database.tftest.hcl:129` `another_environment_database` checks; both pass today, and removing either would leave every check green | add the infra proof line of `Terraform files > places the cluster, the database and the cache in the private subnets` to C44 and C45, and the terraform proof line of `run "another_environment_database"... pass` to C49 | `2de4118` appended C75 and C76, whose proofs are `Terraform files > places the cluster, the database and the cache in the private subnets` and `run "another_environment_database"` |
 | The compiled migrations and admin seed take a TLS switch the application refuses, and then connect without TLS | with `DATABASE_SSL=TRUE`, `validateEnv` throws, while the data source that `dist/migrate.js` and `dist/seed-admin.js` use gets `ssl: false`; neither entry point runs `validateEnv`, though the comment at `database.config.ts:11` says that validation refuses every other value; RDS answers such a connection with a server error, and a server that accepts plain connections takes it unencrypted | refuse any value but `true` and `false` inside `databaseConfig`, so every entry point refuses it, with a unit test that loads the data source with `TRUE` | `b21c99d`. `databaseConfig` refuses any value but "true" and "false", naming `DATABASE_SSL`, and C77 loads the migrations' data source and `DatabaseModule` with "TRUE", "yes", "1" and an empty value |
+| The network module's `private_subnet_ids` output is never checked against the private subnets | M9 swaps it with `public_subnet_ids` in `infra/modules/network/outputs.tf`; all 13 Terraform runs and `terraform.spec.ts` stay green, C75 among them, while `main.tf` would then hand the nodes, the database and the cache the public subnets | in `network.tftest.hcl`, override `module.network.module.vpc.aws_subnet.private` and `module.network.module.vpc.aws_subnet.public` with distinct ids during the plan, assert that each output holds its own subnets, and name that run as a second proof of C75; a run written this way fails on M9 and passes at b21c99d | |
