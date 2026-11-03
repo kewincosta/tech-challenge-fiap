@@ -12,7 +12,7 @@ request. A developer who pushed a development branch spent a run, and the pull r
 opened spent a second run on the same commit. The user said on 2026-11-03: "O CI deveria ser ao
 abrir PR para main e não ao fazer push na branch de desenvolvimento."
 
-The CD does not start from a pull request. It starts when a CI run completes, and it deploys only a
+The CD deploys nothing for a pull request. It starts when a CI run completes, and it deploys only a
 run that was a push to `main` of this repository, passed, and tested the commit that is still the
 tip of `main`. The push that a merge makes to `main` is the run that deploys.
 
@@ -41,8 +41,8 @@ run no CI and deploy nothing.
 A commit pushed to a branch with no open pull request runs no CI. The `pre-push` hook still runs lint,
 build and the unit tests on the developer's machine.
 
-A pull request into `main` runs the CI once for each push to its branch. Before, each push ran it
-twice, once as a push and once as a pull request.
+A pull request into `main` runs the CI once for each push to its branch. Under ADR 0041 each push
+ran it twice, as a push and as a pull request.
 
 A merge runs the CI again, on the commit that reaches `main`, and the CD deploys that run. The commit
 that deploys is always one the CI tested on `main`.
