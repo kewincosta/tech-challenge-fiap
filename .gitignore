@@ -22,3 +22,15 @@ docs/roteiro-video.md
 
 # Python bytecode left by running the skill scripts
 __pycache__/
+
+# Terraform: the providers and modules init downloads, and the state a local apply writes. The lock
+# files and the environments' variable files are committed.
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Pinned tools, and the home and the caches scripts/tool.sh gives its containers
+.tools/
