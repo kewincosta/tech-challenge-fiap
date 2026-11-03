@@ -70,9 +70,10 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# The only way into the role is a job that runs in this repository's GitHub environment. The
-# subject names the repository and the environment exactly, so no other branch, pull request or
-# repository can assume it.
+# The only way into the role is a job that runs in this repository's GitHub environment. GitHub gives
+# the repository an immutable subject, whose prefix carries the owner and repository IDs, and the trust
+# matches that subject and the environment exactly. No other branch, pull request or repository can
+# assume the role, and neither can a repository recreated under the same name.
 resource "aws_iam_role" "deploy" {
   name        = var.deploy_role_name
   description = "Assumed by the CD jobs of the ${var.github_environment} environment of ${var.github_repository}."
@@ -86,7 +87,7 @@ resource "aws_iam_role" "deploy" {
       Condition = {
         StringEquals = {
           "${local.github_oidc_host}:aud" = "sts.amazonaws.com"
-          "${local.github_oidc_host}:sub" = "repo:${var.github_repository}:environment:${var.github_environment}"
+          "${local.github_oidc_host}:sub" = "${var.github_subject_prefix}:environment:${var.github_environment}"
         }
       }
     }]

@@ -16,6 +16,22 @@ variable "github_repository" {
   default     = "kewincosta/tech-challenge-fiap"
 }
 
+variable "github_subject_prefix" {
+  description = "The prefix of the subject GitHub puts in the token of a job: the sub_claim_prefix of `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`. It carries the owner and repository IDs, as repo:<owner>@<owner id>/<name>@<repository id>."
+  type        = string
+  default     = "repo:kewincosta@72565745/tech-challenge-fiap@1357566072"
+
+  validation {
+    condition     = can(regex("^repo:[^/@:]+@[0-9]+/[^/@:]+@[0-9]+$", var.github_subject_prefix))
+    error_message = "The prefix must carry the owner and repository IDs, as repo:<owner>@<digits>/<name>@<digits>. Read it from the sub_claim_prefix of `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`."
+  }
+
+  validation {
+    condition     = try(join("/", regex("^repo:([^/@:]+)@[0-9]+/([^/@:]+)@[0-9]+$", var.github_subject_prefix)) == var.github_repository, false)
+    error_message = "The owner and the repository name in github_subject_prefix must be those of github_repository."
+  }
+}
+
 variable "github_environment" {
   description = "The GitHub environment whose jobs may assume the deploy role."
   type        = string
