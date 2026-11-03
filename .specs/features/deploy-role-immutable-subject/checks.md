@@ -80,6 +80,6 @@ Proof: run infra | ✓ README > lists the Phase 2 records 0038 to 0043
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C5) at `87782a9`, returned at `245c310`; Verifier (fresh sub-agent, default model) at `976a74d`, over `8e5da7a..976a74d`, with `proofs.md` 7 pass at `976a74d`, returned FAIL with 5 findings at `2b6873b`; fix of the 5 findings (Sonnet sub-agent, C6 to C10) at `2b6873b`, returned at `b6476ff`; the user applied the bootstrap at 18:38 on 2026-11-03, and its local state now holds the immutable subject
+- **Dispatched:** build (Sonnet sub-agent, C1 to C5) at `87782a9`, returned at `245c310`; Verifier (fresh sub-agent, default model) at `976a74d`, over `8e5da7a..976a74d`, with `proofs.md` 7 pass at `976a74d`, returned FAIL with 5 findings at `2b6873b`; fix of the 5 findings (Sonnet sub-agent, C6 to C10) at `2b6873b`, returned at `b6476ff`; the user applied the bootstrap at 18:38 on 2026-11-03, and its local state now holds the immutable subject; Verifier resumed at `3acc3d5` to judge the appended C6 to C10
 - **Boundary:** C1-C5 closed at `245c310`; C6-C10 closed at `b6476ff`
 - **Abandoned:** none
