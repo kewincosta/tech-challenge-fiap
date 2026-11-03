@@ -115,8 +115,13 @@ one, `1787702400010-add-consumption-confirmation.ts`, adds the nullable
 
 ### `typeorm-cli.datasource.ts`, `redis.module.ts`, `crypto-id-generator.ts`, `system-clock.ts`
 
-The CLI datasource is what `npm run migration:run` and `npm run seed:admin` load. The others are
-the single implementations of the ports above.
+The CLI datasource is what `npm run migration:run` and `npm run seed:admin` load, and what the
+compiled `dist/migrate.js` and `dist/seed-admin.js` load in the production image. It finds its
+entities and migrations from its own folder, so ts-node and the compiled files both work, and it
+opens the same connection as `DatabaseModule`: both call `postgresConnection` in
+`src/config/database.config.ts`, which adds TLS when `DATABASE_SSL` is `true`. The Redis client
+takes its options, `REDIS_TLS` included, from `redisClientOptions` in `src/config/redis.config.ts`.
+The others are the single implementations of the ports above.
 
 ## Presentation
 

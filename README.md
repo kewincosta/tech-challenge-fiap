@@ -376,9 +376,12 @@ brings the application down with the field's message, rather than failing later.
 | `DATABASE_USER`                | Yes      | -                | PostgreSQL user                                                            |
 | `DATABASE_PASSWORD`            | Yes      | -                | PostgreSQL password                                                        |
 | `DATABASE_NAME`                | Yes      | -                | Database name                                                              |
+| `DATABASE_SSL`                 | No       | unset            | `true` connects over TLS and verifies the server; `false` or unset, no TLS |
+| `DATABASE_SSL_CA`              | No       | -                | PEM file of the authorities to verify against; unset, Node's own decide    |
 | `REDIS_HOST`                   | Yes      | -                | Redis host                                                                 |
 | `REDIS_PORT`                   | No       | `6379`           | Redis port                                                                 |
 | `REDIS_DB`                     | No       | `0`              | Redis database index, 0 to 15                                              |
+| `REDIS_TLS`                    | No       | unset            | `true` connects over TLS and verifies the server; `false` or unset, no TLS |
 | `JWT_SECRET`                   | Yes      | -                | Token signing secret, at least 32 characters                               |
 | `ACCESS_TOKEN_TTL_SECONDS`     | No       | `900`            | Access token lifetime                                                      |
 | `REFRESH_TOKEN_TTL_SECONDS`    | No       | `604800`         | Refresh token lifetime                                                     |
@@ -415,6 +418,10 @@ npm run migration:run       # applies the pending migrations
 npm run migration:revert    # undoes the last one
 npm run migration:generate  # generates a new one from the entity differences
 ```
+
+The production image carries no ts-node, so it applies the migrations with `node dist/migrate.js`
+and creates the `SUPER_ADMIN` with `node dist/seed-admin.js`. Both read the same `DATABASE_*`
+variables as the application, and the second reads the `ADMIN_*` ones.
 
 ### Seeds
 
@@ -469,18 +476,23 @@ docker compose down           # stops everything, keeping the PostgreSQL volume
 ```
 
 The application waits for the PostgreSQL and Redis healthchecks before starting. It does not wait for
-Mailpit to answer, and an e-mail it cannot send is logged.
+Mailpit to answer, and an e-mail it cannot send is logged. Its own healthcheck calls
+`GET /health/ready`, so `docker compose ps` shows it healthy once the database and Redis answer.
 
 ## API
 
-Every route sits under the `/api/v1` prefix. There are 51 paths and 75 operations, across 10
-controllers.
+Every route but the two health probes sits under the `/api/v1` prefix. There are 53 paths and 77
+operations, across 11 controllers.
 
 **Swagger UI:** `http://localhost:13000/api/docs`
 **OpenAPI specification:** `http://localhost:13000/api/docs-json`
 
-Authentication is by bearer token. Only three routes need no token: create an account
-(`POST /users`), sign in (`POST /auth/sessions`) and renew (`POST /auth/tokens`).
+Authentication is by bearer token. Only five routes need no token: create an account
+(`POST /users`), sign in (`POST /auth/sessions`), renew (`POST /auth/tokens`), and the two health
+probes the cluster calls, `GET /health/live` and `GET /health/ready`. The probes sit outside the
+`/api` prefix and the rate limit. `live` answers 200 while the process runs. `ready` answers 200
+when the database and Redis each answer within 2 seconds, and 503 otherwise, with the failing check
+`"down"`.
 
 Signing in and making an authenticated call:
 
@@ -975,14 +987,14 @@ Where each mandatory capability of the Tech Challenge is met.
 | Part and supply CRUD with stock control         | `/inventory-items`, plus replenishment, adjustment, movements and shortages                                               |
 | Work order listing and detail                   | `GET /work-orders?page=&pageSize=&status=` and `GET /work-orders/:number`                                                 |
 | Average execution time monitoring               | `GET /work-orders/metrics/average-execution-time`                                                                         |
-| JWT authentication on the administrative APIs   | Global `JwtAuthGuard`; only three routes are public                                                                       |
+| JWT authentication on the administrative APIs   | Global `JwtAuthGuard`; only five routes are public                                                                        |
 | Sensitive data validation (CPF/CNPJ, plate)     | `PersonDocument` and `LicensePlate`, each with its own unit tests                                                         |
 | Unit and integration tests                      | Three suites, see [Testing](#testing)                                                                                     |
 | Layered monolithic backend                      | See [Architecture](#architecture)                                                                                         |
 | Database justification                          | [Why PostgreSQL](#why-postgresql)                                                                                         |
 | Documented RESTful API                          | Swagger at `/api/docs`                                                                                                    |
 | Dockerfile                                      | [`Dockerfile`](Dockerfile), multi-stage                                                                                   |
-| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), four services, three of them with healthchecks                                |
+| docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), four services, each with a healthcheck                                        |
 | Minimum 80% coverage on the critical domains    | Per-path thresholds in [`vitest.config.ts`](vitest.config.ts), see [Coverage](#coverage)                                  |
 | Simple local setup                              | [Getting started](#getting-started)                                                                                       |
 
@@ -1057,10 +1069,10 @@ are in [Security assessment documentation](security/README.md).
 
 What exists in the repository is enough to run on any host with Docker:
 
-- A multi-stage [`Dockerfile`](Dockerfile), with `npm ci` and `npm prune --omit=dev`, producing a
-  production image that runs as the `node` user and exposes port 3000
+- A multi-stage [`Dockerfile`](Dockerfile), with `npm ci` and `npm prune --omit=dev --omit=optional`,
+  producing a production image that runs as the `node` user and exposes port 3000
 - A [`docker-compose.yml`](docker-compose.yml) orchestrating the application, PostgreSQL and
-  Redis, with healthchecks on the last two and a named volume for the data
+  Redis, with a healthcheck on each and a named volume for the data
 
 There is no cloud, Kubernetes, Terraform or CI configuration in this repository, and the compose
 file was written for a local environment. Taking this to production would need at least secrets
