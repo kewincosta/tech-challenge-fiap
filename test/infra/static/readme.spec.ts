@@ -19,7 +19,7 @@ const README = readText(join(REPOSITORY_ROOT, 'README.md'));
 const SECTIONS = sectionsOf(README);
 
 const SHELL = ['bash', 'sh', 'shell'];
-const FILE_EXTENSION = /\.(?:md|ts|js|json|ya?ml|sh|tf|tfvars|hcl|mmd|pem)$/;
+const FILE_EXTENSION = /\.(?:md|ts|js|json|ya?ml|sh|tf|tfvars|hcl|mmd|pem|kubeconfig|tfstate)$/;
 
 /** Every file the repository holds, tracked or not yet committed and not ignored, and its folders. */
 function repositoryPaths(): Set<string> {
