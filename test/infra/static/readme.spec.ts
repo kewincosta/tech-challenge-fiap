@@ -232,6 +232,28 @@ describe('README', () => {
     ).toBe(true);
   });
 
+  it('says the CI runs on pull requests into main and pushes to main', () => {
+    const flat = (text: string): string => text.replace(/\s+/g, ' ');
+    const ciSection = flat(proseOf(section(/^The CI and the CD$/).text));
+    const goals = flat(proseOf(section(/^The solution and its goals$/).text));
+    const deployFlow = section(/^The architecture$/)
+      .fences.filter((fence) => fence.language === 'mermaid')
+      .find((fence) => /GitHub Actions/.test(fence.content));
+
+    // The section on the CI says it, the table of goals says it, and the drawing of the deploy
+    // flow starts the CI from a pull request into main and from the push a merge makes to main.
+    expect(ciSection).toContain('runs on pull requests into `main` and on pushes to `main`');
+    expect(goals).toContain(
+      'the CI lints, tests and builds on pull requests into `main` and pushes to `main`',
+    );
+    expect(deployFlow, 'the architecture draws the deploy flow').toBeDefined();
+    expect(deployFlow?.content).toMatch(/-->\|"[^"]*pull request into main[^"]*"\|\s*ci\b/);
+    expect(deployFlow?.content).toMatch(/-->\|"[^"]*pushes to main[^"]*"\|\s*ci\b/);
+
+    // Nothing says it runs on every push.
+    expect(flat(README)).not.toMatch(/\b(?:every|each) push\b/i);
+  });
+
   it('names only files and scripts that exist', () => {
     const paths = repositoryPaths();
     const basenames = new Set([...paths].map((path) => path.split('/').pop()));

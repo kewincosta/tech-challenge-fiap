@@ -318,7 +318,7 @@ builds, tests and deploys it. The repository answers each goal:
 | The application in a container      | A multi-stage [`Dockerfile`](Dockerfile) whose image runs as a non-root user and applies the migrations and the admin seed from compiled code, and [`docker-compose.yml`](docker-compose.yml) for development, with a health check on every service                     |
 | Kubernetes with autoscaling         | A Helm chart in [`k8s/workshop`](k8s/workshop): a Deployment with liveness and readiness probes, a Service, a ConfigMap, a Secret, a HorizontalPodAutoscaler from 2 to 6 replicas at 70% CPU and 80% memory, a migration Job that runs before each upgrade, and Mailpit |
 | The cluster and the database in AWS | Terraform in [`infra/`](infra): a VPC, an EKS cluster, RDS PostgreSQL, ElastiCache Redis and an ECR repository, applied from one main file with one pair of files for each environment                                                                                  |
-| Build, test and deploy              | Two GitHub Actions workflows in [`.github/workflows`](.github/workflows): the CI lints, tests and builds on every push, and the CD applies Terraform, pushes the image and upgrades the chart on every merge to `main` that passes the CI                               |
+| Build, test and deploy              | Two GitHub Actions workflows in [`.github/workflows`](.github/workflows): the CI lints, tests and builds on pull requests into `main` and pushes to `main`, and the CD applies Terraform, pushes the image and upgrades the chart when a merge to `main` passes the CI  |
 | A local cluster                     | `scripts/local-cluster.sh` creates a kind cluster that runs the same chart against the compose containers                                                                                                                                                               |
 
 Two environments exist. Development runs on the developer's machine, with PostgreSQL, Redis and
@@ -369,7 +369,8 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    dev["Developer pushes or<br/>opens a pull request"] --> ci
+    dev["Developer"] -->|"opens a pull request into main"| ci
+    dev -->|"merges it, which pushes to main"| ci
     subgraph gha["GitHub Actions"]
         ci["CI<br/>lint, unit and build in parallel"]
         subgraph cd["CD, after a push to main passes the CI"]
@@ -475,10 +476,12 @@ another pair of files in `infra/environments`.
 
 ### The CI and the CD
 
-The CI, `.github/workflows/ci.yml`, runs on every push and every pull request. Its jobs `lint`, `unit`
-and `build` run side by side on Node 24 with `npm run lint`, `npm run test:unit` and `npm run build`,
-and the run fails when any of them fails. The integration and e2e suites need PostgreSQL and Redis and
-run on your machine for now.
+The CI, `.github/workflows/ci.yml`, runs on pull requests into `main` and on pushes to `main`. A pull
+request starts it when it opens, gets a new commit or reopens, and a merge starts it again, because a
+merge is a push to `main`. A push to any other branch runs nothing. Its jobs `lint`, `unit` and
+`build` run side by side on Node 24 with `npm run lint`, `npm run test:unit` and `npm run build`, and
+the run fails when any of them fails. The integration and e2e suites need PostgreSQL and Redis and run
+on your machine for now.
 
 The CD, `.github/workflows/cd.yml`, starts when a CI run completes, and it deploys only a push to
 `main` of this repository that passed. It has four jobs, each waiting for the one before:
@@ -492,9 +495,9 @@ The CD, `.github/workflows/cd.yml`, starts when a CI run completes, and it deplo
 
 One deploy runs at a time. A second run waits for the first to end, a third replaces the second while
 it waits, and a deploy that is running is never cancelled, because stopping an apply leaves the state
-locked. A failed CI run, a pull request and a push to another branch deploy nothing. Re-running only
-the failed jobs of an old CD run keeps the answer of its first `tip` job, so after a newer merge
-re-run all the jobs, and `tip` checks again.
+locked. A failed CI run and a pull request deploy nothing, and a push to another branch starts no CI
+run. Re-running only the failed jobs of an old CD run keeps the answer of its first `tip` job, so
+after a newer merge re-run all the jobs, and `tip` checks again.
 
 Before the first merge to `main`, set up AWS and GitHub:
 
