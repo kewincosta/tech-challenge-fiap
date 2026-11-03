@@ -49,8 +49,8 @@ it:
 ## Routes
 
 `HealthController` (`src/health/presentation/health.controller.ts`) is declared with the path
-`health` and no version, and carries `@Public()` and `@SkipThrottle()`. `configureApp` in
-`src/app.setup.ts` excludes both paths from the `api` prefix, so `/api/health/live` and
+`health` and `version: VERSION_NEUTRAL`, and carries `@Public()` and `@SkipThrottle()`. `configureApp` in
+`src/app.setup.ts` excludes both paths from the `api` prefix, and `VERSION_NEUTRAL` keeps them out of the version, so `/api/health/live` and
 `/api/v1/health/ready` answer 404.
 
 | Route               | Status | Body                                                                                                             |
@@ -77,10 +77,10 @@ the container and counts a 200 as healthy.
 
 - `src/health/application/check-readiness.use-case.spec.ts` covers the four combinations of the two checks, the 2-second limit and a check that throws before it returns a promise.
 - `test/e2e/health.e2e.spec.ts` calls both routes through the application with the database and Redis cut off one at a time and together, and checks the 503 after 2 seconds, the rate limit and the 404 outside the prefix.
-- `test/infra/static/chart.spec.ts` checks the probe paths, the port and the readiness timeout in the rendered chart.
+- `test/infra/static/chart.spec.ts` checks the liveness and readiness probe paths and their port in the rendered chart.
 - `test/infra/runtime/compose.spec.ts` checks that the `app` service is healthy only while `/health/ready` answers 200.
 
 ## What this page does not hold
 
-The probe settings of the chart and of the compose file, which `k8s/README.md` describes, and the
-reasoning behind them, which is in the record linked above.
+The probe settings of the chart, in `k8s/workshop/templates/deployment.yaml`, and of the compose
+file, in `docker-compose.yml`, and the reasoning behind them, which is in the record linked above.
