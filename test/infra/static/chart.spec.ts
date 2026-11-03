@@ -53,6 +53,7 @@ interface Container {
   env?: Array<{ name: string; value?: string }>;
   livenessProbe?: Probe;
   readinessProbe?: Probe;
+  lifecycle?: { preStop?: { exec?: { command: string[] } } };
   resources?: { requests?: Record<string, string>; limits?: Record<string, string> };
   securityContext?: SecurityContext;
 }
@@ -79,6 +80,7 @@ interface Manifest {
     scaleTargetRef?: { apiVersion: string; kind: string; name: string };
     minReplicas?: number;
     maxReplicas?: number;
+    behavior?: { scaleUp?: { stabilizationWindowSeconds?: number } };
     metrics?: Array<{
       type: string;
       resource?: { name: string; target: { type: string; averageUtilization: number } };
@@ -500,6 +502,7 @@ describe('Chart', () => {
   });
 
   it('renders manifests kubeconform accepts with the prod and the local values', async () => {
+    mkdirSync(join(REPOSITORY_ROOT, '.tools'), { recursive: true });
     const directory = mkdtempSync(join(REPOSITORY_ROOT, '.tools', 'chart-spec-'));
     cleanup.add(() => Promise.resolve(rmSync(directory, { recursive: true, force: true })));
     const schemas = join(REPOSITORY_ROOT, '.tools', 'kubeconform');
@@ -605,6 +608,32 @@ describe('Chart', () => {
     expect(result.code).not.toBe(0);
     for (const key of required) {
       expect(result.stderr, key).toContain(key);
+    }
+  });
+
+  it('keeps a leaving pod serving while the Service stops sending it traffic', async () => {
+    for (const [chart, image] of [
+      [await prod(), PROD_IMAGE],
+      [await local(), LOCAL_IMAGE],
+    ] as const) {
+      const container = chart.application(image).spec.template.spec.containers[0];
+      const wait = container.lifecycle?.preStop?.exec?.command ?? [];
+
+      // The pod gets SIGTERM only after the hook, and the default grace period is 30 seconds.
+      expect(wait[0]).toBe('sleep');
+      expect(Number(wait[1])).toBeGreaterThanOrEqual(1);
+      expect(Number(wait[1])).toBeLessThan(30);
+    }
+  });
+
+  it('waits a minute of sustained load before it adds pods', async () => {
+    for (const chart of [await prod(), await local()]) {
+      const [autoscaler] = chart.of('HorizontalPodAutoscaler');
+
+      // A pod that starts uses more CPU than one at rest, so a rollout must not look like load.
+      expect(autoscaler.spec?.behavior?.scaleUp?.stabilizationWindowSeconds).toBeGreaterThanOrEqual(
+        60,
+      );
     }
   });
 
