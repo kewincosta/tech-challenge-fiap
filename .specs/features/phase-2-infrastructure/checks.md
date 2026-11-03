@@ -297,6 +297,6 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`, returned at `b8f0146`; build 3 (Sonnet sub-agent, S2 and S3, C19 and C21 to C41) at `b8f0146`, returned at `99b3ddc`; build 4 (Sonnet sub-agent, S5 and S6, C61 to C72) at `99b3ddc`, stopped by the 5-hour limit at `2ce3b01`, resumed after the reset, returned at `9515068`
+- **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`, returned at `b8f0146`; build 3 (Sonnet sub-agent, S2 and S3, C19 and C21 to C41) at `b8f0146`, returned at `99b3ddc`; build 4 (Sonnet sub-agent, S5 and S6, C61 to C72) at `99b3ddc`, stopped by the 5-hour limit at `2ce3b01`, resumed after the reset, returned at `9515068`; Verifier (fresh sub-agent, default model) at `c37b779`, over `8487598..c37b779`, with `proofs.md` 80 pass at `c37b779`
 - **Boundary:** C1-C18 and C20 closed at `ee0014b`; C42-C60 closed at `b8f0146`; C19 and C21-C41 closed at `99b3ddc`; C61-C72 closed at `9515068`
 - **Abandoned:** none
