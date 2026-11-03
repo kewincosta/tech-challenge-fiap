@@ -78,7 +78,7 @@ function expectRecord(
   expect(row, `${id} is ${amendedBy === undefined ? 'active' : 'amended'}`).toMatch(
     amendedBy === undefined
       ? /\| active \|/
-      : new RegExp(`\\| amended by AD-${pad(amendedBy[1], 3)} \\|`),
+      : new RegExp(`\\| active, amended by AD-${pad(amendedBy[1], 3)} \\|`),
   );
 
   // The index lists the record under the title it carries, with its status.
