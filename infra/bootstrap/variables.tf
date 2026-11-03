@@ -27,7 +27,7 @@ variable "github_subject_prefix" {
   }
 
   validation {
-    condition     = try(join("/", regex("^repo:([^/@:]+)@[0-9]+/([^/@:]+)@[0-9]+$", var.github_subject_prefix)) == var.github_repository, false)
+    condition     = try(join("/", regex("^repo:([^/@:]+)@[0-9]+/([^/@:]+)@[0-9]+$", var.github_subject_prefix)) == var.github_repository, true)
     error_message = "The owner and the repository name in github_subject_prefix must be those of github_repository."
   }
 }
