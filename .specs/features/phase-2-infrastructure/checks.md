@@ -229,7 +229,7 @@ Proof: run terraform | run "another_environment_database"... pass
 
 ### S5 - GitHub Actions builds, tests and deploys
 
-**C61** - The CI workflow runs on every push and every pull request, with the jobs `lint`, `unit` and `build`, none needing another or allowed to fail, running `npm run lint`, `npm run test:unit` and `npm run build` (AC 23)
+**C61** - The CI workflow runs on every push and every pull request, with the jobs `lint`, `unit` and `build`, none needing another or allowed to fail, running `npm run lint`, `npm run test:unit` and `npm run build` (AC 23; superseded on 2026-11-03 by C1 of `ci-triggers-and-test-collisions`, AD-026)
 Proof: run infra | ✓ CI workflow > runs lint, unit and build as parallel jobs on every push and pull request
 
 **C62** - The CD workflow starts from a completed run of the CI workflow and deploys only when that run was a push to `main` and succeeded: a failed run, a pull request's run and another branch's run deploy nothing (AC 24)
