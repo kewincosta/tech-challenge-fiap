@@ -150,5 +150,14 @@ export default tseslint.config(
     files: ['**/*.mjs', '**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],
   },
+  {
+    // k6 runs these scripts in its own JavaScript runtime, which supplies __ENV, __VU and __ITER and
+    // resolves imports such as k6/http itself.
+    files: ['k6/**/*.js'],
+    languageOptions: {
+      globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' },
+    },
+    rules: { '@typescript-eslint/explicit-function-return-type': 'off' },
+  },
   prettier,
 );
