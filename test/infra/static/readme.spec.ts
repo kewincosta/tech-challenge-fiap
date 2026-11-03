@@ -532,3 +532,31 @@ describe('README', () => {
     expect(README).not.toMatch(/(?<![\w-])\d{12}(?![\w-])/);
   });
 });
+
+describe('Bootstrap guide', () => {
+  it('names the immutable subject and where its prefix comes from', () => {
+    const guide = readText(join(REPOSITORY_ROOT, 'infra/README.md'));
+    const bootstrap = sectionsOf(guide).filter((candidate) => candidate.title === 'Bootstrap');
+
+    expect(bootstrap, 'the guide has one Bootstrap section').toHaveLength(1);
+    const text = bootstrap[0].text;
+    const flat = text.replace(/\s+/g, ' ');
+    const commands = commandsOf(fencesOf(text));
+
+    // The subject the role trusts carries the IDs, and the name-based form is gone.
+    expect(flat).toContain(
+      'the subject is exactly `repo:kewincosta@72565745/tech-challenge-fiap@1357566072:environment:prod`',
+    );
+    expect(text).not.toContain('repo:kewincosta/tech-challenge-fiap');
+
+    // The prefix is read from GitHub and goes into the variable.
+    expect(commands).toContain('gh api repos/<owner>/<repo>/actions/oidc/customization/sub');
+    expect(flat).toMatch(/`sub_claim_prefix` goes into the variable `github_subject_prefix`/);
+
+    // A bootstrap applied before this subject is applied again, with the user's own profile.
+    expect(commands).toContain(
+      'AWS_PROFILE=<profile> scripts/tool.sh terraform -chdir=infra/bootstrap apply',
+    );
+    expect(flat).toMatch(/updates the trust policy of the role `workshop-deploy` in place/);
+  });
+});
