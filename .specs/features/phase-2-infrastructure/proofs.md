@@ -1,9 +1,9 @@
 # phase-2-infrastructure proofs
 
-**HEAD**: c37b779
+**HEAD**: 7351442
 **Tree**: clean
 **Shell**: /bin/sh
-**Result**: 80 pass, 0 fail
+**Result**: 86 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
@@ -30,6 +30,8 @@
 | C18 | `run image / ✓ Production image > runs as a non-root user with no development tooling` | pass |
 | C19 | `run image / ✓ Production image > carries the RDS certificate bundle the prod values name` | pass |
 | C20 | `run compose / ✓ Compose stack > reports the app healthy only while ready answers 200` | pass |
+| C77 | `run unit / ✓ database config > refuses a DATABASE_SSL other than true or false` | pass |
+| C78 | `run tls / ✓ Redis TLS > reports redis down when the authority that signed the Redis is not trusted` | pass |
 | C21 | `run infra / ✓ Chart with the prod values > runs the Deployment with both probes, its requests and limits, as n` | pass |
 | C22 | `run infra / ✓ Chart with the prod values > exposes port 80 to 3000 through a Network Load Balancer that keeps ` | pass |
 | C23 | `run infra / ✓ Chart with the prod values > splits the settings between the ConfigMap and the Secret` | pass |
@@ -73,6 +75,9 @@
 | C58 | `scripts/tool.sh terraform -chdir=infra init -backend=false -input=false -no-color >/dev/null && scripts/tool.s` | pass |
 | C59 | `scripts/tool.sh terraform -chdir=infra/bootstrap init -backend=false -input=false -no-color >/dev/null && scri` | pass |
 | C60 | `run terraform / run "prod_database_lifecycle"... pass` | pass |
+| C74 | `run terraform / run "cluster_access_with_a_repeated_arn"... pass` | pass |
+| C75 | `run infra / ✓ Terraform files > places the cluster, the database and the cache in the private subnets` | pass |
+| C76 | `run terraform / run "another_environment_database"... pass` | pass |
 | C61 | `run infra / ✓ CI workflow > runs lint, unit and build as parallel jobs on every push and pull request` | pass |
 | C62 | `run infra / ✓ CD workflow > deploys only after a successful CI of a push to main` | pass |
 | C63 | `run infra / ✓ CD workflow > applies Terraform, pushes the image and upgrades the chart in that order` | pass |
@@ -81,6 +86,7 @@
 | C66 | `run infra / ✓ CD workflow > reads the secrets from Secrets Manager at run time` | pass |
 | C67 | `run infra / ✓ CD workflow > points APP_PUBLIC_URL at the load balancer's hostname` | pass |
 | C68 | `scripts/tool.sh actionlint` | pass |
+| C73 | `run infra / ✓ CD workflow > takes the deploy role's ARN from a secret of the prod environment` | pass |
 | C69 | `run infra / ✓ README > documents every part the brief asks for` | pass |
 | C70 | `run infra / ✓ README > names only files and scripts that exist` | pass |
 | C71 | `run infra / ✓ Decision records > records AD-022 to AD-025 as ADRs 0038 to 0041 that name each other` | pass |
@@ -94,40 +100,40 @@
 
 ```
 stderr | test/e2e/health.e2e.spec.ts > Health endpoints > answers ready with 503 and redis down when Redis is unreachable
-[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:43241
+[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:34023
     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16)
 
 stderr | test/e2e/health.e2e.spec.ts > Health endpoints > answers ready with 503 and both down when neither is reachable
-[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:36059
+[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:46603
     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16)
 
 stderr | test/e2e/health.e2e.spec.ts > Health endpoints > answers ready with 503 and both down when neither is reachable
-[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:36059
+[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:46603
     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16)
 
 stderr | test/e2e/health.e2e.spec.ts > Health endpoints > answers live while the database and Redis are unreachable
-[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:46651
+[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:39625
     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1705:16)
 ```
 
 `Run unit` - exit 0
 
 ```
- ✓ src/config/env.validation.spec.ts > TLS settings > refuses DATABASE_SSL set to "", which would leave TLS off without saying so 0ms
- ✓ src/config/env.validation.spec.ts > TLS settings > refuses REDIS_TLS set to "on", which would leave TLS off without saying so 1ms
+ ✓ src/config/env.validation.spec.ts > TLS settings > refuses REDIS_TLS set to "on", which would leave TLS off without saying so 0ms
  ✓ src/config/env.validation.spec.ts > TLS settings > refuses REDIS_TLS set to "0", which would leave TLS off without saying so 0ms
  ✓ src/config/env.validation.spec.ts > TLS settings > refuses REDIS_TLS set to "", which would leave TLS off without saying so 0ms
- ✓ src/config/redis.config.spec.ts > redis config > maps REDIS_TLS to the client's TLS option 2ms
+ ✓ src/config/redis.config.spec.ts > redis config > maps REDIS_TLS to the client's TLS option 3ms
  ✓ src/config/redis.config.spec.ts > redis config > passes the host, the port and the database to the client, and gives a command two retries 1ms
  ✓ src/config/database.config.spec.ts > database config > maps DATABASE_SSL and DATABASE_SSL_CA to the TLS options 2ms
  ✓ src/config/database.config.spec.ts > database config > treats an empty DATABASE_SSL_CA as no bundle 0ms
- ✓ src/config/database.config.spec.ts > database config > gives the application and the migrations the same connection options 51ms
- ✓ src/config/database.config.spec.ts > database config > gives the application and the migrations no TLS when DATABASE_SSL is unset 11ms
+ ✓ src/config/database.config.spec.ts > database config > gives the application and the migrations the same connection options 29ms
+ ✓ src/config/database.config.spec.ts > database config > gives the application and the migrations no TLS when DATABASE_SSL is unset 5ms
+ ✓ src/config/database.config.spec.ts > database config > refuses a DATABASE_SSL other than true or false 13ms
 
  Test Files  4 passed (4)
-      Tests  37 passed (37)
-   Start at  05:01:17
-   Duration  645ms (transform 102ms, setup 68ms, collect 559ms, tests 103ms, environment 1ms, prepare 297ms)
+      Tests  38 passed (38)
+   Start at  06:29:30
+   Duration  573ms (transform 90ms, setup 46ms, collect 501ms, tests 88ms, environment 0ms, prepare 226ms)
 ```
 
 `Run tls` - exit 0
@@ -135,18 +141,18 @@ stderr | test/e2e/health.e2e.spec.ts > Health endpoints > answers live while the
 ```
 RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
 
- ✓ test/infra/runtime/tls.spec.ts > Database TLS > verifies the server against the bundle DATABASE_SSL_CA names 18ms
+ ✓ test/infra/runtime/tls.spec.ts > Database TLS > verifies the server against the bundle DATABASE_SSL_CA names 20ms
  ✓ test/infra/runtime/tls.spec.ts > Database TLS > refuses a server signed by another authority 6ms
- ✓ test/infra/runtime/tls.spec.ts > Database TLS > refuses a private authority when no bundle is named 6ms
+ ✓ test/infra/runtime/tls.spec.ts > Database TLS > refuses a private authority when no bundle is named 5ms
  ✓ test/infra/runtime/tls.spec.ts > Database TLS > connects without TLS when DATABASE_SSL is unset 8ms
- ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reaches a Redis that accepts only TLS when REDIS_TLS is true 1408ms
- ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reports redis down against that Redis when REDIS_TLS is unset 1659ms
- ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reports redis down when the authority that signed the Redis is not trusted 1661ms
+ ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reaches a Redis that accepts only TLS when REDIS_TLS is true 1378ms
+ ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reports redis down against that Redis when REDIS_TLS is unset 1627ms
+ ✓ test/infra/runtime/tls.spec.ts > Redis TLS > reports redis down when the authority that signed the Redis is not trusted 1656ms
 
  Test Files  1 passed (1)
       Tests  7 passed (7)
-   Start at  05:01:18
-   Duration  12.15s (transform 46ms, setup 0ms, collect 198ms, tests 11.83s, environment 0ms, prepare 39ms)
+   Start at  06:29:31
+   Duration  11.88s (transform 48ms, setup 0ms, collect 201ms, tests 11.56s, environment 0ms, prepare 39ms)
 ```
 
 `Run image` - exit 0
@@ -154,15 +160,15 @@ RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
 ```
 RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
 
- ✓ test/infra/runtime/image.spec.ts > Production image > applies every migration to an empty database with node 1376ms
- ✓ test/infra/runtime/image.spec.ts > Production image > runs the admin seed twice and leaves one super administrator 1975ms
- ✓ test/infra/runtime/image.spec.ts > Production image > runs as a non-root user with no development tooling 575ms
- ✓ test/infra/runtime/image.spec.ts > Production image > carries the RDS certificate bundle the prod values name 271ms
+ ✓ test/infra/runtime/image.spec.ts > Production image > applies every migration to an empty database with node 1278ms
+ ✓ test/infra/runtime/image.spec.ts > Production image > runs the admin seed twice and leaves one super administrator 1892ms
+ ✓ test/infra/runtime/image.spec.ts > Production image > runs as a non-root user with no development tooling 560ms
+ ✓ test/infra/runtime/image.spec.ts > Production image > carries the RDS certificate bundle the prod values name 266ms
 
  Test Files  1 passed (1)
       Tests  4 passed (4)
-   Start at  05:01:30
-   Duration  9.46s (transform 44ms, setup 0ms, collect 172ms, tests 9.14s, environment 0ms, prepare 45ms)
+   Start at  06:29:44
+   Duration  9.14s (transform 35ms, setup 0ms, collect 143ms, tests 8.88s, environment 0ms, prepare 37ms)
 ```
 
 `Run compose` - exit 0
@@ -170,12 +176,12 @@ RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
 ```
 RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
 
- ✓ test/infra/runtime/compose.spec.ts > Compose stack > reports the app healthy only while ready answers 200 41431ms
+ ✓ test/infra/runtime/compose.spec.ts > Compose stack > reports the app healthy only while ready answers 200 41786ms
 
  Test Files  1 passed (1)
       Tests  1 passed (1)
-   Start at  05:01:40
-   Duration  44.14s (transform 32ms, setup 0ms, collect 34ms, tests 43.97s, environment 0ms, prepare 47ms)
+   Start at  06:29:53
+   Duration  43.53s (transform 28ms, setup 0ms, collect 30ms, tests 43.37s, environment 0ms, prepare 38ms)
 ```
 
 `Run infra` - exit 0
@@ -193,29 +199,29 @@ RUN  v3.2.7 /home/kewin/side_projects/fiap/tech_challenger_1
  ✓ test/infra/static/expressions.spec.ts > Workflow expressions > finds the status functions of an expression 0ms
 
  Test Files  6 passed (6)
-      Tests  76 passed (76)
-   Start at  05:02:25
-   Duration  7.21s (transform 121ms, setup 0ms, collect 237ms, tests 6.83s, environment 0ms, prepare 37ms)
+      Tests  77 passed (77)
+   Start at  06:30:37
+   Duration  6.74s (transform 123ms, setup 0ms, collect 218ms, tests 6.40s, environment 0ms, prepare 37ms)
 ```
 
 `Run cluster` - exit 0
 
 ```
 
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > stops with a message naming PostgreSQL when the compose PostgreSQL is down 240ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > answers ready on localhost:18080 after up 79387ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > applies every migration in a Job that ends before the pods start 174ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > reads CPU and memory in the HPA and holds 2 replicas at rest 30472ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > stops with a message naming PostgreSQL when the compose PostgreSQL is down 234ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > answers ready on localhost:18080 after up 70324ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > applies every migration in a Job that ends before the pods start 176ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > reads CPU and memory in the HPA and holds 2 replicas at rest 45624ms
  ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > gives the release the secrets of .env 49ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > runs the admin seed from a pod of the image against the release's database 2361ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > runs the k6 scenario with one sign-in and the board listed 12447ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > upgrades the release in place on a second up 14859ms
- ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > deletes the cluster on down and leaves the compose containers and their data 983ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > runs the admin seed from a pod of the image against the release's database 2212ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > runs the k6 scenario with one sign-in and the board listed 12335ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > upgrades the release in place on a second up 14966ms
+ ✓ test/infra/runtime/local-cluster.spec.ts > Local cluster > deletes the cluster on down and leaves the compose containers and their data 984ms
 
  Test Files  1 passed (1)
       Tests  9 passed (9)
-   Start at  05:02:32
-   Duration  144.34s (transform 56ms, setup 0ms, collect 169ms, tests 144.05s, environment 0ms, prepare 38ms)
+   Start at  06:30:44
+   Duration  150.18s (transform 48ms, setup 0ms, collect 158ms, tests 149.91s, environment 0ms, prepare 37ms)
 ```
 
 `Run terraform` - exit 0
@@ -235,7 +241,7 @@ tests/secrets.tftest.hcl... in progress
 tests/secrets.tftest.hcl... tearing down
 tests/secrets.tftest.hcl... pass
 
-Success! 12 passed, 0 failed.
+Success! 13 passed, 0 failed.
 ```
 
 `Run bootstrap` - exit 0
