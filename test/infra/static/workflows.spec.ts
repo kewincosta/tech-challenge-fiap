@@ -787,6 +787,13 @@ describe('CD workflow', () => {
       },
     );
 
+    // A read that fails while the job waits is tried again.
+    await during('deploy', { hostnames: ['', null, 'new.lb.example.test'] }, (retried) => {
+      expect(retried.failed).toBe(false);
+      expect(appUrls(retried.calls)).toHaveLength(2);
+      expect(appUrls(retried.calls)[1]).toBe('http://new.lb.example.test');
+    });
+
     // The load balancer never gets a hostname: the job waits a limited time, fails, and says why.
     await during('deploy', { hostnames: [''] }, (never) => {
       expect(never.failed).toBe(true);

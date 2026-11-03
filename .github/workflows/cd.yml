@@ -222,9 +222,10 @@ jobs:
           public_url="http://${host:-load-balancer-pending.invalid}"
           upgrade "$public_url"
 
+          # The release is deployed by now, so a failed read is one more reason to try again.
           host=''
           for _ in {1..60}; do
-            host="$(load_balancer_host)"
+            host="$(load_balancer_host || true)"
             [[ -n "$host" ]] && break
             sleep 10
           done
