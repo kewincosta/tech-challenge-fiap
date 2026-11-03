@@ -26,7 +26,7 @@ C4Component
   Component_Ext(workOrders, "work-orders", "Module", "Adds services to a work order and freezes their price into a budget round")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "services")
 
-  Rel(admin, svcCtl, "Creates, updates, deactivates, reads", "HTTPS")
+  Rel(admin, svcCtl, "Creates, updates, deactivates, reads", "HTTP")
   Rel(svcCtl, createSvc, "Calls")
   Rel(svcCtl, updateSvc, "Calls")
   Rel(svcCtl, deactivateSvc, "Calls")

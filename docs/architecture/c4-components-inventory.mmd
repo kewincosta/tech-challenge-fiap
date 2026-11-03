@@ -38,7 +38,7 @@ C4Component
   Component_Ext(identity, "identity", "Module", "Turns the actor's UUID into a key")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "inventory_items, stock_movements, stock_movement_transitions")
 
-  Rel(admin, invCtl, "Administers stock and reads the ledger", "HTTPS")
+  Rel(admin, invCtl, "Administers stock and reads the ledger", "HTTP")
   Rel(invCtl, createItem, "Calls")
   Rel(invCtl, deactivateItem, "Calls")
   Rel(invCtl, replenish, "Calls")

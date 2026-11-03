@@ -37,12 +37,12 @@ C4Component
   Component_Ext(services, "services", "Module", "Catalog price frozen into a budget round")
   Component_Ext(inventory, "inventory", "Module", "Stock consumed, confirmed, returned, settled, written off")
   Component_Ext(identity, "identity", "Module", "The access of an actor, and the mechanic being assigned")
-  Component_Ext(smtp, "SMTP server", "Mailpit locally", "Takes the e-mails that tell the customer of each status change")
+  Component_Ext(smtp, "SMTP server", "Mailpit, locally and in prod", "Takes the e-mails that tell the customer of each status change")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "work_orders, work_order_services, work_order_parts, work_order_budgets, work_order_events, work_order_stock_steps")
 
-  Rel(advisor, woCtl, "Opens, assigns, delivers, cancels", "HTTPS")
-  Rel(mechanic, woCtl, "Diagnoses, withdraws, returns, completes", "HTTPS")
-  Rel(customer, woCtl, "Approves or rejects, reads their own", "HTTPS")
+  Rel(advisor, woCtl, "Opens, assigns, delivers, cancels", "HTTP")
+  Rel(mechanic, woCtl, "Diagnoses, withdraws, returns, completes", "HTTP")
+  Rel(customer, woCtl, "Approves or rejects, reads their own", "HTTP")
 
   Rel(woCtl, lifecycle, "Calls")
   Rel(woCtl, stockCmds, "Calls")

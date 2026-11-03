@@ -53,9 +53,9 @@ C4Component
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "users, sessions, refresh_tokens, roles, permissions, user_roles, role_permissions")
   ContainerDb(redis, "Redis", "Redis 7", "Revoked sessions, effective access, rate limits")
 
-  Rel(person, usersCtl, "Registers, manages the account", "HTTPS")
-  Rel(person, authCtl, "Logs in, refreshes, logs out", "HTTPS")
-  Rel(person, rolesCtl, "Administers roles and assignments", "HTTPS")
+  Rel(person, usersCtl, "Registers, manages the account", "HTTP")
+  Rel(person, authCtl, "Logs in, refreshes, logs out", "HTTP")
+  Rel(person, rolesCtl, "Administers roles and assignments", "HTTP")
 
   Rel(usersCtl, registerUser, "Calls")
   Rel(usersCtl, changePassword, "Calls")

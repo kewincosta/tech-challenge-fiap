@@ -44,10 +44,10 @@ C4Component
   Component_Ext(workOrders, "work-orders", "Module", "Opens work orders against a customer and a vehicle")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "customers, customer_account_steps, vehicles")
 
-  Rel(advisor, custCtl, "Registers and maintains", "HTTPS")
-  Rel(advisor, vehCtl, "Registers and maintains", "HTTPS")
-  Rel(customer, custCtl, "Reads and updates their own record", "HTTPS")
-  Rel(customer, vehCtl, "Lists their own vehicles", "HTTPS")
+  Rel(advisor, custCtl, "Registers and maintains", "HTTP")
+  Rel(advisor, vehCtl, "Registers and maintains", "HTTP")
+  Rel(customer, custCtl, "Reads and updates their own record", "HTTP")
+  Rel(customer, vehCtl, "Lists their own vehicles", "HTTP")
 
   Rel(custCtl, registerCust, "Calls")
   Rel(custCtl, updateCust, "Calls")

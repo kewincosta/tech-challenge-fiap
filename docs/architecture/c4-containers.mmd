@@ -1,6 +1,7 @@
 %% C4 level 2, containers - Workshop Management API
-%% Four runtime pieces, all started by docker-compose.yml. The application waits on the
-%% healthchecks of PostgreSQL and Redis. Host ports are the compose defaults.
+%% Four runtime pieces. docker-compose.yml starts them in local development, where the application
+%% waits on the healthchecks of PostgreSQL and Redis, and the host ports are the compose defaults. In
+%% prod the same four run on AWS: c4-deployment-prod.mmd draws where.
 
 C4Container
   title Containers - Workshop Management API
@@ -11,10 +12,10 @@ C4Container
     Container(app, "NestJS application", "Node.js, NestJS, TypeORM", "Every module in one deployable process. Serves /api/v1 and Swagger at /api/docs")
     ContainerDb(postgres, "PostgreSQL", "PostgreSQL 16", "System of record: users, customers, vehicles, services, inventory, stock movements, work orders and their trails")
     ContainerDb(redis, "Redis", "Redis 7", "Effective access cache, revoked session list, rate limit counters. Nothing that cannot be rebuilt")
-    Container(mailpit, "Mailpit", "axllent/mailpit", "Local SMTP server that catches the status e-mails. Inbox at port 8025")
+    Container(mailpit, "Mailpit", "axllent/mailpit", "SMTP server that catches the status e-mails, a compose container locally and a pod in prod. Inbox at port 8025")
   }
 
-  Rel(staff, app, "Calls", "HTTPS/JSON, port 13000")
+  Rel(staff, app, "Calls", "HTTP/JSON, port 13000 locally and 80 in prod")
   Rel(app, postgres, "Reads and writes, hand-written migrations", "TCP 5432")
   Rel(app, redis, "Caches access, checks revocation, counts requests", "TCP 6379")
   Rel(app, mailpit, "Sends the status e-mails", "SMTP 1025")

@@ -237,7 +237,9 @@ and `/rejection` carry no link and skip the check, and they decide whichever rou
    answers as it would without it.
 
 In local development Mailpit takes the e-mails (`docker compose up -d mailpit`), and its inbox is at
-`http://localhost:8025`. The end-to-end suites replace the `Mailer` with a recording fake.
+`http://localhost:8025`. In `prod` a Mailpit pod of the cluster takes them, and its inbox opens through
+a port forward ([the prod deployment](../c4-deployment-prod.mmd)). The end-to-end suites replace the
+`Mailer` with a recording fake.
 
 ## Stock steps
 

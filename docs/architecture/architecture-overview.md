@@ -60,9 +60,14 @@ this system only as something a customer brings in.
 | The NestJS application | Every module, in one deployable process. It is a modular monolith ([0001](../adr/0001-modular-monolith-with-cqrs.md)).                                                               |
 | PostgreSQL             | The system of record. Everything durable ([0002](../adr/0002-postgresql-as-the-relational-database.md)).                                                                             |
 | Redis                  | The effective access cache, the revoked session list, and rate limit counters. Nothing that cannot be rebuilt ([0003](../adr/0003-redis-for-cache-revocation-and-rate-limiting.md)). |
-| Mailpit                | The SMTP server of local development. It catches the status e-mails, and its inbox is at port 8025 ([0036](../adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).              |
+| Mailpit                | The SMTP server that catches the status e-mails. Its inbox is at port 8025 ([0036](../adr/0036-email-goes-through-a-mailer-port-over-smtp.md)).                                      |
 
-`docker-compose.yml` starts all four. The application waits on the healthchecks of PostgreSQL and Redis.
+In local development `docker-compose.yml` starts all four, and the application waits on the
+healthchecks of PostgreSQL and Redis. In `prod`, the only environment in AWS, the application runs as
+2 to 6 pods on EKS behind a Network Load Balancer, PostgreSQL is Amazon RDS, Redis is Amazon
+ElastiCache and Mailpit is a pod of the same cluster.
+[The deployment diagram](c4-deployment-prod.mmd) draws it, and
+[0038](../adr/0038-infrastructure-on-aws-provisioned-by-terraform.md) records why.
 
 ## What shaped it
 
@@ -101,3 +106,4 @@ external UUID, and only the UUID appears in a route or a payload
 | Why was something decided this way?                           | [Decision records](../adr/README.md)                    |
 | What does the business call it?                               | [Ubiquitous language](../ubiquitous-language/README.md) |
 | How do I run it?                                              | [README](../../README.md)                               |
+| Where does it run in prod?                                    | [Deployment diagram](c4-deployment-prod.mmd)            |
