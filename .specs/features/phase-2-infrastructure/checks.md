@@ -197,7 +197,7 @@ Proof: run bootstrap | run "state_bucket"... pass
 **C53** - The bootstrap creates the OIDC provider for `https://token.actions.githubusercontent.com` with the client id `sts.amazonaws.com` (AC 21)
 Proof: run bootstrap | run "oidc_provider"... pass
 
-**C54** - The role `workshop-deploy` trusts only that provider, with the audience `sts.amazonaws.com` and the subject `repo:kewincosta/tech-challenge-fiap:environment:prod` (AC 21)
+**C54** - The role `workshop-deploy` trusts only that provider, with the audience `sts.amazonaws.com` and the subject `repo:kewincosta/tech-challenge-fiap:environment:prod` (AC 21; superseded on 2026-11-03 by C1 of `deploy-role-immutable-subject`, AD-027: the subject now carries the owner and repository IDs)
 Proof: run bootstrap | run "deploy_role_trust"... pass
 
 **C55** - `prod.backend.hcl` keeps the state in the bootstrap's bucket under a key for `prod`, in `us-east-1`, with `use_lockfile = true` (door 1)
