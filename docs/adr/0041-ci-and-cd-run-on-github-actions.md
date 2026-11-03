@@ -1,6 +1,6 @@
 # 0041. CI and CD run on GitHub Actions
 
-**Status**: Accepted
+**Status**: Amended by [0042](0042-the-ci-runs-on-pull-requests-into-main.md)
 **Source**: AD-025 in `.specs/STATE.md`
 **Recorded**: 2026-11-03, from AD-025, taken on 2026-11-02 during the `phase-2-infrastructure` feature
 

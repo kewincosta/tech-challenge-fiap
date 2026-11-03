@@ -7,66 +7,104 @@ import { readText } from '../support/hcl';
 const ADR_FOLDER = join(REPOSITORY_ROOT, 'docs/adr');
 const ARCHITECTURE_FOLDER = join(REPOSITORY_ROOT, 'docs/architecture');
 
-/** The records of the infrastructure feature and the decisions of `.specs/STATE.md` they come from. */
-const RECORDS: Array<[adr: number, decision: number]> = [
+type Pair = [adr: number, decision: number];
+
+/**
+ * The records of the infrastructure feature and the decisions of `.specs/STATE.md` they come from.
+ * The third place names the record and the decision that amended it, when one did.
+ */
+const RECORDS: Array<[...Pair, amendedBy?: Pair]> = [
   [38, 22],
   [39, 23],
   [40, 24],
-  [41, 25],
+  [41, 25, [42, 26]],
 ];
 
 const pad = (value: number, width: number): string => String(value).padStart(width, '0');
 
+/** The line of a record that starts with a header such as `**Status**:`. */
+function headerLine(text: string, header: string): string | undefined {
+  return text.split('\n').find((line) => line.startsWith(`**${header}**:`));
+}
+
+/** The file of a record, which is the only one in `docs/adr` that starts with its number. */
+function recordFile(adr: number): string {
+  const matching = readdirSync(ADR_FOLDER).filter(
+    (file) => file.startsWith(`${pad(adr, 4)}-`) && file.endsWith('.md'),
+  );
+
+  expect(matching, `one file for ADR ${pad(adr, 4)}`).toHaveLength(1);
+  return matching[0];
+}
+
+/**
+ * Checks a record, its row in the index and the row of its decision in the log. A record is
+ * accepted and its decision active, unless a later record amended them: the record then says
+ * `Amended by` that record, the index says the same, and the decision says it was amended.
+ */
+function expectRecord(
+  adr: number,
+  decision: number,
+  amendedBy?: Pair,
+): { file: string; text: string } {
+  const state = readText(join(REPOSITORY_ROOT, '.specs/STATE.md')).split('\n');
+  const index = readText(join(ADR_FOLDER, 'README.md')).split('\n');
+  const number = pad(adr, 4);
+  const id = `AD-${pad(decision, 3)}`;
+  const file = recordFile(adr);
+  const text = readText(join(ADR_FOLDER, file));
+  const title = /^# (\d{4})\. (.+)$/m.exec(text);
+  const status =
+    amendedBy === undefined
+      ? 'Accepted'
+      : `Amended by [${pad(amendedBy[0], 4)}](${recordFile(amendedBy[0])})`;
+
+  // The record has its status, says where it comes from, and has the four sections in order.
+  expect(title?.[1], `${file} opens with its number`).toBe(number);
+  expect(headerLine(text, 'Status'), `${file} status`).toBe(`**Status**: ${status}`);
+  expect(text, `${file} names ${id}`).toMatch(
+    new RegExp(`^\\*\\*Source\\*\\*: ${id} in \`\\.specs/STATE\\.md\`$`, 'm'),
+  );
+  expect(text, `${file} says when it was recorded`).toMatch(
+    /^\*\*Recorded\*\*: \d{4}-\d{2}-\d{2}/m,
+  );
+  const sections = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
+  expect(sections, file).toEqual(['Context', 'Decision', 'Alternatives', 'Consequences']);
+
+  // The row of the log names the record, and says whether the decision stands or was amended.
+  const row = state.find((line) => line.startsWith(`| ${id} |`));
+  expect(row, `${id} is in the log`).toBeDefined();
+  expect(row, `${id} names ADR ${number}`).toContain(`(ADR ${number})`);
+  expect(row, `${id} is ${amendedBy === undefined ? 'active' : 'amended'}`).toMatch(
+    amendedBy === undefined
+      ? /\| active \|/
+      : new RegExp(`\\| amended by AD-${pad(amendedBy[1], 3)} \\|`),
+  );
+
+  // The index lists the record under the title it carries, with its status.
+  const entry = index.find((line) => line.startsWith(`| [${number}](${file})`));
+  const cells = (entry ?? '').split('|').map((cell) => cell.trim());
+  expect(entry, `${file} is in the index`).toBeDefined();
+  expect(cells[2], `${file} has its title in the index`).toBe(title?.[2]);
+  expect(cells[3], `${file} is ${status} in the index`).toBe(status);
+
+  return { file, text };
+}
+
 describe('Decision records', () => {
   it('records AD-022 to AD-025 as ADRs 0038 to 0041 that name each other', () => {
-    const state = readText(join(REPOSITORY_ROOT, '.specs/STATE.md')).split('\n');
-    const index = readText(join(ADR_FOLDER, 'README.md')).split('\n');
     const files = readdirSync(ADR_FOLDER);
     const named = new Set<string>();
 
-    for (const [adr, decision] of RECORDS) {
-      const number = pad(adr, 4);
-      const id = `AD-${pad(decision, 3)}`;
-      const matching = files.filter(
-        (file) => file.startsWith(`${number}-`) && file.endsWith('.md'),
-      );
-
-      expect(matching, `one file for ADR ${number}`).toHaveLength(1);
-      const file = matching[0];
-      const text = readText(join(ADR_FOLDER, file));
-      const title = /^# (\d{4})\. (.+)$/m.exec(text);
-
-      // The record is accepted, says where it comes from, and has the four sections in order.
-      expect(title?.[1], `${file} opens with its number`).toBe(number);
-      expect(text, `${file} is accepted`).toMatch(/^\*\*Status\*\*: Accepted$/m);
-      expect(text, `${file} names ${id}`).toMatch(
-        new RegExp(`^\\*\\*Source\\*\\*: ${id} in \`\\.specs/STATE\\.md\`$`, 'm'),
-      );
-      expect(text, `${file} says when it was recorded`).toMatch(
-        /^\*\*Recorded\*\*: \d{4}-\d{2}-\d{2}/m,
-      );
-      const sections = [...text.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
-      expect(sections, file).toEqual(['Context', 'Decision', 'Alternatives', 'Consequences']);
-
-      // The row of the log names the record.
-      const row = state.find((line) => line.startsWith(`| ${id} |`));
-      expect(row, `${id} is in the log`).toBeDefined();
-      expect(row, `${id} names ADR ${number}`).toContain(`(ADR ${number})`);
-      expect(row, `${id} is active`).toMatch(/\| active \|/);
-
-      // The index lists the record under the title it carries, as accepted.
-      const entry = index.find((line) => line.startsWith(`| [${number}](${file})`));
-      const cells = (entry ?? '').split('|').map((cell) => cell.trim());
-      expect(entry, `${file} is in the index`).toBeDefined();
-      expect(cells[2], `${file} has its title in the index`).toBe(title?.[2]);
-      expect(cells[3], `${file} is accepted in the index`).toBe('Accepted');
+    for (const [adr, decision, amendedBy] of RECORDS) {
+      const { file, text } = expectRecord(adr, decision, amendedBy);
 
       // Every record it links to exists, and the four link to one another.
       for (const link of text.matchAll(/\]\((\d{4}-[^)\s]+\.md)\)/g)) {
         expect(files, `${file} links to ${link[1]}`).toContain(link[1]);
         if (
           RECORDS.some(([other]) => link[1].startsWith(`${pad(other, 4)}-`)) &&
-          !link[1].startsWith(number)
+          !link[1].startsWith(pad(adr, 4))
         ) {
           named.add(link[1].slice(0, 4));
         }
@@ -78,6 +116,16 @@ describe('Decision records', () => {
       '0040',
       '0041',
     ]);
+  });
+
+  it('records AD-026 as ADR 0042, which amends ADR 0041', () => {
+    // ADR 0042 is accepted and comes from AD-026. ADR 0041 and AD-025 say that they were amended.
+    const { text } = expectRecord(42, 26);
+    expectRecord(41, 25, [42, 26]);
+
+    expect(headerLine(text, 'Amends'), 'ADR 0042 says which record it amends').toBe(
+      `**Amends**: [0041](${recordFile(41)})`,
+    );
   });
 });
 
