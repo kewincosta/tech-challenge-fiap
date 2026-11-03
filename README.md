@@ -466,6 +466,7 @@ load balancer it created keeps the VPC from being deleted:
 ```bash
 aws eks update-kubeconfig --name workshop-prod --region us-east-1
 scripts/tool.sh helm uninstall workshop --namespace workshop
+scripts/tool.sh terraform -chdir=infra init -backend-config=environments/prod.backend.hcl
 scripts/tool.sh terraform -chdir=infra destroy -var-file=environments/prod.tfvars
 ```
 

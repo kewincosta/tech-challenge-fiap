@@ -131,6 +131,7 @@ aws eks update-kubeconfig --name workshop-prod --region us-east-1
 To remove `prod`:
 
 ```bash
+scripts/tool.sh terraform -chdir=infra init -backend-config=environments/prod.backend.hcl
 scripts/tool.sh terraform -chdir=infra destroy -var-file=environments/prod.tfvars
 ```
 
