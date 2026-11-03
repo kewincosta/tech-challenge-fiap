@@ -1,0 +1,78 @@
+# Lints, tests and builds the code on every push and every pull request. The three jobs run side by
+# side and none waits for another, so one failure does not hide the others. The integration and e2e
+# suites need PostgreSQL and Redis and run on the developer's machine for now.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# The token reads the repository and nothing more.
+permissions:
+  contents: read
+
+env:
+  # npm ci runs the prepare script, which installs the git hooks. A runner has no use for them.
+  HUSKY: '0'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install the dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install the dependencies
+        run: npm ci
+      - name: Run the unit tests
+        run: npm run test:unit
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install the dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
