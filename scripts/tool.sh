@@ -60,6 +60,7 @@ sha256() {
 # substitution, so the exit trap removes the scratch directory however the function ends.
 #   binary <name> <version> <url> <checksum-url> [<path of the binary inside the archive>]
 binary() {
+  set -e # A command substitution drops errexit, and this function always runs in one.
   local name="$1" version="$2" url="$3" checksum_url="$4" member="${5:-}"
   local os arch
   case "$(uname -s)" in
@@ -187,7 +188,7 @@ case "$TOOL" in
       "https://get.helm.sh/helm-$HELM_VERSION-@OS@-@ARCH@.tar.gz.sha256sum" \
       '@OS@-@ARCH@/helm')"
     export HELM_CACHE_HOME="$TOOLS/helm/cache" HELM_CONFIG_HOME="$TOOLS/helm/config"
-    export HELM_DATA_HOME="$TOOLS/helm/data"
+    export HELM_DATA_HOME="$TOOLS/helm/data" KUBECACHEDIR="$TOOLS/kube/cache"
     exec "$helm" "$@"
     ;;
   *)
