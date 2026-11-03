@@ -13,6 +13,7 @@ import {
 } from '../support/expressions';
 import { blockArguments, blocks, readText, unquoted, withoutComments } from '../support/hcl';
 import { disposeAll, runJob, type Call, type JobResult, type World } from '../support/runner';
+import { startsRun, type TriggerEvent } from '../support/triggers';
 import {
   actionSteps,
   ancestorsOf,
@@ -127,6 +128,43 @@ const EXAMPLES: Array<[string, CiRun, boolean]> = [
   ["another branch's run", ciRun('success', 'push', 'feature'), false],
   ["a tag's run", ciRun('success', 'push', 'v1.0.0'), false],
   ["a fork's run", ciRun('success', 'push', 'main', { repository: 'stranger/fork' }), false],
+];
+
+/** What the CI does for an event, as GitHub decides it from the `on:` block of `ci.yml`. */
+const CI_EVENTS: Array<[string, TriggerEvent, boolean]> = [
+  ['a push to main', { name: 'push', branch: 'main' }, true],
+  ['a push to another branch', { name: 'push', branch: 'feat/tech-challenge-2' }, false],
+  [
+    'a pull request into main, when it opens',
+    { name: 'pull_request', action: 'opened', base: 'main' },
+    true,
+  ],
+  [
+    'a new commit on a pull request into main',
+    { name: 'pull_request', action: 'synchronize', base: 'main' },
+    true,
+  ],
+  [
+    'a pull request into main, when it reopens',
+    { name: 'pull_request', action: 'reopened', base: 'main' },
+    true,
+  ],
+  [
+    'a pull request into another branch',
+    { name: 'pull_request', action: 'opened', base: 'develop' },
+    false,
+  ],
+  [
+    'a new commit on a pull request into another branch',
+    { name: 'pull_request', action: 'synchronize', base: 'develop' },
+    false,
+  ],
+  [
+    'a pull request into main, when it closes',
+    { name: 'pull_request', action: 'closed', base: 'main' },
+    false,
+  ],
+  ['a push of a tag', { name: 'push', tag: 'v1.0.0' }, false],
 ];
 
 /** The `github` context of a CD run that a CI run started. `sha` is the tip of main, as GitHub sets it. */
@@ -336,7 +374,7 @@ describe('Workflows', () => {
 });
 
 describe('CI workflow', () => {
-  it('runs lint, unit and build as parallel jobs on every push and pull request', () => {
+  it('runs lint, unit and build in parallel on pull requests into main and pushes to main only', () => {
     const triggers = triggersOf(ci);
     const commands: Record<string, string> = {
       lint: 'npm run lint',
@@ -344,9 +382,11 @@ describe('CI workflow', () => {
       build: 'npm run build',
     };
 
+    // The two events that can start it, and what each one starts: the six cases of the check, then
+    // three more that the same filters turn away.
     expect(Object.keys(triggers).sort()).toEqual(['pull_request', 'push']);
-    for (const [name, filters] of Object.entries(triggers)) {
-      expect(Object.keys(filters), `${name} has no branch, path, tag or type filter`).toEqual([]);
+    for (const [name, event, starts] of CI_EVENTS) {
+      expect(startsRun(triggers, event), name).toBe(starts);
     }
     expect(Object.keys(ci.jobs).sort()).toEqual(['build', 'lint', 'unit']);
     for (const [id, command] of Object.entries(commands)) {
