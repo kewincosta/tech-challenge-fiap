@@ -36,7 +36,6 @@
 Found during earlier features and left outside them, to plan when someone takes one:
 
 - Both step tables lack an index on `(status, due_at)`, `work_order_stock_steps` lacks one on `(work_order_id, id)`, and `DONE` steps have no retention rule.
-- e2e cases fail now and then on random data, and more often as `workshop_test` grows: the shared `registerUser` helper draws a CPF from 10^9 values against about 96,000 users (roughly one run in ten collides, as the first proof run of `work-order-phase-2-api` did), and plates collide in `work-order-closing`. Drawing again on a 409 would end it.
 - `docs/roteiro-video.md:95-100` and `:361` and `security/scripts/deliverable.ts:255` still name CQRS and the buses, and the video script counts nine migrations.
 - `FindUserByDocumentUseCase` is unused, and some spec variables are still named `handler`.
 - The inventory stock use cases publish their item events inside their transaction, before the commit. Nothing subscribes to them today.
