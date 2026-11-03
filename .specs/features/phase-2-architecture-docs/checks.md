@@ -61,6 +61,6 @@ Proof: `git check-ignore -q docs/roteiro-video.md && git check-ignore -q docs/ro
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`, returned at `ebc9ede`; Verifier (fresh sub-agent, default model) at `cd46ba0`, over `c8b2a1e..cd46ba0`, with `proofs.md` 6 pass at `cd46ba0`, returned FAIL with 15 findings at `3acef2a`; fix of the 15 findings (Sonnet sub-agent) at `3acef2a`
+- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`, returned at `ebc9ede`; Verifier (fresh sub-agent, default model) at `cd46ba0`, over `c8b2a1e..cd46ba0`, with `proofs.md` 6 pass at `cd46ba0`, returned FAIL with 15 findings at `3acef2a`; fix of the 15 findings (Sonnet sub-agent) at `3acef2a`, returned at `3d0103a`: findings 1 to 9 in `78bc54e`, the README part of 12 in `3d0103a`, and findings 10 to 15 in `docs/roteiro-video-fase-2.md`, which git ignores, fixed in place on 2026-11-03; `aff1e0b` makes the account id test of `phase-2-infrastructure` scan only the files git holds, after the bootstrap's local state named the account on this machine
 - **Boundary:** C1-C4 closed at `ebc9ede`; the video script is `docs/roteiro-video-fase-2.md`, which git ignores
 - **Abandoned:** none
