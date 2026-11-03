@@ -15,7 +15,7 @@ security/.cache/
 *.pdf
 
 # Personal presentation notes, not part of the project
-docs/roteiro-video.md
+docs/roteiro-video*.md
 
 # Written by the agent-skills CLI on every install or removal: a copy of the previous lock
 .agents/.skill-lock.json.backup
