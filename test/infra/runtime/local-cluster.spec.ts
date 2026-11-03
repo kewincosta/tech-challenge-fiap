@@ -6,6 +6,7 @@ import Redis from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { uniqueValidCpf } from '../../support/factories/document.factory';
 import {
+  buildImage,
   Cleanup,
   docker,
   REPOSITORY_ROOT,
@@ -263,8 +264,20 @@ describe('Local cluster', () => {
     }>(['--namespace', NAMESPACE, 'get', 'deployment', 'workshop']);
     const image = deployment.spec.template.spec.containers[0].image;
     expect(image).toMatch(new RegExp(`^${IMAGE_REPOSITORY}:[0-9a-f]{12}$`));
-    const loaded = await docker(['exec', NODE, 'crictl', 'images']);
-    expect(loaded.stdout).toContain(image.split(':')[1]);
+    // The node holds the layers of an image built from the working tree now.
+    const tree = uniqueName('workshop-cluster-tree');
+    cleanup.add(() => docker(['rmi', '--force', tree], { allowFailure: true }));
+    await buildImage(tree);
+    const treeLayers = JSON.parse(
+      (await docker(['image', 'inspect', '--format', '{{json .RootFS.Layers}}', tree])).stdout,
+    ) as string[];
+    const inNode = JSON.parse(
+      (await docker(['exec', NODE, 'crictl', 'inspecti', image])).stdout,
+    ) as {
+      info: { imageSpec: { rootfs: { diff_ids: string[] } } };
+    };
+    expect(treeLayers.length).toBeGreaterThan(0);
+    expect(inNode.info.imageSpec.rootfs.diff_ids).toEqual(treeLayers);
     // The chart is installed with the local values.
     const release = JSON.parse(
       (await tool(['helm', 'status', 'workshop', '--namespace', NAMESPACE, '--output', 'json']))
