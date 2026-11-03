@@ -10,18 +10,26 @@ landmark, and the page that owns it is one level down.
 
 ## The code units
 
-Six modules under `src/modules`, plus a shared kernel at `src/shared`. Five bounded contexts map
-onto them, four of them one to one.
+Six modules under `src/modules`, a shared kernel at `src/shared`, and two units Phase 2 added, `src/health` and `src/config`. Five bounded contexts map
+onto the six modules, four of them one to one.
 
-| Context             | Module        | What it owns                                                                                                                                                                                                                                                                         |
-| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Identity & Access   | `identity`    | Who a person is, how they prove it, and what they may do, in three areas: `users` (registration, the document, the password, the account lifecycle), `authentication` (login, sessions, tokens, revocation) and `authorization` (roles, permissions, assignments, effective access). |
-| Customer Management | `customers`   | The workshop's relationship with a person: the customer record and its address.                                                                                                                                                                                                      |
-| Customer Management | `vehicles`    | The vehicles a customer brings in.                                                                                                                                                                                                                                                   |
-| Workshop Catalog    | `services`    | What the workshop sells as labour, with its price and estimated duration.                                                                                                                                                                                                            |
-| Inventory           | `inventory`   | Stock, and the append-only ledger of every unit that moved.                                                                                                                                                                                                                          |
-| Workshop Operations | `work-orders` | The work order lifecycle, its items, its budget rounds, and its trail.                                                                                                                                                                                                               |
-| -                   | `shared`      | What belongs to no context: `Money`, `AggregateRoot`, the error hierarchy, the ports, the event dispatcher, the exception filter.                                                                                                                                                    |
+| Context             | Module        | What it owns                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Identity & Access   | `identity`    | Who a person is, how they prove it, and what they may do, in three areas: `users` (registration, the document, the password, the account lifecycle), `authentication` (login, sessions, tokens, revocation) and `authorization` (roles, permissions, assignments, effective access).                                                                                                             |
+| Customer Management | `customers`   | The workshop's relationship with a person: the customer record and its address.                                                                                                                                                                                                                                                                                                                  |
+| Customer Management | `vehicles`    | The vehicles a customer brings in.                                                                                                                                                                                                                                                                                                                                                               |
+| Workshop Catalog    | `services`    | What the workshop sells as labour, with its price and estimated duration.                                                                                                                                                                                                                                                                                                                        |
+| Inventory           | `inventory`   | Stock, and the append-only ledger of every unit that moved.                                                                                                                                                                                                                                                                                                                                      |
+| Workshop Operations | `work-orders` | The work order lifecycle, its items, its budget rounds, and its trail.                                                                                                                                                                                                                                                                                                                           |
+| -                   | `health`      | The probes the cluster and the compose stack call: `HealthController`, `CheckReadinessUseCase`, the readiness checks port and its adapter, `DependencyReadinessChecks`. It sits at `src/health`, beside `src/modules`, and holds no table.                                                                                                                                                       |
+| -                   | `config`      | The environment validation and the settings each part reads, at `src/config`. `src/config/database.config.ts` builds the PostgreSQL connection, TLS included (`DATABASE_SSL`, `DATABASE_SSL_CA`), that `DatabaseModule` and the data source of the migrations share. `src/config/redis.config.ts` builds the options of the Redis client that `RedisModule` creates, TLS included (`REDIS_TLS`). |
+| -                   | `shared`      | What belongs to no context: `Money`, `AggregateRoot`, the error hierarchy, the ports, the event dispatcher, the exception filter.                                                                                                                                                                                                                                                                |
+
+Two entry points sit at the root of `src`, next to `src/main.ts`. `src/migrate.ts` applies the pending
+migrations and ends, and `src/seed-admin.ts` creates the SUPER_ADMIN described by `ADMIN_EMAIL`,
+`ADMIN_PASSWORD` and `ADMIN_DOCUMENT`. The build compiles them to `dist/migrate.js` and
+`dist/seed-admin.js`, because the production image holds no ts-node. The chart's migration Job runs
+the first on each release, and the user runs the second by hand against `prod`.
 
 ## The four layers
 
@@ -64,7 +72,7 @@ A use case is a plain class with no decorator and no injection token. The compos
 with a factory provider and hands each dependency to its constructor, so the constructor lists
 exactly what the operation uses. A use case that the root does not provide cannot be injected into
 the controller that calls it, and Nest refuses to start, which the e2e suite catches first. The seed
-script resolves the same use cases from the application context, so a second entry point reuses the
+script `scripts/seed.ts` resolves the same use cases from the application context, so a second entry point reuses the
 rules without copying them.
 
 ## How modules talk
@@ -215,7 +223,11 @@ that saved.
 
 ## The HTTP surface
 
-Global prefix `api`, URI versioning at `v1`, so every route is `/api/v1/...`. Swagger is served at
-`/api/docs`. Helmet, throttling and pino logging with redaction are applied globally.
+Global prefix `api`, URI versioning at `v1`, so every route except `GET /health/live` and
+`GET /health/ready` is `/api/v1/...`. Those two probes sit outside the `api` prefix and the version
+(`configureApp` in `src/app.setup.ts` leaves the `api` prefix off them, and `version: VERSION_NEUTRAL` on `HealthController` keeps them out of the version), need no token (`@Public()`) and are not rate
+limited (`@SkipThrottle()`), because the cluster calls them as they are. Swagger is served at
+`/api/docs`. Helmet and pino logging with redaction are applied globally, and throttling to every
+route but the two probes. [The health page](low-level-design/health.md) holds them.
 
 Routes and their shapes belong to the module pages, not here.

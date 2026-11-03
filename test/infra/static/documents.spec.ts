@@ -1,8 +1,9 @@
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPOSITORY_ROOT } from '../support/docker';
 import { readText } from '../support/hcl';
+import { codeSpans, linkTargets, proseOf, sectionsOf } from '../support/markdown';
 
 const ADR_FOLDER = join(REPOSITORY_ROOT, 'docs/adr');
 const ARCHITECTURE_FOLDER = join(REPOSITORY_ROOT, 'docs/architecture');
@@ -14,7 +15,7 @@ type Pair = [adr: number, decision: number];
  * The third place names the record and the decision that amended it, when one did.
  */
 const RECORDS: Array<[...Pair, amendedBy?: Pair]> = [
-  [38, 22],
+  [38, 22, [43, 27]],
   [39, 23],
   [40, 24],
   [41, 25, [42, 26]],
@@ -125,6 +126,16 @@ describe('Decision records', () => {
 
     expect(headerLine(text, 'Amends'), 'ADR 0042 says which record it amends').toBe(
       `**Amends**: [0041](${recordFile(41)})`,
+    );
+  });
+
+  it('records AD-027 as ADR 0043, which amends ADR 0038', () => {
+    // ADR 0043 is accepted and comes from AD-027. ADR 0038 and AD-022 say that they were amended.
+    const { text } = expectRecord(43, 27);
+    expectRecord(38, 22, [43, 27]);
+
+    expect(headerLine(text, 'Amends'), 'ADR 0043 says which record it amends').toBe(
+      `**Amends**: [0038](${recordFile(38)})`,
     );
   });
 });
@@ -255,5 +266,229 @@ describe('Architecture diagrams', () => {
     // The pieces run in compose and in prod, so neither document calls Mailpit a local piece.
     expect(overview).not.toMatch(/SMTP server of local development/);
     expect(containers).not.toMatch(/Local SMTP server|all started by docker-compose/);
+  });
+});
+
+const HIGH_LEVEL_DESIGN = join(ARCHITECTURE_FOLDER, 'high-level-design.md');
+const HEALTH_PAGE = join(ARCHITECTURE_FOLDER, 'low-level-design/health.md');
+const LOW_LEVEL_INDEX = join(ARCHITECTURE_FOLDER, 'low-level-design/README.md');
+
+/** The text under a heading of a document. */
+function sectionText(file: string, title: string): string {
+  const found = sectionsOf(readText(file)).filter((section) => section.title === title);
+
+  expect(found, `one section titled "${title}" in ${file}`).toHaveLength(1);
+  return found[0].text;
+}
+
+/**
+ * The files and folders a text names in code spans: a span with a slash that is no route, or with a
+ * file extension. Compiled output under `dist` exists only after a build, so it is left out.
+ */
+function pathsNamed(prose: string): string[] {
+  return codeSpans(prose)
+    .map((span) => span.replace(/(?<=\w)\/$/, ''))
+    .filter(
+      (span) =>
+        /^[\w.@-]+(\/[\w.@-]+)*(\.\w+)?$/.test(span) &&
+        (span.includes('/') || /\.(ts|js|json|ya?ml|md|hcl|tf)$/.test(span)) &&
+        !span.startsWith('dist/'),
+    );
+}
+
+/** Every path a text names in code spans, and every relative link, exists. */
+function expectPathsToExist(prose: string, folder: string, what: string): void {
+  for (const path of pathsNamed(prose)) {
+    expect(existsSync(join(REPOSITORY_ROOT, path)), `${what} names ${path}`).toBe(true);
+  }
+  for (const target of linkTargets(prose)) {
+    if (/^(https?:|#)/.test(target)) {
+      continue;
+    }
+    const file = resolve(folder, target.split('#')[0]);
+
+    expect(existsSync(file), `${what} links ${target}`).toBe(true);
+  }
+}
+
+describe('Architecture documents', () => {
+  it('names the units Phase 2 added in the high level design', () => {
+    const units = sectionText(HIGH_LEVEL_DESIGN, 'The code units');
+    const rows = units.split('\n').filter((line) => line.startsWith('|'));
+    const rowOf = (module: string): string => {
+      const row = rows.filter((line) => line.split('|')[2]?.trim() === `\`${module}\``);
+
+      expect(row, `one row for ${module}`).toHaveLength(1);
+      return row[0];
+    };
+
+    expect(units).toContain(
+      'Six modules under `src/modules`, a shared kernel at `src/shared`, and two units Phase 2 added, `src/health` and `src/config`.',
+    );
+
+    // The health module and what it holds.
+    expect(units).toContain('`src/health`');
+    for (const name of [
+      'HealthController',
+      'CheckReadinessUseCase',
+      'readiness checks port',
+      'DependencyReadinessChecks',
+    ]) {
+      expect(rowOf('health'), `the health row names ${name}`).toContain(name);
+    }
+
+    // The configuration, and the three that share its database and Redis settings.
+    expect(units).toContain('`src/config`');
+    for (const name of [
+      'environment validation',
+      'src/config/database.config.ts',
+      'src/config/redis.config.ts',
+      'DatabaseModule',
+      'RedisModule',
+      'data source of the migrations',
+      'DATABASE_SSL',
+      'DATABASE_SSL_CA',
+      'REDIS_TLS',
+    ]) {
+      expect(rowOf('config'), `the config row names ${name}`).toContain(name);
+    }
+    // Which file serves which consumer.
+    const configRow = rowOf('config').replace(/\s+/g, ' ');
+    expect(configRow).toMatch(
+      /`src\/config\/database\.config\.ts` builds the PostgreSQL connection[^.]*that `DatabaseModule` and the data source of the migrations share/,
+    );
+    expect(configRow).toMatch(
+      /`src\/config\/redis\.config\.ts` builds the options of the Redis client that `RedisModule` creates/,
+    );
+
+    // The two entry points, which run compiled.
+    const migrate = units.split('\n\n').find((paragraph) => paragraph.includes('`src/migrate.ts`'));
+    expect(migrate, 'a paragraph on the entry points').toBeDefined();
+    expect(migrate).toContain('`src/seed-admin.ts`');
+    expect(migrate).toContain('`dist/migrate.js`');
+    expect(migrate).toContain('`dist/seed-admin.js`');
+    const entryPoints = (migrate ?? '').replace(/\s+/g, ' ');
+    expect(entryPoints).toContain('`src/migrate.ts` applies the pending migrations');
+    expect(entryPoints).toContain('`src/seed-admin.ts` creates the SUPER_ADMIN');
+    expect(entryPoints).toMatch(
+      /migration Job runs the first on each release[^.]*the user runs the second by hand against `prod`/,
+    );
+
+    expectPathsToExist(units, dirname(HIGH_LEVEL_DESIGN), 'the code units');
+  });
+
+  it('places the probes outside the API prefix in the high level design', () => {
+    const surface = sectionText(HIGH_LEVEL_DESIGN, 'The HTTP surface');
+    const prose = proseOf(surface).replace(/\s+/g, ' ');
+
+    // The page names the routes that `configureApp` leaves out of the prefix, and no others.
+    const setup = readText(join(REPOSITORY_ROOT, 'src/app.setup.ts'));
+    const excluded = [...(/exclude:\s*\[([^\]]*)\]/.exec(setup)?.[1] ?? '').matchAll(/'([^']+)'/g)]
+      .map((match) => `GET /${match[1]}`)
+      .sort();
+    const named = [
+      ...new Set([...prose.matchAll(/`(GET \/health\/\w+)`/g)].map((match) => match[1])),
+    ].sort();
+    expect(excluded, 'configureApp excludes the two probes').toEqual([
+      'GET /health/live',
+      'GET /health/ready',
+    ]);
+    expect(named, 'the surface names the probes configureApp excludes').toEqual(excluded);
+
+    // Every route but those is under `/api/v1`, and the sentence that says so makes the exception.
+    const rule = prose.split(/(?<=\.)\s/).find((sentence) => sentence.includes('`/api/v1/...`'));
+    expect(rule, 'a sentence on the /api/v1 routes').toBeDefined();
+    expect(rule).toMatch(/every route except `GET \/health\/live` and `GET \/health\/ready`/);
+
+    // The prefix is `configureApp`'s doing, and the version is the controller's.
+    const controller = readText(
+      join(REPOSITORY_ROOT, 'src/health/presentation/health.controller.ts'),
+    );
+    expect(controller, 'HealthController is declared version neutral').toMatch(
+      /version:\s*VERSION_NEUTRAL/,
+    );
+    expect(prose).toMatch(
+      /`configureApp` in `src\/app\.setup\.ts` leaves the `api` prefix off them/,
+    );
+    expect(prose).toMatch(
+      /`version: VERSION_NEUTRAL` on `HealthController` keeps them out of the version/,
+    );
+
+    expect(prose).toMatch(/outside the `api` prefix and the version/);
+    expect(prose).toMatch(/need no token/);
+    expect(prose).toMatch(/not rate limited/);
+  });
+
+  it('gives the health module a low level page the index links', () => {
+    const index = readText(LOW_LEVEL_INDEX);
+    const page = readText(HEALTH_PAGE);
+
+    // The opening sentence and the table of the index name the page.
+    expect(index.split('\n\n')[1], 'the opening sentence names the health module').toContain(
+      '`src/health`',
+    );
+    expect(
+      index.split('\n').some((line) => line.startsWith('| [health](health.md)')),
+      'the table links the page',
+    ).toBe(true);
+
+    // The routes the controller declares, read from its source.
+    const source = readText(join(REPOSITORY_ROOT, 'src/health/presentation/health.controller.ts'));
+    const base = /@Controller\(\{\s*path:\s*'([^']+)'/.exec(source)?.[1];
+    const declared = [...source.matchAll(/@Get\(\s*(?:'([^']*)')?\s*\)/g)]
+      .map((match) => (match[1] ? `GET /${base}/${match[1]}` : `GET /${base}`))
+      .sort();
+    expect(declared, 'the controller declares the two probes').toHaveLength(2);
+
+    // The page names those routes and no other, in code spans and in running text.
+    const prose = proseOf(page);
+    const routes = new Set<string>();
+    for (const span of codeSpans(prose)) {
+      const route = /^(GET|POST|PUT|PATCH|DELETE) (\/\S+)$/.exec(span);
+      if (route !== null) {
+        routes.add(`${route[1]} ${route[2]}`);
+      }
+    }
+    expect([...routes].sort(), 'the routes the page names').toEqual(declared);
+    const bare = new Set(
+      [...prose.matchAll(/(?<!src|\/api|\/v1)\/health(?![\w.-])(?:\/\w+)?/g)].map(
+        (match) => `GET ${match[0]}`,
+      ),
+    );
+    expect(
+      [...bare].every((route) => declared.includes(route)),
+      'every /health route in the text is declared',
+    ).toBe(true);
+
+    // Their statuses and bodies, and the limit of a check.
+    const rowOf = (route: string, status: number): string[] => {
+      const row = page
+        .split('\n')
+        .filter(
+          (line) => line.startsWith(`| \`${route}\``) && line.split('|')[2]?.trim() === `${status}`,
+        );
+
+      expect(row, `one ${status} row for ${route}`).toHaveLength(1);
+      return row[0].split('|').map((cell) => cell.trim());
+    };
+    expect(rowOf('GET /health/live', 200)[3]).toMatch(/^`\{ "status": "ok" \}`/);
+    expect(rowOf('GET /health/ready', 200)[3]).toMatch(
+      /^`\{ "status": "ok", "checks": \{ "database": "up", "redis": "up" \} \}`/,
+    );
+    const failed = rowOf('GET /health/ready', 503)[3];
+    expect(failed).toMatch(
+      /^`\{ "status": "error", "checks": \{ "database": "(up|down)", "redis": "(up|down)" \} \}`/,
+    );
+    expect(failed).toContain('`down` for each check that failed');
+    // One failed check is enough for the 503.
+    const flat = prose.replace(/\s+/g, ' ');
+    expect(flat).toContain(
+      '`status` is `ok` only when both checks are `up`, and `error` otherwise',
+    );
+    expect(flat).not.toMatch(/(only|when) both (checks )?(failed|are `?down`?)/);
+    expect(flat).toMatch(/is declared with the path `health` and `version: VERSION_NEUTRAL`/);
+    expect(page).toMatch(/Each check has 2 seconds/);
+
+    expectPathsToExist(page, dirname(HEALTH_PAGE), 'the health page');
   });
 });

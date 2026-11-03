@@ -462,6 +462,28 @@ describe('README', () => {
     }
   });
 
+  it('lists the Phase 2 records 0038 to 0043', () => {
+    const flat = README.replace(/\s+/g, ' ');
+
+    // The summary of Phase 2 counts six records and links each one, inside the summary itself:
+    // from its count to the end of the paragraph.
+    const start = 'Six records in [`docs/adr/`](docs/adr/README.md) hold the decisions';
+    expect(flat).toContain(start);
+    const at = README.indexOf('Six records in');
+    const end = README.indexOf('\n\n', at);
+    const summary = README.slice(at, end === -1 ? undefined : end).replace(/\s+/g, ' ');
+    for (const number of ['0038', '0039', '0040', '0041', '0042', '0043']) {
+      expect(summary, `the summary links ADR ${number}`).toMatch(
+        new RegExp(`\\[${number}\\]\\(docs/adr/${number}-[^)]+\\.md\\)`),
+      );
+    }
+
+    // The overview of the decisions counts six and ends at 0043.
+    expect(flat).toContain('The six of Phase 2, 0038 to 0043,');
+    expect(flat).not.toMatch(/0038 to 0042/);
+    expect(flat).not.toMatch(/\bFive records in/);
+  });
+
   it('counts the decision records it says it holds', () => {
     const count = readdirSync(join(REPOSITORY_ROOT, 'docs/adr')).filter((file) =>
       /^\d{4}-.+\.md$/.test(file),
@@ -530,5 +552,33 @@ describe('README', () => {
 
   it('keeps the AWS account id out of the README', () => {
     expect(README).not.toMatch(/(?<![\w-])\d{12}(?![\w-])/);
+  });
+});
+
+describe('Bootstrap guide', () => {
+  it('names the immutable subject and where its prefix comes from', () => {
+    const guide = readText(join(REPOSITORY_ROOT, 'infra/README.md'));
+    const bootstrap = sectionsOf(guide).filter((candidate) => candidate.title === 'Bootstrap');
+
+    expect(bootstrap, 'the guide has one Bootstrap section').toHaveLength(1);
+    const text = bootstrap[0].text;
+    const flat = text.replace(/\s+/g, ' ');
+    const commands = commandsOf(fencesOf(text));
+
+    // The subject the role trusts carries the IDs, and the name-based form is gone.
+    expect(flat).toContain(
+      'the subject is exactly `repo:kewincosta@72565745/tech-challenge-fiap@1357566072:environment:prod`',
+    );
+    expect(text).not.toContain('repo:kewincosta/tech-challenge-fiap');
+
+    // The prefix is read from GitHub and goes into the variable.
+    expect(commands).toContain('gh api repos/<owner>/<repo>/actions/oidc/customization/sub');
+    expect(flat).toMatch(/`sub_claim_prefix` goes into the variable `github_subject_prefix`/);
+
+    // A bootstrap applied before this subject is applied again, with the user's own profile.
+    expect(commands).toContain(
+      'AWS_PROFILE=<profile> scripts/tool.sh terraform -chdir=infra/bootstrap apply',
+    );
+    expect(flat).toMatch(/updates the trust policy of the role `workshop-deploy` in place/);
   });
 });

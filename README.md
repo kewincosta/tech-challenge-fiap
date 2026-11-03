@@ -325,13 +325,15 @@ Two environments exist. Development runs on the developer's machine, with Postgr
 Mailpit in containers and nothing in AWS. `prod` is the only environment in AWS, and the only one the
 CD deploys. The application gains what a cluster needs: two probes, `GET /health/live` and
 `GET /health/ready`, and settings that turn TLS on for PostgreSQL and Redis
-([environment variables](#environment-variables)). Five records in
+([environment variables](#environment-variables)). Six records in
 [`docs/adr/`](docs/adr/README.md) hold the decisions:
 [0038](docs/adr/0038-infrastructure-on-aws-provisioned-by-terraform.md) for the infrastructure,
 [0039](docs/adr/0039-database-and-redis-reached-by-configuration.md) for the database and Redis,
 [0040](docs/adr/0040-the-application-runs-in-kubernetes-as-a-helm-chart.md) for the chart,
-[0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) for the pipeline and
-[0042](docs/adr/0042-the-ci-runs-on-pull-requests-into-main.md) for when the CI runs.
+[0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) for the pipeline,
+[0042](docs/adr/0042-the-ci-runs-on-pull-requests-into-main.md) for when the CI runs and
+[0043](docs/adr/0043-the-deploy-role-trusts-the-immutable-oidc-subject.md) for the subject the
+deploy role trusts.
 
 ### The architecture
 
@@ -466,6 +468,7 @@ load balancer it created keeps the VPC from being deleted:
 ```bash
 aws eks update-kubeconfig --name workshop-prod --region us-east-1
 scripts/tool.sh helm uninstall workshop --namespace workshop
+scripts/tool.sh terraform -chdir=infra init -backend-config=environments/prod.backend.hcl
 scripts/tool.sh terraform -chdir=infra destroy -var-file=environments/prod.tfvars
 ```
 
@@ -1134,7 +1137,7 @@ excludes the test files.
 │   ├── integration/               persistence against the real PostgreSQL
 │   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       42 architecture decision records
+│   ├── adr/                       43 architecture decision records
 │   ├── architecture/              overview, high level, low level per module, C4 diagrams
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── infra/                         Terraform: bootstrap, main stack, modules and environments
@@ -1215,10 +1218,10 @@ rejected across the project, the record of the language decisions and the consis
 
 ## Technical decisions
 
-Forty-two numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
-context, the decision and the consequences. The seven below shape the system the most. The five of
-Phase 2, 0038 to 0042, cover the infrastructure, the database and Redis settings, the chart, the
-pipeline and when the CI runs ([Phase 2 infrastructure](#phase-2-infrastructure)).
+Forty-three numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+context, the decision and the consequences. The seven below shape the system the most. The six of
+Phase 2, 0038 to 0043, cover the infrastructure, the database and Redis settings, the chart, the
+pipeline, when the CI runs and the subject the deploy role trusts ([Phase 2 infrastructure](#phase-2-infrastructure)).
 
 ### Why PostgreSQL
 

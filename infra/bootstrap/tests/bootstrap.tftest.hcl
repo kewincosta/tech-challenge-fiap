@@ -105,12 +105,95 @@ run "deploy_role_trust" {
       jsondecode(aws_iam_role.deploy.assume_role_policy).Statement[0].Condition == {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          "token.actions.githubusercontent.com:sub" = "repo:kewincosta/tech-challenge-fiap:environment:prod"
+          "token.actions.githubusercontent.com:sub" = "repo:kewincosta@72565745/tech-challenge-fiap@1357566072:environment:prod"
         }
       }
     )
-    error_message = "The role must require the audience sts.amazonaws.com and the subject repo:kewincosta/tech-challenge-fiap:environment:prod, matched exactly."
+    error_message = "The role must require the audience sts.amazonaws.com and the subject repo:kewincosta@72565745/tech-challenge-fiap@1357566072:environment:prod, matched exactly."
   }
+}
+
+run "deploy_role_trust_follows_the_prefix" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:kewincosta@1/tech-challenge-fiap@2"
+  }
+
+  override_resource {
+    target          = aws_iam_openid_connect_provider.github
+    override_during = plan
+    values = {
+      arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    }
+  }
+
+  assert {
+    condition = (
+      jsondecode(aws_iam_role.deploy.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:kewincosta@1/tech-challenge-fiap@2:environment:prod"
+    )
+    error_message = "The subject must be github_subject_prefix followed by :environment:prod, here repo:kewincosta@1/tech-challenge-fiap@2:environment:prod."
+  }
+}
+
+run "subject_prefix_without_ids" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:kewincosta/tech-challenge-fiap"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}
+
+run "subject_prefix_without_repository_id" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:kewincosta@72565745/tech-challenge-fiap"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}
+
+run "subject_prefix_without_owner_id" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:kewincosta/tech-challenge-fiap@1357566072"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}
+
+run "subject_prefix_of_another_owner" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:someone-else@1234/tech-challenge-fiap@1357566072"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}
+
+run "subject_prefix_of_another_repository_name" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:kewincosta@72565745/other-repository@5678"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}
+
+run "subject_prefix_of_another_repository" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:someone-else@1234/other-repository@5678"
+  }
+
+  expect_failures = [var.github_subject_prefix]
 }
 
 run "deploy_role_permissions" {

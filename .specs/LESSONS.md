@@ -198,6 +198,138 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C4 test/integration/test-values.spec.ts:136 (test-support)
 - last seen: 2026-11-03T13:24:24Z
 
+### L-048 - Check the mechanism a document credits against the code that does it, not only the outcome it names.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: C2 docs/architecture/high-level-design.md, configureApp (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-049 - Compare the bodies and the failure condition a document gives for a route with the controller and its use case.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: C3 docs/architecture/low-level-design/health.md bodies (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-050 - Pair each entry point a document names with what it does, so a test fails when two roles are swapped.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: C1 high-level-design.md entry points (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-051 - Read routes from every form the decorator and a URL take, an empty path and a port included.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: C3 route scan in test/infra/static/documents.spec.ts (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-052 - Check that the folders a document names exist, not only its files.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: pathsNamed in test/infra/static/documents.spec.ts (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-053 - Check that a file a document sends the reader to holds what the document says it holds.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: health.md pointer to k8s/README.md (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-054 - Name in a document which consumer each configuration file serves, and test each pairing.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: high-level-design.md config row (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-055 - Do not pin a sentence in a test without checking that it is still true of the section around it.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: C1 pinned the stale code units sentence (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-056 - Name the file when two scripts could fit a sentence of a document.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: high-level-design.md How a request travels (docs)
+- last seen: 2026-11-03T18:41:19Z
+
+### L-057 - Set every variable a guide's command reads in the terminal that runs it.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: docs/roteiro-video-fase-2.md block 7 k6 (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-058 - Write the status code where a guide names a work order status, with the Portuguese label beside it.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: docs/roteiro-video-fase-2.md block 6 status (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-059 - Start a guide's terraform destroy with the init a machine that never applied needs.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: README.md and docs/roteiro-video-fase-2.md destroy (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-060 - Count the completed pod of the migration Job among what kubectl get pods shows.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: docs/roteiro-video-fase-2.md block 5 pods (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-061 - Create a demonstration branch from main, so its pull request holds only the demonstration commit.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: docs/roteiro-video-fase-2.md step 6 branch (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-062 - Cite a source in a guide only after reading that it holds what the guide takes from it.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `guides` · harmful: 0
+- features: phase-2-architecture-docs
+- evidence: docs/roteiro-video-fase-2.md sources (guides)
+- last seen: 2026-11-03T18:41:20Z
+
+### L-063 - Give a variable that builds a value a run with a non-default value, so a test fails when the code writes the value out.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C1 infra/bootstrap/main.tf subject (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-064 - Refuse each half of a two-part format in a run of its own, so a validation that checks one half fails a test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C2 one-ID prefixes (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-065 - Refuse a different owner and a different name each in a run of its own when a check compares an identity.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C3 owner and name check (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-066 - Note on a closed check every test of it that a later decision changes.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `specs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: phase-2-infrastructure C71 (specs)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-067 - Update every list and count of decision records in the README when a record is added.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: README.md lists of Phase 2 records (docs)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-068 - Find a validation by its condition before asserting its message, so swapped messages fail the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C7 test/infra/static/terraform.spec.ts (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-069 - Look for a list's links inside the list's own paragraph, not anywhere in the document.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C10 test/infra/static/readme.spec.ts (docs)
+- last seen: 2026-11-03T22:12:28Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

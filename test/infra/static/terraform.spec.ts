@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPOSITORY_ROOT } from '../support/docker';
 import {
@@ -43,15 +44,24 @@ function modulesFolder(): string[] {
   return terraformFiles(join(INFRA, 'modules')).map((file) => join('modules', file));
 }
 
-/** Every file under a folder of infra that is committed and can name an account. */
-function filesToScan(relative = ''): string[] {
-  return readdirSync(join(INFRA, relative), { withFileTypes: true }).flatMap((entry) => {
-    const path = join(relative, entry.name);
-    if (entry.isDirectory()) {
-      return ['.terraform', 'tests'].includes(entry.name) ? [] : filesToScan(path);
-    }
-    return entry.name === '.terraform.lock.hcl' ? [] : [path];
-  });
+/**
+ * Every file under infra that git holds or would take, relative to infra, that can name an account.
+ * An ignored file, such as the local state of the bootstrap, stays on the machine and may name it.
+ */
+function filesToScan(): string[] {
+  return execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', 'infra'],
+    { cwd: REPOSITORY_ROOT, encoding: 'utf8' },
+  )
+    .split('\0')
+    .filter(Boolean)
+    .map((file) => relative(INFRA, join(REPOSITORY_ROOT, file)))
+    .filter(
+      (path) =>
+        !path.split(sep).some((part) => part === '.terraform' || part === 'tests') &&
+        basename(path) !== '.terraform.lock.hcl',
+    );
 }
 
 describe('Terraform files', () => {
@@ -197,5 +207,27 @@ describe('Terraform files', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('Bootstrap variables', () => {
+  it('names sub_claim_prefix where a prefix without the IDs is refused', () => {
+    const variables = blocks(readText(join(INFRA, 'bootstrap/variables.tf')), 'variable');
+    const prefix = variables.find((variable) => variable.labels[0] === 'github_subject_prefix');
+    expect(prefix, 'the bootstrap declares github_subject_prefix').toBeDefined();
+
+    // The validation is found by the condition that refuses a prefix without the IDs, so its
+    // message is the one a user reads when the IDs are missing.
+    const validations = blocks(prefix?.body ?? '', 'validation');
+    const withoutIds = validations.find((validation) =>
+      /^can\(regex\("\^repo:.*@\[0-9\]\+\/.*@\[0-9\]\+\$", var\.github_subject_prefix\)\)$/.test(
+        blockArguments(validation.body).condition ?? '',
+      ),
+    );
+    expect(withoutIds, 'a validation refuses a prefix without the IDs').toBeDefined();
+
+    const message = unquoted(blockArguments(withoutIds?.body ?? '').error_message) ?? '';
+    expect(message).toContain('sub_claim_prefix');
+    expect(message).toContain('gh api repos/<owner>/<repo>/actions/oidc/customization/sub');
   });
 });

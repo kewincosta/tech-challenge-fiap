@@ -85,7 +85,7 @@ The bootstrap creates what the main stack needs before it can run:
 
 - the S3 bucket `workshop-tfstate-kewincosta`, with versioning, server-side encryption and all four public access blocks on;
 - the GitHub OIDC provider for `https://token.actions.githubusercontent.com`, with the client id `sts.amazonaws.com`;
-- the role `workshop-deploy`, which only a job of `kewincosta/tech-challenge-fiap` running in the GitHub environment `prod` can assume: the audience is `sts.amazonaws.com` and the subject is exactly `repo:kewincosta/tech-challenge-fiap:environment:prod`.
+- the role `workshop-deploy`, which only a job of `kewincosta/tech-challenge-fiap` running in the GitHub environment `prod` can assume: the audience is `sts.amazonaws.com` and the subject is exactly `repo:kewincosta@72565745/tech-challenge-fiap@1357566072:environment:prod`.
 
 You run it once, with your own AWS credentials:
 
@@ -97,6 +97,22 @@ scripts/tool.sh terraform -chdir=infra/bootstrap apply
 Its state stays on your machine, in `infra/bootstrap/terraform.tfstate` (git ignores it). The bucket that would hold it does not exist before the first apply. Keep that file: it is the only record of what the bootstrap created, and losing it leaves you to import the resources one by one. Back it up with your other private files.
 
 An S3 bucket name is unique across all AWS accounts. If `workshop-tfstate-kewincosta` is taken, change `state_bucket_name` in `bootstrap/variables.tf` and `bucket` in `environments/prod.backend.hcl` to the same new name before the apply.
+
+The subject is the immutable one: GitHub opted the repository into a subject that carries the owner and repository IDs, so a renamed or recreated repository cannot assume the role. The prefix comes from GitHub:
+
+```bash
+gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+```
+
+Its `sub_claim_prefix` goes into the variable `github_subject_prefix` of `bootstrap/variables.tf`, and the bootstrap adds `:environment:` and `github_environment` to it. The bootstrap refuses a prefix without the IDs and a prefix of another repository than `github_repository`.
+
+A bootstrap applied before this subject trusts the name-based one, and the CD fails at the credentials step with "Not authorized to perform sts:AssumeRoleWithWebIdentity". Apply it again:
+
+```bash
+AWS_PROFILE=<profile> scripts/tool.sh terraform -chdir=infra/bootstrap apply
+```
+
+The plan updates the trust policy of the role `workshop-deploy` in place and changes nothing else.
 
 The role carries the AWS managed `AdministratorAccess` policy. The main stack creates and destroys IAM roles, a VPC, EKS, RDS, ElastiCache, ECR, Secrets Manager secrets, KMS keys and CloudWatch log groups, and a policy that lists every action of those services would run to hundreds of lines. The trust policy is the limit: no other repository, branch, pull request or environment can use the role.
 
@@ -131,6 +147,7 @@ aws eks update-kubeconfig --name workshop-prod --region us-east-1
 To remove `prod`:
 
 ```bash
+scripts/tool.sh terraform -chdir=infra init -backend-config=environments/prod.backend.hcl
 scripts/tool.sh terraform -chdir=infra destroy -var-file=environments/prod.tfvars
 ```
 
