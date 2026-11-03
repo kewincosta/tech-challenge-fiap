@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { parseAllDocuments } from 'yaml';
 import { validateEnv } from '../../../src/config/env.validation';
 import { REPOSITORY_ROOT, run } from '../support/docker';
@@ -338,10 +338,12 @@ describe('CI workflow', () => {
 
       expect(needsOf(job), `${id} waits for no job`).toEqual([]);
       expect(job.if, `${id} always runs`).toBeUndefined();
-      expect(NO_FAILURE, `${id} may not fail quietly`).toContain(job['continue-on-error']);
+      expect(NO_FAILURE, `${id} does not go on after an error`).toContain(job['continue-on-error']);
       expect(step, `${id} runs ${command}`).toBeDefined();
       expect(step?.if, `${id} runs ${command} every time`).toBeUndefined();
-      expect(NO_FAILURE, `${command} may not fail quietly`).toContain(step?.['continue-on-error']);
+      expect(NO_FAILURE, `${command} does not go on after an error`).toContain(
+        step?.['continue-on-error'],
+      );
     }
   });
 
@@ -375,6 +377,13 @@ describe('CI workflow', () => {
 });
 
 describe('CD workflow', () => {
+  beforeAll(async () => {
+    // The scripts of the steps run here as they run on the runner, and the deploy reads JSON with jq.
+    const jq = await run('jq', ['--version'], { allowFailure: true });
+
+    expect(jq.code, 'jq is on the PATH, which the CD script and these specs need').toBe(0);
+  });
+
   it('names the CI workflow that starts it', () => {
     const started = triggersOf(cd).workflow_run;
 
@@ -395,7 +404,7 @@ describe('CD workflow', () => {
     // A job that needs a skipped job is skipped, unless its condition names a status.
     for (const [id, job] of Object.entries(cd.jobs)) {
       expect(hasStatusFunction(String(job.if ?? '')), `${id} names no status`).toBe(false);
-      expect(NO_FAILURE, `${id} may not fail quietly`).toContain(job['continue-on-error']);
+      expect(NO_FAILURE, `${id} does not go on after an error`).toContain(job['continue-on-error']);
       if (id !== 'tip') {
         expect(ancestorsOf(cd, id), `${id} waits for the tip check`).toContain('tip');
       }

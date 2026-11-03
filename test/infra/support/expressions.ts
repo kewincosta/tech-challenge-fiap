@@ -1,9 +1,9 @@
 /**
  * An evaluator for the expressions of GitHub Actions workflows (`${{ ... }}` and the `if:` of a job),
- * so a spec can ask what a condition gives for an example instead of comparing its text. It follows
- * the documented rules: `==` compares strings without regard to case and turns other pairs of types
- * into numbers, `&&` and `||` return one of their operands, a missing property is null, and the
- * status functions read the status the caller passes in.
+ * so a spec can evaluate a condition for an example. It follows the documented rules: `==` compares
+ * strings without regard to case and turns other pairs of types into numbers, `&&` and `||` return
+ * one of their operands, a missing property is null, and the status functions read the status the
+ * caller passes in.
  */
 
 export type Value = string | number | boolean | null | Value[] | { [key: string]: Value };
