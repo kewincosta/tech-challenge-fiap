@@ -72,8 +72,10 @@ describe('database config', () => {
     expect(sslFor({ DATABASE_SSL: 'true' }), 'true with no bundle').toEqual({
       rejectUnauthorized: true,
     });
-    expect(sslFor({ DATABASE_SSL: 'false', DATABASE_SSL_CA: bundlePath }), '"false"').toBeFalsy();
-    expect(sslFor({}), 'unset').toBeFalsy();
+    // Exactly false: with undefined, pg takes its TLS setting from PGSSLMODE, and "no-verify" there
+    // turns TLS on without verifying the server.
+    expect(sslFor({ DATABASE_SSL: 'false', DATABASE_SSL_CA: bundlePath }), '"false"').toBe(false);
+    expect(sslFor({}), 'unset').toBe(false);
   });
 
   it('treats an empty DATABASE_SSL_CA as no bundle', () => {
@@ -125,7 +127,7 @@ describe('database config', () => {
     const application = await connectionOfTheApplication();
     const migrations = await connectionOfTheMigrations();
 
-    expect(application.ssl).toBeFalsy();
-    expect(migrations.ssl).toBeFalsy();
+    expect(application.ssl).toBe(false);
+    expect(migrations.ssl).toBe(false);
   });
 });
