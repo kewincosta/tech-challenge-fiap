@@ -77,6 +77,6 @@ Proof: run integration | ✓ Test values > loads the taken values in the integra
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C7) at `71ceae3`, returned at `c5775cd`; Verifier (fresh sub-agent, default model) at `9da3341`, over `16c8ce5..9da3341`, with `proofs.md` 9 pass at `9da3341`
+- **Dispatched:** build (Sonnet sub-agent, C1 to C7) at `71ceae3`, returned at `c5775cd`; Verifier (fresh sub-agent, default model) at `9da3341`, over `16c8ce5..9da3341`, with `proofs.md` 9 pass at `9da3341`, stopped by the 5-hour limit before reading, resumed at `a1e66a8`
 - **Boundary:** C1-C7 closed at `c5775cd`
 - **Abandoned:** none
