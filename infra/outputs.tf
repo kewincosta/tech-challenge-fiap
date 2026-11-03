@@ -44,3 +44,13 @@ output "redis_port" {
   description = "The port of the Redis primary node."
   value       = module.cache.port
 }
+
+output "database_password_secret_name" {
+  description = "The Secrets Manager secret that holds the database user's password."
+  value       = aws_secretsmanager_secret.database_password.name
+}
+
+output "jwt_secret_name" {
+  description = "The Secrets Manager secret that holds the JWT secret."
+  value       = aws_secretsmanager_secret.jwt_secret.name
+}

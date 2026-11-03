@@ -1,6 +1,6 @@
 # The one entry of the infrastructure. It wires the modules in modules/ and holds what joins them:
-# who may reach the database and the cache. An environment is a pair of files in environments/,
-# applied as:
+# who may reach the database and the cache, and the secrets the CD hands to the pods. An
+# environment is a pair of files in environments/, applied as:
 #
 #   terraform init -backend-config=environments/prod.backend.hcl
 #   terraform apply -var-file=environments/prod.tfvars
@@ -129,4 +129,34 @@ resource "aws_security_group" "cache" {
     to_port         = 6379
     security_groups = [module.cluster.node_security_group_id]
   }
+}
+
+# Secrets Manager keeps what the CD hands to the pods. A recovery window of 0 deletes a secret at
+# once, so destroying the environment and applying it again can reuse the names.
+resource "aws_secretsmanager_secret" "database_password" {
+  name                    = "${local.name}/database-password"
+  description             = "The password of the ${var.database_user} user of the ${local.name} database."
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "database_password" {
+  secret_id     = aws_secretsmanager_secret.database_password.id
+  secret_string = module.database.password
+}
+
+# The application refuses a JWT secret shorter than 32 characters.
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "jwt_secret" {
+  name                    = "${local.name}/jwt-secret"
+  description             = "The key the ${local.name} application signs its tokens with."
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret" {
+  secret_id     = aws_secretsmanager_secret.jwt_secret.id
+  secret_string = random_password.jwt_secret.result
 }
