@@ -61,6 +61,6 @@ Proof: `git check-ignore -q docs/roteiro-video.md && git check-ignore -q docs/ro
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`
-- **Boundary:** none
+- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`, returned at `ebc9ede`
+- **Boundary:** C1-C4 closed at `ebc9ede`; the video script is `docs/roteiro-video-fase-2.md`, which git ignores
 - **Abandoned:** none
