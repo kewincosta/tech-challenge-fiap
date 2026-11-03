@@ -119,6 +119,11 @@ const EXAMPLES: Array<[string, CiRun, boolean]> = [
     ciRun('success', 'pull_request', 'main', { repository: 'stranger/fork' }),
     false,
   ],
+  [
+    "a pull request's run from a branch of this repository named main",
+    ciRun('success', 'pull_request', 'main'),
+    false,
+  ],
   ["another branch's run", ciRun('success', 'push', 'feature'), false],
   ["a tag's run", ciRun('success', 'push', 'v1.0.0'), false],
   ["a fork's run", ciRun('success', 'push', 'main', { repository: 'stranger/fork' }), false],
@@ -511,6 +516,16 @@ describe('CD workflow', () => {
         '--reuse-values',
       );
       expect(Object.keys(settings(upgrade)).sort()).toEqual(DEPLOY_KEYS);
+      expect(settings(upgrade), 'each value comes from the output that names it').toMatchObject({
+        'image.repository': String(OUTPUTS.repository_url),
+        'config.DATABASE_HOST': String(OUTPUTS.database_host),
+        'config.DATABASE_PORT': String(OUTPUTS.database_port),
+        'config.DATABASE_NAME': String(OUTPUTS.database_name),
+        'config.DATABASE_USER': String(OUTPUTS.database_user),
+        'config.REDIS_HOST': String(OUTPUTS.redis_host),
+        'config.REDIS_PORT': String(OUTPUTS.redis_port),
+        'config.APP_PUBLIC_URL': 'http://lb.example.test',
+      });
       // Every value goes in as a string, because a SHA of digits only would become a number.
       expect(upgrade.filter((argument) => /^--set(?!-string$)/.test(argument))).toEqual([]);
       expect(upgrade.filter((argument) => argument === '--set-string')).toHaveLength(
@@ -737,6 +752,18 @@ describe('CD workflow', () => {
       expect(['http:', 'https:']).toContain(new URL(placeholder).protocol);
       expect(secondsSlept(first.calls), 'it waits for the hostname').toBeGreaterThan(0);
       expect(first.summary).toContain('http://new.lb.example.test');
+      // It reads the hostname of the Service of the release, where Kubernetes puts it.
+      const reads = first.calls.filter(
+        (call) => call.tool === 'kubectl' && call.args[0] === 'get' && call.args[1] === 'service',
+      );
+      expect(reads.length).toBeGreaterThanOrEqual(3);
+      for (const read of reads) {
+        expect(read.args[2]).toBe('workshop');
+        expect(option(read.args, '--namespace')).toBe('workshop');
+        expect(option(read.args, '--output')).toBe(
+          'jsonpath={.status.loadBalancer.ingress[0].hostname}',
+        );
+      }
       // The second upgrade changes the URL and nothing else.
       expect({ ...one, 'config.APP_PUBLIC_URL': real }).toEqual(two);
     });
