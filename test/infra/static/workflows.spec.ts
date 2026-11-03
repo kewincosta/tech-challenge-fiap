@@ -385,6 +385,12 @@ describe('CI workflow', () => {
     // The two events that can start it, and what each one starts: the six cases of the check, then
     // three more that the same filters turn away.
     expect(Object.keys(triggers).sort()).toEqual(['pull_request', 'push']);
+    // Only main, by name, and the default pull request actions: a second branch, a pattern, an
+    // ignore list or another action fails here even where no example below reaches it.
+    expect(triggers).toEqual({
+      pull_request: { branches: ['main'] },
+      push: { branches: ['main'] },
+    });
     for (const [name, event, starts] of CI_EVENTS) {
       expect(startsRun(triggers, event), name).toBe(starts);
     }
