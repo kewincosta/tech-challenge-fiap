@@ -1,6 +1,6 @@
 # 0038. Infrastructure on AWS in us-east-1, provisioned by Terraform
 
-**Status**: Accepted
+**Status**: Amended by [0043](0043-the-deploy-role-trusts-the-immutable-oidc-subject.md)
 **Source**: AD-022 in `.specs/STATE.md`
 **Recorded**: 2026-11-03, from AD-022, taken on 2026-11-02 during the `phase-2-infrastructure` feature
 

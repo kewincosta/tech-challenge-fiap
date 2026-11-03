@@ -1135,7 +1135,7 @@ excludes the test files.
 │   ├── integration/               persistence against the real PostgreSQL
 │   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       42 architecture decision records
+│   ├── adr/                       43 architecture decision records
 │   ├── architecture/              overview, high level, low level per module, C4 diagrams
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
 ├── infra/                         Terraform: bootstrap, main stack, modules and environments
@@ -1216,7 +1216,7 @@ rejected across the project, the record of the language decisions and the consis
 
 ## Technical decisions
 
-Forty-two numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+Forty-three numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
 context, the decision and the consequences. The seven below shape the system the most. The five of
 Phase 2, 0038 to 0042, cover the infrastructure, the database and Redis settings, the chart, the
 pipeline and when the CI runs ([Phase 2 infrastructure](#phase-2-infrastructure)).

@@ -15,7 +15,7 @@ type Pair = [adr: number, decision: number];
  * The third place names the record and the decision that amended it, when one did.
  */
 const RECORDS: Array<[...Pair, amendedBy?: Pair]> = [
-  [38, 22],
+  [38, 22, [43, 27]],
   [39, 23],
   [40, 24],
   [41, 25, [42, 26]],
@@ -126,6 +126,16 @@ describe('Decision records', () => {
 
     expect(headerLine(text, 'Amends'), 'ADR 0042 says which record it amends').toBe(
       `**Amends**: [0041](${recordFile(41)})`,
+    );
+  });
+
+  it('records AD-027 as ADR 0043, which amends ADR 0038', () => {
+    // ADR 0043 is accepted and comes from AD-027. ADR 0038 and AD-022 say that they were amended.
+    const { text } = expectRecord(43, 27);
+    expectRecord(38, 22, [43, 27]);
+
+    expect(headerLine(text, 'Amends'), 'ADR 0043 says which record it amends').toBe(
+      `**Amends**: [0038](${recordFile(38)})`,
     );
   });
 });
