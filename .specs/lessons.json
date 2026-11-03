@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 37,
+  "next_id": 45,
   "lessons": [
     {
       "id": "L-003",
@@ -371,6 +371,150 @@
       ],
       "created": "2026-11-02T08:57:44Z",
       "last_seen": "2026-11-02T08:57:44Z"
+    },
+    {
+      "id": "L-037",
+      "key": "weak_test::compare the whole tls option object of every assembly that opens a connection so a weakened certificate check in any of them fails the test",
+      "text": "Compare the whole TLS option object of every assembly that opens a connection, so a weakened certificate check in any of them fails the test.",
+      "signal": "weak_test",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C11 src/config/database.config.spec.ts:111 (config)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-038",
+      "key": "weak_test::assert the exact false a driver option takes when a feature is off because undefined lets the driver fall back to its own environment variable",
+      "text": "Assert the exact false a driver option takes when a feature is off, because undefined lets the driver fall back to its own environment variable.",
+      "signal": "weak_test",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C9 src/config/database.config.spec.ts:75 (config)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-039",
+      "key": "weak_test::assert the exact tls option a client receives not that one is defined so an option that skips certificate verification fails",
+      "text": "Assert the exact TLS option a client receives, not that one is defined, so an option that skips certificate verification fails.",
+      "signal": "weak_test",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C10 src/config/redis.config.spec.ts:22 (config)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-040",
+      "key": "ac_gap::key a terraform map built from a user supplied list by its distinct values so a repeated entry does not fail the plan",
+      "text": "Key a Terraform map built from a user-supplied list by its distinct values, so a repeated entry does not fail the plan.",
+      "signal": "ac_gap",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "infra/modules/cluster/main.tf:25 (infra)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-041",
+      "key": "spec_precision_gap::keep a value that identifies the cloud account such as a deploy role arn in a ci secret because a ci variable s value prints in the public log",
+      "text": "Keep a value that identifies the cloud account, such as a deploy role ARN, in a CI secret, because a CI variable's value prints in the public log.",
+      "signal": "spec_precision_gap",
+      "scope": "ci",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C65 .github/workflows/cd.yml role-to-assume (ci)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-042",
+      "key": "weak_test::give each part of a claim that spans a module and the root that wires it a proof of its own because a module run with made up inputs does not prove the wiring",
+      "text": "Give each part of a claim that spans a module and the root that wires it a proof of its own, because a module run with made-up inputs does not prove the wiring.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C44 C45 C49 test/infra/static/terraform.spec.ts:151 (infra)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-043",
+      "key": "ac_gap::validate a setting where every entry point reads it because compiled scripts that skip the application s env validation otherwise accept an invalid value",
+      "text": "Validate a setting where every entry point reads it, because compiled scripts that skip the application's env validation otherwise accept an invalid value.",
+      "signal": "ac_gap",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/config/database.config.ts:11 (config)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-044",
+      "key": "weak_test::check what a module output holds not only that the caller reads it by name because a swapped output passes a test that follows the name",
+      "text": "Check what a module output holds, not only that the caller reads it by name, because a swapped output passes a test that follows the name.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "phase-2-infrastructure"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C75 infra/modules/network/outputs.tf (infra)"
+      ],
+      "created": "2026-11-03T09:46:34Z",
+      "last_seen": "2026-11-03T09:46:34Z"
     }
   ]
 }

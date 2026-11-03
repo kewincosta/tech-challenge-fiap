@@ -39,3 +39,7 @@ Found during earlier features and left outside them, to plan when someone takes 
 - `docs/roteiro-video.md:95-100` and `:361` and `security/scripts/deliverable.ts:255` still name CQRS and the buses, and the video script counts nine migrations.
 - `FindUserByDocumentUseCase` is unused, and some spec variables are still named `handler`.
 - The inventory stock use cases publish their item events inside their transaction, before the commit. Nothing subscribes to them today.
+- `phase-2-infrastructure` never met AWS: its plans ran against mocked providers. Before the first merge to `main`, confirm that `us-east-1` offers EKS 1.37 with the `metrics-server` add-on and an AL2023 node AMI for it, and RDS PostgreSQL 16.15 (`aws rds describe-db-engine-versions --engine postgres --engine-version 16.15`).
+- The cluster's probes call `/health/live` and `/health/ready` every few seconds per pod, and the request logger writes a line for each.
+- The `prod` Service gets its Network Load Balancer from the controller built into EKS, which AWS now keeps for critical fixes only. The AWS Load Balancer Controller is the way out if that changes.
+- Each Terraform job of the CD pulls `hashicorp/terraform` from Docker Hub without signing in, under its anonymous pull limit.

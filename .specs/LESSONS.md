@@ -132,6 +132,54 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: verification.md finding 5; plan.md Differences from the source (planning)
 - last seen: 2026-11-02T08:57:44Z
 
+### L-037 - Compare the whole TLS option object of every assembly that opens a connection, so a weakened certificate check in any of them fails the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C11 src/config/database.config.spec.ts:111 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-038 - Assert the exact false a driver option takes when a feature is off, because undefined lets the driver fall back to its own environment variable.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C9 src/config/database.config.spec.ts:75 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-039 - Assert the exact TLS option a client receives, not that one is defined, so an option that skips certificate verification fails.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C10 src/config/redis.config.spec.ts:22 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-040 - Key a Terraform map built from a user-supplied list by its distinct values, so a repeated entry does not fail the plan.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: infra/modules/cluster/main.tf:25 (infra)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-041 - Keep a value that identifies the cloud account, such as a deploy role ARN, in a CI secret, because a CI variable's value prints in the public log.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `ci` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C65 .github/workflows/cd.yml role-to-assume (ci)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-042 - Give each part of a claim that spans a module and the root that wires it a proof of its own, because a module run with made-up inputs does not prove the wiring.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C44 C45 C49 test/infra/static/terraform.spec.ts:151 (infra)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-043 - Validate a setting where every entry point reads it, because compiled scripts that skip the application's env validation otherwise accept an invalid value.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: src/config/database.config.ts:11 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-044 - Check what a module output holds, not only that the caller reads it by name, because a swapped output passes a test that follows the name.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C75 infra/modules/network/outputs.tf (infra)
+- last seen: 2026-11-03T09:46:34Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
