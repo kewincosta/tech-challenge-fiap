@@ -130,4 +130,26 @@ describe('database config', () => {
     expect(application.ssl).toBe(false);
     expect(migrations.ssl).toBe(false);
   });
+
+  // The compiled migrations and admin seed load this data source and never run validateEnv, so a
+  // switch that would leave TLS off with no error has to stop them here.
+  it('refuses a DATABASE_SSL other than true or false', async () => {
+    // What a load ends in: the message of the error, or "loaded" when nothing stopped it.
+    const outcome = (load: () => Promise<unknown>): Promise<string> =>
+      load().then(
+        () => 'loaded',
+        (error: unknown) => (error instanceof Error ? error.message : String(error)),
+      );
+
+    for (const value of ['TRUE', 'yes', '1', '']) {
+      vi.stubEnv('DATABASE_SSL', value);
+
+      expect(await outcome(connectionOfTheMigrations), `the migrations with "${value}"`).toMatch(
+        /DATABASE_SSL/,
+      );
+      expect(await outcome(connectionOfTheApplication), `the application with "${value}"`).toMatch(
+        /DATABASE_SSL/,
+      );
+    }
+  });
 });
