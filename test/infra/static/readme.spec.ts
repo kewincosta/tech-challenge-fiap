@@ -149,7 +149,7 @@ const PARTS: Array<{ part: string; expected: Expected[] }> = [
         mentions: [
           /ci\.yml/,
           /cd\.yml/,
-          /AWS_DEPLOY_ROLE_ARN/,
+          /(?<!\w)DEPLOY_ROLE_ARN/,
           /CLUSTER_ADMIN_ARNS/,
           /environment/,
           /`main`/,

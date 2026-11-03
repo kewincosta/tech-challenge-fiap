@@ -5,8 +5,11 @@
 # first job and skips the rest. The CD has no manual trigger.
 #
 # The jobs that call AWS run in the GitHub environment prod, which the deploy role trusts, and no
-# job holds an access key. Each of those jobs reads the Terraform outputs it needs from the state,
-# because GitHub drops a job output that holds the account id, and the credentials step masks it.
+# job holds an access key. They read the role's ARN from the secret DEPLOY_ROLE_ARN of that
+# environment: the ARN holds the account id, and GitHub prints the inputs of a step at the top of
+# its log, which anyone can read when the repository is public. Each of those jobs reads the
+# Terraform outputs it needs from the state, because GitHub drops a job output that holds the
+# account id, and the credentials step masks it.
 name: CD
 
 on:
@@ -92,7 +95,7 @@ jobs:
       - name: Assume the deploy role
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Initialize Terraform
@@ -121,7 +124,7 @@ jobs:
       - name: Assume the deploy role
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Initialize Terraform
@@ -154,7 +157,7 @@ jobs:
       - name: Assume the deploy role
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: true
       - name: Initialize Terraform

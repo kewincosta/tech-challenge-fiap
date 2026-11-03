@@ -276,6 +276,18 @@ function sessionSeconds(): number {
 const MAIN_JOBS = ['tip', 'terraform', 'image', 'deploy'];
 const AWS_JOBS = ['terraform', 'image', 'deploy'];
 
+/** The steps of a job that assume the deploy role. */
+function credentialSteps(job: Job) {
+  return actionSteps(job).filter((step) =>
+    step.uses.startsWith('aws-actions/configure-aws-credentials@'),
+  );
+}
+
+/** The names of the variables a workflow reads: `CLUSTER_ADMIN_ARNS` for `vars.CLUSTER_ADMIN_ARNS`. */
+function variablesRead(file: string): string[] {
+  return [...workflowText(file).matchAll(/\bvars(?:\.|\[')([\w-]+)/g)].map((match) => match[1]);
+}
+
 describe('Workflows', () => {
   it('pins each action to a full commit SHA and names its release in a comment', () => {
     for (const file of workflowFiles()) {
@@ -649,14 +661,10 @@ describe('CD workflow', () => {
       expect(workflowText(file), `${file} names no access key`).not.toMatch(accessKey);
     }
 
-    const credentials = (job: Job) =>
-      actionSteps(job).filter((step) =>
-        step.uses.startsWith('aws-actions/configure-aws-credentials@'),
-      );
-    const awsJobs = Object.entries(cd.jobs).filter(([, job]) => credentials(job).length > 0);
+    const awsJobs = Object.entries(cd.jobs).filter(([, job]) => credentialSteps(job).length > 0);
     expect(awsJobs.map(([id]) => id)).toEqual(AWS_JOBS);
     for (const [id, job] of awsJobs) {
-      const [assume, ...others] = credentials(job);
+      const [assume, ...others] = credentialSteps(job);
       const firstScript = job.steps.findIndex((step) => step.run !== undefined);
 
       expect(others, `${id} assumes the role once`).toEqual([]);
@@ -664,7 +672,7 @@ describe('CD workflow', () => {
         job.steps.indexOf(assume),
         `${id} assumes the role before it runs anything`,
       ).toBeLessThan(firstScript);
-      expect(assume.with?.['role-to-assume'], id).toBe('${{ vars.AWS_DEPLOY_ROLE_ARN }}');
+      expect(assume.with?.['role-to-assume'], id).toBe('${{ secrets.DEPLOY_ROLE_ARN }}');
       expect(assume.with?.['mask-aws-account-id'], `${id} hides the account id`).toBe(true);
       expect(environmentOf(job), `${id} runs in the environment the role trusts`).toBe('prod');
       expect(permissionsOf(cd, job), id).toEqual({ contents: 'read', 'id-token': 'write' });
@@ -681,6 +689,48 @@ describe('CD workflow', () => {
     expect(readText(join(REPOSITORY_ROOT, 'infra/bootstrap/variables.tf'))).toMatch(
       /variable "github_environment"[^}]*default\s*=\s*"prod"/,
     );
+  });
+
+  it("takes the deploy role's ARN from a secret of the prod environment", () => {
+    // The ARN holds the account id, and GitHub prints the inputs of a step at the top of its log: a
+    // variable shows its value there, and a secret shows ***. Only a job that runs in the
+    // environment can read that environment's secret.
+    const ROLE_ARN = 'arn:aws:iam::123456789012:role/workshop-deploy';
+    const OTHER_ARN = 'arn:aws:iam::210987654321:role/other';
+    const variables = Object.fromEntries(
+      workflowFiles()
+        .flatMap(variablesRead)
+        .map((name) => [name, OTHER_ARN]),
+    );
+    const context: Context = {
+      ...contextOf(PASSED),
+      secrets: { DEPLOY_ROLE_ARN: ROLE_ARN },
+      vars: variables,
+    };
+
+    const awsJobs = Object.entries(cd.jobs).filter(([, job]) => credentialSteps(job).length > 0);
+    expect(awsJobs.map(([id]) => id)).toEqual(AWS_JOBS);
+    for (const [id, job] of awsJobs) {
+      const [assume] = credentialSteps(job);
+
+      expect(environmentOf(job), `${id} runs in the environment that holds the secret`).toBe(
+        'prod',
+      );
+      expect(
+        interpolate(String(assume.with?.['role-to-assume']), context),
+        `${id} takes the role from the secret, whatever the variables hold`,
+      ).toBe(ROLE_ARN);
+    }
+
+    // CLUSTER_ADMIN_ARNS holds the ARNs of the cluster administrators, not the deploy role's, so it
+    // stays a variable.
+    for (const file of workflowFiles()) {
+      const aboutTheRole = variablesRead(file).filter(
+        (name) => /role|arns?$/i.test(name) && name !== 'CLUSTER_ADMIN_ARNS',
+      );
+
+      expect(aboutTheRole, `${file} reads no role ARN from a variable`).toEqual([]);
+    }
   });
 
   it('reads the secrets from Secrets Manager at run time', async () => {

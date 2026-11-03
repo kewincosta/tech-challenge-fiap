@@ -50,11 +50,12 @@ which can be a later commit than the one the CI tested.
 The three jobs that call AWS run in the GitHub environment `prod`, which admits only `main`, with
 `id-token: write`. Each assumes `workshop-deploy`, the role of the bootstrap
 ([ADR 0038](0038-infrastructure-on-aws-provisioned-by-terraform.md)), through
-`aws-actions/configure-aws-credentials`, with the role's ARN taken from the environment variable
-`AWS_DEPLOY_ROLE_ARN`. No job holds an access key, and the credentials step masks the account id. A
-job reads the Terraform outputs that it needs from the state, with `terraform output`, and receives
-none from the job before it. GitHub drops a job output that holds a masked value, and the repository
-URL holds the account id.
+`aws-actions/configure-aws-credentials`, with the role's ARN taken from the secret `DEPLOY_ROLE_ARN`
+of that environment. The ARN holds the account id, and GitHub prints the inputs of a step in a log
+that anyone can read in a public repository, so a secret keeps the ARN out of it. No job holds an
+access key, and the credentials step masks the account id. A job reads the Terraform outputs that it
+needs from the state, with `terraform output`, and receives none from the job before it. GitHub
+drops a job output that holds a masked value, and the repository URL holds the account id.
 
 The CD reads the database password and the JWT secret from Secrets Manager during the run and
 masks both with `::add-mask::` before anything else can print them. It hands them to Helm with
@@ -77,6 +78,9 @@ action is pinned to a full commit SHA with its release in a comment: `actions/ch
 One workflow for both was rejected. It would tie the permissions of the deploy to every pull request.
 
 A manual run was ruled out by the user, and so were access keys in GitHub.
+
+The role's ARN in a variable of the environment was rejected. GitHub prints a variable's value in
+the log of the credentials step, and the ARN holds the account id.
 
 The integration and e2e suites in the CI were left out for now by the user.
 

@@ -500,9 +500,10 @@ Before the first merge to `main`, set up AWS and GitHub:
 1. Apply the bootstrap, as [Provisioning with Terraform](#provisioning-with-terraform) shows.
 2. In the settings of the repository, create the environment `prod` and limit its deployment branches
    to `main`.
-3. In that environment, set the variable `AWS_DEPLOY_ROLE_ARN` to the `deploy_role_arn` output of the
-   bootstrap. To use `kubectl` yourself, also set `CLUSTER_ADMIN_ARNS` to a JSON list of the ARNs of
-   your IAM users or roles.
+3. In that environment, add the secret `DEPLOY_ROLE_ARN` with the `deploy_role_arn` output of the
+   bootstrap. The ARN holds the account id, and GitHub masks a secret in the log of the credentials
+   step, which anyone can read in a public repository. To use `kubectl` yourself, also set the
+   variable `CLUSTER_ADMIN_ARNS` to a JSON list of the ARNs of your IAM users or roles.
 
 The CD starts from the copy of `cd.yml` on `main`, so it runs for the first time after the merge that
 adds it. The workflows hold no AWS access key: the jobs that call AWS assume the role through OIDC.

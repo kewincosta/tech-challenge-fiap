@@ -9,6 +9,6 @@ output "oidc_provider_arn" {
 }
 
 output "deploy_role_arn" {
-  description = "The ARN to store in the GitHub prod environment's variable for the role."
+  description = "The ARN to store in the secret DEPLOY_ROLE_ARN of the GitHub prod environment."
   value       = aws_iam_role.deploy.arn
 }
