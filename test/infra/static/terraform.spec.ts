@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join, relative, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPOSITORY_ROOT } from '../support/docker';
 import {
@@ -43,15 +44,24 @@ function modulesFolder(): string[] {
   return terraformFiles(join(INFRA, 'modules')).map((file) => join('modules', file));
 }
 
-/** Every file under a folder of infra that is committed and can name an account. */
-function filesToScan(relative = ''): string[] {
-  return readdirSync(join(INFRA, relative), { withFileTypes: true }).flatMap((entry) => {
-    const path = join(relative, entry.name);
-    if (entry.isDirectory()) {
-      return ['.terraform', 'tests'].includes(entry.name) ? [] : filesToScan(path);
-    }
-    return entry.name === '.terraform.lock.hcl' ? [] : [path];
-  });
+/**
+ * Every file under infra that git holds or would take, relative to infra, that can name an account.
+ * An ignored file, such as the local state of the bootstrap, stays on the machine and may name it.
+ */
+function filesToScan(): string[] {
+  return execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', 'infra'],
+    { cwd: REPOSITORY_ROOT, encoding: 'utf8' },
+  )
+    .split('\0')
+    .filter(Boolean)
+    .map((file) => relative(INFRA, join(REPOSITORY_ROOT, file)))
+    .filter(
+      (path) =>
+        !path.split(sep).some((part) => part === '.terraform' || part === 'tests') &&
+        basename(path) !== '.terraform.lock.hcl',
+    );
 }
 
 describe('Terraform files', () => {
