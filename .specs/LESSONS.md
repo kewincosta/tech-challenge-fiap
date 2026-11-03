@@ -288,6 +288,48 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: docs/roteiro-video-fase-2.md sources (guides)
 - last seen: 2026-11-03T18:41:20Z
 
+### L-063 - Give a variable that builds a value a run with a non-default value, so a test fails when the code writes the value out.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C1 infra/bootstrap/main.tf subject (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-064 - Refuse each half of a two-part format in a run of its own, so a validation that checks one half fails a test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C2 one-ID prefixes (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-065 - Refuse a different owner and a different name each in a run of its own when a check compares an identity.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C3 owner and name check (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-066 - Note on a closed check every test of it that a later decision changes.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `specs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: phase-2-infrastructure C71 (specs)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-067 - Update every list and count of decision records in the README when a record is added.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: README.md lists of Phase 2 records (docs)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-068 - Find a validation by its condition before asserting its message, so swapped messages fail the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C7 test/infra/static/terraform.spec.ts (infra)
+- last seen: 2026-11-03T22:12:28Z
+
+### L-069 - Look for a list's links inside the list's own paragraph, not anywhere in the document.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `docs` · harmful: 0
+- features: deploy-role-immutable-subject
+- evidence: C10 test/infra/static/readme.spec.ts (docs)
+- last seen: 2026-11-03T22:12:28Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

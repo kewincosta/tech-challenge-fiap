@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 63,
+  "next_id": 70,
   "lessons": [
     {
       "id": "L-003",
@@ -839,6 +839,132 @@
       ],
       "created": "2026-11-03T18:41:20Z",
       "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-063",
+      "key": "weak_test::give a variable that builds a value a run with a non default value so a test fails when the code writes the value out",
+      "text": "Give a variable that builds a value a run with a non-default value, so a test fails when the code writes the value out.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C1 infra/bootstrap/main.tf subject (infra)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-064",
+      "key": "weak_test::refuse each half of a two part format in a run of its own so a validation that checks one half fails a test",
+      "text": "Refuse each half of a two-part format in a run of its own, so a validation that checks one half fails a test.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C2 one-ID prefixes (infra)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-065",
+      "key": "weak_test::refuse a different owner and a different name each in a run of its own when a check compares an identity",
+      "text": "Refuse a different owner and a different name each in a run of its own when a check compares an identity.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C3 owner and name check (infra)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-066",
+      "key": "weak_test::note on a closed check every test of it that a later decision changes",
+      "text": "Note on a closed check every test of it that a later decision changes.",
+      "signal": "weak_test",
+      "scope": "specs",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "phase-2-infrastructure C71 (specs)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-067",
+      "key": "ac_gap::update every list and count of decision records in the readme when a record is added",
+      "text": "Update every list and count of decision records in the README when a record is added.",
+      "signal": "ac_gap",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "README.md lists of Phase 2 records (docs)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-068",
+      "key": "weak_test::find a validation by its condition before asserting its message so swapped messages fail the test",
+      "text": "Find a validation by its condition before asserting its message, so swapped messages fail the test.",
+      "signal": "weak_test",
+      "scope": "infra",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C7 test/infra/static/terraform.spec.ts (infra)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
+    },
+    {
+      "id": "L-069",
+      "key": "weak_test::look for a list s links inside the list s own paragraph not anywhere in the document",
+      "text": "Look for a list's links inside the list's own paragraph, not anywhere in the document.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "deploy-role-immutable-subject"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C10 test/infra/static/readme.spec.ts (docs)"
+      ],
+      "created": "2026-11-03T22:12:28Z",
+      "last_seen": "2026-11-03T22:12:28Z"
     }
   ]
 }

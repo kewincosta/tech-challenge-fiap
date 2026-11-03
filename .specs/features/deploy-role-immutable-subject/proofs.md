@@ -1,17 +1,24 @@
 # deploy-role-immutable-subject proofs
 
-**HEAD**: 976a74d
+**HEAD**: 23af302
 **Tree**: clean
 **Shell**: /bin/sh
-**Result**: 7 pass, 0 fail
+**Result**: 14 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
 | C1 | `run bootstrap / run "deploy_role_trust"... pass` | pass |
 | C2 | `run bootstrap / run "subject_prefix_without_ids"... pass` | pass |
 | C3 | `run bootstrap / run "subject_prefix_of_another_repository"... pass` | pass |
+| C6 | `run bootstrap / run "deploy_role_trust_follows_the_prefix"... pass` | pass |
+| C7 | `run infra / ✓ Bootstrap variables > names sub_claim_prefix where a prefix without the IDs is refused` | pass |
+| C8 | `run bootstrap / run "subject_prefix_without_repository_id"... pass` | pass |
+| C8 | `run bootstrap / run "subject_prefix_without_owner_id"... pass` | pass |
+| C9 | `run bootstrap / run "subject_prefix_of_another_owner"... pass` | pass |
+| C9 | `run bootstrap / run "subject_prefix_of_another_repository_name"... pass` | pass |
 | C4 | `run infra / ✓ Bootstrap guide > names the immutable subject and where its prefix comes from` | pass |
 | C5 | `run infra / ✓ Decision records > records AD-027 as ADR 0043, which amends ADR 0038` | pass |
+| C10 | `run infra / ✓ README > lists the Phase 2 records 0038 to 0043` | pass |
 | Build | `npm run build` | pass |
 | Build | `npm run lint` | pass |
 
@@ -20,21 +27,21 @@
 `Run bootstrap` - exit 0
 
 ```
-
-If you ever set or change modules or backend configuration for Terraform,
-rerun this command to reinitialize your working directory. If you forget, other
-commands will detect it and remind you to do so if necessary.
-tests/bootstrap.tftest.hcl... in progress
   run "state_bucket"... pass
   run "oidc_provider"... pass
   run "deploy_role_trust"... pass
+  run "deploy_role_trust_follows_the_prefix"... pass
   run "subject_prefix_without_ids"... pass
+  run "subject_prefix_without_repository_id"... pass
+  run "subject_prefix_without_owner_id"... pass
+  run "subject_prefix_of_another_owner"... pass
+  run "subject_prefix_of_another_repository_name"... pass
   run "subject_prefix_of_another_repository"... pass
   run "deploy_role_permissions"... pass
 tests/bootstrap.tftest.hcl... tearing down
 tests/bootstrap.tftest.hcl... pass
 
-Success! 6 passed, 0 failed.
+Success! 11 passed, 0 failed.
 ```
 
 `Run infra` - exit 0
@@ -52,7 +59,7 @@ Success! 6 passed, 0 failed.
  ✓ test/infra/static/triggers.spec.ts > Workflow triggers > refuses a filter that needs the files of a change 0ms
 
  Test Files  7 passed (7)
-      Tests  93 passed (93)
-   Start at  18:33:51
-   Duration  7.09s (transform 128ms, setup 0ms, collect 241ms, tests 6.72s, environment 0ms, prepare 37ms)
+      Tests  95 passed (95)
+   Start at  19:11:42
+   Duration  8.96s (transform 210ms, setup 0ms, collect 332ms, tests 8.43s, environment 0ms, prepare 53ms)
 ```
