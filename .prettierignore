@@ -4,6 +4,13 @@ node_modules
 package-lock.json
 .specs
 
+# Written by `depcruise --baseline`; formatting it would make every regeneration a whole-file diff
+.dependency-cruiser-known-violations.json
+
 # Vendored tooling: formatted by whoever ships it, not by this repository
 .agents
 .claude
+
+# Helm templates are Go templates, which only look like YAML; the vendored manifest keeps its upstream form
+k8s/workshop/templates
+k8s/kind/metrics-server.yaml

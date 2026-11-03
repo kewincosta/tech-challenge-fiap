@@ -1,0 +1,9 @@
+{{- include "workshop.requireDeployValues" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "workshop.fullname" . }}
+  labels:
+    {{- include "workshop.labels" (dict "context" . "component" "api") | nindent 4 }}
+data:
+  {{- include "workshop.configData" . | nindent 2 }}

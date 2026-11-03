@@ -1,0 +1,78 @@
+{{- /*
+The migrations run in a hook that Helm starts before it creates the other objects of the release,
+so the settings the Job reads are hooks too, of a lower weight: the ConfigMap and the Secret of the
+release do not exist yet on an install, and an upgrade would read the old ones. The hook copies
+hold the database's settings and nothing else, and go once the Job succeeds. The Job stays until the
+next run replaces it, as the record of the last migration.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "workshop.migration.fullname" . }}
+  labels:
+    {{- include "workshop.labels" (dict "context" . "component" "migration") | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+data:
+  {{- include "workshop.migration.configData" . | nindent 2 }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "workshop.migration.fullname" . }}
+  labels:
+    {{- include "workshop.labels" (dict "context" . "component" "migration") | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+type: Opaque
+data:
+  {{- include "workshop.migration.secretData" . | nindent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "workshop.migration.fullname" . }}
+  labels:
+    {{- include "workshop.labels" (dict "context" . "component" "migration") | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  # A migration runs in one transaction, so a second try after a dropped connection is safe.
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "workshop.labels" (dict "context" . "component" "migration") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: {{ include "workshop.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [node, dist/migrate.js]
+          envFrom:
+            - configMapRef:
+                name: {{ include "workshop.migration.fullname" . }}
+            - secretRef:
+                name: {{ include "workshop.migration.fullname" . }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

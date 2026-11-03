@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { TypeOrmInventoryQueryAdapter } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
 
@@ -12,7 +14,11 @@ let actorInternalId: number;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  queryAdapter = new TypeOrmInventoryQueryAdapter(dataSource);
+  queryAdapter = new TypeOrmInventoryQueryAdapter(
+    dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
+  );
   actorInternalId = await insertUser();
 });
 

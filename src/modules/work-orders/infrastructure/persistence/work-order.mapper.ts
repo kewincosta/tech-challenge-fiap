@@ -15,7 +15,7 @@ import { WorkOrderPartOrmEntity } from './work-order-part.orm-entity';
 import { WorkOrderServiceOrmEntity } from './work-order-service.orm-entity';
 import { WorkOrderOrmEntity } from './work-order.orm-entity';
 
-/** External ids the repository resolves through raw SQL - the mapper stays pure. */
+/** External ids the repository gets from the owners' key resolvers; the mapper stays pure. */
 export interface ResolvedWorkOrderIds {
   customerExternalId: string;
   vehicleExternalId: string;

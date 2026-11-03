@@ -1,8 +1,8 @@
-import { Session } from '../../../src/modules/authentication/domain/entities/session';
-import { SessionRepository } from '../../../src/modules/authentication/domain/repositories/session.repository';
-import { SessionRevocationReason } from '../../../src/modules/authentication/domain/session-revocation-reason';
-import { RefreshTokenHash } from '../../../src/modules/authentication/domain/value-objects/refresh-token-hash';
-import { SessionId } from '../../../src/modules/authentication/domain/value-objects/session-id';
+import { SessionRepository } from '../../../src/modules/identity/authentication/application/ports/session.repository';
+import { Session } from '../../../src/modules/identity/authentication/domain/entities/session';
+import { SessionRevocationReason } from '../../../src/modules/identity/authentication/domain/session-revocation-reason';
+import { RefreshTokenHash } from '../../../src/modules/identity/authentication/domain/value-objects/refresh-token-hash';
+import { SessionId } from '../../../src/modules/identity/authentication/domain/value-objects/session-id';
 
 export class InMemorySessionRepository implements SessionRepository {
   sessions: Session[] = [];
@@ -23,6 +23,10 @@ export class InMemorySessionRepository implements SessionRepository {
     this.sessions = this.sessions.filter((existing) => !existing.id.equals(session.id));
     this.sessions.push(session);
     return Promise.resolve();
+  }
+
+  async existsByUserId(userId: string): Promise<boolean> {
+    return Promise.resolve(this.sessions.some((session) => session.userId === userId));
   }
 
   async revokeAllActiveByUserId(

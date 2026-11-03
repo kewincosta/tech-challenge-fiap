@@ -7,13 +7,15 @@ import { BudgetId } from '../../src/modules/work-orders/domain/value-objects/bud
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
-import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
-import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
-import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
-import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
+import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
+import {
+  buildWorkOrderQueryAdapter,
+  buildWorkOrderRepository,
+  readLastBoardPage,
+} from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
@@ -22,14 +24,8 @@ let queryAdapter: TypeOrmWorkOrderQueryAdapter;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  repository = new TypeOrmWorkOrderRepository(
-    dataSource.getRepository(WorkOrderOrmEntity),
-    dataSource.getRepository(WorkOrderServiceOrmEntity),
-    dataSource.getRepository(WorkOrderPartOrmEntity),
-    dataSource.getRepository(WorkOrderBudgetOrmEntity),
-    dataSource,
-  );
-  queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);
+  repository = buildWorkOrderRepository(dataSource);
+  queryAdapter = buildWorkOrderQueryAdapter(dataSource);
 });
 
 afterAll(async () => {
@@ -262,7 +258,7 @@ describe('TypeOrmWorkOrderQueryAdapter - budget rounds', () => {
     await repository.save(reloaded);
 
     const detail = await queryAdapter.getByNumber(workOrder.number.value);
-    const list = await queryAdapter.listByStatus('AWAITING_APPROVAL');
+    const list = await readLastBoardPage(queryAdapter, [WorkOrderStatus.AwaitingApproval]);
     const listed = list.find((summary) => summary.number === workOrder.number.value);
 
     expect(listed?.budgets).toEqual(detail?.budgets);

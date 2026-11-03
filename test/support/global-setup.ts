@@ -11,14 +11,45 @@ import { CreateInventorySchema1787702400005 } from '../../src/shared/infrastruct
 import { CreateWorkOrdersSchema1787702400006 } from '../../src/shared/infrastructure/database/migrations/1787702400006-create-work-orders-schema';
 import { CreateWorkOrderBudgets1787702400007 } from '../../src/shared/infrastructure/database/migrations/1787702400007-create-work-order-budgets';
 import { AddWorkOrderClosingColumns1787702400008 } from '../../src/shared/infrastructure/database/migrations/1787702400008-add-work-order-closing-columns';
+import { AddCrossModuleSteps1787702400009 } from '../../src/shared/infrastructure/database/migrations/1787702400009-add-cross-module-steps';
+import { AddConsumptionConfirmation1787702400010 } from '../../src/shared/infrastructure/database/migrations/1787702400010-add-consumption-confirmation';
 
 const TEST_DATABASE_SUFFIX = '_test';
 
-export default async function globalSetup(): Promise<void> {
+export default async function globalSetup(): Promise<() => Promise<void>> {
   config({ path: resolve(__dirname, '../../.env.test'), override: true, quiet: true });
   assertDedicatedTestDatabase();
   await assertStandaloneRedis();
   await runMigrations();
+  const startedAt = new Date();
+  return () => removeFinishedSteps(startedAt);
+}
+
+// The application leaves a finished step in the outbox of its module for every stock operation and
+// every registration of a new account, and the test database is never truncated. A finished step
+// is inert, but the suites leave none: once the run ends, this removes the ones it made.
+async function removeFinishedSteps(since: Date): Promise<void> {
+  const dataSource = new DataSource({
+    type: 'postgres',
+    host: process.env.DATABASE_HOST,
+    port: Number(process.env.DATABASE_PORT),
+    username: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PASSWORD,
+    database: process.env.DATABASE_NAME,
+  });
+  await dataSource.initialize();
+  try {
+    await dataSource.query(
+      `DELETE FROM work_order_stock_steps WHERE status = 'DONE' AND created_at >= $1`,
+      [since],
+    );
+    await dataSource.query(
+      `DELETE FROM customer_account_steps WHERE status = 'DONE' AND created_at >= $1`,
+      [since],
+    );
+  } finally {
+    await dataSource.destroy();
+  }
 }
 
 function assertDedicatedTestDatabase(): void {
@@ -49,14 +80,15 @@ async function assertStandaloneRedis(): Promise<void> {
   }
 }
 
-async function runMigrations(): Promise<void> {
+/** `database` defaults to the one `.env.test` names; a spec that creates its own passes its name. */
+export async function runMigrations(database = process.env.DATABASE_NAME): Promise<void> {
   const dataSource = new DataSource({
     type: 'postgres',
     host: process.env.DATABASE_HOST,
     port: Number(process.env.DATABASE_PORT),
     username: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE_NAME,
+    database,
     migrations: [
       CreateIdentityAndAccessSchema1787702400000,
       SeedRbacCatalog1787702400001,
@@ -67,6 +99,8 @@ async function runMigrations(): Promise<void> {
       CreateWorkOrdersSchema1787702400006,
       CreateWorkOrderBudgets1787702400007,
       AddWorkOrderClosingColumns1787702400008,
+      AddCrossModuleSteps1787702400009,
+      AddConsumptionConfirmation1787702400010,
     ],
   });
   await dataSource.initialize();

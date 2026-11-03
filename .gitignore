@@ -16,3 +16,21 @@ security/.cache/
 
 # Personal presentation notes, not part of the project
 docs/roteiro-video.md
+
+# Written by the agent-skills CLI on every install or removal: a copy of the previous lock
+.agents/.skill-lock.json.backup
+
+# Python bytecode left by running the skill scripts
+__pycache__/
+
+# Terraform: the providers and modules init downloads, and the state a local apply writes. The lock
+# files and the environments' variable files are committed.
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Pinned tools, and the home and the caches scripts/tool.sh gives its containers
+.tools/

@@ -2,13 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
-import { GetInventoryItemHandler } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.handler';
+import { GetInventoryItemUseCase } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.use-case';
 import { GetInventoryItemQuery } from '../../src/modules/inventory/application/queries/get-inventory-item/get-inventory-item.query';
-import { GetItemMovementHistoryHandler } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.handler';
+import { GetItemMovementHistoryUseCase } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.use-case';
 import { GetItemMovementHistoryQuery } from '../../src/modules/inventory/application/queries/get-item-movement-history/get-item-movement-history.query';
-import { ListInventoryItemsHandler } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.handler';
+import { ListInventoryItemsUseCase } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.use-case';
 import { ListInventoryItemsQuery } from '../../src/modules/inventory/application/queries/list-inventory-items/list-inventory-items.query';
 import { InventoryItem } from '../../src/modules/inventory/domain/entities/inventory-item';
+import { InventoryItemNotFoundError } from '../../src/modules/inventory/domain/errors/inventory-item-not-found.error';
 import { InventoryItemKind } from '../../src/modules/inventory/domain/inventory-item-kind';
 import { InventoryItemId } from '../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../src/modules/inventory/domain/value-objects/sku';
@@ -16,14 +17,16 @@ import { StockMovementId } from '../../src/modules/inventory/domain/value-object
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
 import { TypeOrmInventoryQueryAdapter } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-query.adapter';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
 let repository: TypeOrmInventoryItemRepository;
-let getItemHandler: GetInventoryItemHandler;
-let listItemsHandler: ListInventoryItemsHandler;
-let getHistoryHandler: GetItemMovementHistoryHandler;
+let getItem: GetInventoryItemUseCase;
+let listItems: ListInventoryItemsUseCase;
+let getHistory: GetItemMovementHistoryUseCase;
 let actorExternalId: string;
 
 beforeAll(async () => {
@@ -32,11 +35,17 @@ beforeAll(async () => {
   repository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
-  const queryAdapter = new TypeOrmInventoryQueryAdapter(dataSource);
-  getItemHandler = new GetInventoryItemHandler(queryAdapter);
-  listItemsHandler = new ListInventoryItemsHandler(queryAdapter);
-  getHistoryHandler = new GetItemMovementHistoryHandler(queryAdapter);
+  const queryAdapter = new TypeOrmInventoryQueryAdapter(
+    dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
+  );
+  getItem = new GetInventoryItemUseCase(queryAdapter);
+  listItems = new ListInventoryItemsUseCase(queryAdapter);
+  getHistory = new GetItemMovementHistoryUseCase(queryAdapter);
   actorExternalId = await insertUser();
 });
 
@@ -71,22 +80,22 @@ describe('Inventory read queries', () => {
   it('should get an item by its external id', async () => {
     const item = await saveItem();
 
-    const found = await getItemHandler.execute(new GetInventoryItemQuery(item.id.value));
+    const found = await getItem.execute(new GetInventoryItemQuery(item.id.value));
 
     expect(found?.id).toBe(item.id.value);
     expect(found?.sku).toBe(item.sku.value);
   });
 
-  it('should return null for a malformed id, not throw', async () => {
-    expect(await getItemHandler.execute(new GetInventoryItemQuery('not-a-uuid'))).toBeNull();
+  it('should refuse a malformed id with the inventory item not-found error, not a database error', async () => {
+    await expect(getItem.execute(new GetInventoryItemQuery('not-a-uuid'))).rejects.toThrow(
+      InventoryItemNotFoundError,
+    );
   });
 
   it('should list every active item', async () => {
     const item = await saveItem();
 
-    const ids = (await listItemsHandler.execute(new ListInventoryItemsQuery())).map(
-      (row) => row.id,
-    );
+    const ids = (await listItems.execute(new ListInventoryItemsQuery())).map((row) => row.id);
 
     expect(ids).toContain(item.id.value);
   });
@@ -95,9 +104,7 @@ describe('Inventory read queries', () => {
     const part = await saveItem({ kind: InventoryItemKind.Part });
     const supply = await saveItem({ kind: InventoryItemKind.Supply });
 
-    const ids = (await listItemsHandler.execute(new ListInventoryItemsQuery('PART'))).map(
-      (row) => row.id,
-    );
+    const ids = (await listItems.execute(new ListInventoryItemsQuery('PART'))).map((row) => row.id);
 
     expect(ids).toContain(part.id.value);
     expect(ids).not.toContain(supply.id.value);
@@ -124,7 +131,7 @@ describe('Inventory read queries', () => {
     });
     await repository.save(loaded2!);
 
-    const history = await getHistoryHandler.execute(new GetItemMovementHistoryQuery(item.id.value));
+    const history = await getHistory.execute(new GetItemMovementHistoryQuery(item.id.value));
 
     expect(history).toHaveLength(2);
     expect(history[0].kind).toBe('INBOUND');
@@ -134,7 +141,7 @@ describe('Inventory read queries', () => {
   it('should return an empty history for a freshly created item', async () => {
     const item = await saveItem();
 
-    const history = await getHistoryHandler.execute(new GetItemMovementHistoryQuery(item.id.value));
+    const history = await getHistory.execute(new GetItemMovementHistoryQuery(item.id.value));
 
     expect(history).toEqual([]);
   });

@@ -12,3 +12,7 @@ Dockerfile
 README.md
 .vscode
 *.log
+.tools
+infra
+k8s
+k6

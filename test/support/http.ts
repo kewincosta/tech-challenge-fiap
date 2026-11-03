@@ -101,7 +101,7 @@ export async function grantRole(
   );
 }
 
-/** Registration always assigns CUSTOMER (RegisterUserHandler), so a fresh account always carries
+/** Registration always assigns CUSTOMER (RegisterUserUseCase), so a fresh account always carries
  * work-orders:read-own - a test proving a 403 without that permission has to revoke it first. */
 export async function revokeRole(
   app: INestApplication,

@@ -1,0 +1,127 @@
+import { describe, expect, it } from 'vitest';
+import { FakeClock } from '../../../../../../test/support/fakes/fake-clock';
+import { InMemoryWorkOrderRepository } from '../../../../../../test/support/fakes/in-memory-work-order.repository';
+import { RecordingDomainEventPublisher } from '../../../../../../test/support/fakes/recording-domain-event-publisher';
+import { WorkOrder } from '../../../domain/entities/work-order';
+import { WorkOrderNotFoundError } from '../../../domain/errors/work-order-not-found.error';
+import { WorkOrderStateError } from '../../../domain/errors/work-order-state.error';
+import { DiagnosisStarted } from '../../../domain/events/diagnosis-started.event';
+import { WorkOrderStatusChanged } from '../../../domain/events/work-order-status-changed.event';
+import { WorkOrderId } from '../../../domain/value-objects/work-order-id';
+import { WorkOrderNumber } from '../../../domain/value-objects/work-order-number';
+import { WorkOrderStatus } from '../../../domain/work-order-status';
+import { StartDiagnosisCommand } from './start-diagnosis.command';
+import { StartDiagnosisUseCase } from './start-diagnosis.use-case';
+
+const CUSTOMER_ID = '22222222-2222-4222-8222-222222222222';
+const VEHICLE_ID = '33333333-3333-4333-8333-333333333333';
+const CREATOR_ID = '44444444-4444-4444-8444-444444444444';
+const MECHANIC_ID = '55555555-5555-4555-8555-555555555555';
+const NUMBER = 'A1B090-2026';
+
+function buildReceivedWorkOrder(): WorkOrder {
+  const workOrder = WorkOrder.open({
+    id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
+    number: WorkOrderNumber.create(NUMBER),
+    customerId: CUSTOMER_ID,
+    vehicleId: VEHICLE_ID,
+    createdByUserId: CREATOR_ID,
+    customerName: 'Jane Doe',
+    vehiclePlate: 'ABC1234',
+    vehicleBrand: 'Toyota',
+    vehicleModel: 'Corolla',
+    vehicleYear: 2020,
+    now: new Date('2026-08-31T12:00:00.000Z'),
+  });
+  // A work order read back from the repository carries no pending events.
+  workOrder.pullDomainEvents();
+  return workOrder;
+}
+
+function buildDeliveredWorkOrder(): WorkOrder {
+  return WorkOrder.restore({
+    id: WorkOrderId.create('11111111-1111-4111-8111-111111111111'),
+    number: WorkOrderNumber.create(NUMBER),
+    customerId: CUSTOMER_ID,
+    vehicleId: VEHICLE_ID,
+    assignedMechanicUserId: null,
+    createdByUserId: CREATOR_ID,
+    status: WorkOrderStatus.Delivered,
+    customerName: 'Jane Doe',
+    vehiclePlate: 'ABC1234',
+    vehicleBrand: 'Toyota',
+    vehicleModel: 'Corolla',
+    vehicleYear: 2020,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    serviceItems: [],
+    partItems: [],
+    diagnosisStartedAt: null,
+    diagnosisCompletedAt: null,
+    budgets: [],
+    budgetDecidedAt: null,
+    budgetDecidedByUserId: null,
+    executionStartedAt: null,
+  });
+}
+
+function makeUseCase() {
+  const workOrders = new InMemoryWorkOrderRepository();
+  const clock = new FakeClock();
+  const events = new RecordingDomainEventPublisher();
+  const useCase = new StartDiagnosisUseCase(workOrders, clock, events);
+  return { useCase, workOrders, clock, events };
+}
+
+describe('StartDiagnosisUseCase', () => {
+  it('starts the diagnosis, saves, and publishes the recorded event', async () => {
+    const { useCase, workOrders, clock, events } = makeUseCase();
+    await workOrders.save(buildReceivedWorkOrder());
+
+    await useCase.execute(new StartDiagnosisCommand(NUMBER, MECHANIC_ID));
+
+    const updated = workOrders.workOrders[0];
+    expect(updated.status).toBe(WorkOrderStatus.InDiagnosis);
+    expect(events.published).toEqual([
+      new DiagnosisStarted(updated.id.value, MECHANIC_ID, clock.now()),
+      new WorkOrderStatusChanged(
+        updated.id.value,
+        NUMBER,
+        CUSTOMER_ID,
+        'ABC1234',
+        WorkOrderStatus.Received,
+        WorkOrderStatus.InDiagnosis,
+        null,
+        clock.now(),
+      ),
+    ]);
+  });
+
+  it('refuses an unknown work order with WorkOrderNotFoundError', async () => {
+    const { useCase, workOrders, events } = makeUseCase();
+
+    await expect(
+      useCase.execute(new StartDiagnosisCommand('ZZZZZZ-2026', MECHANIC_ID)),
+    ).rejects.toThrow(WorkOrderNotFoundError);
+    expect(workOrders.workOrders).toHaveLength(0);
+    expect(events.published).toHaveLength(0);
+  });
+
+  it("lets the aggregate's state error travel out untouched", async () => {
+    const { useCase, workOrders } = makeUseCase();
+    await workOrders.save(buildDeliveredWorkOrder());
+
+    await expect(useCase.execute(new StartDiagnosisCommand(NUMBER, MECHANIC_ID))).rejects.toThrow(
+      WorkOrderStateError,
+    );
+  });
+
+  it('saves nothing when the aggregate refuses', async () => {
+    const { useCase, workOrders, events } = makeUseCase();
+    await workOrders.save(buildDeliveredWorkOrder());
+
+    await expect(useCase.execute(new StartDiagnosisCommand(NUMBER, MECHANIC_ID))).rejects.toThrow();
+    expect(workOrders.workOrders[0].status).toBe(WorkOrderStatus.Delivered);
+    expect(events.published).toHaveLength(0);
+  });
+});

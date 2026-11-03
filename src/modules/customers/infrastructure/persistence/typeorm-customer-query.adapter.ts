@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import {
+  FindUsersQuery,
+  FindUsersUseCase,
+  UserKeyResolver,
+  UserSummaryDto,
+} from '../../../identity';
+import {
   CustomerQueryPort,
   CustomerSummaryDto,
   ListCustomersFilter,
@@ -8,10 +14,7 @@ import {
 
 interface CustomerRow {
   customer_external_id: string;
-  user_external_id: string;
-  name: string;
-  email: string;
-  document: string;
+  user_internal_id: string;
   address_street: string | null;
   address_number: string | null;
   address_complement: string | null;
@@ -23,27 +26,26 @@ interface CustomerRow {
   status: string;
 }
 
-// Raw SQL, not a TypeORM relation: users belongs to the users module, and AD-003 forbids
-// importing another module's repository or entities - a plain join against the real table names,
-// the same way TypeOrmUserQueryAdapter and TypeOrmAssignmentRepository already read across
-// module-owned tables, keeps that boundary at the application layer while still answering one
-// filtered read in one query (see design.md's Data Models note).
+// Reads only `customers` (AD-013): the name, e-mail and document of each customer's user come from
+// identity's FindUsersUseCase, in one batch call per request, and the two are composed here.
 const SELECT = `
-  SELECT c.external_id AS customer_external_id, u.external_id AS user_external_id,
-         u.name, u.email, u.document,
+  SELECT c.external_id AS customer_external_id, c.user_id AS user_internal_id,
          c.address_street, c.address_number, c.address_complement, c.address_district,
          c.address_city, c.address_state, c.address_zip_code, c.phone, c.status
     FROM customers c
-    JOIN users u ON u.id = c.user_id
 `;
 
 @Injectable()
 export class TypeOrmCustomerQueryAdapter implements CustomerQueryPort {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly findUsers: FindUsersUseCase,
+    private readonly userKeys: UserKeyResolver,
+  ) {}
 
   // Deliberately NOT filtered by deleted_at IS NULL, unlike getByUserId and listActive: this is
-  // the staff/cross-module lookup (GET /customers/:externalId, and RegisterVehicleHandler /
-  // UpdateVehicleHandler resolving the owning customer). Those callers need to tell "does not
+  // the staff/cross-module lookup (GET /customers/:externalId, and RegisterVehicleUseCase /
+  // UpdateVehicleUseCase resolving the owning customer). Those callers need to tell "does not
   // exist" (404, this method returns null) apart from "exists but deactivated" (422, the caller
   // checks .status) - a filtered query collapses both into null and made every deactivated
   // customer register as 404, not 422, discovered by T20's own e2e gate.
@@ -51,36 +53,91 @@ export class TypeOrmCustomerQueryAdapter implements CustomerQueryPort {
     const rows: CustomerRow[] = await this.dataSource.query(`${SELECT} WHERE c.external_id = $1`, [
       externalId,
     ]);
-    return rows[0] ? this.toDto(rows[0]) : null;
+    const [customer] = await this.withUsers(rows);
+    return customer ?? null;
   }
 
   async getByUserId(userExternalId: string): Promise<CustomerSummaryDto | null> {
+    const userInternalId = await this.userKeys.toInternalId(userExternalId);
+    if (userInternalId === null) {
+      return null;
+    }
     const rows: CustomerRow[] = await this.dataSource.query(
-      `${SELECT} WHERE u.external_id = $1 AND c.deleted_at IS NULL`,
-      [userExternalId],
+      `${SELECT} WHERE c.user_id = $1 AND c.deleted_at IS NULL`,
+      [userInternalId],
     );
-    return rows[0] ? this.toDto(rows[0]) : null;
+    if (rows.length === 0) {
+      return null;
+    }
+    const users = await this.findUsers.execute(new FindUsersQuery([userExternalId]));
+    return users[0] ? this.toDto(rows[0], users[0]) : null;
   }
 
   async listActive(filter: ListCustomersFilter): Promise<CustomerSummaryDto[]> {
+    if (filter.name === undefined && filter.document === undefined) {
+      const rows: CustomerRow[] = await this.dataSource.query(
+        `${SELECT} WHERE c.deleted_at IS NULL ORDER BY c.created_at DESC`,
+      );
+      return this.withUsers(rows);
+    }
+    // The filters belong to the user, so the users come first and the customers are read by their
+    // keys. The document reaches identity as typed, and a malformed one finds nobody.
+    const users = await this.findUsers.execute(
+      new FindUsersQuery(undefined, filter.name, filter.document),
+    );
+    const internalIds = await this.userKeys.toInternalIds(users.map((user) => user.id));
     const rows: CustomerRow[] = await this.dataSource.query(
       `${SELECT}
-        WHERE c.deleted_at IS NULL
-          AND ($1::varchar IS NULL OR u.document = $1)
-          AND ($2::varchar IS NULL OR u.name ILIKE '%' || $2 || '%')
+        WHERE c.deleted_at IS NULL AND c.user_id = ANY($1::bigint[])
         ORDER BY c.created_at DESC`,
-      [filter.document ?? null, filter.name ?? null],
+      [[...internalIds.values()]],
     );
-    return rows.map((row) => this.toDto(row));
+    const userByInternalId = new Map<string, UserSummaryDto>();
+    for (const user of users) {
+      const internalId = internalIds.get(user.id);
+      if (internalId !== undefined) {
+        userByInternalId.set(internalId, user);
+      }
+    }
+    return this.compose(rows, userByInternalId);
   }
 
-  private toDto(row: CustomerRow): CustomerSummaryDto {
+  /** Reads the users of already-fetched customers in one batch and composes the two. */
+  private async withUsers(rows: CustomerRow[]): Promise<CustomerSummaryDto[]> {
+    if (rows.length === 0) {
+      return [];
+    }
+    const externalIds = await this.userKeys.toExternalIds(rows.map((row) => row.user_internal_id));
+    const users = await this.findUsers.execute(new FindUsersQuery([...externalIds.values()]));
+    const userByExternalId = new Map(users.map((user) => [user.id, user]));
+    const userByInternalId = new Map<string, UserSummaryDto>();
+    for (const [internalId, externalId] of externalIds) {
+      const user = userByExternalId.get(externalId);
+      if (user) {
+        userByInternalId.set(internalId, user);
+      }
+    }
+    return this.compose(rows, userByInternalId);
+  }
+
+  // A customer whose user is missing is left out, as the inner join it replaces left it out.
+  private compose(
+    rows: CustomerRow[],
+    userByInternalId: Map<string, UserSummaryDto>,
+  ): CustomerSummaryDto[] {
+    return rows.flatMap((row) => {
+      const user = userByInternalId.get(row.user_internal_id);
+      return user ? [this.toDto(row, user)] : [];
+    });
+  }
+
+  private toDto(row: CustomerRow, user: UserSummaryDto): CustomerSummaryDto {
     return {
       id: row.customer_external_id,
-      userId: row.user_external_id,
-      name: row.name,
-      email: row.email,
-      document: row.document,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      document: user.document,
       address:
         row.address_street !== null
           ? {

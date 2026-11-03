@@ -11,7 +11,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -28,28 +27,30 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../authentication/presentation/principal';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AdjustStockCommand } from '../../application/commands/adjust-stock/adjust-stock.command';
-import {
-  CreatedInventoryItemDto,
-  CreateInventoryItemCommand,
-} from '../../application/commands/create-inventory-item/create-inventory-item.command';
+import { AdjustStockUseCase } from '../../application/commands/adjust-stock/adjust-stock.use-case';
+import { CreateInventoryItemCommand } from '../../application/commands/create-inventory-item/create-inventory-item.command';
+import { CreateInventoryItemUseCase } from '../../application/commands/create-inventory-item/create-inventory-item.use-case';
 import { DeactivateInventoryItemCommand } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.command';
+import { DeactivateInventoryItemUseCase } from '../../application/commands/deactivate-inventory-item/deactivate-inventory-item.use-case';
 import { ReplenishStockCommand } from '../../application/commands/replenish-stock/replenish-stock.command';
+import { ReplenishStockUseCase } from '../../application/commands/replenish-stock/replenish-stock.use-case';
 import { UpdateInventoryItemCommand } from '../../application/commands/update-inventory-item/update-inventory-item.command';
+import { UpdateInventoryItemUseCase } from '../../application/commands/update-inventory-item/update-inventory-item.use-case';
 import {
   InventoryItemSummaryDto,
   StockMovementSummaryDto,
   StockShortageDto,
 } from '../../application/ports/inventory-query.port';
+import { GetInventoryItemUseCase } from '../../application/queries/get-inventory-item/get-inventory-item.use-case';
 import { GetInventoryItemQuery } from '../../application/queries/get-inventory-item/get-inventory-item.query';
+import { GetItemMovementHistoryUseCase } from '../../application/queries/get-item-movement-history/get-item-movement-history.use-case';
 import { GetItemMovementHistoryQuery } from '../../application/queries/get-item-movement-history/get-item-movement-history.query';
+import { ListInventoryItemsUseCase } from '../../application/queries/list-inventory-items/list-inventory-items.use-case';
 import { ListInventoryItemsQuery } from '../../application/queries/list-inventory-items/list-inventory-items.query';
+import { ListStockShortagesUseCase } from '../../application/queries/list-stock-shortages/list-stock-shortages.use-case';
 import { ListStockShortagesQuery } from '../../application/queries/list-stock-shortages/list-stock-shortages.query';
-import { InventoryItemNotFoundError } from '../../domain/errors/inventory-item-not-found.error';
 import { AdjustStockRequestDto } from '../dtos/adjust-stock.request.dto';
 import { CreateInventoryItemRequestDto } from '../dtos/create-inventory-item.request.dto';
 import {
@@ -65,8 +66,15 @@ import { UpdateInventoryItemRequestDto } from '../dtos/update-inventory-item.req
 @Controller('inventory-items')
 export class InventoryItemsController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly createItem: CreateInventoryItemUseCase,
+    private readonly updateItem: UpdateInventoryItemUseCase,
+    private readonly deactivateItem: DeactivateInventoryItemUseCase,
+    private readonly replenishStock: ReplenishStockUseCase,
+    private readonly adjustStock: AdjustStockUseCase,
+    private readonly getItem: GetInventoryItemUseCase,
+    private readonly listItems: ListInventoryItemsUseCase,
+    private readonly listShortages: ListStockShortagesUseCase,
+    private readonly getMovementHistory: GetItemMovementHistoryUseCase,
   ) {}
 
   @Post()
@@ -81,7 +89,7 @@ export class InventoryItemsController {
   async create(
     @Body() body: CreateInventoryItemRequestDto,
   ): Promise<CreatedInventoryItemResponseDto> {
-    return this.commandBus.execute<CreateInventoryItemCommand, CreatedInventoryItemDto>(
+    return this.createItem.execute(
       new CreateInventoryItemCommand(
         body.sku,
         body.name,
@@ -101,9 +109,7 @@ export class InventoryItemsController {
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(@Query('kind') kind?: string): Promise<InventoryItemResponseDto[]> {
-    const items = await this.queryBus.execute<ListInventoryItemsQuery, InventoryItemSummaryDto[]>(
-      new ListInventoryItemsQuery(kind),
-    );
+    const items = await this.listItems.execute(new ListInventoryItemsQuery(kind));
     return items.map((item) => this.toItemResponseDto(item));
   }
 
@@ -119,9 +125,7 @@ export class InventoryItemsController {
   @ApiOkResponse({ type: [StockShortageResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async shortages(): Promise<StockShortageResponseDto[]> {
-    const shortages = await this.queryBus.execute<ListStockShortagesQuery, StockShortageDto[]>(
-      new ListStockShortagesQuery(),
-    );
+    const shortages = await this.listShortages.execute(new ListStockShortagesQuery());
     return shortages.map((shortage) => this.toShortageResponseDto(shortage));
   }
 
@@ -135,7 +139,9 @@ export class InventoryItemsController {
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<InventoryItemResponseDto> {
-    return this.getItemOrThrow(externalId);
+    return this.toItemResponseDto(
+      await this.getItem.execute(new GetInventoryItemQuery(externalId)),
+    );
   }
 
   @Patch(':externalId')
@@ -149,10 +155,12 @@ export class InventoryItemsController {
     @Param('externalId', ParseUUIDPipe) externalId: string,
     @Body() body: UpdateInventoryItemRequestDto,
   ): Promise<InventoryItemResponseDto> {
-    await this.commandBus.execute<UpdateInventoryItemCommand, void>(
+    await this.updateItem.execute(
       new UpdateInventoryItemCommand(externalId, body.name, body.description, body.unitPriceCents),
     );
-    return this.getItemOrThrow(externalId);
+    return this.toItemResponseDto(
+      await this.getItem.execute(new GetInventoryItemQuery(externalId)),
+    );
   }
 
   @Delete(':externalId')
@@ -170,9 +178,7 @@ export class InventoryItemsController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async deactivate(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
-    await this.commandBus.execute<DeactivateInventoryItemCommand, void>(
-      new DeactivateInventoryItemCommand(externalId),
-    );
+    await this.deactivateItem.execute(new DeactivateInventoryItemCommand(externalId));
   }
 
   @Post(':externalId/replenishments')
@@ -189,7 +195,7 @@ export class InventoryItemsController {
     @Body() body: ReplenishStockRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<InventoryItemResponseDto> {
-    await this.commandBus.execute<ReplenishStockCommand, void>(
+    await this.replenishStock.execute(
       new ReplenishStockCommand(
         externalId,
         body.quantity,
@@ -198,7 +204,9 @@ export class InventoryItemsController {
         body.note,
       ),
     );
-    return this.getItemOrThrow(externalId);
+    return this.toItemResponseDto(
+      await this.getItem.execute(new GetInventoryItemQuery(externalId)),
+    );
   }
 
   @Post(':externalId/adjustments')
@@ -219,10 +227,12 @@ export class InventoryItemsController {
     // body.note defaults to '' rather than being left undefined: AdjustStockCommand carries a
     // plain string, and a blank one is exactly what the aggregate's own note-required check is
     // for (design.md's Error Handling - the rule lives in one place, not duplicated at this DTO).
-    await this.commandBus.execute<AdjustStockCommand, void>(
+    await this.adjustStock.execute(
       new AdjustStockCommand(externalId, body.quantity, principal.userId, body.note ?? ''),
     );
-    return this.getItemOrThrow(externalId);
+    return this.toItemResponseDto(
+      await this.getItem.execute(new GetInventoryItemQuery(externalId)),
+    );
   }
 
   @Get(':externalId/movements')
@@ -235,25 +245,10 @@ export class InventoryItemsController {
   async movements(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<StockMovementResponseDto[]> {
-    // The 404 for an unknown item is owned here, not by GetItemMovementHistoryQuery, which never
-    // checks existence on its own (T10) - an item with movements never returns 404, one that does
-    // not exist always does, and an item that exists with none returns an empty list.
-    await this.getItemOrThrow(externalId);
-    const movements = await this.queryBus.execute<
-      GetItemMovementHistoryQuery,
-      StockMovementSummaryDto[]
-    >(new GetItemMovementHistoryQuery(externalId));
-    return movements.map((movement) => this.toMovementResponseDto(movement));
-  }
-
-  private async getItemOrThrow(externalId: string): Promise<InventoryItemResponseDto> {
-    const item = await this.queryBus.execute<GetInventoryItemQuery, InventoryItemSummaryDto | null>(
-      new GetInventoryItemQuery(externalId),
+    const movements = await this.getMovementHistory.execute(
+      new GetItemMovementHistoryQuery(externalId),
     );
-    if (!item) {
-      throw new InventoryItemNotFoundError();
-    }
-    return this.toItemResponseDto(item);
+    return movements.map((movement) => this.toMovementResponseDto(movement));
   }
 
   private toItemResponseDto(item: InventoryItemSummaryDto): InventoryItemResponseDto {

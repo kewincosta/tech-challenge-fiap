@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { TypeOrmEffectiveAccessReader } from '../../src/modules/authorization/infrastructure/persistence/typeorm-effective-access.reader';
+import { TypeOrmEffectiveAccessReader } from '../../src/modules/identity/authorization/infrastructure/persistence/typeorm-effective-access.reader';
 import { createTestDataSource } from '../support/db';
 
 const NOW = new Date('2026-08-26T12:00:00.000Z');

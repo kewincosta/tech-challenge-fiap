@@ -3,14 +3,15 @@ import { InventoryItemStatus } from '../../../src/modules/inventory/domain/inven
 import {
   InventoryItemRepository,
   MovementClosureInput,
+  OperationConsumptionDto,
   PendingConsumptionDto,
-} from '../../../src/modules/inventory/domain/repositories/inventory-item.repository';
+} from '../../../src/modules/inventory/application/ports/inventory-item.repository';
 import { StockMovementKind } from '../../../src/modules/inventory/domain/stock-movement-kind';
 import { StockMovementStatus } from '../../../src/modules/inventory/domain/stock-movement-status';
 import { InventoryItemId } from '../../../src/modules/inventory/domain/value-objects/inventory-item-id';
 import { Sku } from '../../../src/modules/inventory/domain/value-objects/sku';
 
-interface LedgerEntry {
+export interface LedgerEntry {
   inventoryItemId: string;
   workOrderId: string | null;
   movementId: string;
@@ -18,6 +19,11 @@ interface LedgerEntry {
   kind: StockMovementKind;
   status: StockMovementStatus | null;
   undoesMovementId: string | null;
+  operationId: string | null;
+  /** The actor of the movement, so a spec can tell who a return is attributed to. */
+  actorUserId: string;
+  /** When the work order confirmed a consumption; null until it does, and for every other kind. */
+  confirmedAt: Date | null;
 }
 
 export class InMemoryInventoryItemRepository implements InventoryItemRepository {
@@ -29,6 +35,14 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
    * the same role `stock_movements` plays for the real repository.
    */
   private ledger: LedgerEntry[] = [];
+  /** Every movement saved so far, in the order it was written: the ledger the specs read. */
+  get ledgerEntries(): readonly LedgerEntry[] {
+    return this.ledger.map((entry) => ({ ...entry }));
+  }
+
+  /** What each settlement and each write-off was asked to do, in call order. */
+  readonly settlements: MovementClosureInput[] = [];
+  readonly writeOffs: MovementClosureInput[] = [];
 
   async findById(id: InventoryItemId): Promise<InventoryItem | null> {
     return Promise.resolve(this.items.find((item) => item.id.equals(id)) ?? null);
@@ -52,6 +66,9 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         kind: movement.kind,
         status: movement.status,
         undoesMovementId: movement.undoesMovementId,
+        operationId: movement.operationId,
+        actorUserId: movement.actorUserId,
+        confirmedAt: null,
       });
     }
     return Promise.resolve();
@@ -62,7 +79,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
    * Returns fresh clones, not the stored references: the real repository always rebuilds a new
    * `InventoryItem` from the row `findAllByIdsForUpdate` reads, so a caller that mutates a
    * returned item without calling `save()` must not see that mutation "already persisted" here
-   * either - a batch handler that validates every line before saving any of them relies on this.
+   * either: a batch use case that validates every line before saving any of them relies on this.
    */
   async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
     return Promise.resolve(
@@ -86,7 +103,10 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     );
   }
 
-  /** Newest first, net of whatever was already returned against each consumption. */
+  /**
+   * Newest first, net of whatever was already returned against each consumption. A consumption
+   * counts once it is confirmed, or at once when it carries no operation id, as in the SQL.
+   */
   async findPendingConsumptions(
     inventoryItemId: InventoryItemId,
     workOrderId: string,
@@ -107,7 +127,8 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
             entry.inventoryItemId === inventoryItemId.value &&
             entry.workOrderId === workOrderId &&
             entry.kind === StockMovementKind.Consumption &&
-            entry.status === StockMovementStatus.Pending,
+            entry.status === StockMovementStatus.Pending &&
+            this.isConfirmed(entry),
         )
         .map((entry) => ({
           movementId: entry.movementId,
@@ -118,14 +139,82 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
     );
   }
 
+  /**
+   * Newest first, net of the returns that point at each consumption the operation wrote, whatever
+   * its status: an undone operation never reached the work order, so a consumption closed by a
+   * write-off or a settlement meanwhile still comes back.
+   */
+  async findPendingConsumptionsOfOperation(
+    operationId: string,
+  ): Promise<OperationConsumptionDto[]> {
+    const returnedByConsumption = this.returnedTotals();
+    return Promise.resolve(
+      this.ledger
+        .filter(
+          (entry) =>
+            entry.operationId === operationId && entry.kind === StockMovementKind.Consumption,
+        )
+        .map((entry) => ({
+          movementId: entry.movementId,
+          inventoryItemId: entry.inventoryItemId,
+          workOrderId: entry.workOrderId!,
+          quantity: entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0),
+        }))
+        .filter((entry) => entry.quantity > 0)
+        .reverse(),
+    );
+  }
+
+  async hasReturnOfOperation(operationId: string): Promise<boolean> {
+    return Promise.resolve(
+      this.ledger.some(
+        (entry) => entry.kind === StockMovementKind.Return && entry.operationId === operationId,
+      ),
+    );
+  }
+
+  /** Sets the time only where the SQL does: a consumption of the operation with no time yet. */
+  async confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void> {
+    for (const entry of this.ledger) {
+      if (
+        entry.operationId === operationId &&
+        entry.kind === StockMovementKind.Consumption &&
+        entry.confirmedAt === null
+      ) {
+        entry.confirmedAt = confirmedAt;
+      }
+    }
+    return Promise.resolve();
+  }
+
+  /** What the SQL reads as `operation_id IS NULL OR confirmed_at IS NOT NULL`. */
+  private isConfirmed(entry: LedgerEntry): boolean {
+    return entry.operationId === null || entry.confirmedAt !== null;
+  }
+
+  private returnedTotals(): Map<string, number> {
+    const returnedByConsumption = new Map<string, number>();
+    for (const entry of this.ledger) {
+      if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {
+        returnedByConsumption.set(
+          entry.undoesMovementId,
+          (returnedByConsumption.get(entry.undoesMovementId) ?? 0) + entry.quantity,
+        );
+      }
+    }
+    return returnedByConsumption;
+  }
+
   /** Every ledger entry is mutated in place, matching what a real UPDATE does to the row it
    * represents - callers that captured a reference through `findPendingConsumptions` see this. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    this.settlements.push(input);
     const matches = this.ledger.filter(
       (entry) =>
         entry.workOrderId === input.workOrderId &&
         entry.kind === StockMovementKind.Consumption &&
-        entry.status === StockMovementStatus.Pending,
+        entry.status === StockMovementStatus.Pending &&
+        this.isConfirmed(entry),
     );
     for (const entry of matches) {
       entry.status = StockMovementStatus.Settled;
@@ -134,6 +223,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
   }
 
   async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
+    this.writeOffs.push(input);
     const returnedByConsumption = new Map<string, number>();
     for (const entry of this.ledger) {
       if (entry.kind === StockMovementKind.Return && entry.undoesMovementId) {
@@ -148,6 +238,7 @@ export class InMemoryInventoryItemRepository implements InventoryItemRepository 
         entry.workOrderId === input.workOrderId &&
         entry.kind === StockMovementKind.Consumption &&
         entry.status === StockMovementStatus.Pending &&
+        this.isConfirmed(entry) &&
         entry.quantity - (returnedByConsumption.get(entry.movementId) ?? 0) > 0,
     );
     for (const entry of candidates) {

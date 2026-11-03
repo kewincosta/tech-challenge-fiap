@@ -1,10 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { QueryBus } from '@nestjs/cqrs';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { WorkOrder } from '../../domain/entities/work-order';
 import { CancelInExecutionForbiddenError } from '../../domain/errors/cancel-in-execution-forbidden.error';
+import { WorkOrderActors } from '../ports/work-order-actors.port';
 
 /**
  * `work-orders:cancel` alone is enough unless the work order carries an outstanding withdrawn
@@ -14,18 +10,15 @@ import { CancelInExecutionForbiddenError } from '../../domain/errors/cancel-in-e
  * covers every case its own reason (parts already withdrawn become a loss) applies to
  * (spec.md's Assumptions).
  */
-@Injectable()
 export class CancellationAuthorizer {
-  constructor(private readonly queryBus: QueryBus) {}
+  constructor(private readonly actors: WorkOrderActors) {}
 
   async assertMayCancel(workOrder: WorkOrder, actorUserId: string): Promise<void> {
     if (!workOrder.hasOutstandingWithdrawals) {
       return;
     }
-    const access = await this.queryBus.execute<GetUserEffectiveAccessQuery, EffectiveAccessDto>(
-      new GetUserEffectiveAccessQuery(actorUserId),
-    );
-    if (access.permissions.includes(AppPermission.WorkOrdersCancelInExecution)) {
+    const capabilities = await this.actors.capabilitiesOf(actorUserId);
+    if (capabilities.cancelsInExecution) {
       return;
     }
     throw new CancelInExecutionForbiddenError();

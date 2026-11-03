@@ -1,6 +1,6 @@
 # 0008. Cross context communication through the CommandBus and the QueryBus
 
-**Status**: Accepted
+**Status**: Superseded by [0027](0027-ports-between-modules.md)
 **Source**: AD-003 in `.specs/STATE.md`
 **Recorded**: 2026-09-02, from the decisions taken during the build
 

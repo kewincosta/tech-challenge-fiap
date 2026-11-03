@@ -1,25 +1,27 @@
 # Low level design
 
-One page per code unit: the eight modules under `src/modules`, plus the shared kernel at
-`src/shared`.
+One page per code unit: the six modules under `src/modules`, plus the shared kernel at
+`src/shared`. The `identity` module has a page of its own and one for each of its three areas.
 
-| Page                                | Context             | Holds                                                                          |
-| ----------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
-| [users](users.md)                   | Identity & Access   | The `User` aggregate, the document, the password, the account lifecycle        |
-| [authentication](authentication.md) | Identity & Access   | `Session` and `RefreshToken`, rotation and reuse detection, revocation         |
-| [authorization](authorization.md)   | Identity & Access   | `Role` and `Permission`, assignment, the escalation rule, effective access     |
-| [customers](customers.md)           | Customer Management | The `Customer` aggregate, `Address`, `PhoneNumber`                             |
-| [vehicles](vehicles.md)             | Customer Management | The `Vehicle` aggregate, `LicensePlate`, `VehicleYear`                         |
-| [services](services.md)             | Workshop Catalog    | The `Service` aggregate and the catalog price                                  |
-| [inventory](inventory.md)           | Inventory           | `InventoryItem`, `StockMovement`, the append-only ledger                       |
-| [work-orders](work-orders.md)       | Workshop Operations | The `WorkOrder` aggregate, its items, its budget rounds, its trail             |
-| [shared](shared.md)                 | none                | `Money`, `AggregateRoot`, the ports, the error hierarchy, the exception filter |
+| Page                                         | Context             | Holds                                                                                  |
+| -------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| [identity](identity/README.md)               | Identity & Access   | The module: its composition root, its public API, how the three areas call one another |
+| [users](identity/users.md)                   | Identity & Access   | The `User` aggregate, the document, the password, the account lifecycle                |
+| [authentication](identity/authentication.md) | Identity & Access   | `Session` and `RefreshToken`, rotation and reuse detection, revocation                 |
+| [authorization](identity/authorization.md)   | Identity & Access   | `Role` and `Permission`, assignment, the escalation rule, effective access             |
+| [customers](customers.md)                    | Customer Management | The `Customer` aggregate, `Address`, `PhoneNumber`                                     |
+| [vehicles](vehicles.md)                      | Customer Management | The `Vehicle` aggregate, `LicensePlate`, `VehicleYear`                                 |
+| [services](services.md)                      | Workshop Catalog    | The `Service` aggregate and the catalog price                                          |
+| [inventory](inventory.md)                    | Inventory           | `InventoryItem`, `StockMovement`, the append-only ledger                               |
+| [work-orders](work-orders.md)                | Workshop Operations | The `WorkOrder` aggregate, its items, its budget rounds, its trail                     |
+| [shared](shared.md)                          | none                | `Money`, `AggregateRoot`, the ports, the error hierarchy, the exception filter         |
 
 ## What this level owns
 
 Each page covers, for its own unit: the aggregates and their invariants, the value objects, the
-commands and handlers, the queries and ports, the repository and mapper, the ORM entities with
-their columns, the endpoints, and the errors with their HTTP mapping.
+commands, queries and the use cases that run them, the ports and the gateways and key resolvers
+that implement or serve them, the repository and mapper, the ORM entities with their columns, the
+endpoints, and the errors with their HTTP mapping.
 
 ## What it does not
 
@@ -30,8 +32,8 @@ another, the page names the call and links the other page rather than describing
 page links it rather than restating the reasoning. A page that argued a decision would become a
 second copy of it, free to drift.
 
-**Anything the level above already carries.** The layering, the bus rule, the guard chain, the
-cross-module transaction rule, the identifier and money conventions and the error-kind mapping are
+**Anything the level above already carries.** The layering, the module boundary rule, the guard chain, the
+rule for writes across modules, the identifier and money conventions and the error-kind mapping are
 in [the high level design](../high-level-design.md). A page cites it instead of repeating it.
 
 ## On the column tables
@@ -48,7 +50,7 @@ named in its block is the authority.
 
 One C4 component diagram per bounded context, not per module, in the directory above:
 
-- [Identity & Access](../c4-components-identity-and-access.mmd), spanning three modules
+- [Identity & Access](../c4-components-identity-and-access.mmd), spanning the three areas of `identity`
 - [Customer Management](../c4-components-customer-management.mmd), spanning two
 - [Workshop Catalog](../c4-components-workshop-catalog.mmd)
 - [Inventory](../c4-components-inventory.mmd)

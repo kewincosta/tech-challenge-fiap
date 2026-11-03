@@ -1,0 +1,248 @@
+# Deploys prod: applies Terraform, pushes the image of the commit and upgrades the chart.
+#
+# It starts when the CI finishes, and deploys only when that run was a push to main of this
+# repository, passed, and tested the commit that is still the tip of main. Any other run ends at the
+# first job and skips the rest. The CD has no manual trigger.
+#
+# The jobs that call AWS run in the GitHub environment prod, which the deploy role trusts, and no
+# job holds an access key. They read the role's ARN from the secret DEPLOY_ROLE_ARN of that
+# environment: the ARN holds the account id, and GitHub prints the inputs of a step at the top of
+# its log, which anyone can read when the repository is public. Each of those jobs reads the
+# Terraform outputs it needs from the state, because GitHub drops a job output that holds the
+# account id, and the credentials step masks it.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+# The token reads the repository and nothing more. The jobs that call AWS add the OIDC token.
+permissions:
+  contents: read
+
+# One deploy at a time. A second run waits for the first, a third replaces the second while it
+# waits, and a running deploy is never cancelled: stopping an apply leaves the state locked. A run
+# that deploys nothing gets a group of its own, so it cannot take the place of a deploy that waits.
+concurrency:
+  group: >-
+    ${{ (github.event.workflow_run.conclusion == 'success' &&
+    github.event.workflow_run.event == 'push' &&
+    github.event.workflow_run.head_branch == 'main' &&
+    github.event.workflow_run.head_repository.full_name == github.repository) &&
+    'deploy-prod' || format('no-deploy-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  # In a workflow_run run, github.sha is the tip of main when the CD starts, which can be a later
+  # commit than the one the CI tested. This is the commit that was tested.
+  COMMIT: ${{ github.event.workflow_run.head_sha }}
+  # The region of prod.tfvars and prod.backend.hcl. The credentials step needs it before Terraform
+  # can read the state.
+  AWS_REGION: us-east-1
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # A pull request never reaches the jobs below: its CI run is a pull_request event, whatever its
+  # branch is called, and a fork's run belongs to another repository. When two merges finish their
+  # CI out of order, the older commit must not replace the newer one, so a run deploys only the tip.
+  tip:
+    name: Tip of main
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.compare.outputs.deploy }}
+    steps:
+      - name: Compare the commit with the tip of main
+        id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .commit.sha)"
+          if [[ "$tip" == "$COMMIT" ]]; then
+            echo 'deploy=true' >>"$GITHUB_OUTPUT"
+          else
+            echo 'deploy=false' >>"$GITHUB_OUTPUT"
+            echo "::notice::The tip of main is $tip and this run tested $COMMIT, so it deploys nothing. The run of $tip deploys it."
+          fi
+
+  terraform:
+    name: Terraform
+    needs: tip
+    if: needs.tip.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    # The credentials last an hour, and the first apply takes about 20 minutes.
+    timeout-minutes: 55
+    steps:
+      - name: Check out the commit the CI tested
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+      - name: Initialize Terraform
+        run: scripts/tool.sh terraform -chdir=infra init -input=false -no-color -backend-config=environments/prod.backend.hcl
+      - name: Apply Terraform
+        env:
+          # A JSON list. Unset, it is empty and only the deploy role administers the cluster.
+          TF_VAR_cluster_admin_arns: ${{ vars.CLUSTER_ADMIN_ARNS || '[]' }}
+        run: scripts/tool.sh terraform -chdir=infra apply -input=false -no-color -auto-approve -var-file=environments/prod.tfvars
+
+  image:
+    name: Image
+    needs: terraform
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 30
+    steps:
+      - name: Check out the commit the CI tested
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+      - name: Initialize Terraform
+        run: scripts/tool.sh terraform -chdir=infra init -input=false -no-color -backend-config=environments/prod.backend.hcl
+      - name: Build and push the image
+        run: |
+          repository_url="$(scripts/tool.sh terraform -chdir=infra output -raw repository_url)"
+          aws ecr get-login-password --region "$AWS_REGION" |
+            docker login --username AWS --password-stdin "${repository_url%%/*}"
+          docker build --tag "$repository_url:$COMMIT" .
+          docker push "$repository_url:$COMMIT"
+
+  deploy:
+    name: Deploy
+    needs: image
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: read
+      id-token: write
+    # Two upgrades of up to 15 minutes and a wait of up to 10 for the load balancer fit in the hour
+    # the credentials last.
+    timeout-minutes: 55
+    steps:
+      - name: Check out the commit the CI tested
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Assume the deploy role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+      - name: Initialize Terraform
+        run: scripts/tool.sh terraform -chdir=infra init -input=false -no-color -backend-config=environments/prod.backend.hcl
+      - name: Point kubectl at the cluster
+        run: |
+          cluster_name="$(scripts/tool.sh terraform -chdir=infra output -raw cluster_name)"
+          aws eks update-kubeconfig --region "$AWS_REGION" --name "$cluster_name" --kubeconfig "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >>"$GITHUB_ENV"
+      - name: Upgrade the chart
+        run: |
+          set -u
+
+          outputs="$(scripts/tool.sh terraform -chdir=infra output -json)"
+          output() { jq --exit-status --raw-output --arg name "$1" '.[$name].value' <<<"$outputs"; }
+          repository_url="$(output repository_url)"
+          database_host="$(output database_host)"
+          database_port="$(output database_port)"
+          database_name="$(output database_name)"
+          database_user="$(output database_user)"
+          redis_host="$(output redis_host)"
+          redis_port="$(output redis_port)"
+          database_password_secret="$(output database_password_secret_name)"
+          jwt_secret_secret="$(output jwt_secret_name)"
+
+          # Both secrets are masked as soon as they are read, before anything else can print them.
+          read_secret() {
+            aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id "$1" \
+              --query SecretString --output text
+          }
+          database_password="$(read_secret "$database_password_secret")"
+          echo "::add-mask::$database_password"
+          jwt_secret="$(read_secret "$jwt_secret_secret")"
+          echo "::add-mask::$jwt_secret"
+
+          # Every value is passed again on each upgrade, because the release reuses none.
+          upgrade() {
+            scripts/tool.sh helm upgrade --install workshop k8s/workshop \
+              --namespace workshop --create-namespace \
+              --values k8s/workshop/values-prod.yaml \
+              --set-string "image.repository=$repository_url" \
+              --set-string "image.tag=$COMMIT" \
+              --set-string "config.DATABASE_HOST=$database_host" \
+              --set-string "config.DATABASE_PORT=$database_port" \
+              --set-string "config.DATABASE_NAME=$database_name" \
+              --set-string "config.DATABASE_USER=$database_user" \
+              --set-string "config.REDIS_HOST=$redis_host" \
+              --set-string "config.REDIS_PORT=$redis_port" \
+              --set-string "config.APP_PUBLIC_URL=$1" \
+              --set-string "secrets.DATABASE_PASSWORD=$database_password" \
+              --set-string "secrets.JWT_SECRET=$jwt_secret" \
+              --wait --timeout 15m
+          }
+
+          # The hostname of the load balancer is empty until the Service has one, and a missing
+          # Service is not an error here.
+          load_balancer_host() {
+            scripts/tool.sh kubectl get service workshop --namespace workshop --ignore-not-found \
+              --output 'jsonpath={.status.loadBalancer.ingress[0].hostname}'
+          }
+
+          # The first install has no hostname yet, so the application gets a placeholder that passes
+          # its URL check, and the release is upgraded again with the real one.
+          host="$(load_balancer_host)"
+          public_url="http://${host:-load-balancer-pending.invalid}"
+          upgrade "$public_url"
+
+          # The release is deployed by now, so a failed read is one more reason to try again.
+          host=''
+          for _ in {1..60}; do
+            host="$(load_balancer_host || true)"
+            [[ -n "$host" ]] && break
+            sleep 10
+          done
+          if [[ -z "$host" ]]; then
+            echo '::error::The Service workshop has no load balancer hostname after 10 minutes.'
+            exit 1
+          fi
+          if [[ "http://$host" != "$public_url" ]]; then
+            upgrade "http://$host"
+          fi
+
+          echo "The API answers at http://$host" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Show why the release did not become ready
+        if: failure()
+        run: |
+          scripts/tool.sh kubectl get pods,jobs --namespace workshop || true
+          scripts/tool.sh kubectl logs job/workshop-migrate --namespace workshop || true

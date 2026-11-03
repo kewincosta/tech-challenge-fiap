@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { ServiceKeyResolver } from '../../../services';
 import {
   AverageExecutionTimeAggregate,
   AverageExecutionTimeFilter,
@@ -17,7 +18,7 @@ interface AverageRow {
 // several, corrupting AVG by counting that work order's elapsed time more than once. EXISTS is a
 // pure filter, never a multiplier. Both timestamps are named NOT NULL explicitly rather than left
 // implied by the status filter (design.md's fifth risk). COALESCE(..., 0) is what turns "no
-// matching row" into the zero the spec asks for, in SQL rather than in a branch a handler would
+// matching row" into the zero the spec asks for, in SQL rather than in a branch a use case would
 // have to remember (AD-003: the read side never travels through an aggregate).
 const AVERAGE_EXECUTION_TIME_SQL = `
   SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (wo.completed_at - wo.execution_started_at))), 0) AS average_seconds,
@@ -27,13 +28,12 @@ const AVERAGE_EXECUTION_TIME_SQL = `
      AND wo.execution_started_at IS NOT NULL
      AND wo.completed_at IS NOT NULL
      AND (
-       $1::uuid IS NULL
+       $1::bigint IS NULL
        OR EXISTS (
          SELECT 1
            FROM work_order_services wos
-           JOIN services s ON s.id = wos.service_id
           WHERE wos.work_order_id = wo.id
-            AND s.external_id = $1
+            AND wos.service_id = $1
        )
      )
      AND ($2::timestamptz IS NULL OR wo.completed_at >= $2)
@@ -42,13 +42,25 @@ const AVERAGE_EXECUTION_TIME_SQL = `
 
 @Injectable()
 export class TypeOrmWorkOrderMetricsQueryAdapter implements WorkOrderMetricsQueryPort {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly serviceKeys: ServiceKeyResolver,
+  ) {}
 
   async averageExecutionTime(
     filter: AverageExecutionTimeFilter,
   ): Promise<AverageExecutionTimeAggregate> {
+    // The service filter is the services module's key, so it is translated first (AD-013). A
+    // service that does not exist is carried by no work order.
+    let serviceInternalId: string | null = null;
+    if (filter.serviceId !== undefined) {
+      serviceInternalId = await this.serviceKeys.toInternalId(filter.serviceId);
+      if (serviceInternalId === null) {
+        return { averageSeconds: 0, workOrderCount: 0 };
+      }
+    }
     const rows: AverageRow[] = await this.dataSource.query(AVERAGE_EXECUTION_TIME_SQL, [
-      filter.serviceId ?? null,
+      serviceInternalId,
       filter.completedFrom ?? null,
       filter.completedTo ?? null,
     ]);

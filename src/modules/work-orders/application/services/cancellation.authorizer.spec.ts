@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { stubQueryBus } from '../../../../../test/support/fakes/bus.stubs';
+import { FakeWorkOrderActors } from '../../../../../test/support/fakes/fake-work-order-actors';
 import { Money } from '../../../../shared/domain/value-objects/money';
-import { EffectiveAccessDto } from '../../../authorization/application/dtos/effective-access.dto';
-import { GetUserEffectiveAccessQuery } from '../../../authorization/application/queries/get-user-effective-access/get-user-effective-access.query';
 import { BudgetStatus } from '../../domain/budget-status';
 import { Budget } from '../../domain/entities/budget';
 import { WorkOrder } from '../../domain/entities/work-order';
@@ -74,46 +72,30 @@ function workOrder(status: WorkOrderStatus, withdrawnQuantity: number): WorkOrde
   });
 }
 
-function stubAccess(access: EffectiveAccessDto): ReturnType<typeof stubQueryBus> {
-  const queryBus = stubQueryBus();
-  queryBus.execute.mockImplementation((query: unknown) => {
-    if (query instanceof GetUserEffectiveAccessQuery) {
-      return Promise.resolve(access);
-    }
-    return Promise.resolve(null);
-  });
-  return queryBus;
-}
-
 describe('CancellationAuthorizer', () => {
-  it('admits a work order with no outstanding withdrawal without ever consulting the QueryBus', async () => {
-    const queryBus = stubAccess({ roles: [], permissions: [] });
-    const authorizer = new CancellationAuthorizer(queryBus.bus);
+  it('admits a work order with no outstanding withdrawal without ever asking who the actor is', async () => {
+    const actors = new FakeWorkOrderActors();
+    const authorizer = new CancellationAuthorizer(actors);
 
     await expect(
       authorizer.assertMayCancel(workOrder(WorkOrderStatus.InExecution, 0), ACTOR_ID),
     ).resolves.toBeUndefined();
-    expect(queryBus.execute).not.toHaveBeenCalled();
+    expect(actors.capabilityLookups).toEqual([]);
   });
 
-  it('refuses an actor holding only work-orders:cancel when the work order has an outstanding withdrawal', async () => {
-    const queryBus = stubAccess({
-      roles: ['SERVICE_ADVISOR'],
-      permissions: ['work-orders:cancel'],
-    });
-    const authorizer = new CancellationAuthorizer(queryBus.bus);
+  it('refuses an actor without the in-execution capability when the work order has an outstanding withdrawal', async () => {
+    const authorizer = new CancellationAuthorizer(new FakeWorkOrderActors());
 
     await expect(
       authorizer.assertMayCancel(workOrder(WorkOrderStatus.InExecution, 2), ACTOR_ID),
     ).rejects.toThrow(CancelInExecutionForbiddenError);
   });
 
-  it('admits an actor also holding work-orders:cancel-in-execution when the work order has an outstanding withdrawal', async () => {
-    const queryBus = stubAccess({
-      roles: ['ADMIN'],
-      permissions: ['work-orders:cancel', 'work-orders:cancel-in-execution'],
+  it('admits an actor who cancels in execution when the work order has an outstanding withdrawal', async () => {
+    const actors = new FakeWorkOrderActors().withCapabilities(ACTOR_ID, {
+      cancelsInExecution: true,
     });
-    const authorizer = new CancellationAuthorizer(queryBus.bus);
+    const authorizer = new CancellationAuthorizer(actors);
 
     await expect(
       authorizer.assertMayCancel(workOrder(WorkOrderStatus.InExecution, 2), ACTOR_ID),
@@ -121,11 +103,7 @@ describe('CancellationAuthorizer', () => {
   });
 
   it('refuses the same way in AWAITING_APPROVAL after a supplementary round, not only IN_EXECUTION (H36 against H38)', async () => {
-    const queryBus = stubAccess({
-      roles: ['SERVICE_ADVISOR'],
-      permissions: ['work-orders:cancel'],
-    });
-    const authorizer = new CancellationAuthorizer(queryBus.bus);
+    const authorizer = new CancellationAuthorizer(new FakeWorkOrderActors());
 
     await expect(
       authorizer.assertMayCancel(workOrder(WorkOrderStatus.AwaitingApproval, 2), ACTOR_ID),
@@ -133,11 +111,10 @@ describe('CancellationAuthorizer', () => {
   });
 
   it('admits the elevated actor in AWAITING_APPROVAL too, so the refusal is about outstanding parts, not the state', async () => {
-    const queryBus = stubAccess({
-      roles: ['ADMIN'],
-      permissions: ['work-orders:cancel', 'work-orders:cancel-in-execution'],
+    const actors = new FakeWorkOrderActors().withCapabilities(ACTOR_ID, {
+      cancelsInExecution: true,
     });
-    const authorizer = new CancellationAuthorizer(queryBus.bus);
+    const authorizer = new CancellationAuthorizer(actors);
 
     await expect(
       authorizer.assertMayCancel(workOrder(WorkOrderStatus.AwaitingApproval, 2), ACTOR_ID),

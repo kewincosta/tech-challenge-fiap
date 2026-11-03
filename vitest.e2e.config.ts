@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     include: ['test/e2e/**/*.spec.ts'],
     environment: 'node',
-    setupFiles: ['./test/support/setup-tests.ts'],
+    setupFiles: ['./test/support/setup-tests.ts', './test/support/setup-taken-values.ts'],
     globalSetup: ['./test/support/global-setup.ts'],
     pool: 'forks',
     poolOptions: { forks: { singleFork: true } },

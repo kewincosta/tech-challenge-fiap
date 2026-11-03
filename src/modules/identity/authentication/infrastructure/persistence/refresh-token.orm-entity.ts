@@ -1,0 +1,36 @@
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { SessionOrmEntity } from './session.orm-entity';
+
+@Entity('refresh_tokens')
+export class RefreshTokenOrmEntity {
+  @PrimaryGeneratedColumn({ type: 'bigint' })
+  id!: string;
+
+  @Column({ name: 'external_id', type: 'uuid' })
+  externalId!: string;
+
+  @Column({ name: 'session_id', type: 'bigint' })
+  sessionInternalId!: string;
+
+  @ManyToOne(() => SessionOrmEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'session_id' })
+  session?: SessionOrmEntity;
+
+  @Column({ name: 'token_hash', type: 'varchar', length: 128 })
+  tokenHash!: string;
+
+  @Column({ name: 'status', type: 'varchar', length: 20 })
+  status!: string;
+
+  @Column({ name: 'created_at', type: 'timestamptz' })
+  createdAt!: Date;
+
+  @Column({ name: 'expires_at', type: 'timestamptz' })
+  expiresAt!: Date;
+
+  @Column({ name: 'rotated_at', type: 'timestamptz', nullable: true })
+  rotatedAt!: Date | null;
+
+  @Column({ name: 'replaced_by_id', type: 'bigint', nullable: true })
+  replacedByInternalId!: string | null;
+}

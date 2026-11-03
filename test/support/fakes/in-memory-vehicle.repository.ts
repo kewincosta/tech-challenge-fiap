@@ -1,5 +1,5 @@
+import { VehicleRepository } from '../../../src/modules/vehicles/application/ports/vehicle.repository';
 import { Vehicle } from '../../../src/modules/vehicles/domain/entities/vehicle';
-import { VehicleRepository } from '../../../src/modules/vehicles/domain/repositories/vehicle.repository';
 import { VehicleId } from '../../../src/modules/vehicles/domain/value-objects/vehicle-id';
 
 export class InMemoryVehicleRepository implements VehicleRepository {

@@ -10,7 +10,6 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -24,18 +23,18 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
-import {
-  CreatedServiceDto,
-  CreateServiceCommand,
-} from '../../application/commands/create-service/create-service.command';
+import { AppPermission, RequirePermissions } from '../../../identity';
+import { CreateServiceCommand } from '../../application/commands/create-service/create-service.command';
+import { CreateServiceUseCase } from '../../application/commands/create-service/create-service.use-case';
 import { DeactivateServiceCommand } from '../../application/commands/deactivate-service/deactivate-service.command';
+import { DeactivateServiceUseCase } from '../../application/commands/deactivate-service/deactivate-service.use-case';
 import { UpdateServiceCommand } from '../../application/commands/update-service/update-service.command';
+import { UpdateServiceUseCase } from '../../application/commands/update-service/update-service.use-case';
 import { ServiceSummaryDto } from '../../application/ports/service-query.port';
+import { GetServiceUseCase } from '../../application/queries/get-service/get-service.use-case';
 import { GetServiceQuery } from '../../application/queries/get-service/get-service.query';
+import { ListServicesUseCase } from '../../application/queries/list-services/list-services.use-case';
 import { ListServicesQuery } from '../../application/queries/list-services/list-services.query';
-import { ServiceNotFoundError } from '../../domain/errors/service-not-found.error';
 import { CreateServiceRequestDto } from '../dtos/create-service.request.dto';
 import { UpdateServiceRequestDto } from '../dtos/update-service.request.dto';
 import { CreatedServiceResponseDto, ServiceResponseDto } from '../dtos/service.response.dto';
@@ -44,8 +43,11 @@ import { CreatedServiceResponseDto, ServiceResponseDto } from '../dtos/service.r
 @Controller('services')
 export class ServicesController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly createService: CreateServiceUseCase,
+    private readonly updateService: UpdateServiceUseCase,
+    private readonly deactivateService: DeactivateServiceUseCase,
+    private readonly getService: GetServiceUseCase,
+    private readonly listServices: ListServicesUseCase,
   ) {}
 
   @Post()
@@ -57,7 +59,7 @@ export class ServicesController {
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async create(@Body() body: CreateServiceRequestDto): Promise<CreatedServiceResponseDto> {
-    return this.commandBus.execute<CreateServiceCommand, CreatedServiceDto>(
+    return this.createService.execute(
       new CreateServiceCommand(
         body.name,
         body.priceCents,
@@ -75,9 +77,7 @@ export class ServicesController {
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async list(): Promise<ServiceResponseDto[]> {
-    const services = await this.queryBus.execute<ListServicesQuery, ServiceSummaryDto[]>(
-      new ListServicesQuery(),
-    );
+    const services = await this.listServices.execute(new ListServicesQuery());
     return services.map((service) => this.toResponseDto(service));
   }
 
@@ -91,7 +91,7 @@ export class ServicesController {
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<ServiceResponseDto> {
-    return this.getServiceOrThrow(externalId);
+    return this.toResponseDto(await this.getService.execute(new GetServiceQuery(externalId)));
   }
 
   @Patch(':externalId')
@@ -106,7 +106,7 @@ export class ServicesController {
     @Param('externalId', ParseUUIDPipe) externalId: string,
     @Body() body: UpdateServiceRequestDto,
   ): Promise<ServiceResponseDto> {
-    await this.commandBus.execute<UpdateServiceCommand, void>(
+    await this.updateService.execute(
       new UpdateServiceCommand(
         externalId,
         body.name,
@@ -115,7 +115,7 @@ export class ServicesController {
         body.estimatedDurationMinutes,
       ),
     );
-    return this.getServiceOrThrow(externalId);
+    return this.toResponseDto(await this.getService.execute(new GetServiceQuery(externalId)));
   }
 
   @Delete(':externalId')
@@ -127,19 +127,7 @@ export class ServicesController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async deactivate(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
-    await this.commandBus.execute<DeactivateServiceCommand, void>(
-      new DeactivateServiceCommand(externalId),
-    );
-  }
-
-  private async getServiceOrThrow(externalId: string): Promise<ServiceResponseDto> {
-    const service = await this.queryBus.execute<GetServiceQuery, ServiceSummaryDto | null>(
-      new GetServiceQuery(externalId),
-    );
-    if (!service) {
-      throw new ServiceNotFoundError();
-    }
-    return this.toResponseDto(service);
+    await this.deactivateService.execute(new DeactivateServiceCommand(externalId));
   }
 
   private toResponseDto(service: ServiceSummaryDto): ServiceResponseDto {

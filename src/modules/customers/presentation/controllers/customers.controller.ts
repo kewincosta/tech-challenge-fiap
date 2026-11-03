@@ -11,7 +11,6 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -26,21 +25,20 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../authentication/presentation/principal';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { DeactivateCustomerCommand } from '../../application/commands/deactivate-customer/deactivate-customer.command';
-import {
-  RegisteredCustomerDto,
-  RegisterCustomerCommand,
-} from '../../application/commands/register-customer/register-customer.command';
+import { DeactivateCustomerUseCase } from '../../application/commands/deactivate-customer/deactivate-customer.use-case';
+import { RegisterCustomerCommand } from '../../application/commands/register-customer/register-customer.command';
+import { RegisterCustomerUseCase } from '../../application/commands/register-customer/register-customer.use-case';
 import { UpdateCustomerCommand } from '../../application/commands/update-customer/update-customer.command';
-import { GetCustomerByUserIdQuery } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
-import { GetCustomerQuery } from '../../application/queries/get-customer/get-customer.query';
-import { ListCustomersQuery } from '../../application/queries/list-customers/list-customers.query';
+import { UpdateCustomerUseCase } from '../../application/commands/update-customer/update-customer.use-case';
 import { CustomerSummaryDto } from '../../application/ports/customer-query.port';
-import { CustomerNotFoundError } from '../../domain/errors/customer-not-found.error';
+import { GetCustomerByUserIdUseCase } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.use-case';
+import { GetCustomerByUserIdQuery } from '../../application/queries/get-customer-by-user-id/get-customer-by-user-id.query';
+import { GetCustomerUseCase } from '../../application/queries/get-customer/get-customer.use-case';
+import { GetCustomerQuery } from '../../application/queries/get-customer/get-customer.query';
+import { ListCustomersUseCase } from '../../application/queries/list-customers/list-customers.use-case';
+import { ListCustomersQuery } from '../../application/queries/list-customers/list-customers.query';
 import { RegisterCustomerRequestDto } from '../dtos/register-customer.request.dto';
 import { UpdateCustomerRequestDto } from '../dtos/update-customer.request.dto';
 import { CustomerResponseDto, RegisteredCustomerResponseDto } from '../dtos/customer.response.dto';
@@ -49,8 +47,12 @@ import { CustomerResponseDto, RegisteredCustomerResponseDto } from '../dtos/cust
 @Controller('customers')
 export class CustomersController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly registerCustomer: RegisterCustomerUseCase,
+    private readonly updateCustomer: UpdateCustomerUseCase,
+    private readonly deactivateCustomer: DeactivateCustomerUseCase,
+    private readonly getCustomer: GetCustomerUseCase,
+    private readonly getCustomerByUserId: GetCustomerByUserIdUseCase,
+    private readonly listCustomers: ListCustomersUseCase,
   ) {}
 
   @Post()
@@ -62,7 +64,7 @@ export class CustomersController {
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async register(@Body() body: RegisterCustomerRequestDto): Promise<RegisteredCustomerResponseDto> {
-    return this.commandBus.execute<RegisterCustomerCommand, RegisteredCustomerDto>(
+    return this.registerCustomer.execute(
       new RegisterCustomerCommand(
         body.userId,
         body.email,
@@ -81,7 +83,9 @@ export class CustomersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async me(@CurrentUser() principal: Principal): Promise<CustomerResponseDto> {
-    return this.getOwnCustomerOrThrow(principal.userId);
+    return this.toResponseDto(
+      await this.getCustomerByUserId.execute(new GetCustomerByUserIdQuery(principal.userId)),
+    );
   }
 
   @Patch('me')
@@ -94,11 +98,13 @@ export class CustomersController {
     @CurrentUser() principal: Principal,
     @Body() body: UpdateCustomerRequestDto,
   ): Promise<CustomerResponseDto> {
-    const customer = await this.getOwnCustomerSummaryOrThrow(principal.userId);
-    await this.commandBus.execute<UpdateCustomerCommand, void>(
+    const customer = await this.getCustomerByUserId.execute(
+      new GetCustomerByUserIdQuery(principal.userId),
+    );
+    await this.updateCustomer.execute(
       new UpdateCustomerCommand(customer.id, body.address, body.phoneNumber),
     );
-    return this.getCustomerOrThrow(customer.id);
+    return this.toResponseDto(await this.getCustomer.execute(new GetCustomerQuery(customer.id)));
   }
 
   @Get()
@@ -114,9 +120,7 @@ export class CustomersController {
     @Query('name') name?: string,
     @Query('document') document?: string,
   ): Promise<CustomerResponseDto[]> {
-    const customers = await this.queryBus.execute<ListCustomersQuery, CustomerSummaryDto[]>(
-      new ListCustomersQuery(name, document),
-    );
+    const customers = await this.listCustomers.execute(new ListCustomersQuery(name, document));
     return customers.map((customer) => this.toResponseDto(customer));
   }
 
@@ -130,7 +134,7 @@ export class CustomersController {
   async getById(
     @Param('externalId', ParseUUIDPipe) externalId: string,
   ): Promise<CustomerResponseDto> {
-    return this.getCustomerOrThrow(externalId);
+    return this.toResponseDto(await this.getCustomer.execute(new GetCustomerQuery(externalId)));
   }
 
   @Patch(':externalId')
@@ -144,10 +148,10 @@ export class CustomersController {
     @Param('externalId', ParseUUIDPipe) externalId: string,
     @Body() body: UpdateCustomerRequestDto,
   ): Promise<CustomerResponseDto> {
-    await this.commandBus.execute<UpdateCustomerCommand, void>(
+    await this.updateCustomer.execute(
       new UpdateCustomerCommand(externalId, body.address, body.phoneNumber),
     );
-    return this.getCustomerOrThrow(externalId);
+    return this.toResponseDto(await this.getCustomer.execute(new GetCustomerQuery(externalId)));
   }
 
   @Delete(':externalId')
@@ -159,35 +163,7 @@ export class CustomersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async deactivate(@Param('externalId', ParseUUIDPipe) externalId: string): Promise<void> {
-    await this.commandBus.execute<DeactivateCustomerCommand, void>(
-      new DeactivateCustomerCommand(externalId),
-    );
-  }
-
-  private async getOwnCustomerOrThrow(userId: string): Promise<CustomerResponseDto> {
-    const customer = await this.getOwnCustomerSummaryOrThrow(userId);
-    return this.toResponseDto(customer);
-  }
-
-  private async getOwnCustomerSummaryOrThrow(userId: string): Promise<CustomerSummaryDto> {
-    const customer = await this.queryBus.execute<
-      GetCustomerByUserIdQuery,
-      CustomerSummaryDto | null
-    >(new GetCustomerByUserIdQuery(userId));
-    if (!customer) {
-      throw new CustomerNotFoundError();
-    }
-    return customer;
-  }
-
-  private async getCustomerOrThrow(externalId: string): Promise<CustomerResponseDto> {
-    const customer = await this.queryBus.execute<GetCustomerQuery, CustomerSummaryDto | null>(
-      new GetCustomerQuery(externalId),
-    );
-    if (!customer) {
-      throw new CustomerNotFoundError();
-    }
-    return this.toResponseDto(customer);
+    await this.deactivateCustomer.execute(new DeactivateCustomerCommand(externalId));
   }
 
   private toResponseDto(customer: CustomerSummaryDto): CustomerResponseDto {

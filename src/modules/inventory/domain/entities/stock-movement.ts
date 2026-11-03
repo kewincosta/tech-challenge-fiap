@@ -15,6 +15,8 @@ export interface StockMovementProps {
   status: StockMovementStatus | null;
   workOrderId: string | null;
   undoesMovementId: string | null;
+  /** The stock operation that wrote the movement: a withdrawal, a return or its undo. */
+  operationId?: string | null;
 }
 
 export interface RecordMovementInput {
@@ -33,6 +35,7 @@ export interface ConsumeMovementInput {
   unitPrice: Money;
   actorUserId: string;
   workOrderId: string;
+  operationId?: string;
   now: Date;
 }
 
@@ -43,6 +46,7 @@ export interface UndoMovementInput {
   actorUserId: string;
   workOrderId: string;
   undoesMovementId: string;
+  operationId?: string;
   now: Date;
 }
 
@@ -97,6 +101,7 @@ export class StockMovement {
       status: StockMovementStatus.Pending,
       workOrderId: input.workOrderId,
       undoesMovementId: null,
+      operationId: input.operationId ?? null,
     });
   }
 
@@ -119,6 +124,7 @@ export class StockMovement {
       status: null,
       workOrderId: input.workOrderId,
       undoesMovementId: input.undoesMovementId,
+      operationId: input.operationId ?? null,
     });
   }
 
@@ -164,5 +170,10 @@ export class StockMovement {
 
   get undoesMovementId(): string | null {
     return this.props.undoesMovementId;
+  }
+
+  /** Null for a movement no stock operation wrote: an inbound or an adjustment. */
+  get operationId(): string | null {
+    return this.props.operationId ?? null;
   }
 }

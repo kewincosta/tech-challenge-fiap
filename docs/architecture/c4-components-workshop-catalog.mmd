@@ -10,34 +10,37 @@ C4Component
 
   Container_Boundary(app, "NestJS application") {
 
-    Component_Boundary(services, "services") {
+    Boundary(services, "services") {
       Component(svcCtl, "ServicesController", "Controller", "Catalog administration")
-      Component(createSvc, "CreateServiceHandler", "Command handler", "Adds an entry")
-      Component(updateSvc, "UpdateServiceHandler", "Command handler", "Name, description, price, duration")
-      Component(deactivateSvc, "DeactivateServiceHandler", "Command handler", "Status change, never a delete")
-      Component(getSvc, "GetServiceHandler / ListServicesHandler", "Query handlers", "Reads the catalog")
+      Component(createSvc, "CreateServiceUseCase", "Use case", "Adds an entry")
+      Component(updateSvc, "UpdateServiceUseCase", "Use case", "Name, description, price, duration")
+      Component(deactivateSvc, "DeactivateServiceUseCase", "Use case", "Status change, never a delete")
+      Component(getSvc, "GetServiceUseCase / ListServicesUseCase", "Query use cases", "Reads the catalog; ServiceNotFoundError for an unknown service")
       Component(svcAgg, "Service", "Aggregate", "ServiceName, ServiceDuration, Money price, unique while active")
       Component(svcRepo, "TypeOrmServiceRepository", "Repository", "")
       Component(svcQuery, "TypeOrmServiceQueryAdapter", "Query port", "ServiceQueryPort")
+      Component(svcKeys, "ServiceKeyResolver", "Key resolver", "Service UUID to internal key and back, for other modules")
     }
   }
 
   Component_Ext(workOrders, "work-orders", "Module", "Adds services to a work order and freezes their price into a budget round")
   ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "services")
 
-  Rel(admin, svcCtl, "Creates, updates, deactivates, reads", "HTTPS")
-  Rel(svcCtl, createSvc, "CommandBus")
-  Rel(svcCtl, updateSvc, "CommandBus")
-  Rel(svcCtl, deactivateSvc, "CommandBus")
-  Rel(svcCtl, getSvc, "QueryBus")
+  Rel(admin, svcCtl, "Creates, updates, deactivates, reads", "HTTP")
+  Rel(svcCtl, createSvc, "Calls")
+  Rel(svcCtl, updateSvc, "Calls")
+  Rel(svcCtl, deactivateSvc, "Calls")
+  Rel(svcCtl, getSvc, "Calls")
   Rel(createSvc, svcAgg, "Creates")
   Rel(createSvc, svcRepo, "Saves")
   Rel(updateSvc, svcRepo, "Loads and saves")
   Rel(getSvc, svcQuery, "Reads")
 
-  Rel(workOrders, svcQuery, "QueryBus: reads the service and its price when an item is added", "cross-module")
+  Rel(workOrders, getSvc, "Calls through index.ts: reads the service and its price when an item is added", "cross-module")
+  Rel(workOrders, svcKeys, "Calls through index.ts: service UUID to key", "cross-module")
 
   Rel(svcRepo, pg, "Reads and writes", "TCP")
   Rel(svcQuery, pg, "Reads", "TCP")
+  Rel(svcKeys, pg, "Reads", "TCP")
 
   UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

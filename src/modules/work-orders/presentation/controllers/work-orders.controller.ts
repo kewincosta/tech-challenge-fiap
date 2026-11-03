@@ -11,7 +11,6 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -22,75 +21,124 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiQuery,
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../../../shared/presentation/dtos/error-response.dto';
-import { CurrentUser } from '../../../authentication/presentation/decorators/current-user.decorator';
-import { Principal } from '../../../authentication/presentation/principal';
-import { AppPermission } from '../../../authorization/application/contracts/app-permissions';
-import { RequirePermissions } from '../../../authorization/presentation/decorators/require-permissions.decorator';
+import { AppPermission, CurrentUser, Principal, RequirePermissions } from '../../../identity';
 import { AddRequestedServiceCommand } from '../../application/commands/add-requested-service/add-requested-service.command';
+import { AddRequestedServiceUseCase } from '../../application/commands/add-requested-service/add-requested-service.use-case';
 import { ApplyDiscountCommand } from '../../application/commands/apply-discount/apply-discount.command';
+import { ApplyDiscountUseCase } from '../../application/commands/apply-discount/apply-discount.use-case';
 import { ApproveBudgetCommand } from '../../application/commands/approve-budget/approve-budget.command';
+import { ApproveBudgetUseCase } from '../../application/commands/approve-budget/approve-budget.use-case';
 import { AssignMechanicCommand } from '../../application/commands/assign-mechanic/assign-mechanic.command';
+import { AssignMechanicUseCase } from '../../application/commands/assign-mechanic/assign-mechanic.use-case';
 import { CancelWorkOrderCommand } from '../../application/commands/cancel-work-order/cancel-work-order.command';
+import { CancelWorkOrderUseCase } from '../../application/commands/cancel-work-order/cancel-work-order.use-case';
 import { CompleteDiagnosisCommand } from '../../application/commands/complete-diagnosis/complete-diagnosis.command';
+import { CompleteDiagnosisUseCase } from '../../application/commands/complete-diagnosis/complete-diagnosis.use-case';
 import { CompleteWorkOrderCommand } from '../../application/commands/complete-work-order/complete-work-order.command';
-import {
-  CreatedWorkOrderDto,
-  CreateWorkOrderCommand,
-} from '../../application/commands/create-work-order/create-work-order.command';
+import { CompleteWorkOrderUseCase } from '../../application/commands/complete-work-order/complete-work-order.use-case';
+import { CreateWorkOrderCommand } from '../../application/commands/create-work-order/create-work-order.command';
+import { CreateWorkOrderUseCase } from '../../application/commands/create-work-order/create-work-order.use-case';
 import { DeliverVehicleCommand } from '../../application/commands/deliver-vehicle/deliver-vehicle.command';
+import { DeliverVehicleUseCase } from '../../application/commands/deliver-vehicle/deliver-vehicle.use-case';
 import { PlanPartCommand } from '../../application/commands/plan-part/plan-part.command';
+import { PlanPartUseCase } from '../../application/commands/plan-part/plan-part.use-case';
 import { RejectBudgetCommand } from '../../application/commands/reject-budget/reject-budget.command';
+import { RejectBudgetUseCase } from '../../application/commands/reject-budget/reject-budget.use-case';
 import { RemoveWorkOrderItemCommand } from '../../application/commands/remove-work-order-item/remove-work-order-item.command';
+import { RemoveWorkOrderItemUseCase } from '../../application/commands/remove-work-order-item/remove-work-order-item.use-case';
 import { ReturnPartsCommand } from '../../application/commands/return-parts/return-parts.command';
+import { ReturnPartsUseCase } from '../../application/commands/return-parts/return-parts.use-case';
 import { StartDiagnosisCommand } from '../../application/commands/start-diagnosis/start-diagnosis.command';
+import { StartDiagnosisUseCase } from '../../application/commands/start-diagnosis/start-diagnosis.use-case';
 import { SubmitSupplementaryBudgetCommand } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.command';
+import { SubmitSupplementaryBudgetUseCase } from '../../application/commands/submit-supplementary-budget/submit-supplementary-budget.use-case';
 import { WithdrawPartsCommand } from '../../application/commands/withdraw-parts/withdraw-parts.command';
+import { WithdrawPartsUseCase } from '../../application/commands/withdraw-parts/withdraw-parts.use-case';
 import {
+  WorkOrderBudgetDto,
   WorkOrderSummaryDto,
   WorkOrderTrailEntryDto,
 } from '../../application/ports/work-order-query.port';
-import { AverageExecutionTimeDto } from '../../application/ports/work-order-metrics-query.port';
+import { GetAverageExecutionTimeUseCase } from '../../application/queries/get-average-execution-time/get-average-execution-time.use-case';
 import { GetAverageExecutionTimeQuery } from '../../application/queries/get-average-execution-time/get-average-execution-time.query';
+import { GetMyWorkOrderUseCase } from '../../application/queries/get-my-work-order/get-my-work-order.use-case';
 import { GetMyWorkOrderQuery } from '../../application/queries/get-my-work-order/get-my-work-order.query';
+import { GetMyWorkOrdersUseCase } from '../../application/queries/get-my-work-orders/get-my-work-orders.use-case';
 import { GetMyWorkOrdersQuery } from '../../application/queries/get-my-work-orders/get-my-work-orders.query';
+import { GetWorkOrderTrailUseCase } from '../../application/queries/get-work-order-trail/get-work-order-trail.use-case';
 import { GetWorkOrderTrailQuery } from '../../application/queries/get-work-order-trail/get-work-order-trail.query';
+import { GetWorkOrderUseCase } from '../../application/queries/get-work-order/get-work-order.use-case';
 import { GetWorkOrderQuery } from '../../application/queries/get-work-order/get-work-order.query';
+import { ListWorkOrdersUseCase } from '../../application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../application/queries/list-work-orders/list-work-orders.query';
-import { WorkOrderNotFoundError } from '../../domain/errors/work-order-not-found.error';
+import { BudgetStatus } from '../../domain/budget-status';
+import { WorkOrderStatus } from '../../domain/work-order-status';
+import { workOrderStatusLabel } from '../../domain/work-order-status-label';
 import { AddRequestedServiceRequestDto } from '../dtos/add-requested-service.request.dto';
 import { ApplyDiscountRequestDto } from '../dtos/apply-discount.request.dto';
 import { AssignMechanicRequestDto } from '../dtos/assign-mechanic.request.dto';
 import { AverageExecutionTimeQueryDto } from '../dtos/average-execution-time.request.dto';
+import { BudgetDecisionLinkQueryDto } from '../dtos/budget-decision-link.request.dto';
 import { CancellationRequestDto } from '../dtos/cancellation.request.dto';
 import { CreateWorkOrderRequestDto } from '../dtos/create-work-order.request.dto';
+import { ListWorkOrdersQueryDto } from '../dtos/list-work-orders.request.dto';
 import { PlanPartRequestDto } from '../dtos/plan-part.request.dto';
 import { WithdrawPartsRequestDto } from '../dtos/withdraw-parts.request.dto';
 import {
   AverageExecutionTimeResponseDto,
   CreatedWorkOrderResponseDto,
+  WorkOrderBudgetResponseDto,
+  WorkOrderPageResponseDto,
   WorkOrderResponseDto,
   WorkOrderTrailEntryResponseDto,
 } from '../dtos/work-order.response.dto';
+import { HttpBudgetDecisionLinks } from '../http-budget-decision-links';
 
 @ApiTags('work-orders')
 @Controller('work-orders')
 export class WorkOrdersController {
   constructor(
-    private readonly commandBus: CommandBus,
-    private readonly queryBus: QueryBus,
+    private readonly createWorkOrderUseCase: CreateWorkOrderUseCase,
+    private readonly addRequestedServiceUseCase: AddRequestedServiceUseCase,
+    private readonly planPartUseCase: PlanPartUseCase,
+    private readonly removeWorkOrderItemUseCase: RemoveWorkOrderItemUseCase,
+    private readonly assignMechanicUseCase: AssignMechanicUseCase,
+    private readonly startDiagnosisUseCase: StartDiagnosisUseCase,
+    private readonly completeDiagnosisUseCase: CompleteDiagnosisUseCase,
+    private readonly submitSupplementaryBudgetUseCase: SubmitSupplementaryBudgetUseCase,
+    private readonly approveBudgetUseCase: ApproveBudgetUseCase,
+    private readonly rejectBudgetUseCase: RejectBudgetUseCase,
+    private readonly withdrawPartsUseCase: WithdrawPartsUseCase,
+    private readonly returnPartsUseCase: ReturnPartsUseCase,
+    private readonly completeWorkOrderUseCase: CompleteWorkOrderUseCase,
+    private readonly deliverVehicleUseCase: DeliverVehicleUseCase,
+    private readonly cancelWorkOrderUseCase: CancelWorkOrderUseCase,
+    private readonly applyDiscountUseCase: ApplyDiscountUseCase,
+    private readonly getWorkOrderUseCase: GetWorkOrderUseCase,
+    private readonly listWorkOrdersUseCase: ListWorkOrdersUseCase,
+    private readonly getWorkOrderTrailUseCase: GetWorkOrderTrailUseCase,
+    private readonly getMyWorkOrdersUseCase: GetMyWorkOrdersUseCase,
+    private readonly getMyWorkOrderUseCase: GetMyWorkOrderUseCase,
+    private readonly getAverageExecutionTimeUseCase: GetAverageExecutionTimeUseCase,
+    private readonly budgetLinks: HttpBudgetDecisionLinks,
   ) {}
 
   @Post()
   @RequirePermissions(AppPermission.WorkOrdersManage)
   @HttpCode(HttpStatus.CREATED)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Open a work order for a customer and their vehicle' })
+  @ApiOperation({
+    summary: 'Open a work order for a customer and their vehicle',
+    description:
+      'Optionally carries the services and parts the customer asks for, each one a draft item. ' +
+      'One item that cannot be added refuses the whole opening and creates no work order.',
+  })
   @ApiCreatedResponse({ type: CreatedWorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiConflictResponse({ type: ErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
@@ -99,23 +147,39 @@ export class WorkOrdersController {
     @Body() body: CreateWorkOrderRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<CreatedWorkOrderResponseDto> {
-    return this.commandBus.execute<CreateWorkOrderCommand, CreatedWorkOrderDto>(
-      new CreateWorkOrderCommand(body.customerId, body.vehicleId, principal.userId),
+    return this.createWorkOrderUseCase.execute(
+      new CreateWorkOrderCommand(
+        body.customerId,
+        body.vehicleId,
+        principal.userId,
+        body.services?.map((service) => service.serviceId) ?? [],
+        body.parts?.map((part) => ({
+          inventoryItemId: part.inventoryItemId,
+          quantity: part.quantity,
+        })) ?? [],
+      ),
     );
   }
 
   @Get()
   @RequirePermissions(AppPermission.WorkOrdersRead)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List the work order board, filtered by status' })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiOkResponse({ type: [WorkOrderResponseDto] })
+  @ApiOperation({
+    summary: 'List the work order board, one page at a time',
+    description:
+      'Without a status, lists the work still open: IN_EXECUTION, AWAITING_APPROVAL, ' +
+      'IN_DIAGNOSIS and RECEIVED, in that order and the oldest first within each. A status ' +
+      'filter lists exactly the statuses it names, in the same order, completed, delivered and ' +
+      'canceled ones included. A page past the last answers 200 with no items.',
+  })
+  @ApiOkResponse({ type: WorkOrderPageResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
-  async list(@Query('status') status?: string): Promise<WorkOrderResponseDto[]> {
-    const workOrders = await this.queryBus.execute<ListWorkOrdersQuery, WorkOrderSummaryDto[]>(
-      new ListWorkOrdersQuery(status),
+  async list(@Query() query: ListWorkOrdersQueryDto): Promise<WorkOrderPageResponseDto> {
+    const page = await this.listWorkOrdersUseCase.execute(
+      new ListWorkOrdersQuery(query.page, query.pageSize, query.status ?? []),
     );
-    return workOrders.map((workOrder) => this.toResponseDto(workOrder));
+    return { ...page, items: page.items.map((workOrder) => this.toResponseDto(workOrder)) };
   }
 
   // Declared before every :number route - "me" would otherwise be read as a work order number
@@ -127,7 +191,7 @@ export class WorkOrdersController {
   @ApiOkResponse({ type: [WorkOrderResponseDto] })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async myWorkOrders(@CurrentUser() principal: Principal): Promise<WorkOrderResponseDto[]> {
-    const workOrders = await this.queryBus.execute<GetMyWorkOrdersQuery, WorkOrderSummaryDto[]>(
+    const workOrders = await this.getMyWorkOrdersUseCase.execute(
       new GetMyWorkOrdersQuery(principal.userId),
     );
     return workOrders.map((workOrder) => this.toResponseDto(workOrder));
@@ -146,15 +210,9 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    const workOrder = await this.queryBus.execute<GetMyWorkOrderQuery, WorkOrderSummaryDto | null>(
-      new GetMyWorkOrderQuery(principal.userId, number),
+    return this.toResponseDto(
+      await this.getMyWorkOrderUseCase.execute(new GetMyWorkOrderQuery(principal.userId, number)),
     );
-    // One null for "no customer record", "no work order" and "not yours" - the same 404 either
-    // way, so a stranger's number reads identically to one nobody carries (design.md).
-    if (!workOrder) {
-      throw new WorkOrderNotFoundError();
-    }
-    return this.toResponseDto(workOrder);
   }
 
   @Get('metrics/average-execution-time')
@@ -166,17 +224,13 @@ export class WorkOrdersController {
   async averageExecutionTime(
     @Query() query: AverageExecutionTimeQueryDto,
   ): Promise<AverageExecutionTimeResponseDto> {
-    const result = await this.queryBus.execute<
-      GetAverageExecutionTimeQuery,
-      AverageExecutionTimeDto
-    >(
+    return this.getAverageExecutionTimeUseCase.execute(
       new GetAverageExecutionTimeQuery(
         query.serviceId,
         query.completedFrom ? new Date(query.completedFrom) : undefined,
         query.completedTo ? new Date(query.completedTo) : undefined,
       ),
     );
-    return result;
   }
 
   @Get(':number')
@@ -188,7 +242,9 @@ export class WorkOrdersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getByNumber(@Param('number') number: string): Promise<WorkOrderResponseDto> {
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Get(':number/trail')
@@ -199,13 +255,7 @@ export class WorkOrdersController {
   @ApiNotFoundResponse({ type: ErrorResponseDto })
   @ApiForbiddenResponse({ type: ErrorResponseDto })
   async getTrail(@Param('number') number: string): Promise<WorkOrderTrailEntryResponseDto[]> {
-    // The 404 for an unknown number is owned here - GetWorkOrderTrailQuery never checks
-    // existence on its own (T18), the same split T10 established for inventory's movement
-    // history.
-    await this.getWorkOrderOrThrow(number);
-    const trail = await this.queryBus.execute<GetWorkOrderTrailQuery, WorkOrderTrailEntryDto[]>(
-      new GetWorkOrderTrailQuery(number),
-    );
+    const trail = await this.getWorkOrderTrailUseCase.execute(new GetWorkOrderTrailQuery(number));
     return trail.map((entry) => this.toTrailResponseDto(entry));
   }
 
@@ -223,10 +273,12 @@ export class WorkOrdersController {
     @Body() body: AddRequestedServiceRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<AddRequestedServiceCommand, void>(
+    await this.addRequestedServiceUseCase.execute(
       new AddRequestedServiceCommand(number, body.serviceId, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/parts')
@@ -244,10 +296,12 @@ export class WorkOrdersController {
     @Body() body: PlanPartRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<PlanPartCommand, void>(
+    await this.planPartUseCase.execute(
       new PlanPartCommand(number, body.inventoryItemId, body.quantity, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Delete(':number/items/:itemExternalId')
@@ -263,7 +317,7 @@ export class WorkOrdersController {
     @Param('itemExternalId', ParseUUIDPipe) itemExternalId: string,
     @CurrentUser() principal: Principal,
   ): Promise<void> {
-    await this.commandBus.execute<RemoveWorkOrderItemCommand, void>(
+    await this.removeWorkOrderItemUseCase.execute(
       new RemoveWorkOrderItemCommand(number, itemExternalId, principal.userId),
     );
   }
@@ -281,10 +335,12 @@ export class WorkOrdersController {
     @Body() body: AssignMechanicRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<AssignMechanicCommand, void>(
+    await this.assignMechanicUseCase.execute(
       new AssignMechanicCommand(number, body.mechanicUserId, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/diagnosis')
@@ -300,10 +356,10 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<StartDiagnosisCommand, void>(
-      new StartDiagnosisCommand(number, principal.userId),
+    await this.startDiagnosisUseCase.execute(new StartDiagnosisCommand(number, principal.userId));
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    return this.getWorkOrderOrThrow(number);
   }
 
   @Post(':number/diagnosis/completion')
@@ -319,10 +375,12 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CompleteDiagnosisCommand, void>(
+    await this.completeDiagnosisUseCase.execute(
       new CompleteDiagnosisCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/budget/supplementary')
@@ -340,10 +398,12 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<SubmitSupplementaryBudgetCommand, void>(
+    await this.submitSupplementaryBudgetUseCase.execute(
       new SubmitSupplementaryBudgetCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/withdrawals')
@@ -361,10 +421,12 @@ export class WorkOrdersController {
     @Body() body: WithdrawPartsRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<WithdrawPartsCommand, void>(
+    await this.withdrawPartsUseCase.execute(
       new WithdrawPartsCommand(number, body.lines, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/returns')
@@ -382,16 +444,18 @@ export class WorkOrdersController {
     @Body() body: WithdrawPartsRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ReturnPartsCommand, void>(
+    await this.returnPartsUseCase.execute(
       new ReturnPartsCommand(number, body.lines, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // No @RequirePermissions here: the rule is "the owning customer or a holder of
   // work-orders:decide", and PermissionsGuard requires every permission it is given, so it
   // cannot express an either-of-two. BudgetDecisionAuthorizer enforces it instead, inside the
-  // handler, answering 404 rather than 403 to a stranger (design.md).
+  // use case, answering 404 rather than 403 to a stranger (design.md).
   @Post(':number/budget/approval')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
@@ -409,10 +473,10 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ApproveBudgetCommand, void>(
-      new ApproveBudgetCommand(number, principal.userId),
+    await this.approveBudgetUseCase.execute(new ApproveBudgetCommand(number, principal.userId));
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    return this.getWorkOrderOrThrow(number);
   }
 
   // No @RequirePermissions here - see approveBudget above.
@@ -433,15 +497,83 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<RejectBudgetCommand, void>(
-      new RejectBudgetCommand(number, principal.userId),
+    await this.rejectBudgetUseCase.execute(new RejectBudgetCommand(number, principal.userId));
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    return this.getWorkOrderOrThrow(number);
+  }
+
+  // No @RequirePermissions here, for the reason given at approveBudget above. This pair is what
+  // `approvalUrl` and `rejectionUrl` point at: the same decision as the round-less pair, but of the
+  // budget the link names, so an old link cannot decide a round the customer never saw.
+  @Post(':number/budgets/:budgetId/approval')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Approve one budget, the one a link names',
+    description:
+      'The address `approvalUrl` carries on a pending budget, with its `link` hash. Allowed to the ' +
+      'owning customer and to a holder of work-orders:decide; anyone else gets 404 ' +
+      "WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 " +
+      'WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, ' +
+      'because the budget was generated again after the address was sent, answers 422 ' +
+      'WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 ' +
+      'BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.',
+  })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async approveBudgetByLink(
+    @Param('number') number: string,
+    @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @Query() query: BudgetDecisionLinkQueryDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.approveBudgetUseCase.execute(
+      new ApproveBudgetCommand(number, principal.userId, budgetId, query.link),
+    );
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
+  }
+
+  // No @RequirePermissions here, for the reason given at approveBudget above.
+  @Post(':number/budgets/:budgetId/rejection')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Reject one budget, the one a link names',
+    description:
+      'The address `rejectionUrl` carries on a pending budget, with its `link` hash. Allowed to the ' +
+      'owning customer and to a holder of work-orders:decide; anyone else gets 404 ' +
+      "WORK_ORDER_NOT_FOUND. A budget that is not one of the work order's answers 404 " +
+      'WORK_ORDER_BUDGET_NOT_FOUND. A `link` that is not the one of the budget as it stands now, ' +
+      'because the budget was generated again after the address was sent, answers 422 ' +
+      'WORK_ORDER_BUDGET_LINK_OUTDATED, and a budget that is no longer pending answers 422 ' +
+      'BUDGET_INVALID_STATE. Without `link` the answer is 400 VALIDATION_ERROR.',
+  })
+  @ApiOkResponse({ type: WorkOrderResponseDto })
+  @ApiBadRequestResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
+  @ApiNotFoundResponse({ type: ErrorResponseDto })
+  async rejectBudgetByLink(
+    @Param('number') number: string,
+    @Param('budgetId', ParseUUIDPipe) budgetId: string,
+    @Query() query: BudgetDecisionLinkQueryDto,
+    @CurrentUser() principal: Principal,
+  ): Promise<WorkOrderResponseDto> {
+    await this.rejectBudgetUseCase.execute(
+      new RejectBudgetCommand(number, principal.userId, budgetId, query.link),
+    );
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   // work-orders:read is the route-level gate - every actor able to reach it holds it, so the
   // work order's existence is not a secret from them. WorkOrderCompletionAuthorizer narrows to
-  // the assigned mechanic or an administrator inside the handler (design.md).
+  // the assigned mechanic or an administrator inside the use case (design.md).
   @Post(':number/completion')
   @RequirePermissions(AppPermission.WorkOrdersRead)
   @HttpCode(HttpStatus.OK)
@@ -456,10 +588,12 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CompleteWorkOrderCommand, void>(
+    await this.completeWorkOrderUseCase.execute(
       new CompleteWorkOrderCommand(number, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/delivery')
@@ -476,14 +610,14 @@ export class WorkOrdersController {
     @Param('number') number: string,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<DeliverVehicleCommand, void>(
-      new DeliverVehicleCommand(number, principal.userId),
+    await this.deliverVehicleUseCase.execute(new DeliverVehicleCommand(number, principal.userId));
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    return this.getWorkOrderOrThrow(number);
   }
 
   // work-orders:cancel is the route-level gate. CancellationAuthorizer additionally requires
-  // work-orders:cancel-in-execution inside the handler when the work order carries an
+  // work-orders:cancel-in-execution inside the use case when the work order carries an
   // outstanding withdrawn part - the guard runs after the load, because the state is only known
   // then (H36, design.md).
   @Post(':number/cancellation')
@@ -502,10 +636,12 @@ export class WorkOrdersController {
     @Body() body: CancellationRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<CancelWorkOrderCommand, void>(
+    await this.cancelWorkOrderUseCase.execute(
       new CancelWorkOrderCommand(number, body.reason, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
+    );
   }
 
   @Post(':number/discount')
@@ -524,20 +660,12 @@ export class WorkOrdersController {
     @Body() body: ApplyDiscountRequestDto,
     @CurrentUser() principal: Principal,
   ): Promise<WorkOrderResponseDto> {
-    await this.commandBus.execute<ApplyDiscountCommand, void>(
+    await this.applyDiscountUseCase.execute(
       new ApplyDiscountCommand(number, body.amountCents, body.note, principal.userId),
     );
-    return this.getWorkOrderOrThrow(number);
-  }
-
-  private async getWorkOrderOrThrow(number: string): Promise<WorkOrderResponseDto> {
-    const workOrder = await this.queryBus.execute<GetWorkOrderQuery, WorkOrderSummaryDto | null>(
-      new GetWorkOrderQuery(number),
+    return this.toResponseDto(
+      await this.getWorkOrderUseCase.execute(new GetWorkOrderQuery(number)),
     );
-    if (!workOrder) {
-      throw new WorkOrderNotFoundError();
-    }
-    return this.toResponseDto(workOrder);
   }
 
   private toResponseDto(workOrder: WorkOrderSummaryDto): WorkOrderResponseDto {
@@ -549,6 +677,7 @@ export class WorkOrdersController {
       assignedMechanicUserId: workOrder.assignedMechanicUserId,
       createdByUserId: workOrder.createdByUserId,
       status: workOrder.status,
+      statusLabel: workOrderStatusLabel(workOrder.status),
       customerName: workOrder.customerName,
       vehiclePlate: workOrder.vehiclePlate,
       vehicleBrand: workOrder.vehicleBrand,
@@ -556,7 +685,7 @@ export class WorkOrdersController {
       vehicleYear: workOrder.vehicleYear,
       serviceItems: workOrder.serviceItems,
       partItems: workOrder.partItems,
-      budgets: workOrder.budgets,
+      budgets: workOrder.budgets.map((budget) => this.toBudgetResponseDto(workOrder, budget)),
       chargedTotalCents: workOrder.chargedTotalCents,
       discountCents: workOrder.discountCents,
       discountNote: workOrder.discountNote,
@@ -564,6 +693,26 @@ export class WorkOrdersController {
       deliveredAt: workOrder.deliveredAt,
       canceledAt: workOrder.canceledAt,
       cancellationReason: workOrder.cancellationReason,
+    };
+  }
+
+  // The links go on the pending budget of a work order that awaits approval. A decided budget has
+  // nothing left to decide, and a work order canceled while it awaited approval keeps its budget
+  // pending, where a link could only be refused.
+  private toBudgetResponseDto(
+    workOrder: WorkOrderSummaryDto,
+    budget: WorkOrderBudgetDto,
+  ): WorkOrderBudgetResponseDto {
+    const decidable =
+      (workOrder.status as WorkOrderStatus) === WorkOrderStatus.AwaitingApproval &&
+      (budget.status as BudgetStatus) === BudgetStatus.Pending;
+    const links = decidable
+      ? this.budgetLinks.of(workOrder.number, budget.id, budget.generatedAt)
+      : null;
+    return {
+      ...budget,
+      approvalUrl: links?.approvalUrl ?? null,
+      rejectionUrl: links?.rejectionUrl ?? null,
     };
   }
 

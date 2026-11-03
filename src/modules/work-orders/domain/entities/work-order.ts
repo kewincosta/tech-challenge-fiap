@@ -2,6 +2,7 @@ import { AggregateRoot } from '../../../../shared/domain/aggregate-root';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetedItemNotRemovableError } from '../errors/budgeted-item-not-removable.error';
+import { BudgetStateError } from '../errors/budget-state.error';
 import { DiagnosisWithoutItemsError } from '../errors/diagnosis-without-items.error';
 import { DiscountExceedsChargedTotalError } from '../errors/discount-exceeds-charged-total.error';
 import { DuplicateBatchLineError } from '../errors/duplicate-batch-line.error';
@@ -9,6 +10,7 @@ import { EmptyDraftBudgetError } from '../errors/empty-draft-budget.error';
 import { PartNotWithdrawableError } from '../errors/part-not-withdrawable.error';
 import { ReturnExceedsWithdrawnError } from '../errors/return-exceeds-withdrawn.error';
 import { WithdrawalExceedsPlannedError } from '../errors/withdrawal-exceeds-planned.error';
+import { WorkOrderBudgetNotFoundError } from '../errors/work-order-budget-not-found.error';
 import { WorkOrderItemNotFoundError } from '../errors/work-order-item-not-found.error';
 import { WorkOrderStateError } from '../errors/work-order-state.error';
 import { BudgetApproved } from '../events/budget-approved.event';
@@ -30,6 +32,7 @@ import { VehicleDelivered } from '../events/vehicle-delivered.event';
 import { WorkOrderCanceled } from '../events/work-order-canceled.event';
 import { WorkOrderCompleted } from '../events/work-order-completed.event';
 import { WorkOrderCreated } from '../events/work-order-created.event';
+import { WorkOrderStatusChanged } from '../events/work-order-status-changed.event';
 import { BudgetId } from '../value-objects/budget-id';
 import { PlannedQuantity } from '../value-objects/planned-quantity';
 import { WorkOrderId } from '../value-objects/work-order-id';
@@ -168,6 +171,8 @@ interface CompleteDiagnosisInput {
 interface DecideBudgetActionInput {
   actorUserId: string;
   now: Date;
+  /** The budget a link names. Left out, the pending round is the one decided. */
+  budgetId?: BudgetId;
 }
 
 interface SubmitSupplementaryBudgetInput {
@@ -226,8 +231,13 @@ const ITEM_EDITABLE_STATES = [
   WorkOrderStatus.InExecution,
 ];
 
-/** `planPart` is narrower: parts are identified during the diagnosis, never at reception. */
-const PART_PLANNABLE_STATES = [WorkOrderStatus.InDiagnosis, WorkOrderStatus.InExecution];
+/** `planPart` allows the states `addService` does: a customer can ask for a part at reception
+ * (AD-018), and the diagnosis keeps or removes what it does not confirm. */
+const PART_PLANNABLE_STATES = [
+  WorkOrderStatus.Received,
+  WorkOrderStatus.InDiagnosis,
+  WorkOrderStatus.InExecution,
+];
 
 const MECHANIC_ASSIGNABLE_TERMINAL_STATES = [WorkOrderStatus.Delivered, WorkOrderStatus.Canceled];
 
@@ -269,6 +279,7 @@ export class WorkOrder extends AggregateRoot {
       version: 0,
     });
     workOrder.record(new WorkOrderCreated(input.id.value, input.createdByUserId, input.now));
+    workOrder.recordStatusChange(null, input.now);
     return workOrder;
   }
 
@@ -351,6 +362,7 @@ export class WorkOrder extends AggregateRoot {
 
   startDiagnosis(input: StartDiagnosisInput): void {
     this.assertStateAllows([WorkOrderStatus.Received]);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.InDiagnosis;
     this.props.diagnosisStartedAt = input.now;
     if (this.props.assignedMechanicUserId === null) {
@@ -358,6 +370,7 @@ export class WorkOrder extends AggregateRoot {
     }
     this.props.updatedAt = input.now;
     this.record(new DiagnosisStarted(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -372,6 +385,7 @@ export class WorkOrder extends AggregateRoot {
     if (!this.hasItemsForRound(1)) {
       throw new DiagnosisWithoutItemsError();
     }
+    const fromStatus = this.props.status;
     const total = this.generateRound(1);
     const existingRoundOne = this.props.budgets.find((budget) => budget.round === 1);
     if (existingRoundOne) {
@@ -387,6 +401,7 @@ export class WorkOrder extends AggregateRoot {
     this.record(new DiagnosisCompleted(this.props.id.value, input.actorUserId, input.now));
     this.record(new BudgetGenerated(this.props.id.value, input.actorUserId, input.now));
     this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /** True when at least one item is either a draft or already attached to `round`. */
@@ -461,9 +476,9 @@ export class WorkOrder extends AggregateRoot {
    * (section 9's invariants).
    */
   approveBudget(input: DecideBudgetActionInput): void {
-    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
-    const budget = this.pendingBudget();
+    const budget = this.budgetToDecide(input.budgetId);
     budget.approve({ actorUserId: input.actorUserId, at: input.now });
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.InExecution;
     this.props.budgetDecidedAt = input.now;
     this.props.budgetDecidedByUserId = input.actorUserId;
@@ -473,6 +488,8 @@ export class WorkOrder extends AggregateRoot {
     this.props.updatedAt = input.now;
     this.record(new BudgetApproved(this.props.id.value, input.actorUserId, input.now));
     this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
+    // One status change though the trail keeps two facts of the approval.
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -481,11 +498,11 @@ export class WorkOrder extends AggregateRoot {
    * execution, distinct from `executionStartedAt`, which stays at its first value (H38).
    */
   rejectBudget(input: DecideBudgetActionInput): void {
-    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
-    const budget = this.pendingBudget();
+    const budget = this.budgetToDecide(input.budgetId);
     budget.reject({ actorUserId: input.actorUserId, at: input.now });
     const destination =
       budget.round === 1 ? WorkOrderStatus.InDiagnosis : WorkOrderStatus.InExecution;
+    const fromStatus = this.props.status;
     this.props.status = destination;
     this.props.budgetDecidedAt = input.now;
     this.props.budgetDecidedByUserId = input.actorUserId;
@@ -494,6 +511,7 @@ export class WorkOrder extends AggregateRoot {
     if (destination === WorkOrderStatus.InExecution) {
       this.record(new ExecutionStarted(this.props.id.value, input.actorUserId, input.now));
     }
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -509,6 +527,7 @@ export class WorkOrder extends AggregateRoot {
     if (!this.hasItemsForRound(nextRound)) {
       throw new EmptyDraftBudgetError();
     }
+    const fromStatus = this.props.status;
     const total = this.generateRound(nextRound);
     this.props.budgets.push(
       Budget.generate({ id: input.budgetId, round: nextRound, total, generatedAt: input.now }),
@@ -519,6 +538,36 @@ export class WorkOrder extends AggregateRoot {
       new SupplementaryBudgetGenerated(this.props.id.value, input.actorUserId, input.now),
     );
     this.record(new BudgetSent(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
+  }
+
+  /**
+   * The budget a decision applies to. With no id it is the pending round, which only exists while
+   * the work order awaits approval. With an id, a link names the budget: it has to be one of this
+   * work order's and still pending, and a budget already decided answers `BUDGET_INVALID_STATE`
+   * whatever the status of the work order, so an old link reports the budget and not the stage
+   * the work order has reached since.
+   */
+  private budgetToDecide(budgetId: BudgetId | undefined): Budget {
+    if (budgetId === undefined) {
+      this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+      return this.pendingBudget();
+    }
+    const budget = this.budgetById(budgetId);
+    if (budget.status !== BudgetStatus.Pending) {
+      throw new BudgetStateError(budget.status);
+    }
+    this.assertStateAllows([WorkOrderStatus.AwaitingApproval]);
+    return budget;
+  }
+
+  /** One of this work order's budgets, whatever its status. */
+  budgetById(budgetId: BudgetId): Budget {
+    const budget = this.props.budgets.find((candidate) => candidate.id.equals(budgetId));
+    if (!budget) {
+      throw new WorkOrderBudgetNotFoundError();
+    }
+    return budget;
   }
 
   private pendingBudget(): Budget {
@@ -534,7 +583,7 @@ export class WorkOrder extends AggregateRoot {
   /**
    * Validates the whole batch before touching anything - every line is checked, then every line
    * is applied, so a guard firing on line three leaves lines one and two untouched too (design.md's
-   * Risks & Concerns). Returns the resolved lines because the handler needs each work order
+   * Risks & Concerns). Returns the resolved lines because the use case needs each work order
    * item's inventory item id to dispatch the cross-module consumption command; this aggregate is
    * the only thing that holds that mapping.
    */
@@ -661,24 +710,29 @@ export class WorkOrder extends AggregateRoot {
       throw new DiscountExceedsChargedTotalError();
     }
     this.props.chargedTotal = preDiscountTotal.subtract(this.props.discount);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.Completed;
     this.props.completedAt = input.now;
     this.props.updatedAt = input.now;
     this.record(new WorkOrderCompleted(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
    * Only records who took the handover and when - `chargedTotal` was already frozen by
-   * `complete` and is untouched here. Settling the pending consumptions is
-   * `SettleStockMovementsHandler`'s job, inside the same transaction (T12, T17).
+   * `complete` and is untouched here. Settling the pending consumptions is inventory's job:
+   * `DeliverVehicleUseCase` records a settle step with the save, and `SettleStockMovementsUseCase`
+   * applies it in a transaction of its own.
    */
   deliver(input: CloseActionInput): void {
     this.assertStateAllows([WorkOrderStatus.Completed]);
+    const fromStatus = this.props.status;
     this.props.status = WorkOrderStatus.Delivered;
     this.props.deliveredAt = input.now;
     this.props.deliveredByUserId = input.actorUserId;
     this.props.updatedAt = input.now;
     this.record(new VehicleDelivered(this.props.id.value, input.actorUserId, input.now));
+    this.recordStatusChange(fromStatus, input.now);
   }
 
   /**
@@ -696,6 +750,36 @@ export class WorkOrder extends AggregateRoot {
     this.props.updatedAt = input.now;
     this.record(
       new WorkOrderCanceled(this.props.id.value, input.actorUserId, fromStatus, input.now),
+    );
+    this.recordStatusChange(fromStatus, input.now);
+  }
+
+  /**
+   * Records the one status change of a transition, after the facts it consists of. The event
+   * carries the figures of the e-mail the customer gets, the pending budget among them.
+   */
+  private recordStatusChange(fromStatus: WorkOrderStatus | null, now: Date): void {
+    const pending =
+      this.props.status === WorkOrderStatus.AwaitingApproval
+        ? this.props.budgets.find((budget) => budget.status === BudgetStatus.Pending)
+        : undefined;
+    this.record(
+      new WorkOrderStatusChanged(
+        this.props.id.value,
+        this.props.number.value,
+        this.props.customerId,
+        this.props.vehiclePlate,
+        fromStatus,
+        this.props.status,
+        pending
+          ? {
+              id: pending.id.value,
+              totalCents: pending.total.cents,
+              generatedAt: pending.generatedAt,
+            }
+          : null,
+        now,
+      ),
     );
   }
 

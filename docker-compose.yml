@@ -6,6 +6,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     env_file: .env
     environment:
       NODE_ENV: production
@@ -14,8 +16,23 @@ services:
       DATABASE_PORT: 5432
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
     ports:
       - '${APP_HOST_PORT:-13000}:3000'
+    # Healthy once /health/ready answers 200. The image has no curl or wget, so node asks.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then((response) => process.exit(response.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   postgres:
     image: postgres:16-alpine
@@ -40,6 +57,18 @@ services:
       - '${REDIS_HOST_PORT:-16379}:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Catches every e-mail the application sends. The inbox is at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - '${MAILPIT_SMTP_HOST_PORT:-1025}:1025'
+      - '${MAILPIT_UI_HOST_PORT:-8025}:8025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
       interval: 5s
       timeout: 5s
       retries: 10

@@ -21,6 +21,7 @@ export interface CustomerSummaryDto {
 
 export interface ListCustomersFilter {
   name?: string;
+  /** As typed, masked or bare. A malformed document matches no customer. */
   document?: string;
 }
 
@@ -29,5 +30,3 @@ export interface CustomerQueryPort {
   getByUserId(userExternalId: string): Promise<CustomerSummaryDto | null>;
   listActive(filter: ListCustomersFilter): Promise<CustomerSummaryDto[]>;
 }
-
-export const CUSTOMER_QUERY_PORT = Symbol('CustomerQueryPort');

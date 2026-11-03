@@ -4,17 +4,11 @@
 > Canonical state lives in `.specs/lessons.json`. Edit lessons only via the script.
 > promote_threshold=2 distinct features · window_days=45 · quarantine_threshold=2
 
-## Confirmed (load these at Specify/Design)
+## Confirmed (load these at Plan/Checks)
 
 Corroborated across multiple features. Safe to apply as guidance.
 
-### L-002 - Every line in a spec's Edge Cases section needs an owning task in tasks.md - an edge case with no task assigned to it typically ships unimplemented and untested.
-- signal: `ac_gap` · recurrence: 2 feature(s) · scope: `planning` · harmful: 0
-- features: identity-foundation, service-catalog
-- evidence: .specs/features/identity-foundation/spec.md:206 (planning) (+1 more)
-- last seen: 2026-08-31T17:48:37Z
-
-### L-003 - A value object's own passing unit tests, or a sibling handler exercising the identical call pattern, do not substitute for a dedicated test on the specific handler or route that also calls it - give every error-producing call site its own asserting test at the layer the Test Coverage Matrix promises for that route.
+### L-003 - A value object's passing unit tests, or a sibling use case with the same call pattern, do not prove another call site: give every route or use case that can produce an error its own asserting test, at the layer the repo's test docs name for it.
 - signal: `ac_gap` · recurrence: 4 feature(s) · scope: `application-handlers` · harmful: 0
 - features: customer-and-vehicle-registry, service-catalog, inventory-and-stock-movements, work-order-part-withdrawal
 - evidence: CVR-01-AC7 (register-customer.handler.spec.ts has no malformed-address/phone case) (application-handlers) (+4 more)
@@ -24,89 +18,185 @@ Corroborated across multiple features. Safe to apply as guidance.
 
 Seen once or not yet corroborated. Tracked, not trusted.
 
-### L-001 - A task's Done-when note that defers an acceptance criterion to a later feature does not amend the spec - confirm the spec itself still assigns that AC to the current feature before treating the deferral as settled, or edit the spec's AC and traceability explicitly.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `users` · harmful: 0
-- features: identity-foundation
-- evidence: IDENT-07-AC1 (users)
-- last seen: 2026-08-31T10:15:10Z
+### L-017 - A test that needs an empty slice of a never-truncated database must draw from a range its own runs cannot fill and bound its redraws, or the suite turns into timeouts as the database grows.
+- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: test/integration/work-order-metrics-query.adapter.spec.ts:142 (integration-tests)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-004 - A per-call test-fixture generator built from limited-entropy randomness (a faker field, a random-digit checksum id) can still collide against a never-truncated test database once enough runs accumulate - prefer a UUID-derived fragment in fixture generators over independent random digits or a library default with bounded entropy.
-- signal: `gate_fail` · recurrence: 1 feature(s) · scope: `test-fixtures` · harmful: 0
-- features: customer-and-vehicle-registry
-- evidence: test/support/http.ts:26-28 (registerUser's faker email / document.factory.ts's uniqueValidCpf) - 409 collision observed on the first full gate run, gone on immediate rerun (test-fixtures)
-- last seen: 2026-08-31T12:39:57Z
+### L-018 - Run the spec of an idempotent script against a database the spec creates and drops, because on a shared database every run after the first skips the work and asserts rows an older version wrote.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: M12, W3b, W3c on a populated database; test/integration/seed.script.spec.ts:79 (integration-tests)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-005 - A Promise.all()-raced two-transaction test against a real database is not a reliable discrimination sensor for a dropped row lock by itself, because two independent read-then-write calls do not always interleave - measure a concurrency sensor's mutation kill rate across several repeated runs before trusting a single pass or fail.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `concurrency-tests` · harmful: 0
-- features: inventory-and-stock-movements
-- evidence: typeorm-inventory-item.repository.ts:68 (pessimistic_write lock removed) against test/integration/inventory-item.repository.spec.ts:199-226's Promise.all()-raced concurrent-replenishment test - failed 3/15 runs (~20%) under the mutation, 0/2 false-positive on the unmutated tree across two full test:integration gate runs (concurrency-tests)
-- last seen: 2026-08-31T22:33:43Z
+### L-019 - Give each architecture rule a refusing fixture for every kind of path it must reject, so a looser pattern fails its own test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `architecture-checks` · harmful: 0
+- features: clean-architecture
+- evidence: M07 .dependency-cruiser.cjs:71 (architecture-checks)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-006 - Every read route, not only write routes, needs its own 403 test using an actor that genuinely lacks that route's permission - a suite where every e2e actor happens to hold the read permission leaves the 'lacks read permission' criterion completely untested.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `e2e-routes` · harmful: 0
-- features: work-order-creation
-- evidence: spec.md WO-05 AC6 / test/e2e/work-orders.e2e.spec.ts (no case) (e2e-routes)
-- last seen: 2026-09-01T01:38:08Z
+### L-020 - In-memory repository fakes must store and return copies of the aggregate, so a use case spec can tell a missing save from a saved change.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `test-support` · harmful: 0
+- features: clean-architecture
+- evidence: W1 src/modules/work-orders/application/commands/remove-work-order-item/remove-work-order-item.use-case.ts:31 (test-support)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-007 - An edge case's task assignment in a tasks.md Edge Case Ownership table is not sufficient by itself - the owning task's own Done-when checklist must also list that edge case as a line item, or it can ship correctly implemented but with zero test evidence.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
-- features: work-order-creation
-- evidence: tasks.md Edge Case Ownership table row 6 / T19 Done-when (no matching line item) (planning)
-- last seen: 2026-09-01T01:38:13Z
+### L-021 - When a use case checks its input before a port read on purpose, pin that order with a case that fails both checks and asserts which error wins.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `application-use-cases` · harmful: 0
+- features: clean-architecture
+- evidence: W2 src/modules/work-orders/application/commands/plan-part/plan-part.use-case.ts:33 (application-use-cases)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-008 - When two layers enforce the same rule, the outer guard needs a test the inner guard cannot satisfy - otherwise loosening or deleting the outer one changes behaviour that no test can see.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `domain-aggregates` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: M3: work-order.ts:473 (planned-quantity guard loosened by one) survived work-order.spec.ts:1108 and the whole unit suite, because work-order-part-item.ts:75 enforces the same rule (domain-aggregates) (+1 more)
-- last seen: 2026-09-01T14:29:49Z
+### L-022 - When a change refines an existing AD-NNN decision, record the refinement in its ADR in the same commit, so the decision log and the ADR state the same decision.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `decisions` · harmful: 0
+- features: clean-architecture
+- evidence: CA-07 AC1 .specs/STATE.md:70 (decisions)
+- last seen: 2026-10-29T23:29:55Z
 
-### L-009 - Give every threshold comparison a fixture sitting exactly on its boundary - fixtures that clear the threshold by a margin on both sides cannot tell a strict comparison from a non-strict one.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: M7: typeorm-inventory-query.adapter.ts:65 (HAVING SUM(...) > quantity_on_hand changed to >=) survived stock-shortages.query.spec.ts and both e2e specs (query-adapters)
-- last seen: 2026-09-01T14:04:24Z
+### L-023 - When an outbox retries a failed step, make it still apply after a later step of the same aggregate has landed, or apply each aggregate's steps in the order they were recorded, and test a retry that follows a later step.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: CA-02 AC5 and spec.md:279 edge case, round 2 probe on src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:117 (outbox)
+- last seen: 2026-10-31T19:53:15Z
 
-### L-010 - When an acceptance criterion names several fields a record must carry, assert every one of them - a NOT NULL column with a foreign key proves a value is present, never that it is the right one.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: WOP-01 AC2 and WOP-03 AC2 (the acting user on a CONSUMPTION and on a RETURN movement has no assertion; inventory-item.repository.spec.ts:334 covers only INBOUND) (persistence)
-- last seen: 2026-09-01T14:04:24Z
+### L-024 - Apply every idempotent operation twice through the real adapter in a test, so a dropped status guard on the repeat fails a suite.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `integration-tests` · harmful: 0
+- features: clean-architecture
+- evidence: S22 src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository.ts:198 (integration-tests)
+- last seen: 2026-10-31T19:53:15Z
 
-### L-011 - Give every term of a computed formula a fixture where it is non-zero - a term left at its identity value is indistinguishable from a term that is not in the expression at all.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: N3: typeorm-inventory-query.adapter.ts:57,65 (SUM(planned_quantity - withdrawn_quantity) reduced to SUM(planned_quantity)) survived all 880 tests, because every shortage fixture leaves withdrawn_quantity at 0 (WOP-04 AC2) (query-adapters)
-- last seen: 2026-09-01T14:29:58Z
+### L-025 - When a spec moves writes into retried steps, state the order in which the steps of one aggregate apply after a failure.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: spec.md:71 Concurrency / ordering row, round 2 spec-precision gap 1 (planning)
+- last seen: 2026-10-31T19:53:15Z
 
-### L-012 - When one computed expression both filters rows and fills a returned field, assert the returned field's value on a row the filter admits - a membership-only assertion proves the filter's copy of the expression and never the projection's.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: P1: typeorm-inventory-query.adapter.ts:57 (the shortage projection alone reduced to SUM(planned_quantity), the HAVING clause at :65 intact) survived all 882 tests, because the only fixture with a non-zero withdrawn quantity asserts absence from the list rather than the reported figure (WOP-04 AC2) (query-adapters)
-- last seen: 2026-09-01T14:55:18Z
+### L-026 - Keep a step from drawing on the movements of an operation that is still in flight, or the compensation that returns that operation's net remaining gives back less than it took.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: CA-02 AC5 and spec.md:283, probes B2, B3 and B5 in validation.md round 3 (outbox)
+- last seen: 2026-11-01T00:36:15Z
 
-### L-013 - Assert a pointer field in a fixture with more than one possible target - a single-candidate fixture passes for any resolution logic, right or wrong.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `application-handlers` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: P2: restore-stock-batch.handler.ts:59 (every RETURN's undoesMovementId set to pending[0].movementId) survived all 882 tests, because undoesMovementId is asserted only in fixtures with one pending consumption, and the two-consumption split case asserts count and quantities only (WOP-03 AC2) (application-handlers)
-- last seen: 2026-09-01T14:55:24Z
+### L-027 - When a spec lets an operation's first step commit before its last, state what the other steps of the same aggregate may read from that operation until it is confirmed or compensated.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 1 (CA-10) (planning)
+- last seen: 2026-11-01T00:36:15Z
 
-### L-014 - Give every aggregate function a fixture whose group holds more than one row - an aggregate over a single row returns that row whatever the aggregate is.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
-- features: work-order-part-withdrawal
-- evidence: Q4/Q5: typeorm-inventory-query.adapter.ts:57,58,65 (SUM reduced to MAX, array_agg truncated to its first element) survived all 883 tests, because every shortage fixture puts exactly one work_order_parts row in each GROUP BY group (WOP-04 AC2, AC3) (query-adapters)
-- last seen: 2026-09-01T15:16:20Z
+### L-028 - State in the ordering rule of retried steps whether a compensation step may apply before the older steps of its aggregate that read what it undoes.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 2 (CA-10 AC10, probe B4) (planning)
+- last seen: 2026-11-01T00:36:15Z
 
-### L-015 - Derive a documented column list from every migration that touches the table, not only the one that created it - a table extended by a later ALTER TABLE is where the list silently goes stale.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `documentation` · harmful: 0
-- features: architecture-documentation
-- evidence: docs/architecture/low-level-design/work-orders.md:111 - ARCH-03 AC3 (documentation)
-- last seen: 2026-09-03T01:57:17Z
+### L-029 - When a spec adds a rule that holds a step behind another, state how it combines with each criterion that promises the step applies after a set delay.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: clean-architecture
+- evidence: validation.md round 3, spec-precision gap 3 (CA-10 AC8 and AC10) (planning)
+- last seen: 2026-11-01T00:36:15Z
 
-### L-016 - Take a documented column's name and type from the migration or the ORM entity, never from a query adapter's SQL - an alias such as 'wob.round AS budget_round' names no column on the table being documented.
-- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `documentation` · harmful: 0
-- features: architecture-documentation
-- evidence: docs/architecture/low-level-design/work-orders.md:160,179 - ARCH-03 AC3 (documentation)
-- last seen: 2026-09-03T01:57:23Z
+### L-030 - Give every step kind that an ordering rule names its own case that holds a later step behind it, so a kind that drops out of the order fails a suite.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `outbox` · harmful: 0
+- features: clean-architecture
+- evidence: O1 (typeorm-pending-stock-steps.ts:49), validation.md round 4 (outbox)
+- last seen: 2026-11-01T12:41:12Z
+
+### L-032 - Bind a link to the generation of the record it decides when that record can be regenerated in place, or an old copy of the link acts on the new version.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `links` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 1; src/modules/work-orders/domain/entities/budget.ts:59-61 (links)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-033 - Give ordering fixtures creation times where the required order differs from both oldest first and newest first, so the test cannot pass on the order it replaced.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `query-adapters` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 2; C13, C17 (query-adapters)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-034 - When a criterion promises one side effect per change, assert the exact count after each change, so a duplicate fails the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `notifications` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 3; C41 (notifications)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-035 - Assert the error code beside the status for every refusal a Surface row lists, so a different refusal with the same status fails.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `routes` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 4; C54 (routes)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-036 - Check every criterion against the exclusions of the binding brief, and list each departure in Differences from the source with its decision before the plan is approved.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `planning` · harmful: 0
+- features: work-order-phase-2-api
+- evidence: verification.md finding 5; plan.md Differences from the source (planning)
+- last seen: 2026-11-02T08:57:44Z
+
+### L-037 - Compare the whole TLS option object of every assembly that opens a connection, so a weakened certificate check in any of them fails the test.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C11 src/config/database.config.spec.ts:111 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-038 - Assert the exact false a driver option takes when a feature is off, because undefined lets the driver fall back to its own environment variable.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C9 src/config/database.config.spec.ts:75 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-039 - Assert the exact TLS option a client receives, not that one is defined, so an option that skips certificate verification fails.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C10 src/config/redis.config.spec.ts:22 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-040 - Key a Terraform map built from a user-supplied list by its distinct values, so a repeated entry does not fail the plan.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: infra/modules/cluster/main.tf:25 (infra)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-041 - Keep a value that identifies the cloud account, such as a deploy role ARN, in a CI secret, because a CI variable's value prints in the public log.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `ci` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C65 .github/workflows/cd.yml role-to-assume (ci)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-042 - Give each part of a claim that spans a module and the root that wires it a proof of its own, because a module run with made-up inputs does not prove the wiring.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C44 C45 C49 test/infra/static/terraform.spec.ts:151 (infra)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-043 - Validate a setting where every entry point reads it, because compiled scripts that skip the application's env validation otherwise accept an invalid value.
+- signal: `ac_gap` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: src/config/database.config.ts:11 (config)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-044 - Check what a module output holds, not only that the caller reads it by name, because a swapped output passes a test that follows the name.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `infra` · harmful: 0
+- features: phase-2-infrastructure
+- evidence: C75 infra/modules/network/outputs.tf (infra)
+- last seen: 2026-11-03T09:46:34Z
+
+### L-045 - Compare a workflow's trigger filters as a whole beside the example events, because a few examples miss an added branch, pattern, ignore list or action.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `ci` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: C1 test/infra/static/workflows.spec.ts:134 (ci)
+- last seen: 2026-11-03T13:24:24Z
+
+### L-046 - Rename a test together with every proof line under .specs that names it, because the renamed test leaves that check with no test that runs.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `specs` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: phase-2-infrastructure C61, renamed in 7383f9f (specs)
+- last seen: 2026-11-03T13:24:24Z
+
+### L-047 - Assert the kind of a generated document, not only that it parses, because PersonDocument accepts a CPF and a CNPJ alike.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `test-support` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: C4 test/integration/test-values.spec.ts:136 (test-support)
+- last seen: 2026-11-03T13:24:24Z
 
 ## Quarantined (failed when applied - ignore)
 

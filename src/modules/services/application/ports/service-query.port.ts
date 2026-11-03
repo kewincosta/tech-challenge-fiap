@@ -12,5 +12,3 @@ export interface ServiceQueryPort {
   getById(externalId: string): Promise<ServiceSummaryDto | null>;
   listActive(): Promise<ServiceSummaryDto[]>;
 }
-
-export const SERVICE_QUERY_PORT = Symbol('ServiceQueryPort');

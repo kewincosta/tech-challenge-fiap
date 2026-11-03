@@ -2,7 +2,7 @@ import {
   AccessTokenPayload,
   AccessTokenService,
   SignedAccessToken,
-} from '../../../src/modules/authentication/application/ports/access-token.port';
+} from '../../../src/modules/identity/authentication/application/ports/access-token.port';
 
 export class FakeAccessTokenService implements AccessTokenService {
   async sign(payload: AccessTokenPayload): Promise<SignedAccessToken> {

@@ -20,5 +20,6 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "test", "scripts", "security", "*.ts"]
+  "include": ["src", "test", "scripts", "security", "*.ts"],
+  "exclude": ["node_modules", "dist", "test/architecture/fixtures"]
 }

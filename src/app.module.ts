@@ -3,7 +3,6 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
-import { CqrsModule } from '@nestjs/cqrs';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import Redis from 'ioredis';
 import { LoggerModule } from 'nestjs-pino';
@@ -11,18 +10,20 @@ import { appConfig } from './config/app.config';
 import { authConfig } from './config/auth.config';
 import { databaseConfig } from './config/database.config';
 import { validateEnv } from './config/env.validation';
+import { mailConfig } from './config/mail.config';
+import { outboxConfig } from './config/outbox.config';
 import { rateLimitConfig } from './config/rate-limit.config';
 import { redisConfig } from './config/redis.config';
-import { AuthenticationModule } from './modules/authentication/authentication.module';
-import { JwtAuthGuard } from './modules/authentication/presentation/guards/jwt-auth.guard';
-import { PendingPasswordGuard } from './modules/authentication/presentation/guards/pending-password.guard';
-import { AuthorizationModule } from './modules/authorization/authorization.module';
-import { PermissionsGuard } from './modules/authorization/presentation/guards/permissions.guard';
+import { HealthModule } from './health/health.module';
+import { JwtAuthGuard } from './modules/identity/authentication/presentation/guards/jwt-auth.guard';
+import { PendingPasswordGuard } from './modules/identity/authentication/presentation/guards/pending-password.guard';
+import { PermissionsGuard } from './modules/identity/authorization/presentation/guards/permissions.guard';
 import { CustomersModule } from './modules/customers/customers.module';
+import { IdentityModule } from './modules/identity/identity.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
-import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { WorkOrderReadsModule } from './modules/work-orders/work-order-reads.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { DatabaseModule } from './shared/infrastructure/database/database.module';
 import { REDIS_CLIENT, RedisModule } from './shared/infrastructure/redis/redis.module';
@@ -36,7 +37,15 @@ import { SharedModule } from './shared/shared.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
-      load: [appConfig, databaseConfig, redisConfig, authConfig, rateLimitConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        authConfig,
+        rateLimitConfig,
+        outboxConfig,
+        mailConfig,
+      ],
       validate: validateEnv,
     }),
     LoggerModule.forRootAsync({
@@ -67,7 +76,6 @@ import { SharedModule } from './shared/shared.module';
     SharedModule,
     DatabaseModule,
     RedisModule,
-    CqrsModule.forRoot(),
     ThrottlerModule.forRootAsync({
       imports: [RedisModule],
       inject: [rateLimitConfig.KEY, REDIS_CLIENT],
@@ -76,14 +84,14 @@ import { SharedModule } from './shared/shared.module';
         storage: new ThrottlerStorageRedisService(redis),
       }),
     }),
-    UsersModule,
-    AuthenticationModule,
-    AuthorizationModule,
+    HealthModule,
+    IdentityModule,
     CustomersModule,
     VehiclesModule,
     ServicesModule,
     InventoryModule,
     WorkOrdersModule,
+    WorkOrderReadsModule,
   ],
   providers: [
     // Runs before the validation pipe: a NUL byte reaches the database through any filter

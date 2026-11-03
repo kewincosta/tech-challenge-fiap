@@ -1,3 +1,5 @@
+import { WorkOrderStatus } from '../../domain/work-order-status';
+
 export interface WorkOrderServiceItemDto {
   id: string;
   serviceId: string;
@@ -68,13 +70,26 @@ export interface WorkOrderTrailEntryDto {
   note: string | null;
 }
 
+/** What the board asks of one read: the statuses to list, in the order to list them, and a page. */
+export interface WorkOrderBoardFilter {
+  /** Only work orders in these statuses, in this order, and the oldest first within each one. */
+  statuses: WorkOrderStatus[];
+  /** From 1. */
+  page: number;
+  pageSize: number;
+}
+
+export interface WorkOrderBoardPage {
+  items: WorkOrderSummaryDto[];
+  /** Every work order in `statuses`, whichever page was asked for. */
+  totalItems: number;
+}
+
 export interface WorkOrderQueryPort {
   getByNumber(number: string): Promise<WorkOrderSummaryDto | null>;
-  listByStatus(status?: string): Promise<WorkOrderSummaryDto[]>;
+  listBoard(filter: WorkOrderBoardFilter): Promise<WorkOrderBoardPage>;
   /** Every work order of that customer, whatever its status. Empty when it has none. */
   listByCustomerId(customerExternalId: string): Promise<WorkOrderSummaryDto[]>;
   /** Chronological order. Existence of the work order is the caller's concern, not this port's. */
   listTrail(number: string): Promise<WorkOrderTrailEntryDto[]>;
 }
-
-export const WORK_ORDER_QUERY_PORT = Symbol('WorkOrderQueryPort');

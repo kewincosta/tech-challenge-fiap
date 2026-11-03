@@ -14,7 +14,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
-    "lint": "eslint .",
+    "lint": "eslint . && npm run lint:architecture",
+    "lint:architecture": "depcruise src --ignore-known && ts-node scripts/architecture/check-table-ownership.ts && ts-node scripts/architecture/check-module-cycles.ts",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -50,7 +51,6 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
-    "@nestjs/cqrs": "^11.0.0",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.0.0",
@@ -63,6 +63,7 @@
     "helmet": "^8.0.0",
     "ioredis": "^5.4.0",
     "nestjs-pino": "^4.1.0",
+    "nodemailer": "^10.3.1",
     "pg": "^8.13.0",
     "pino-http": "^10.3.0",
     "reflect-metadata": "^0.2.2",
@@ -81,6 +82,7 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^6.0.0",
     "@vitest/coverage-v8": "^3.0.0",
+    "dependency-cruiser": "^18.7.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "husky": "^9.1.0",
@@ -92,7 +94,8 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
     "unplugin-swc": "^1.5.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "yaml": "^2.9.1"
   },
   "overrides": {
     "qs": "^6.16.0"

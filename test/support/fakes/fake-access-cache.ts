@@ -1,5 +1,5 @@
-import { EffectiveAccessDto } from '../../../src/modules/authorization/application/dtos/effective-access.dto';
-import { AccessCache } from '../../../src/modules/authorization/application/ports/access-cache.port';
+import { EffectiveAccessDto } from '../../../src/modules/identity/authorization/application/dtos/effective-access.dto';
+import { AccessCache } from '../../../src/modules/identity/authorization/application/ports/access-cache.port';
 
 export class FakeAccessCache implements AccessCache {
   readonly entries = new Map<string, EffectiveAccessDto>();

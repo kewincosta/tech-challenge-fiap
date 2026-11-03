@@ -112,6 +112,7 @@ interface Movement {
   quantity: number;
   unitPriceCents: number;
   status: string | null;
+  actorUserId: string;
   workOrderId: string | null;
   undoesMovementId: string | null;
 }
@@ -262,6 +263,70 @@ async function createAwaitingApprovalWorkOrder(): Promise<{ number: string }> {
   const workOrder = await getWorkOrder(number);
   expect(workOrder.status).toBe('AWAITING_APPROVAL');
   return { number };
+}
+
+/**
+ * A work order IN_EXECUTION with two approved parts: `stocked` planned at 2 with 10 on the shelf,
+ * `scarce` planned at 5 with 2 on the shelf. A withdrawal of 3 of `scarce` stays inside its
+ * planned quantity, so the work order accepts it and only the inventory refuses it.
+ */
+async function createInExecutionWorkOrderWithTwoParts(): Promise<{
+  number: string;
+  stocked: { inventoryItemId: string; approvedItemId: string };
+  scarce: { inventoryItemId: string; approvedItemId: string };
+}> {
+  const owner = await registerCustomer();
+  const vehicleId = await registerVehicle(owner.customerId);
+  const created = await api(app)
+    .post('/api/v1/work-orders')
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ customerId: owner.customerId, vehicleId })
+    .expect(201);
+  const number = (created.body as { number: string }).number;
+
+  const stockedInventoryItemId = await createInventoryItem(2500);
+  await replenish(stockedInventoryItemId, 10, 2500);
+  const scarceInventoryItemId = await createInventoryItem(2500);
+  await replenish(scarceInventoryItemId, 2, 2500);
+
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/diagnosis`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/parts`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ inventoryItemId: stockedInventoryItemId, quantity: 2 })
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/parts`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .send({ inventoryItemId: scarceInventoryItemId, quantity: 5 })
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/diagnosis/completion`)
+    .set('Authorization', `Bearer ${mechanic.accessToken}`)
+    .expect(200);
+  await api(app)
+    .post(`/api/v1/work-orders/${number}/budget/approval`)
+    .set('Authorization', `Bearer ${serviceAdvisor.accessToken}`)
+    .expect(200);
+
+  const workOrder = await getWorkOrder(number);
+  expect(workOrder.status).toBe('IN_EXECUTION');
+  const approvedItemOf = (inventoryItemId: string): string =>
+    workOrder.partItems.find((item) => item.inventoryItemId === inventoryItemId)!.id;
+  return {
+    number,
+    stocked: {
+      inventoryItemId: stockedInventoryItemId,
+      approvedItemId: approvedItemOf(stockedInventoryItemId),
+    },
+    scarce: {
+      inventoryItemId: scarceInventoryItemId,
+      approvedItemId: approvedItemOf(scarceInventoryItemId),
+    },
+  };
 }
 
 function withdraw(number: string, itemId: string, quantity: number) {
@@ -494,6 +559,56 @@ describe('Work order part withdrawal - returns and cross-module atomicity', () =
     const returned = movements.find((movement) => movement.kind === 'RETURN');
     expect(returned).toMatchObject({ status: null, workOrderId: workOrder.id, quantity: 1 });
     expect(returned?.undoesMovementId).toBe(consumption?.id);
+  });
+
+  it('names the work order and the acting user on the movements of a withdrawal and a return, and the acting user alone on the replenishment', async () => {
+    const workOrder = await createInExecutionWorkOrder(4, 10, 2500);
+    await withdraw(workOrder.number, workOrder.approvedItemId, 2).expect(200);
+    await returnParts(workOrder.number, workOrder.approvedItemId, 1).expect(200);
+
+    const movements = await getMovements(workOrder.inventoryItemId);
+
+    expect(
+      movements.map((movement) => ({
+        kind: movement.kind,
+        workOrderId: movement.workOrderId,
+        actorUserId: movement.actorUserId,
+      })),
+    ).toEqual([
+      { kind: 'INBOUND', workOrderId: null, actorUserId: admin.userId },
+      { kind: 'CONSUMPTION', workOrderId: workOrder.id, actorUserId: mechanic.userId },
+      { kind: 'RETURN', workOrderId: workOrder.id, actorUserId: mechanic.userId },
+    ]);
+  });
+
+  it('answers 422 INVENTORY_INSUFFICIENT_STOCK when one line of a batch exceeds the shelf, changing no stock level and not the work order', async () => {
+    const workOrder = await createInExecutionWorkOrderWithTwoParts();
+
+    const response = await api(app)
+      .post(`/api/v1/work-orders/${workOrder.number}/withdrawals`)
+      .set('Authorization', `Bearer ${mechanic.accessToken}`)
+      .send({
+        lines: [
+          { itemId: workOrder.stocked.approvedItemId, quantity: 1 },
+          { itemId: workOrder.scarce.approvedItemId, quantity: 3 },
+        ],
+      })
+      .expect(422);
+
+    expect(response.body).toMatchObject({ code: 'INVENTORY_INSUFFICIENT_STOCK' });
+    expect((await getInventoryItem(workOrder.stocked.inventoryItemId)).quantityOnHand).toBe(10);
+    expect((await getInventoryItem(workOrder.scarce.inventoryItemId)).quantityOnHand).toBe(2);
+    for (const inventoryItemId of [
+      workOrder.stocked.inventoryItemId,
+      workOrder.scarce.inventoryItemId,
+    ]) {
+      const movements = await getMovements(inventoryItemId);
+      expect(movements.map((movement) => movement.kind)).toEqual(['INBOUND']);
+    }
+    const reread = await getWorkOrder(workOrder.number);
+    expect(reread.partItems.map((item) => item.withdrawnQuantity)).toEqual([0, 0]);
+    const trail = await getTrail(workOrder.number);
+    expect(trail.some((entry) => entry.eventType === 'PART_WITHDRAWN')).toBe(false);
   });
 
   it('answers 422 when a return exceeds what was withdrawn, and changes nothing', async () => {

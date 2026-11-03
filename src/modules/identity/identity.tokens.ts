@@ -1,0 +1,15 @@
+export const ACCESS_CACHE = Symbol('AccessCache');
+export const ACCESS_TOKEN_SERVICE = Symbol('AccessTokenService');
+export const ASSIGNMENT_REPOSITORY = Symbol('AssignmentRepository');
+export const AUTH_SETTINGS = Symbol('AuthSettings');
+export const EFFECTIVE_ACCESS_READER = Symbol('EffectiveAccessReader');
+export const PASSWORD_HASHER = Symbol('PasswordHasher');
+export const PERMISSION_REPOSITORY = Symbol('PermissionRepository');
+export const RBAC_QUERY_PORT = Symbol('RbacQueryPort');
+export const REFRESH_TOKEN_HASHER = Symbol('RefreshTokenHasher');
+export const REVOKED_SESSION_STORE = Symbol('RevokedSessionStore');
+export const ROLE_REPOSITORY = Symbol('RoleRepository');
+export const SESSION_QUERY_PORT = Symbol('SessionQueryPort');
+export const SESSION_REPOSITORY = Symbol('SessionRepository');
+export const USER_QUERY_PORT = Symbol('UserQueryPort');
+export const USER_REPOSITORY = Symbol('UserRepository');

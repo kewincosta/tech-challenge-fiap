@@ -1,0 +1,25 @@
+# The local cluster that scripts/local-cluster.sh makes. The pods reach the PostgreSQL, Redis and
+# Mailpit of docker compose by their service names. The script builds the image and loads it into
+# kind, which pulls nothing, passes the secrets of .env and may change the database and the Redis
+# index.
+
+image:
+  repository: workshop
+  tag: local
+  pullPolicy: Never
+
+config:
+  DATABASE_HOST: postgres
+  DATABASE_NAME: workshop
+  DATABASE_USER: workshop
+  REDIS_HOST: redis
+  SMTP_HOST: mailpit
+  APP_PUBLIC_URL: http://localhost:18080
+
+# k8s/kind/cluster.yaml publishes the node port on localhost:18080.
+service:
+  type: NodePort
+  nodePort: 30080
+
+mailpit:
+  enabled: false

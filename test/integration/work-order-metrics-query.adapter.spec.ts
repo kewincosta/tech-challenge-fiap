@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
+import { ServiceKeyResolver } from '../../src/modules/services';
 import type { AverageExecutionTimeFilter } from '../../src/modules/work-orders/application/ports/work-order-metrics-query.port';
 import { TypeOrmWorkOrderMetricsQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-metrics-query.adapter';
 import { createTestDataSource } from '../support/db';
@@ -11,7 +12,7 @@ let adapter: TypeOrmWorkOrderMetricsQueryAdapter;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  adapter = new TypeOrmWorkOrderMetricsQueryAdapter(dataSource);
+  adapter = new TypeOrmWorkOrderMetricsQueryAdapter(dataSource, new ServiceKeyResolver(dataSource));
 });
 
 afterAll(async () => {
@@ -114,9 +115,12 @@ async function seedRefs(): Promise<Fixture> {
   return { customerId, vehicleId, creatorId };
 }
 
+// Years 2100 to 3099: no run of this suite or of the others writes work orders that far out.
+const MAX_DAY_DRAWS = 200;
+
 function randomDay(): Date {
-  const base = Date.UTC(2000, 0, 1);
-  const span = Date.UTC(2020, 0, 1) - base;
+  const base = Date.UTC(2100, 0, 1);
+  const span = Date.UTC(3100, 0, 1) - base;
   const day = base + Math.floor((Math.random() * span) / 86400000) * 86400000;
   return new Date(day);
 }
@@ -139,13 +143,14 @@ function addSeconds(date: Date, seconds: number): Date {
  * no longer depends on how many times this file has already run.
  */
 async function pickClearDay(buildFilter: (day: Date) => AverageExecutionTimeFilter): Promise<Date> {
-  for (;;) {
+  for (let draw = 0; draw < MAX_DAY_DRAWS; draw += 1) {
     const day = randomDay();
     const probe = await adapter.averageExecutionTime(buildFilter(day));
     if (probe.workOrderCount === 0) {
       return day;
     }
   }
+  throw new Error(`No free window was found for the metrics filter after ${MAX_DAY_DRAWS} draws`);
 }
 
 describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
@@ -370,5 +375,28 @@ describe('TypeOrmWorkOrderMetricsQueryAdapter', () => {
 
     expect(Number.isInteger(result.averageSeconds)).toBe(true);
     expect(result.averageSeconds).toBe(3601);
+  });
+
+  it('answers zero with a count of zero for a service that does not exist, not the average of every service', async () => {
+    const fixture = await seedRefs();
+    const day = await pickClearDay((d) => ({
+      completedFrom: addSeconds(d, -1),
+      completedTo: addSeconds(d, 86400),
+    }));
+    await insertWorkOrder(fixture.customerId, fixture.vehicleId, fixture.creatorId, {
+      status: 'COMPLETED',
+      executionStartedAt: addSeconds(day, 0),
+      completedAt: addSeconds(day, 3600),
+    });
+    const window = { completedFrom: addSeconds(day, -1), completedTo: addSeconds(day, 86400) };
+
+    expect(await adapter.averageExecutionTime(window)).toEqual({
+      averageSeconds: 3600,
+      workOrderCount: 1,
+    });
+    expect(await adapter.averageExecutionTime({ ...window, serviceId: randomUUID() })).toEqual({
+      averageSeconds: 0,
+      workOrderCount: 0,
+    });
   });
 });

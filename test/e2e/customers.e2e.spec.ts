@@ -203,11 +203,31 @@ describe('Customers', () => {
       .expect(404);
   });
 
+  it('should answer 404 CUSTOMER_NOT_FOUND for a customer id that does not exist', async () => {
+    const response = await api(app)
+      .get(`/api/v1/customers/${randomUUID()}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'CUSTOMER_NOT_FOUND' });
+  });
+
+  it('should answer 404 CUSTOMER_NOT_FOUND on /customers/me for a user without a customer record', async () => {
+    const person = await registerAndLogin(app);
+
+    const response = await api(app)
+      .get('/api/v1/customers/me')
+      .set('Authorization', `Bearer ${person.accessToken}`)
+      .expect(404);
+
+    expect(response.body).toMatchObject({ code: 'CUSTOMER_NOT_FOUND' });
+  });
+
   it('should return 404 when registering a customer over a user that does not exist', async () => {
     // Every current account-creation path (public sign-up, POST /users/staff) unconditionally
     // assigns CUSTOMER, so there is no HTTP fixture for "a real user missing the CUSTOMER role" -
     // that negative branch is proven at the unit level instead
-    // (register-customer.handler.spec.ts, "should refuse an existing user without the CUSTOMER
+    // (register-customer.use-case.spec.ts, "should refuse an existing user without the CUSTOMER
     // role"). This test proves the sibling branch this wiring is actually reachable for: a userId
     // that resolves to nobody.
     const response = await api(app)
@@ -217,5 +237,107 @@ describe('Customers', () => {
       .expect(404);
 
     expect(response.body).toMatchObject({ code: 'CUSTOMER_TARGET_USER_NOT_FOUND' });
+  });
+});
+
+describe('Customers - the list filters', () => {
+  interface ListedCustomer {
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    document: string;
+    address: null;
+    phoneNumber: null;
+    status: string;
+  }
+
+  // The account-creation branch of POST /customers, the one place a test chooses the name, the
+  // e-mail and the document of the user behind the customer.
+  async function registerWithAccount(name: string): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    document: string;
+  }> {
+    const email = `${randomUUID()}@example.com`;
+    const document = uniqueValidCpf();
+    const response = await api(app)
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .send({ email, name, document })
+      .expect(201);
+    return { id: (response.body as { id: string }).id, name, email, document };
+  }
+
+  async function userIdOf(document: string): Promise<string> {
+    const response = await api(app)
+      .get('/api/v1/users')
+      .query({ document })
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    return (response.body as Array<{ id: string }>)[0].id;
+  }
+
+  async function listCustomers(filter: { name?: string; document?: string }): Promise<unknown> {
+    const response = await api(app)
+      .get('/api/v1/customers')
+      .query(filter)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(200);
+    return response.body;
+  }
+
+  // Letters only, so that upper-casing it always changes it.
+  function uniqueLetters(): string {
+    return randomUUID()
+      .replace(/-/g, '')
+      .replace(/[0-9]/g, (digit) => 'ghijklmnop'[Number(digit)]);
+  }
+
+  it('should return only the active customer holding a well-formed document, with the name, e-mail and document of its user', async () => {
+    const wanted = await registerWithAccount('Maria Documento');
+    await registerWithAccount('Pedro Outro Documento');
+    const userId = await userIdOf(wanted.document);
+    const expected: ListedCustomer = {
+      id: wanted.id,
+      userId,
+      name: 'Maria Documento',
+      email: wanted.email,
+      document: wanted.document,
+      address: null,
+      phoneNumber: null,
+      status: 'ACTIVE',
+    };
+    const masked = `${wanted.document.slice(0, 3)}.${wanted.document.slice(3, 6)}.${wanted.document.slice(6, 9)}-${wanted.document.slice(9)}`;
+
+    expect(await listCustomers({ document: wanted.document })).toEqual([expected]);
+    expect(await listCustomers({ document: masked })).toEqual([expected]);
+  });
+
+  it('should answer 200 with an empty list for a malformed document', async () => {
+    await registerWithAccount('Ana Qualquer');
+
+    expect(await listCustomers({ document: '123' })).toEqual([]);
+    expect(await listCustomers({ document: '11111111111' })).toEqual([]);
+  });
+
+  it('should return the active customers whose name contains the filter in any letter case, newest first', async () => {
+    const token = uniqueLetters();
+    const older = await registerWithAccount(`Zelia ${token} Lima`);
+    const newer = await registerWithAccount(`Bruno ${token}`);
+    const deactivated = await registerWithAccount(`Carla ${token}`);
+    await registerWithAccount('Diego Sem Filtro');
+    await api(app)
+      .delete(`/api/v1/customers/${deactivated.id}`)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .expect(204);
+
+    const body = await listCustomers({ name: token.slice(2, 10).toUpperCase() });
+
+    expect(body).toEqual([
+      expect.objectContaining({ id: newer.id, name: `Bruno ${token}`, email: newer.email }),
+      expect.objectContaining({ id: older.id, name: `Zelia ${token} Lima`, email: older.email }),
+    ]);
   });
 });

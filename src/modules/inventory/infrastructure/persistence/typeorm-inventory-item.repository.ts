@@ -1,18 +1,24 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
-import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
-import { InventoryItem } from '../../domain/entities/inventory-item';
-import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
-import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
+import {
+  currentEntityManager,
+  runInNewTransaction,
+} from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import { UserKeyResolver } from '../../../identity';
 import {
   InventoryItemRepository,
   MovementClosureInput,
+  OperationConsumptionDto,
   PendingConsumptionDto,
-} from '../../domain/repositories/inventory-item.repository';
+} from '../../application/ports/inventory-item.repository';
+import { InventoryItem } from '../../domain/entities/inventory-item';
+import { InsufficientStockError } from '../../domain/errors/insufficient-stock.error';
+import { SkuAlreadyInUseError } from '../../domain/errors/sku-already-in-use.error';
 import { StockMovementKind } from '../../domain/stock-movement-kind';
 import { InventoryItemId } from '../../domain/value-objects/inventory-item-id';
 import { Sku } from '../../domain/value-objects/sku';
+import { WORK_ORDER_READS, WorkOrderReads } from '../work-order-reads';
 import { InventoryItemMapper } from './inventory-item.mapper';
 import { InventoryItemOrmEntity } from './inventory-item.orm-entity';
 import { StockMovementOrmEntity } from './stock-movement.orm-entity';
@@ -39,12 +45,23 @@ const RETURNED_TOTALS_JOIN = `
 `;
 const NET_REMAINING_EXPR = `(sm.quantity - COALESCE(returned.total, 0))::integer`;
 
+/**
+ * A consumption counts for a restore, a settlement and a write-off once its work order confirmed
+ * it. Until then it belongs to the undo of the withdrawal that wrote it, so none of these three
+ * touches it (CA-10 AC11). A consumption with no operation id was written by no step, so no
+ * withdrawal is in flight on it and it counts at once. `findPendingConsumptionsOfOperation` is the
+ * one read that ignores this: an undo gives back what its operation consumed, confirmed or not.
+ */
+const CONFIRMED_CONSUMPTION = `(sm.operation_id IS NULL OR sm.confirmed_at IS NOT NULL)`;
+
 @Injectable()
 export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   constructor(
     @InjectRepository(InventoryItemOrmEntity)
     private readonly items: Repository<InventoryItemOrmEntity>,
     private readonly dataSource: DataSource,
+    @Inject(WORK_ORDER_READS) private readonly workOrderReads: WorkOrderReads,
+    private readonly userKeys: UserKeyResolver,
   ) {}
 
   /** Never attaches movements - the full ledger is a read model, not part of this aggregate. */
@@ -65,10 +82,9 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   /**
    * The deadlock fix lives here, not in any caller: every batch, whatever order the client sent
    * its lines in, locks the same items in internal-id order in one query (design.md's Risks &
-   * Concerns). Meant to run inside the caller's own open transaction - `ConsumeStockBatchHandler`
-   * and `RestoreStockBatchHandler` are always reached from inside `WithdrawPartsHandler`'s or
-   * `ReturnPartsHandler`'s `transactionRunner.run`, so the lock this takes is held for that whole
-   * transaction, not released when this query alone finishes.
+   * Concerns). Must run inside an open transaction, where the lock is held until that transaction
+   * commits and not released when this query alone finishes. `ConsumeStockBatchUseCase`,
+   * `RestoreStockBatchUseCase` and `UndoConsumptionUseCase` open that transaction themselves.
    */
   async findAllByIdsForUpdate(ids: InventoryItemId[]): Promise<InventoryItem[]> {
     if (ids.length === 0) {
@@ -85,48 +101,127 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * Newest first, each carrying what is still un-returned on it - a `RETURN` never edits the
+   * Newest first, each carrying what is still un-returned on it: a `RETURN` never edits the
    * consumption it undoes (rule 22), so "pending" alone would keep offering an already-exhausted
    * consumption forever. `quantity - COALESCE(returned, 0)` is the true remaining amount, and a
-   * consumption drained to zero drops out of the result entirely. This is the only place a
-   * return's `undoesMovementId` comes from - work-orders has no way to know a movement id, since
-   * that data lives only in `stock_movements`, this module's own ledger (spec.md's Assumptions).
+   * consumption drained to zero drops out of the result entirely. Only confirmed consumptions are
+   * offered, so a return never draws from the units of a withdrawal still in flight. This is the
+   * only place a return's `undoesMovementId` comes from, because work-orders has no way to know a
+   * movement id: that data lives only in `stock_movements`, this module's own ledger (spec.md's
+   * Assumptions).
    */
   async findPendingConsumptions(
     inventoryItemId: InventoryItemId,
     workOrderId: string,
   ): Promise<PendingConsumptionDto[]> {
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(workOrderId);
+    if (workOrderInternalId === null) {
+      return [];
+    }
     const manager = currentEntityManager() ?? this.dataSource.manager;
     const rows: Array<{ external_id: string; remaining: number }> = await manager.query(
       `SELECT sm.external_id, ${NET_REMAINING_EXPR} AS remaining
          FROM stock_movements sm
          JOIN inventory_items ii ON ii.id = sm.inventory_item_id
-         JOIN work_orders wo ON wo.id = sm.work_order_id
          ${RETURNED_TOTALS_JOIN}
-        WHERE ii.external_id = $1 AND wo.external_id = $2
+        WHERE ii.external_id = $1 AND sm.work_order_id = $2
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
           AND ${NET_REMAINING_EXPR} > 0
         ORDER BY sm.occurred_at DESC`,
-      [inventoryItemId.value, workOrderId],
+      [inventoryItemId.value, workOrderInternalId],
     );
     return rows.map((row) => ({ movementId: row.external_id, quantity: row.remaining }));
   }
 
-  /** Rule 23: every `PENDING` consumption of the work order, whatever its remaining balance,
-   * moves to `SETTLED` on delivery - see the interface doc for why netting does not apply here. */
+  /**
+   * What an undo gives back: the operation's consumptions with units left, newest first, on the
+   * same net-remaining figure as `findPendingConsumptions` and the write-off. The status and the
+   * confirmation are left out on purpose. An undone operation never reached the work order, so its
+   * consumptions are unconfirmed, and one that a cancellation wrote off or a delivery settled while
+   * the operation was in flight still comes back. The consumptions carry the work order's internal
+   * key, so the external id comes from its owner in one batch.
+   */
+  async findPendingConsumptionsOfOperation(
+    operationId: string,
+  ): Promise<OperationConsumptionDto[]> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows: Array<{
+      external_id: string;
+      item_external_id: string;
+      work_order_id: string;
+      remaining: number;
+    }> = await manager.query(
+      `SELECT sm.external_id, ii.external_id AS item_external_id, sm.work_order_id,
+              ${NET_REMAINING_EXPR} AS remaining
+         FROM stock_movements sm
+         JOIN inventory_items ii ON ii.id = sm.inventory_item_id
+         ${RETURNED_TOTALS_JOIN}
+        WHERE sm.operation_id = $1
+          AND sm.kind = 'CONSUMPTION'
+          AND ${NET_REMAINING_EXPR} > 0
+        ORDER BY sm.occurred_at DESC, sm.id DESC`,
+      [operationId],
+    );
+    if (rows.length === 0) {
+      return [];
+    }
+    const workOrders = await this.workOrderReads.externalIdsOf([
+      ...new Set(rows.map((row) => row.work_order_id)),
+    ]);
+    return rows.map((row) => {
+      const workOrderId = workOrders.get(row.work_order_id);
+      if (workOrderId === undefined) {
+        throw new Error(`work_orders row for internal key ${row.work_order_id} not found`);
+      }
+      return {
+        movementId: row.external_id,
+        inventoryItemId: row.item_external_id,
+        workOrderId,
+        quantity: row.remaining,
+      };
+    });
+  }
+
+  async hasReturnOfOperation(operationId: string): Promise<boolean> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    const rows: unknown[] = await manager.query(
+      `SELECT 1 FROM stock_movements WHERE operation_id = $1 AND kind = 'RETURN' LIMIT 1`,
+      [operationId],
+    );
+    return rows.length > 0;
+  }
+
+  async confirmConsumptionsOfOperation(operationId: string, confirmedAt: Date): Promise<void> {
+    const manager = currentEntityManager() ?? this.dataSource.manager;
+    await manager.query(
+      `UPDATE stock_movements
+          SET confirmed_at = $2
+        WHERE operation_id = $1 AND kind = 'CONSUMPTION' AND confirmed_at IS NULL`,
+      [operationId, confirmedAt],
+    );
+  }
+
+  /** Rule 23: every confirmed `PENDING` consumption of the work order, whatever its remaining
+   * balance, moves to `SETTLED` on delivery. See the interface doc for why netting does not apply
+   * here. */
   async settleWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
-    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    const actorInternalId = await this.actorInternalId(input.actorUserId);
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(input.workOrderId);
+    if (workOrderInternalId === null) {
+      return 0;
+    }
     // TypeORM's raw `query()` returns `[rows, rowCount]` for UPDATE/DELETE, unlike the plain rows
     // array a SELECT or INSERT returns - `PostgresQueryRunner.query`'s own switch on `raw.command`.
     const [rows]: [Array<{ id: string }>, number] = await manager.query(
       `UPDATE stock_movements sm
           SET status = 'SETTLED'
-         FROM work_orders wo
-        WHERE wo.id = sm.work_order_id AND wo.external_id = $1
+        WHERE sm.work_order_id = $1
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
         RETURNING sm.id`,
-      [input.workOrderId],
+      [workOrderInternalId],
     );
     if (rows.length === 0) {
       return 0;
@@ -141,37 +236,54 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
     return rows.length;
   }
 
-  /** Rule 24: only what is still outstanding on a `PENDING` consumption is lost - a consumption a
-   * prior return already drained contributes nothing and is skipped entirely. */
+  /** Rule 24: only what is still outstanding on a confirmed `PENDING` consumption is lost. A
+   * consumption a prior return already drained contributes nothing and is skipped entirely. */
   async writeOffWorkOrderConsumptions(input: MovementClosureInput): Promise<number> {
     const manager = currentEntityManager() ?? this.dataSource.manager;
-    const actorInternalId = await this.resolveInternalId(manager, 'users', input.actorUserId);
+    const actorInternalId = await this.actorInternalId(input.actorUserId);
+    const workOrderInternalId = await this.workOrderReads.internalIdOf(input.workOrderId);
+    if (workOrderInternalId === null) {
+      return 0;
+    }
     const candidates: Array<{ id: string; remaining: number }> = await manager.query(
       `SELECT sm.id, ${NET_REMAINING_EXPR} AS remaining
          FROM stock_movements sm
-         JOIN work_orders wo ON wo.id = sm.work_order_id
          ${RETURNED_TOTALS_JOIN}
-        WHERE wo.external_id = $1
+        WHERE sm.work_order_id = $1
           AND sm.kind = 'CONSUMPTION' AND sm.status = 'PENDING'
+          AND ${CONFIRMED_CONSUMPTION}
           AND ${NET_REMAINING_EXPR} > 0`,
-      [input.workOrderId],
+      [workOrderInternalId],
     );
     if (candidates.length === 0) {
       return 0;
     }
-    const ids = candidates.map((row) => row.id);
-    await manager.query(
-      `UPDATE stock_movements SET status = 'WRITTEN_OFF' WHERE id = ANY($1::bigint[])`,
-      [ids],
+    // Only the rows still pending are updated, and only those get a transition. A run that read the
+    // same consumptions as another one waits at this update for the other's row locks, and once the
+    // other commits it finds the rows no longer pending, so each transition is recorded once.
+    const [written]: [Array<{ id: string }>, number] = await manager.query(
+      `UPDATE stock_movements SET status = 'WRITTEN_OFF'
+        WHERE id = ANY($1::bigint[]) AND status = 'PENDING'
+        RETURNING id`,
+      [candidates.map((row) => row.id)],
     );
+    if (written.length === 0) {
+      return 0;
+    }
+    const remainingById = new Map(candidates.map((row) => [row.id, row.remaining]));
     await manager.query(
       `INSERT INTO stock_movement_transitions
          (external_id, stock_movement_id, from_status, to_status, actor_user_id, occurred_at, quantity)
        SELECT gen_random_uuid(), t.movement_id, 'PENDING', 'WRITTEN_OFF', $3, $4, t.qty
          FROM unnest($1::bigint[], $2::integer[]) AS t(movement_id, qty)`,
-      [ids, candidates.map((row) => row.remaining), actorInternalId, input.now],
+      [
+        written.map((row) => row.id),
+        written.map((row) => remainingById.get(row.id)),
+        actorInternalId,
+        input.now,
+      ],
     );
-    return candidates.length;
+    return written.length;
   }
 
   /**
@@ -214,16 +326,12 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
           for (let index = 0; index < movementRows.length; index += 1) {
             const movement = item.newMovements[index];
             movementRows[index].inventoryItemInternalId = itemRow.id;
-            movementRows[index].actorInternalId = await this.resolveInternalId(
-              manager,
-              'users',
-              movement.actorUserId,
-            );
+            movementRows[index].actorInternalId = await this.actorInternalId(movement.actorUserId);
             movementRows[index].workOrderInternalId = movement.workOrderId
-              ? await this.resolveInternalId(manager, 'work_orders', movement.workOrderId)
+              ? await this.workOrderInternalId(movement.workOrderId)
               : null;
             movementRows[index].undoesMovementInternalId = movement.undoesMovementId
-              ? await this.resolveInternalId(manager, 'stock_movements', movement.undoesMovementId)
+              ? await this.movementInternalId(manager, movement.undoesMovementId)
               : null;
           }
           await manager.save(StockMovementOrmEntity, movementRows);
@@ -241,30 +349,40 @@ export class TypeOrmInventoryItemRepository implements InventoryItemRepository {
   }
 
   /**
-   * A cross-module write (this feature's `ConsumeStockBatchCommand`/`RestoreStockBatchCommand`,
-   * dispatched from inside `WithdrawPartsHandler`'s `transactionRunner.run`) must land in the
-   * same Postgres transaction as the work order write it accompanies, or a failure on one side
-   * leaves the other committed (AD-008). Falls back to opening its own transaction when there is
-   * no ambient one, which is every call this repository has ever received before this feature -
-   * that fallback is the regression net the whole existing suite already proves.
+   * A stock use case saves its items inside the transaction it opened, after it locked them, so
+   * this save joins that transaction and the locks and the writes commit together. With no
+   * ambient transaction the save opens its own through `runInNewTransaction`, which publishes the
+   * manager as the ambient one: the user key resolver and the work order reads that `save` calls
+   * then join the transaction and hold no second pool connection.
    */
   private inTransaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
     const ambient = currentEntityManager();
-    return ambient ? work(ambient) : this.dataSource.transaction(work);
+    return ambient ? work(ambient) : runInNewTransaction(this.dataSource, work);
   }
 
-  /** `table` is always a literal this file controls, never external input. */
-  private async resolveInternalId(
-    manager: EntityManager,
-    table: string,
-    externalId: string,
-  ): Promise<string> {
+  private async actorInternalId(actorUserId: string): Promise<string> {
+    const internalId = await this.userKeys.toInternalId(actorUserId);
+    if (internalId === null) {
+      throw new Error(`users row for external id ${actorUserId} not found`);
+    }
+    return internalId;
+  }
+
+  private async workOrderInternalId(workOrderId: string): Promise<string> {
+    const internalId = await this.workOrderReads.internalIdOf(workOrderId);
+    if (internalId === null) {
+      throw new Error(`work_orders row for external id ${workOrderId} not found`);
+    }
+    return internalId;
+  }
+
+  private async movementInternalId(manager: EntityManager, externalId: string): Promise<string> {
     const rows: Array<{ id: string }> = await manager.query(
-      `SELECT id FROM ${table} WHERE external_id = $1`,
+      `SELECT id FROM stock_movements WHERE external_id = $1`,
       [externalId],
     );
     if (rows.length === 0) {
-      throw new Error(`${table} row for external id ${externalId} not found`);
+      throw new Error(`stock_movements row for external id ${externalId} not found`);
     }
     return rows[0].id;
   }

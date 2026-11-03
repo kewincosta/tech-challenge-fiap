@@ -5,6 +5,7 @@ import { Customer } from '../../src/modules/customers/domain/entities/customer';
 import { CustomerId } from '../../src/modules/customers/domain/value-objects/customer-id';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { TypeOrmCustomerRepository } from '../../src/modules/customers/infrastructure/persistence/typeorm-customer.repository';
+import { CustomerKeyResolver } from '../../src/modules/customers';
 import { Vehicle } from '../../src/modules/vehicles/domain/entities/vehicle';
 import { LicensePlateAlreadyInUseError } from '../../src/modules/vehicles/domain/errors/license-plate-already-in-use.error';
 import { LicensePlate } from '../../src/modules/vehicles/domain/value-objects/license-plate';
@@ -12,8 +13,9 @@ import { VehicleId } from '../../src/modules/vehicles/domain/value-objects/vehic
 import { VehicleYear } from '../../src/modules/vehicles/domain/value-objects/vehicle-year';
 import { TypeOrmVehicleRepository } from '../../src/modules/vehicles/infrastructure/persistence/typeorm-vehicle.repository';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
-import { TypeOrmUserRepository } from '../../src/modules/users/infrastructure/persistence/typeorm-user.repository';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { uniqueLicensePlate } from '../support/factories/plate.factory';
 import { buildUser } from '../support/factories/user.factory';
@@ -29,11 +31,11 @@ beforeAll(async () => {
   await dataSource.initialize();
   vehicleRepository = new TypeOrmVehicleRepository(
     dataSource.getRepository(VehicleOrmEntity),
-    dataSource,
+    new CustomerKeyResolver(dataSource),
   );
   customerRepository = new TypeOrmCustomerRepository(
     dataSource.getRepository(CustomerOrmEntity),
-    dataSource,
+    new UserKeyResolver(dataSource),
   );
   userRepository = new TypeOrmUserRepository(dataSource.getRepository(UserOrmEntity));
 });
@@ -114,5 +116,12 @@ describe('TypeOrmVehicleRepository', () => {
 
   it('should return null for an unknown id', async () => {
     expect(await vehicleRepository.findById(VehicleId.create(randomUUID()))).toBeNull();
+  });
+
+  it('should refuse to save a vehicle for a customer that does not exist, and write nothing', async () => {
+    const vehicle = newVehicle(randomUUID(), uniqueLicensePlate());
+
+    await expect(vehicleRepository.save(vehicle)).rejects.toThrow(/^Customer .+ not found$/);
+    expect(await vehicleRepository.findById(vehicle.id)).toBeNull();
   });
 });

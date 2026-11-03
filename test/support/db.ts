@@ -1,11 +1,12 @@
 import { DataSource } from 'typeorm';
-import { RefreshTokenOrmEntity } from '../../src/modules/authentication/infrastructure/persistence/refresh-token.orm-entity';
-import { SessionOrmEntity } from '../../src/modules/authentication/infrastructure/persistence/session.orm-entity';
-import { PermissionOrmEntity } from '../../src/modules/authorization/infrastructure/persistence/permission.orm-entity';
-import { RoleOrmEntity } from '../../src/modules/authorization/infrastructure/persistence/role.orm-entity';
-import { RolePermissionOrmEntity } from '../../src/modules/authorization/infrastructure/persistence/role-permission.orm-entity';
-import { UserRoleOrmEntity } from '../../src/modules/authorization/infrastructure/persistence/user-role.orm-entity';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { RefreshTokenOrmEntity } from '../../src/modules/identity/authentication/infrastructure/persistence/refresh-token.orm-entity';
+import { SessionOrmEntity } from '../../src/modules/identity/authentication/infrastructure/persistence/session.orm-entity';
+import { PermissionOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/permission.orm-entity';
+import { RoleOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/role.orm-entity';
+import { RolePermissionOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/role-permission.orm-entity';
+import { UserRoleOrmEntity } from '../../src/modules/identity/authorization/infrastructure/persistence/user-role.orm-entity';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
+import { CustomerAccountStepOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer-account-step.orm-entity';
 import { CustomerOrmEntity } from '../../src/modules/customers/infrastructure/persistence/customer.orm-entity';
 import { VehicleOrmEntity } from '../../src/modules/vehicles/infrastructure/persistence/vehicle.orm-entity';
 import { ServiceOrmEntity } from '../../src/modules/services/infrastructure/persistence/service.orm-entity';
@@ -16,8 +17,13 @@ import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrast
 import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { WorkOrderEventOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-event.orm-entity';
 import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
+import { WorkOrderStockStepOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-stock-step.orm-entity';
 
-export function createTestDataSource(): DataSource {
+/** `pool` narrows the connection pool, for a spec that needs to see a connection run out. */
+export function createTestDataSource(pool?: {
+  poolSize: number;
+  connectTimeoutMS: number;
+}): DataSource {
   return new DataSource({
     type: 'postgres',
     host: process.env.DATABASE_HOST,
@@ -25,6 +31,7 @@ export function createTestDataSource(): DataSource {
     username: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
+    ...pool,
     entities: [
       UserOrmEntity,
       SessionOrmEntity,
@@ -43,6 +50,8 @@ export function createTestDataSource(): DataSource {
       WorkOrderPartOrmEntity,
       WorkOrderEventOrmEntity,
       WorkOrderBudgetOrmEntity,
+      WorkOrderStockStepOrmEntity,
+      CustomerAccountStepOrmEntity,
     ],
   });
 }

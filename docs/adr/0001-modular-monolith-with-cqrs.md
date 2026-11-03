@@ -1,6 +1,6 @@
 # 0001. Modular monolith in layers, with CQRS through `@nestjs/cqrs`
 
-**Status**: Accepted
+**Status**: Amended by [0026](0026-use-cases-are-plain-classes.md) and [0033](0033-writes-across-modules-run-as-steps.md)
 **Recorded**: 2026-09-02, from the state the domain model described at the outset
 
 ## Context

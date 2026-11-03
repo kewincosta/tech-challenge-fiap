@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { currentEntityManager } from '../../../../shared/infrastructure/database/typeorm-transaction-runner';
+import { UserKeyResolver } from '../../../identity';
+import { CustomerRepository } from '../../application/ports/customer.repository';
 import { Customer } from '../../domain/entities/customer';
 import { CustomerAlreadyExistsForUserError } from '../../domain/errors/customer-already-exists-for-user.error';
-import { CustomerRepository } from '../../domain/repositories/customer.repository';
 import { CustomerId } from '../../domain/value-objects/customer-id';
 import { CustomerMapper } from './customer.mapper';
 import { CustomerOrmEntity } from './customer.orm-entity';
@@ -17,7 +18,7 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
   constructor(
     @InjectRepository(CustomerOrmEntity)
     private readonly customers: Repository<CustomerOrmEntity>,
-    private readonly dataSource: DataSource,
+    private readonly userKeys: UserKeyResolver,
   ) {}
 
   async findById(id: CustomerId): Promise<Customer | null> {
@@ -25,17 +26,19 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
     if (!row) {
       return null;
     }
-    const userExternalId = await this.resolveUserExternalId(row.userInternalId);
+    const userExternalId = await this.userKeys.toExternalId(row.userInternalId);
+    if (userExternalId === null) {
+      throw new Error(`User with internal id ${row.userInternalId} not found`);
+    }
     return CustomerMapper.toDomain(row, userExternalId);
   }
 
   async existsByUserId(userId: string): Promise<boolean> {
-    const runner = currentEntityManager() ?? this.dataSource;
-    const rows: unknown[] = await runner.query(
-      `SELECT c.id FROM customers c JOIN users u ON u.id = c.user_id WHERE u.external_id = $1`,
-      [userId],
-    );
-    return rows.length > 0;
+    const userInternalId = await this.userKeys.toInternalId(userId);
+    if (userInternalId === null) {
+      return false;
+    }
+    return this.repo().exists({ where: { userInternalId } });
   }
 
   async save(customer: Customer): Promise<void> {
@@ -48,7 +51,11 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
     if (existing) {
       row.id = existing.id;
     }
-    row.userInternalId = await this.resolveUserInternalId(customer.userId);
+    const userInternalId = await this.userKeys.toInternalId(customer.userId);
+    if (userInternalId === null) {
+      throw new Error(`User ${customer.userId} not found`);
+    }
+    row.userInternalId = userInternalId;
     try {
       await repo.save(row);
     } catch (error) {
@@ -63,27 +70,6 @@ export class TypeOrmCustomerRepository implements CustomerRepository {
   private repo(): Repository<CustomerOrmEntity> {
     const manager = currentEntityManager();
     return manager ? manager.getRepository(CustomerOrmEntity) : this.customers;
-  }
-
-  private async resolveUserInternalId(userExternalId: string): Promise<string> {
-    const runner = currentEntityManager() ?? this.dataSource;
-    const rows: Array<{ id: string }> = await runner.query(
-      `SELECT id FROM users WHERE external_id = $1`,
-      [userExternalId],
-    );
-    if (rows.length === 0) {
-      throw new Error(`User ${userExternalId} not found`);
-    }
-    return rows[0].id;
-  }
-
-  private async resolveUserExternalId(userInternalId: string): Promise<string> {
-    const runner = currentEntityManager() ?? this.dataSource;
-    const rows: Array<{ external_id: string }> = await runner.query(
-      `SELECT external_id FROM users WHERE id = $1`,
-      [userInternalId],
-    );
-    return rows[0].external_id;
   }
 
   private isUniqueViolation(error: unknown, constraint: string): boolean {

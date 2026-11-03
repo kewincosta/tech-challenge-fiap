@@ -1,0 +1,68 @@
+%% C4 deployment, prod - Workshop Management API
+%% The only environment in AWS, in us-east-1, as infra/ provisions it and the CD deploys it. The
+%% names and sizes are the ones of infra/environments/prod.tfvars. Development runs on the
+%% developer's machine, where docker-compose.yml starts the containers of c4-containers.mmd.
+%% Detail: infra/README.md, k8s/README.md, ADRs 0038 to 0041.
+
+C4Deployment
+  title Deployment - prod, us-east-1
+
+  Person(staff, "Workshop staff and customers", "Service advisor, mechanic, administrator, customer")
+
+  Deployment_Node(github, "GitHub", "GitHub Actions") {
+    Container(cd, "CD workflow", "cd.yml", "Applies Terraform, pushes the image and upgrades the chart after a push to main passes the CI. Assumes the deploy role through OIDC")
+  }
+
+  Deployment_Node(aws, "AWS", "Region us-east-1") {
+    Deployment_Node(registry, "Amazon ECR", "Container registry") {
+      Container(ecr, "ECR repository workshop-prod", "ECR", "One image per commit, tagged with the commit SHA. Scans on push and keeps the last 20")
+    }
+
+    Deployment_Node(secretsManager, "AWS Secrets Manager", "Secret store") {
+      ContainerDb(secrets, "Generated secrets", "Secrets Manager", "The database password and the JWT secret that Terraform generates. The CD reads them during a run")
+    }
+
+    Deployment_Node(vpc, "VPC workshop-prod", "10.0.0.0/16, two availability zones") {
+      Deployment_Node(publicSubnets, "Public subnets", "One in each zone") {
+        Container(nlb, "Network Load Balancer", "AWS NLB", "Created by the Service of type LoadBalancer. Listens on port 80 and keeps the client's address")
+        Container(nat, "NAT gateway", "AWS NAT gateway", "One for both zones. Carries what the private subnets send out, such as the image pulls")
+      }
+
+      Deployment_Node(privateSubnets, "Private subnets", "One in each zone") {
+        Deployment_Node(eks, "EKS cluster workshop-prod", "Kubernetes 1.37, one managed node group of two t3.medium nodes") {
+          Deployment_Node(workshop, "Namespace workshop", "Helm release workshop") {
+            Deployment_Node(apiDeployment, "Deployment workshop", "2 to 6 pods, scaled by the HorizontalPodAutoscaler on CPU and memory") {
+              Container(pods, "NestJS application", "Node.js 24, NestJS", "Serves /api/v1, Swagger and the probes /health/live and /health/ready on port 3000")
+            }
+            Deployment_Node(mailpitDeployment, "Deployment workshop-mailpit", "One pod") {
+              Container(mailpit, "Mailpit", "axllent/mailpit", "Catches the status e-mails in memory. Its inbox has no public address and opens through a port forward")
+            }
+            Deployment_Node(migrationJob, "Job workshop-migrate", "Helm hook before each install and upgrade") {
+              Container(migration, "Migration", "node dist/migrate.js", "Applies the pending migrations, then ends")
+            }
+          }
+        }
+
+        Deployment_Node(rds, "Amazon RDS", "PostgreSQL 16, db.t4g.micro, one zone") {
+          ContainerDb(postgres, "PostgreSQL", "RDS", "System of record. Requires TLS and accepts only the nodes of the cluster")
+        }
+
+        Deployment_Node(elasticache, "Amazon ElastiCache", "Redis 7, cache.t4g.micro, one node") {
+          ContainerDb(redis, "Redis", "ElastiCache", "Effective access cache, revoked session list, rate limit counters. TLS only, and accepts only the nodes of the cluster")
+        }
+      }
+    }
+  }
+
+  Rel(staff, nlb, "Calls", "HTTP, port 80")
+  Rel(nlb, pods, "Forwards to", "HTTP, port 3000")
+  Rel(pods, postgres, "Reads and writes", "TCP 5432, TLS")
+  Rel(pods, redis, "Caches access, checks revocation, counts requests", "TCP 6379, TLS")
+  Rel(pods, mailpit, "Sends the status e-mails", "SMTP 1025")
+  Rel(migration, postgres, "Applies the migrations", "TCP 5432, TLS")
+  Rel(cd, ecr, "Pushes the image", "HTTPS")
+  Rel(cd, secrets, "Reads the secrets", "HTTPS")
+  Rel(cd, pods, "Upgrades the release with Helm", "HTTPS to the cluster API")
+  Rel(pods, ecr, "The nodes pull the image when a pod starts", "HTTPS, through the NAT gateway")
+
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="2")

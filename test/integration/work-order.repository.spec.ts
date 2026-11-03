@@ -3,20 +3,20 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { ConcurrentModificationError } from '../../src/shared/application/errors/concurrent-modification.error';
 import { Money } from '../../src/shared/domain/value-objects/money';
+import { BudgetStatus } from '../../src/modules/work-orders/domain/budget-status';
+import { Budget } from '../../src/modules/work-orders/domain/entities/budget';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
 import { VehicleAlreadyHasActiveWorkOrderError } from '../../src/modules/work-orders/domain/errors/vehicle-already-has-active-work-order.error';
 import { WorkOrderNumberTakenError } from '../../src/modules/work-orders/domain/errors/work-order-number-taken.error';
+import { BudgetId } from '../../src/modules/work-orders/domain/value-objects/budget-id';
 import { PlannedQuantity } from '../../src/modules/work-orders/domain/value-objects/planned-quantity';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
-import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
-import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
-import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
-import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
 import { createTestDataSource } from '../support/db';
+import { buildWorkOrderRepository } from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
@@ -24,13 +24,7 @@ let repository: TypeOrmWorkOrderRepository;
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  repository = new TypeOrmWorkOrderRepository(
-    dataSource.getRepository(WorkOrderOrmEntity),
-    dataSource.getRepository(WorkOrderServiceOrmEntity),
-    dataSource.getRepository(WorkOrderPartOrmEntity),
-    dataSource.getRepository(WorkOrderBudgetOrmEntity),
-    dataSource,
-  );
+  repository = buildWorkOrderRepository(dataSource);
 });
 
 afterAll(async () => {
@@ -137,7 +131,7 @@ function openWorkOrder(
   });
 }
 
-/** `planPart` needs `IN_DIAGNOSIS` or `IN_EXECUTION` - `open` only ever starts `RECEIVED`. */
+/** `open` only ever starts `RECEIVED`, so a work order in `IN_DIAGNOSIS` is restored. */
 function restoreWorkOrderInDiagnosis(fixture: Fixture): WorkOrder {
   return WorkOrder.restore({
     id: WorkOrderId.create(randomUUID()),
@@ -406,8 +400,9 @@ describe('TypeOrmWorkOrderRepository', () => {
     await repository.save(workOrder);
 
     // Proves save() read through the non-draining domainEvents getter, not pullDomainEvents -
-    // otherwise the handler's own pullDomainEvents() after save would find nothing to publish.
-    expect(workOrder.pullDomainEvents()).toHaveLength(1);
+    // otherwise the use case's own pullDomainEvents() after save would find nothing to publish.
+    // The opening records WorkOrderCreated and the status change that e-mails the customer.
+    expect(workOrder.pullDomainEvents()).toHaveLength(2);
   });
 
   it("should carry the event type, the actor's internal key, the from/to statuses and the moment on a freshly created work order's trail entry", async () => {
@@ -629,4 +624,186 @@ describe('TypeOrmWorkOrderRepository', () => {
     );
     expect(rows[0].version).toBe(2);
   });
+
+  // Every user the work order points at is a different user, so a column written from, or read
+  // back as, another column's user shows.
+  it('should keep each user a work order points at as that user, in the row and when read back', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const mechanic = await insertUser();
+    const budgetDecider = await insertUser();
+    const discountApplier = await insertUser();
+    const deliverer = await insertUser();
+    const canceler = await insertUser();
+    const roundDecider = await insertUser();
+    const number = uniqueNumber();
+    const now = new Date();
+    const workOrder = WorkOrder.restore({
+      id: WorkOrderId.create(randomUUID()),
+      number,
+      customerId: fixture.customer.externalId,
+      vehicleId: fixture.vehicle.externalId,
+      assignedMechanicUserId: mechanic.externalId,
+      createdByUserId: fixture.creator.externalId,
+      status: WorkOrderStatus.Canceled,
+      customerName: 'Jane Doe',
+      vehiclePlate: 'ABC1234',
+      vehicleBrand: 'Toyota',
+      vehicleModel: 'Corolla',
+      vehicleYear: 2020,
+      createdAt: now,
+      updatedAt: now,
+      serviceItems: [],
+      partItems: [],
+      diagnosisStartedAt: now,
+      diagnosisCompletedAt: now,
+      budgets: [
+        Budget.restore({
+          id: BudgetId.create(randomUUID()),
+          round: 1,
+          total: Money.fromCents(10000),
+          status: BudgetStatus.Approved,
+          generatedAt: now,
+          decidedAt: now,
+          decidedByUserId: roundDecider.externalId,
+        }),
+      ],
+      budgetDecidedAt: now,
+      budgetDecidedByUserId: budgetDecider.externalId,
+      executionStartedAt: now,
+      discountAppliedByUserId: discountApplier.externalId,
+      discountAppliedAt: now,
+      deliveredAt: now,
+      deliveredByUserId: deliverer.externalId,
+      canceledAt: now,
+      canceledByUserId: canceler.externalId,
+      cancellationReason: 'Cliente desistiu do reparo',
+    });
+
+    await repository.save(workOrder);
+
+    const rows: Array<Record<string, number>> = await dataSource.query(
+      `SELECT wo.created_by_user_id, wo.assigned_mechanic_user_id, wo.budget_decided_by_user_id,
+              wo.discount_applied_by_user_id, wo.delivered_by_user_id, wo.canceled_by_user_id,
+              wob.decided_by_user_id AS round_decided_by_user_id
+         FROM work_orders wo
+         JOIN work_order_budgets wob ON wob.work_order_id = wo.id
+        WHERE wo.external_id = $1`,
+      [workOrder.id.value],
+    );
+    expect(rows).toEqual([
+      {
+        created_by_user_id: fixture.creator.internalId,
+        assigned_mechanic_user_id: mechanic.internalId,
+        budget_decided_by_user_id: budgetDecider.internalId,
+        discount_applied_by_user_id: discountApplier.internalId,
+        delivered_by_user_id: deliverer.internalId,
+        canceled_by_user_id: canceler.internalId,
+        round_decided_by_user_id: roundDecider.internalId,
+      },
+    ]);
+    const reread = await repository.findByNumber(number);
+    expect(reread?.createdByUserId).toBe(fixture.creator.externalId);
+    expect(reread?.assignedMechanicUserId).toBe(mechanic.externalId);
+    expect(reread?.budgetDecidedByUserId).toBe(budgetDecider.externalId);
+    expect(reread?.discountAppliedByUserId).toBe(discountApplier.externalId);
+    expect(reread?.deliveredByUserId).toBe(deliverer.externalId);
+    expect(reread?.canceledByUserId).toBe(canceler.externalId);
+    expect(reread?.budgets[0].decidedByUserId).toBe(roundDecider.externalId);
+  });
+
+  it('should write the trail row of an event whose actor is none of the users the work order points at', async () => {
+    const fixture = await seedWorkOrderRefs();
+    const actor = await insertUser();
+    const service = await insertService();
+    const workOrder = openWorkOrder(fixture);
+    await repository.save(workOrder);
+    const loaded = await repository.findByNumber(workOrder.number);
+    loaded!.addService({
+      itemId: WorkOrderItemId.create(randomUUID()),
+      serviceId: service.externalId,
+      serviceName: 'Troca de oleo',
+      unitPrice: Money.fromCents(15099),
+      actorUserId: actor.externalId,
+      now: new Date(),
+    });
+
+    await repository.save(loaded!);
+
+    const rows: Array<{ actor_user_id: number }> = await dataSource.query(
+      `SELECT we.actor_user_id FROM work_order_events we
+         JOIN work_orders wo ON wo.id = we.work_order_id
+        WHERE wo.external_id = $1
+        ORDER BY we.id`,
+      [workOrder.id.value],
+    );
+    expect(rows.map((row) => row.actor_user_id)).toEqual([
+      fixture.creator.internalId,
+      actor.internalId,
+    ]);
+  });
+
+  const missingReferences: Array<[string, RegExp, (fixture: Fixture) => WorkOrder]> = [
+    [
+      'customer',
+      /^customers row for external id .+ not found$/,
+      (fixture) =>
+        openWorkOrder({ ...fixture, customer: { ...fixture.customer, externalId: randomUUID() } }),
+    ],
+    [
+      'vehicle',
+      /^vehicles row for external id .+ not found$/,
+      (fixture) =>
+        openWorkOrder({ ...fixture, vehicle: { ...fixture.vehicle, externalId: randomUUID() } }),
+    ],
+    [
+      'creator',
+      /^users row for external id .+ not found$/,
+      (fixture) =>
+        openWorkOrder({ ...fixture, creator: { ...fixture.creator, externalId: randomUUID() } }),
+    ],
+    [
+      'service',
+      /^services row for external id .+ not found$/,
+      (fixture) => {
+        const workOrder = restoreWorkOrderInDiagnosis(fixture);
+        workOrder.addService({
+          itemId: WorkOrderItemId.create(randomUUID()),
+          serviceId: randomUUID(),
+          serviceName: 'Troca de oleo',
+          unitPrice: Money.fromCents(15099),
+          actorUserId: fixture.creator.externalId,
+          now: new Date(),
+        });
+        return workOrder;
+      },
+    ],
+    [
+      'inventory item',
+      /^inventory_items row for external id .+ not found$/,
+      (fixture) => {
+        const workOrder = restoreWorkOrderInDiagnosis(fixture);
+        workOrder.planPart({
+          itemId: WorkOrderItemId.create(randomUUID()),
+          inventoryItemId: randomUUID(),
+          sku: 'FLT-001',
+          itemName: 'Filtro de oleo',
+          unitPrice: Money.fromCents(2500),
+          plannedQuantity: PlannedQuantity.create(2),
+          actorUserId: fixture.creator.externalId,
+          now: new Date(),
+        });
+        return workOrder;
+      },
+    ],
+  ];
+
+  it.each(missingReferences)(
+    'should refuse to save a work order whose %s does not exist, and write nothing',
+    async (_reference, message, build) => {
+      const workOrder = build(await seedWorkOrderRefs());
+
+      await expect(repository.save(workOrder)).rejects.toThrow(message);
+      expect(await repository.findByNumber(workOrder.number)).toBeNull();
+    },
+  );
 });

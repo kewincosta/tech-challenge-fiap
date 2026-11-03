@@ -2,45 +2,40 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
-import { GetWorkOrderHandler } from '../../src/modules/work-orders/application/queries/get-work-order/get-work-order.handler';
+import { GetWorkOrderUseCase } from '../../src/modules/work-orders/application/queries/get-work-order/get-work-order.use-case';
 import { GetWorkOrderQuery } from '../../src/modules/work-orders/application/queries/get-work-order/get-work-order.query';
-import { GetWorkOrderTrailHandler } from '../../src/modules/work-orders/application/queries/get-work-order-trail/get-work-order-trail.handler';
+import { GetWorkOrderTrailUseCase } from '../../src/modules/work-orders/application/queries/get-work-order-trail/get-work-order-trail.use-case';
 import { GetWorkOrderTrailQuery } from '../../src/modules/work-orders/application/queries/get-work-order-trail/get-work-order-trail.query';
-import { ListWorkOrdersHandler } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.handler';
+import { ListWorkOrdersUseCase } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.use-case';
 import { ListWorkOrdersQuery } from '../../src/modules/work-orders/application/queries/list-work-orders/list-work-orders.query';
+import { WorkOrderSummaryDto } from '../../src/modules/work-orders/application/ports/work-order-query.port';
 import { WorkOrder } from '../../src/modules/work-orders/domain/entities/work-order';
+import { WorkOrderNotFoundError } from '../../src/modules/work-orders/domain/errors/work-order-not-found.error';
 import { WorkOrderId } from '../../src/modules/work-orders/domain/value-objects/work-order-id';
 import { WorkOrderItemId } from '../../src/modules/work-orders/domain/value-objects/work-order-item-id';
 import { WorkOrderNumber } from '../../src/modules/work-orders/domain/value-objects/work-order-number';
 import { WorkOrderStatus } from '../../src/modules/work-orders/domain/work-order-status';
-import { WorkOrderOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order.orm-entity';
-import { WorkOrderServiceOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-service.orm-entity';
-import { WorkOrderPartOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-part.orm-entity';
-import { WorkOrderBudgetOrmEntity } from '../../src/modules/work-orders/infrastructure/persistence/work-order-budget.orm-entity';
 import { TypeOrmWorkOrderRepository } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order.repository';
-import { TypeOrmWorkOrderQueryAdapter } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-query.adapter';
 import { createTestDataSource } from '../support/db';
+import {
+  buildWorkOrderQueryAdapter,
+  buildWorkOrderRepository,
+} from '../support/work-order-adapters';
 
 let dataSource: DataSource;
 let repository: TypeOrmWorkOrderRepository;
-let listHandler: ListWorkOrdersHandler;
-let getHandler: GetWorkOrderHandler;
-let trailHandler: GetWorkOrderTrailHandler;
+let listWorkOrders: ListWorkOrdersUseCase;
+let getWorkOrder: GetWorkOrderUseCase;
+let getWorkOrderTrail: GetWorkOrderTrailUseCase;
 
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
-  repository = new TypeOrmWorkOrderRepository(
-    dataSource.getRepository(WorkOrderOrmEntity),
-    dataSource.getRepository(WorkOrderServiceOrmEntity),
-    dataSource.getRepository(WorkOrderPartOrmEntity),
-    dataSource.getRepository(WorkOrderBudgetOrmEntity),
-    dataSource,
-  );
-  const queryAdapter = new TypeOrmWorkOrderQueryAdapter(dataSource);
-  listHandler = new ListWorkOrdersHandler(queryAdapter);
-  getHandler = new GetWorkOrderHandler(queryAdapter);
-  trailHandler = new GetWorkOrderTrailHandler(queryAdapter);
+  repository = buildWorkOrderRepository(dataSource);
+  const queryAdapter = buildWorkOrderQueryAdapter(dataSource);
+  listWorkOrders = new ListWorkOrdersUseCase(queryAdapter);
+  getWorkOrder = new GetWorkOrderUseCase(queryAdapter);
+  getWorkOrderTrail = new GetWorkOrderTrailUseCase(queryAdapter);
 });
 
 afterAll(async () => {
@@ -160,13 +155,27 @@ function restoreWorkOrder(fixture: Fixture, status: WorkOrderStatus): WorkOrder 
   });
 }
 
+/** The last page the use case lists for `statuses`, at 100 a page. The test database keeps every
+ * work order any run opened, so the one a spec just saved is not on the first page; the board
+ * lists the oldest first, so the newest work order of a status closes its last page. */
+async function listLastPage(statuses: WorkOrderStatus[] = []): Promise<WorkOrderSummaryDto[]> {
+  const first = await listWorkOrders.execute(new ListWorkOrdersQuery(1, 100, statuses));
+  if (first.totalPages <= 1) {
+    return first.items;
+  }
+  const last = await listWorkOrders.execute(
+    new ListWorkOrdersQuery(first.totalPages, 100, statuses),
+  );
+  return last.items;
+}
+
 describe('Work order read queries', () => {
-  it('should list every work order via ListWorkOrdersQuery when no status is supplied', async () => {
+  it('should list the open work orders via ListWorkOrdersQuery when no status is supplied', async () => {
     const fixture = await seedWorkOrderRefs();
     const workOrder = openWorkOrder(fixture);
     await repository.save(workOrder);
 
-    const found = await listHandler.execute(new ListWorkOrdersQuery());
+    const found = await listLastPage();
 
     expect(found.some((row) => row.id === workOrder.id.value)).toBe(true);
   });
@@ -179,7 +188,7 @@ describe('Work order read queries', () => {
     const inDiagnosis = restoreWorkOrder(diagnosisFixture, WorkOrderStatus.InDiagnosis);
     await repository.save(inDiagnosis);
 
-    const found = await listHandler.execute(new ListWorkOrdersQuery('RECEIVED'));
+    const found = await listLastPage([WorkOrderStatus.Received]);
 
     const ids = found.map((row) => row.id);
     expect(ids).toContain(received.id.value);
@@ -191,13 +200,15 @@ describe('Work order read queries', () => {
     const workOrder = openWorkOrder(fixture);
     await repository.save(workOrder);
 
-    const found = await getHandler.execute(new GetWorkOrderQuery(workOrder.number.value));
+    const found = await getWorkOrder.execute(new GetWorkOrderQuery(workOrder.number.value));
 
     expect(found?.id).toBe(workOrder.id.value);
   });
 
-  it('should return null from GetWorkOrderQuery for a well-formed number no work order carries, rather than throwing', async () => {
-    expect(await getHandler.execute(new GetWorkOrderQuery('ZZZZZZ-2026'))).toBeNull();
+  it('should refuse a well-formed number no work order carries with WorkOrderNotFoundError', async () => {
+    await expect(getWorkOrder.execute(new GetWorkOrderQuery('ZZZZZZ-2026'))).rejects.toThrow(
+      WorkOrderNotFoundError,
+    );
   });
 
   it('should return the trail in chronological order via GetWorkOrderTrailQuery', async () => {
@@ -216,7 +227,9 @@ describe('Work order read queries', () => {
     });
     await repository.save(reloaded!);
 
-    const trail = await trailHandler.execute(new GetWorkOrderTrailQuery(workOrder.number.value));
+    const trail = await getWorkOrderTrail.execute(
+      new GetWorkOrderTrailQuery(workOrder.number.value),
+    );
 
     expect(trail).toHaveLength(2);
     expect(trail[0].eventType).toBe('WORK_ORDER_CREATED');

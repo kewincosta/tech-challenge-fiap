@@ -38,4 +38,11 @@ export class StockMovementOrmEntity {
 
   @Column({ name: 'note', type: 'varchar', length: 255, nullable: true })
   note!: string | null;
+
+  @Column({ name: 'operation_id', type: 'uuid', nullable: true })
+  operationId!: string | null;
+
+  // Null until the work order of the withdrawal that wrote a consumption confirmed it.
+  @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
+  confirmedAt!: Date | null;
 }

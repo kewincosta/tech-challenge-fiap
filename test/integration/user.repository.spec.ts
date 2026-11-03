@@ -1,19 +1,19 @@
 import { randomUUID } from 'node:crypto';
-import { CommandBus } from '@nestjs/cqrs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
-import { RegisterUserCommand } from '../../src/modules/users/application/commands/register-user/register-user.command';
-import { RegisterUserHandler } from '../../src/modules/users/application/commands/register-user/register-user.handler';
-import { DocumentAlreadyInUseError } from '../../src/modules/users/domain/errors/document-already-in-use.error';
-import { Email } from '../../src/modules/users/domain/value-objects/email';
-import { PersonDocument } from '../../src/modules/users/domain/value-objects/person-document';
-import { TypeOrmUserRepository } from '../../src/modules/users/infrastructure/persistence/typeorm-user.repository';
-import { UserOrmEntity } from '../../src/modules/users/infrastructure/persistence/user.orm-entity';
+import { AssignRoleToUserUseCase } from '../../src/modules/identity/authorization/application/commands/assign-role-to-user/assign-role-to-user.use-case';
+import { RegisterUserCommand } from '../../src/modules/identity/users/application/commands/register-user/register-user.command';
+import { RegisterUserUseCase } from '../../src/modules/identity/users/application/commands/register-user/register-user.use-case';
+import { DocumentAlreadyInUseError } from '../../src/modules/identity/users/domain/errors/document-already-in-use.error';
+import { Email } from '../../src/modules/identity/users/domain/value-objects/email';
+import { PersonDocument } from '../../src/modules/identity/users/domain/value-objects/person-document';
+import { TypeOrmUserRepository } from '../../src/modules/identity/users/infrastructure/persistence/typeorm-user.repository';
+import { UserOrmEntity } from '../../src/modules/identity/users/infrastructure/persistence/user.orm-entity';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
-import { stubEventBus } from '../support/fakes/bus.stubs';
 import { FakeClock } from '../support/fakes/fake-clock';
 import { FakeIdGenerator } from '../support/fakes/fake-id-generator';
 import { FakePasswordHasher } from '../support/fakes/fake-password-hasher';
+import { RecordingDomainEventPublisher } from '../support/fakes/recording-domain-event-publisher';
 import { buildUser } from '../support/factories/user.factory';
 import { uniqueValidCpf } from '../support/factories/document.factory';
 import { createTestDataSource } from '../support/db';
@@ -63,17 +63,17 @@ describe('TypeOrmUserRepository', () => {
   it('should roll back the user insert when the role assignment fails', async () => {
     const transactionRunner = new TypeOrmTransactionRunner(dataSource);
     const assignmentFailure = new Error('role assignment failed');
-    const failingCommandBus = {
+    const failingAssignRole = {
       execute: () => Promise.reject(assignmentFailure),
-    } as unknown as CommandBus;
-    const handler = new RegisterUserHandler(
+    } as unknown as AssignRoleToUserUseCase;
+    const handler = new RegisterUserUseCase(
       repository,
       new FakePasswordHasher(),
       new FakeIdGenerator(),
       new FakeClock(),
       transactionRunner,
-      failingCommandBus,
-      stubEventBus().bus,
+      failingAssignRole,
+      new RecordingDomainEventPublisher(),
     );
     const email = uniqueEmail();
     const document = uniqueValidCpf();

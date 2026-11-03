@@ -1,8 +1,15 @@
+import { drawFree } from '../taken-values';
+
 // Builds a structurally valid CPF (correct check digits) so PersonDocument.create accepts it,
-// using a fresh random base each call so the partial unique index on document never collides
-// across runs - the test database is never truncated. Mirrors the checksum algorithm in
-// src/modules/users/domain/value-objects/person-document.ts.
+// from a random base. A CPF that an active user of the test database holds, or that an earlier call
+// handed out, is drawn again: the test database is never truncated, so the partial unique index on
+// document would refuse it (see taken-values.ts). Mirrors the checksum algorithm in
+// src/modules/identity/users/domain/value-objects/person-document.ts.
 export function uniqueValidCpf(): string {
+  return drawFree(drawCpf);
+}
+
+function drawCpf(): string {
   const base = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
   const firstCheckDigit = computeCheckDigit(base, 10);
   const secondCheckDigit = computeCheckDigit([...base, firstCheckDigit], 11);

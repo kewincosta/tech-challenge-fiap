@@ -10,6 +10,8 @@ import { Sku } from '../../src/modules/inventory/domain/value-objects/sku';
 import { StockMovementId } from '../../src/modules/inventory/domain/value-objects/stock-movement-id';
 import { InventoryItemOrmEntity } from '../../src/modules/inventory/infrastructure/persistence/inventory-item.orm-entity';
 import { TypeOrmInventoryItemRepository } from '../../src/modules/inventory/infrastructure/persistence/typeorm-inventory-item.repository';
+import { UserKeyResolver } from '../../src/modules/identity';
+import { TypeOrmWorkOrderReads } from '../../src/modules/work-orders/infrastructure/persistence/typeorm-work-order-reads';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/database/typeorm-transaction-runner';
 import { uniqueSku } from '../support/factories/sku.factory';
 import { createTestDataSource } from '../support/db';
@@ -24,6 +26,8 @@ beforeAll(async () => {
   repository = new TypeOrmInventoryItemRepository(
     dataSource.getRepository(InventoryItemOrmEntity),
     dataSource,
+    new TypeOrmWorkOrderReads(dataSource),
+    new UserKeyResolver(dataSource),
   );
   actorExternalId = await insertUser();
 });

@@ -16,8 +16,8 @@ export class StockQuantity {
   }
 
   /**
-   * The never-negative invariant lives here, not in a handler (design.md's Tech Decisions) -
-   * rule 19 holds "at any point, through any command", so the only place that can guarantee it
+   * The never-negative invariant lives here, not in a use case (design.md's Tech Decisions).
+   * Rule 19 holds "at any point, through any command", so the only place that can guarantee it
    * is the value every command must go through to change the count.
    */
   minus(units: number): StockQuantity {

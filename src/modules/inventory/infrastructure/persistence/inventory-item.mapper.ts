@@ -55,6 +55,7 @@ export class InventoryItemMapper {
       movementRow.status = movement.status;
       movementRow.occurredAt = movement.occurredAt;
       movementRow.note = movement.note;
+      movementRow.operationId = movement.operationId;
       // inventoryItemInternalId, actorInternalId, workOrderInternalId and undoesMovementInternalId
       // are all resolved by the repository, which is the only place that knows the parent's
       // freshly-saved internal id and can look an external id up against another table - the

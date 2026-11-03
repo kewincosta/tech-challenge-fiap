@@ -33,23 +33,29 @@ Invariants it holds:
 
 ## Commands
 
-| Command                    | Handler              | What it does                                                       |
-| -------------------------- | -------------------- | ------------------------------------------------------------------ |
-| `CreateServiceCommand`     | `create-service`     | Adds a service to the catalog.                                     |
-| `UpdateServiceCommand`     | `update-service`     | Changes name, description, price or duration.                      |
-| `DeactivateServiceCommand` | `deactivate-service` | Moves it to `INACTIVE`, freeing the name for a new active service. |
+| Command                    | Use case                   | What it does                                                       |
+| -------------------------- | -------------------------- | ------------------------------------------------------------------ |
+| `CreateServiceCommand`     | `CreateServiceUseCase`     | Adds a service to the catalog.                                     |
+| `UpdateServiceCommand`     | `UpdateServiceUseCase`     | Changes name, description, price or duration.                      |
+| `DeactivateServiceCommand` | `DeactivateServiceUseCase` | Moves it to `INACTIVE`, freeing the name for a new active service. |
 
 A price change applies to budget rounds generated after it, and to nothing already frozen.
 
 ## Queries and ports
 
-`GetServiceQuery` and `ListServicesQuery`. Ports: `ServiceRepository` (`domain/repositories`),
-`ServiceQueryPort` (`application/ports`).
+`GetServiceQuery` throws `ServiceNotFoundError` when there is none, and `ListServicesQuery` lists
+the active catalog. Ports, both in `application/ports`: `ServiceRepository` and `ServiceQueryPort`.
 
 ## Persistence
 
-`TypeOrmServiceRepository`, `TypeOrmServiceQueryAdapter` and `ServiceMapper` in
-`infrastructure/persistence`.
+`TypeOrmServiceRepository`, `TypeOrmServiceQueryAdapter`, `ServiceMapper` and `ServiceKeyResolver`
+in `infrastructure/persistence`.
+
+`work-orders` reaches this module through its `ServiceCatalog` port, whose gateway calls
+`GetServiceUseCase`, and turns a service UUID into its internal key with `ServiceKeyResolver`
+([0027](../../adr/0027-ports-between-modules.md),
+[0028](../../adr/0028-each-module-queries-only-its-own-tables.md)). `index.ts` exports both, with
+`ServiceNotFoundError`.
 
 ### `services`
 

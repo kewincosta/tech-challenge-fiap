@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DataSource } from 'typeorm';
 import { Money } from '../../src/shared/domain/value-objects/money';
-import { GetServiceHandler } from '../../src/modules/services/application/queries/get-service/get-service.handler';
+import { GetServiceUseCase } from '../../src/modules/services/application/queries/get-service/get-service.use-case';
 import { GetServiceQuery } from '../../src/modules/services/application/queries/get-service/get-service.query';
-import { ListServicesHandler } from '../../src/modules/services/application/queries/list-services/list-services.handler';
+import { ListServicesUseCase } from '../../src/modules/services/application/queries/list-services/list-services.use-case';
 import { ListServicesQuery } from '../../src/modules/services/application/queries/list-services/list-services.query';
 import { Service } from '../../src/modules/services/domain/entities/service';
+import { ServiceNotFoundError } from '../../src/modules/services/domain/errors/service-not-found.error';
 import { ServiceDuration } from '../../src/modules/services/domain/value-objects/service-duration';
 import { ServiceId } from '../../src/modules/services/domain/value-objects/service-id';
 import { ServiceName } from '../../src/modules/services/domain/value-objects/service-name';
@@ -17,16 +18,16 @@ import { uniqueServiceName } from '../support/factories/service.factory';
 import { createTestDataSource } from '../support/db';
 
 let dataSource: DataSource;
-let getServiceHandler: GetServiceHandler;
-let listServicesHandler: ListServicesHandler;
+let getService: GetServiceUseCase;
+let listServices: ListServicesUseCase;
 let repository: TypeOrmServiceRepository;
 
 beforeAll(async () => {
   dataSource = createTestDataSource();
   await dataSource.initialize();
   const queryAdapter = new TypeOrmServiceQueryAdapter(dataSource);
-  getServiceHandler = new GetServiceHandler(queryAdapter);
-  listServicesHandler = new ListServicesHandler(queryAdapter);
+  getService = new GetServiceUseCase(queryAdapter);
+  listServices = new ListServicesUseCase(queryAdapter);
   repository = new TypeOrmServiceRepository(dataSource.getRepository(ServiceOrmEntity));
 });
 
@@ -50,28 +51,32 @@ describe('Service read queries', () => {
   it('should get a service by its external id', async () => {
     const service = await saveService();
 
-    const found = await getServiceHandler.execute(new GetServiceQuery(service.id.value));
+    const found = await getService.execute(new GetServiceQuery(service.id.value));
 
     expect(found?.id).toBe(service.id.value);
     expect(found?.priceCents).toBe(15099);
   });
 
-  it('should return a deactivated service with its status, not null', async () => {
+  it('should return a deactivated service with its status, not the not-found error', async () => {
     const service = await saveService();
     service.deactivate(new Date());
     await repository.save(service);
 
-    const found = await getServiceHandler.execute(new GetServiceQuery(service.id.value));
+    const found = await getService.execute(new GetServiceQuery(service.id.value));
 
     expect(found?.status).toBe('INACTIVE');
   });
 
-  it('should return null for an id that does not exist', async () => {
-    expect(await getServiceHandler.execute(new GetServiceQuery(randomUUID()))).toBeNull();
+  it('should refuse an id that does not exist with the service not-found error', async () => {
+    await expect(getService.execute(new GetServiceQuery(randomUUID()))).rejects.toThrow(
+      ServiceNotFoundError,
+    );
   });
 
-  it('should return null for a malformed id, not throw', async () => {
-    expect(await getServiceHandler.execute(new GetServiceQuery('not-a-uuid'))).toBeNull();
+  it('should refuse a malformed id with the service not-found error, not a database error', async () => {
+    await expect(getService.execute(new GetServiceQuery('not-a-uuid'))).rejects.toThrow(
+      ServiceNotFoundError,
+    );
   });
 
   it('should list active services only', async () => {
@@ -80,9 +85,7 @@ describe('Service read queries', () => {
     deactivated.deactivate(new Date());
     await repository.save(deactivated);
 
-    const ids = (await listServicesHandler.execute(new ListServicesQuery())).map(
-      (service) => service.id,
-    );
+    const ids = (await listServices.execute(new ListServicesQuery())).map((service) => service.id);
 
     expect(ids).toContain(active.id.value);
     expect(ids).not.toContain(deactivated.id.value);

@@ -1,4 +1,4 @@
-import { AssignmentRepository } from '../../../src/modules/authorization/application/ports/assignment.repository';
+import { AssignmentRepository } from '../../../src/modules/identity/authorization/application/ports/assignment.repository';
 
 export class FakeAssignmentRepository implements AssignmentRepository {
   readonly userRoles = new Set<string>();

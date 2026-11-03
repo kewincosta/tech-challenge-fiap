@@ -3,6 +3,7 @@ import { ErrorKind } from '../../../../shared/domain/errors/error-kind';
 import { BudgetedItemNotRemovableError } from './budgeted-item-not-removable.error';
 import { DiagnosisWithoutItemsError } from './diagnosis-without-items.error';
 import { EmptyDraftBudgetError } from './empty-draft-budget.error';
+import { WorkOrderBudgetLinkOutdatedError } from './work-order-budget-link-outdated.error';
 
 describe('DiagnosisWithoutItemsError', () => {
   it('carries a distinct code and RuleViolation', () => {
@@ -40,6 +41,19 @@ describe('BudgetedItemNotRemovableError', () => {
 
   it('names what the caller has to change', () => {
     expect(new BudgetedItemNotRemovableError().message).toMatch(/cannot be removed/i);
+  });
+});
+
+describe('WorkOrderBudgetLinkOutdatedError', () => {
+  it('carries its own code and RuleViolation', () => {
+    const error = new WorkOrderBudgetLinkOutdatedError();
+
+    expect(error.code).toBe('WORK_ORDER_BUDGET_LINK_OUTDATED');
+    expect(error.kind).toBe(ErrorKind.RuleViolation);
+  });
+
+  it('says the budget was generated again after the link was sent', () => {
+    expect(new WorkOrderBudgetLinkOutdatedError().message).toMatch(/generated again/i);
   });
 });
 

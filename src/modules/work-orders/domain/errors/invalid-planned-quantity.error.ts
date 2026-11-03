@@ -6,6 +6,6 @@ export class InvalidPlannedQuantityError extends DomainError {
   readonly kind = ErrorKind.Validation;
 
   constructor() {
-    super('Planned quantity must be a positive whole number.');
+    super('Planned quantity must be a whole number from 1 to 2147483647.');
   }
 }

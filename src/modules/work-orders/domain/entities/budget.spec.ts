@@ -1,14 +1,16 @@
-import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { FakeIdGenerator } from '../../../../../test/support/fakes/fake-id-generator';
 import { Money } from '../../../../shared/domain/value-objects/money';
 import { BudgetStatus } from '../budget-status';
 import { BudgetStateError } from '../errors/budget-state.error';
 import { BudgetId } from '../value-objects/budget-id';
 import { Budget, BudgetProps } from './budget';
 
+const ids = new FakeIdGenerator();
+
 function generate(overrides: Partial<Parameters<typeof Budget.generate>[0]> = {}): Budget {
   return Budget.generate({
-    id: BudgetId.create(randomUUID()),
+    id: BudgetId.create(ids.generate()),
     round: 1,
     total: Money.fromCents(20099),
     generatedAt: new Date('2026-08-31T10:00:00Z'),
@@ -22,7 +24,7 @@ describe('BudgetId', () => {
   });
 
   it('equals compares by value', () => {
-    const value = randomUUID();
+    const value = ids.generate();
 
     expect(BudgetId.create(value).equals(BudgetId.create(value))).toBe(true);
   });
@@ -30,7 +32,7 @@ describe('BudgetId', () => {
 
 describe('Budget', () => {
   it('generates a pending round with the given number, total and moment', () => {
-    const id = BudgetId.create(randomUUID());
+    const id = BudgetId.create(ids.generate());
     const budget = Budget.generate({
       id,
       round: 1,
@@ -135,7 +137,7 @@ describe('Budget', () => {
 
   it('restore round-trips every field', () => {
     const props: BudgetProps = {
-      id: BudgetId.create(randomUUID()),
+      id: BudgetId.create(ids.generate()),
       round: 2,
       total: Money.fromCents(15000),
       status: BudgetStatus.Approved,
@@ -157,7 +159,7 @@ describe('Budget', () => {
 
   it('restore round-trips a draft round with no decision', () => {
     const props: BudgetProps = {
-      id: BudgetId.create(randomUUID()),
+      id: BudgetId.create(ids.generate()),
       round: 1,
       total: Money.fromCents(0),
       status: BudgetStatus.Pending,

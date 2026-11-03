@@ -1,9 +1,11 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { swcPlugin } from './vitest.base';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts', 'security/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'security/**/*.spec.ts', 'test/architecture/**/*.spec.ts'],
+    // The fixture trees hold files named like specs on purpose, to prove the rules reach specs.
+    exclude: [...configDefaults.exclude, 'test/architecture/fixtures/**'],
     environment: 'node',
     setupFiles: ['./test/support/setup-tests.ts'],
     coverage: {
@@ -33,7 +35,7 @@ export default defineConfig({
           functions: 80,
           lines: 80,
         },
-        'src/modules/users/domain/value-objects/**/*.ts': {
+        'src/modules/identity/users/domain/value-objects/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,
@@ -53,10 +55,10 @@ export default defineConfig({
         },
         // Section 8 names this path for one concern - the role escalation rule, not every
         // authorization command - and that rule lives entirely in this one handler
-        // (AssignRoleToUserHandler.ensureAssignable). The rest of application/** (role CRUD,
+        // (AssignRoleToUserUseCase.ensureAssignable). The rest of application/** (role CRUD,
         // access queries) is proven at the e2e layer instead, per the plan's own testing
         // strategy table, and would need many new unit tests to clear 80 on its own.
-        'src/modules/authorization/application/commands/assign-role-to-user/**/*.ts': {
+        'src/modules/identity/authorization/application/commands/assign-role-to-user/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,
@@ -95,7 +97,7 @@ export default defineConfig({
           functions: 80,
           lines: 80,
         },
-        'src/modules/users/application/**/*.ts': {
+        'src/modules/identity/users/application/**/*.ts': {
           statements: 80,
           branches: 80,
           functions: 80,

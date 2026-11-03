@@ -1,34 +1,29 @@
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
-import { CommandBus } from '@nestjs/cqrs';
 import { NestFactory } from '@nestjs/core';
 import * as argon2 from 'argon2';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
-import {
-  CreatedInventoryItemDto,
-  CreateInventoryItemCommand,
-} from '../src/modules/inventory/application/commands/create-inventory-item/create-inventory-item.command';
+import { CreateInventoryItemCommand } from '../src/modules/inventory/application/commands/create-inventory-item/create-inventory-item.command';
+import { CreateInventoryItemUseCase } from '../src/modules/inventory/application/commands/create-inventory-item/create-inventory-item.use-case';
 import { ReplenishStockCommand } from '../src/modules/inventory/application/commands/replenish-stock/replenish-stock.command';
-import {
-  CreatedServiceDto,
-  CreateServiceCommand,
-} from '../src/modules/services/application/commands/create-service/create-service.command';
-import {
-  RegisteredCustomerDto,
-  RegisterCustomerCommand,
-} from '../src/modules/customers/application/commands/register-customer/register-customer.command';
+import { ReplenishStockUseCase } from '../src/modules/inventory/application/commands/replenish-stock/replenish-stock.use-case';
+import { CreateServiceCommand } from '../src/modules/services/application/commands/create-service/create-service.command';
+import { CreateServiceUseCase } from '../src/modules/services/application/commands/create-service/create-service.use-case';
+import { RegisterCustomerCommand } from '../src/modules/customers/application/commands/register-customer/register-customer.command';
+import { RegisterCustomerUseCase } from '../src/modules/customers/application/commands/register-customer/register-customer.use-case';
 import { RegisterVehicleCommand } from '../src/modules/vehicles/application/commands/register-vehicle/register-vehicle.command';
+import { RegisterVehicleUseCase } from '../src/modules/vehicles/application/commands/register-vehicle/register-vehicle.use-case';
 
 /**
  * Puts a whole workshop on the table: one user per role with the role already assigned, plus the
  * catalog, the stock and one customer with vehicles that the Postman collection walks through.
  *
  * Two halves, for two different reasons. The accounts are written in SQL, the way
- * `seed-admin.ts` already does, because there is no authenticated actor to dispatch
- * `RegisterUserCommand` on behalf of when the database is empty. Everything after that goes
- * through the CommandBus, so the domain invariants decide what is valid rather than this file
- * restating them in INSERT statements.
+ * `seed-admin.ts` already does, because no authenticated actor exists to register them when the
+ * database is empty (AD-006). Everything after that runs the same use cases the HTTP routes run,
+ * resolved from the application context, so the domain invariants decide what is valid rather
+ * than this file restating them in INSERT statements.
  *
  * Idempotent throughout: every step looks for what it is about to create and skips it. Running
  * this twice leaves the same database, and running it over `npm run seed:admin` is safe too.
@@ -164,7 +159,7 @@ function checkDigit(digits: number[], startWeight: number): number {
   return remainder < 2 ? 0 : 11 - remainder;
 }
 
-async function main(): Promise<void> {
+export async function runSeed(): Promise<void> {
   const password = process.env.SEED_PASSWORD ?? DEFAULT_PASSWORD;
   if (password.length < 8) {
     throw new Error('SEED_PASSWORD must be at least 8 characters.');
@@ -172,7 +167,11 @@ async function main(): Promise<void> {
 
   const context = await NestFactory.createApplicationContext(AppModule, { logger: false });
   const dataSource = context.get(DataSource);
-  const commandBus = context.get(CommandBus);
+  const createService = context.get(CreateServiceUseCase);
+  const createInventoryItem = context.get(CreateInventoryItemUseCase);
+  const replenishStock = context.get(ReplenishStockUseCase);
+  const registerCustomer = context.get(RegisterCustomerUseCase);
+  const registerVehicle = context.get(RegisterVehicleUseCase);
 
   try {
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
@@ -203,9 +202,14 @@ async function main(): Promise<void> {
       `Actors ready: SUPER_ADMIN (${superAdminEmail}), ${ACTORS.map((a) => a.role).join(', ')}`,
     );
 
-    await seedServices(dataSource, commandBus);
-    await seedInventory(dataSource, commandBus, actorIds.get('ADMIN')!);
-    await seedCustomerAndVehicles(dataSource, commandBus, actorIds.get('CUSTOMER')!);
+    await seedServices(dataSource, createService);
+    await seedInventory(dataSource, createInventoryItem, replenishStock, actorIds.get('ADMIN')!);
+    await seedCustomerAndVehicles(
+      dataSource,
+      registerCustomer,
+      registerVehicle,
+      actorIds.get('CUSTOMER')!,
+    );
 
     console.log(`Every account uses the password: ${password}`);
   } finally {
@@ -262,7 +266,10 @@ async function upsertUser(dataSource: DataSource, seed: UserSeed): Promise<strin
   return rows[0].external_id;
 }
 
-async function seedServices(dataSource: DataSource, commandBus: CommandBus): Promise<void> {
+async function seedServices(
+  dataSource: DataSource,
+  createService: CreateServiceUseCase,
+): Promise<void> {
   let created = 0;
   for (const service of SERVICES) {
     const existing: unknown[] = await dataSource.query(
@@ -272,7 +279,7 @@ async function seedServices(dataSource: DataSource, commandBus: CommandBus): Pro
     if (existing.length > 0) {
       continue;
     }
-    await commandBus.execute<CreateServiceCommand, CreatedServiceDto>(
+    await createService.execute(
       new CreateServiceCommand(
         service.name,
         service.priceCents,
@@ -287,7 +294,8 @@ async function seedServices(dataSource: DataSource, commandBus: CommandBus): Pro
 
 async function seedInventory(
   dataSource: DataSource,
-  commandBus: CommandBus,
+  createInventoryItem: CreateInventoryItemUseCase,
+  replenishStock: ReplenishStockUseCase,
   actorUserId: string,
 ): Promise<void> {
   let created = 0;
@@ -299,7 +307,7 @@ async function seedInventory(
     if (existing.length > 0) {
       continue;
     }
-    const { id } = await commandBus.execute<CreateInventoryItemCommand, CreatedInventoryItemDto>(
+    const { id } = await createInventoryItem.execute(
       new CreateInventoryItemCommand(
         item.sku,
         item.name,
@@ -308,9 +316,9 @@ async function seedInventory(
         item.description,
       ),
     );
-    // A created item has a quantity on hand of zero - only a movement moves the count, so the
+    // A created item has a quantity on hand of zero and only a movement moves the count, so the
     // opening stock is a real INBOUND movement rather than a column written directly.
-    await commandBus.execute<ReplenishStockCommand, void>(
+    await replenishStock.execute(
       new ReplenishStockCommand(id, item.quantity, item.priceCents, actorUserId, 'Opening stock'),
     );
     created += 1;
@@ -320,7 +328,8 @@ async function seedInventory(
 
 async function seedCustomerAndVehicles(
   dataSource: DataSource,
-  commandBus: CommandBus,
+  registerCustomer: RegisterCustomerUseCase,
+  registerVehicle: RegisterVehicleUseCase,
   customerUserId: string,
 ): Promise<void> {
   const existing: Array<{ external_id: string }> = await dataSource.query(
@@ -335,7 +344,7 @@ async function seedCustomerAndVehicles(
     customerId = existing[0].external_id;
     console.log('Customer record: already there');
   } else {
-    const registered = await commandBus.execute<RegisterCustomerCommand, RegisteredCustomerDto>(
+    const registered = await registerCustomer.execute(
       new RegisterCustomerCommand(
         customerUserId,
         undefined,
@@ -358,7 +367,7 @@ async function seedCustomerAndVehicles(
     if (rows.length > 0) {
       continue;
     }
-    await commandBus.execute<RegisterVehicleCommand, unknown>(
+    await registerVehicle.execute(
       new RegisterVehicleCommand(
         customerId,
         vehicle.plate,
@@ -372,7 +381,9 @@ async function seedCustomerAndVehicles(
   console.log(`Vehicles: ${created} created, ${VEHICLES.length - created} already there`);
 }
 
-main().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  runSeed().catch((error: unknown) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
