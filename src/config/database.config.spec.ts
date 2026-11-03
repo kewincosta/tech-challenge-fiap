@@ -108,6 +108,11 @@ describe('database config', () => {
         BUNDLE,
       );
     }
+    // The whole option: a data source that adds `rejectUnauthorized: false` to the bundle stops
+    // verifying the server while it still names the bundle.
+    expect(migrations.ssl, 'the migrations verify the server as the application does').toEqual(
+      application.ssl,
+    );
     for (const key of ['type', 'host', 'port', 'username', 'password', 'database'] as const) {
       expect(migrations[key], key).toEqual(application[key]);
     }
