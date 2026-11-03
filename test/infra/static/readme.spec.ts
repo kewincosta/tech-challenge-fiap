@@ -243,6 +243,10 @@ describe('README', () => {
     // The section on the CI says it, the table of goals says it, and the drawing of the deploy
     // flow starts the CI from a pull request into main and from the push a merge makes to main.
     expect(ciSection).toContain('runs on pull requests into `main` and on pushes to `main`');
+    expect(ciSection).toContain('A push to any other branch runs nothing.');
+    expect(flat(README)).not.toMatch(
+      /push to (?:any )?(?:an)?other branch(?:es)? (?:runs|starts) (?:it|the CI)\b/i,
+    );
     expect(goals).toContain(
       'the CI lints, tests and builds on pull requests into `main` and pushes to `main`',
     );
