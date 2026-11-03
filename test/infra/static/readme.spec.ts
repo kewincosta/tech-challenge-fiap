@@ -462,6 +462,23 @@ describe('README', () => {
     }
   });
 
+  it('lists the Phase 2 records 0038 to 0043', () => {
+    const flat = README.replace(/\s+/g, ' ');
+
+    // The summary of Phase 2 counts six records and links each one.
+    expect(flat).toContain('Six records in [`docs/adr/`](docs/adr/README.md) hold the decisions');
+    for (const number of ['0038', '0039', '0040', '0041', '0042', '0043']) {
+      expect(flat, `the summary links ADR ${number}`).toMatch(
+        new RegExp(`\\[${number}\\]\\(docs/adr/${number}-[^)]+\\.md\\)`),
+      );
+    }
+
+    // The overview of the decisions counts six and ends at 0043.
+    expect(flat).toContain('The six of Phase 2, 0038 to 0043,');
+    expect(flat).not.toMatch(/0038 to 0042/);
+    expect(flat).not.toMatch(/\bFive records in/);
+  });
+
   it('counts the decision records it says it holds', () => {
     const count = readdirSync(join(REPOSITORY_ROOT, 'docs/adr')).filter((file) =>
       /^\d{4}-.+\.md$/.test(file),
