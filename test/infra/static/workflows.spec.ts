@@ -725,17 +725,20 @@ describe('CD workflow', () => {
     });
   });
 
-  it('masks each secret in the line after it reads it', () => {
+  it('masks each secret before the script uses it', () => {
     const upgrade = scriptSteps(cd.jobs.deploy).find((step) => step.run.includes('helm upgrade'));
     const lines = logicalLines(upgrade?.run ?? '');
 
     for (const variable of ['database_password', 'jwt_secret']) {
+      const mention = new RegExp(`\\$\\{?${variable}\\b`);
       const read = lines.findIndex((line) => line.startsWith(`${variable}=`));
+      const mask = lines.findIndex((line) => line === `echo "::add-mask::$${variable}"`);
+      const use = lines.findIndex((line, index) => index !== mask && mention.test(line));
 
       expect(read, `${variable} is read`).toBeGreaterThanOrEqual(0);
-      expect(lines[read + 1], `${variable} is masked right after it is read`).toBe(
-        `echo "::add-mask::$${variable}"`,
-      );
+      expect(mask, `${variable} is masked after it is read`).toBeGreaterThan(read);
+      expect(use, `${variable} is used`).toBeGreaterThan(read);
+      expect(mask, `${variable} is masked before anything uses it`).toBeLessThan(use);
     }
     expect(upgrade?.run, 'the script never traces its commands').not.toMatch(
       /set -\w*x|bash -x|xtrace/,
