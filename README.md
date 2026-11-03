@@ -9,14 +9,25 @@ is handed back.
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org)
 
 > **Status:** MVP under active development. The features described below are implemented, covered
-> by tests and verified by git hooks on every commit and push. The project has never run in
-> production.
+> by tests and verified by git hooks on every commit and push. The repository holds what it takes to
+> run the project on AWS ([Phase 2 infrastructure](#phase-2-infrastructure)), and the project has
+> never run in production.
 
 ## Contents
 
 - [Overview](#overview)
 - [Features](#features)
 - [Architecture](#architecture)
+- [Phase 2 infrastructure](#phase-2-infrastructure)
+  - [The solution and its goals](#the-solution-and-its-goals)
+  - [The architecture](#the-architecture)
+  - [Running locally](#running-locally)
+  - [Provisioning with Terraform](#provisioning-with-terraform)
+  - [The CI and the CD](#the-ci-and-the-cd)
+  - [Deploying to Kubernetes](#deploying-to-kubernetes)
+  - [The prod database](#the-prod-database)
+  - [Showing the autoscaler](#showing-the-autoscaler)
+  - [The API collection and the video](#the-api-collection-and-the-video)
 - [Tech stack](#tech-stack)
 - [Requirements](#requirements)
 - [Getting started](#getting-started)
@@ -57,7 +68,10 @@ there is no user interface in this repository.
 
 **Why it exists:** it started as the Tech Challenge of the postgraduate program in Software
 Architecture at FIAP (SOAT). The scope is a single shop, with one stock and one address. It does
-not cover invoicing, supplier management or scheduling.
+not cover invoicing, supplier management or scheduling. Phase 2 of the challenge adds the
+infrastructure: the application runs on Kubernetes, Terraform provisions the cluster and the database
+on AWS, and a GitHub Actions pipeline builds, tests and deploys it
+([Phase 2 infrastructure](#phase-2-infrastructure)).
 
 ## Features
 
@@ -285,6 +299,307 @@ Details in [`docs/architecture/`](docs/architecture/):
 The vocabulary of each context, with the translation between the business term and the code term,
 is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 
+## Phase 2 infrastructure
+
+The second phase of the Tech Challenge moves the application from one machine to a Kubernetes
+cluster. This section describes the solution and its goals, draws the architecture, and gives the
+commands to run it locally, provision it, deploy it and reach its database.
+[`infra/README.md`](infra/README.md) holds the detail of Terraform, and
+[`k8s/README.md`](k8s/README.md) the detail of the chart.
+
+### The solution and its goals
+
+The brief of Phase 2 asks for the application in a container, deployed to Kubernetes with autoscaling
+on CPU and memory, with the cluster and the database provisioned by Terraform, and a pipeline that
+builds, tests and deploys it. The repository answers each goal:
+
+| Goal                                | The solution                                                                                                                                                                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The application in a container      | A multi-stage [`Dockerfile`](Dockerfile) whose image runs as a non-root user and applies the migrations and the admin seed from compiled code, and [`docker-compose.yml`](docker-compose.yml) for development, with a health check on every service                     |
+| Kubernetes with autoscaling         | A Helm chart in [`k8s/workshop`](k8s/workshop): a Deployment with liveness and readiness probes, a Service, a ConfigMap, a Secret, a HorizontalPodAutoscaler from 2 to 6 replicas at 70% CPU and 80% memory, a migration Job that runs before each upgrade, and Mailpit |
+| The cluster and the database in AWS | Terraform in [`infra/`](infra): a VPC, an EKS cluster, RDS PostgreSQL, ElastiCache Redis and an ECR repository, applied from one main file with one pair of files for each environment                                                                                  |
+| Build, test and deploy              | Two GitHub Actions workflows in [`.github/workflows`](.github/workflows): the CI lints, tests and builds on every push, and the CD applies Terraform, pushes the image and upgrades the chart on every merge to `main` that passes the CI                               |
+| A local cluster                     | `scripts/local-cluster.sh` creates a kind cluster that runs the same chart against the compose containers                                                                                                                                                               |
+
+Two environments exist. Development runs on the developer's machine, with PostgreSQL, Redis and
+Mailpit in containers and nothing in AWS. `prod` is the only environment in AWS, and the only one the
+CD deploys. The application gains what a cluster needs: two probes, `GET /health/live` and
+`GET /health/ready`, and settings that turn TLS on for PostgreSQL and Redis
+([environment variables](#environment-variables)). Four records in
+[`docs/adr/`](docs/adr/README.md) hold the decisions:
+[0038](docs/adr/0038-infrastructure-on-aws-provisioned-by-terraform.md) for the infrastructure,
+[0039](docs/adr/0039-database-and-redis-reached-by-configuration.md) for the database and Redis,
+[0040](docs/adr/0040-the-application-runs-in-kubernetes-as-a-helm-chart.md) for the chart and
+[0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) for the pipeline.
+
+### The architecture
+
+The first drawing shows what runs where in `prod`: the components of the application and the
+infrastructure that Terraform provisions around them. The second shows how a change gets there.
+
+```mermaid
+flowchart TB
+    users["Workshop staff and customers"]
+    subgraph aws["AWS, us-east-1"]
+        ecr["ECR repository<br/>one image for each commit"]
+        sm["Secrets Manager<br/>database password and JWT secret"]
+        subgraph vpc["VPC, two zones, one NAT gateway"]
+            nlb["Network Load Balancer<br/>public subnets, port 80"]
+            subgraph eks["EKS cluster, two t3.medium nodes, metrics-server"]
+                subgraph pods["API pods, 2 to 6, scaled on CPU and memory"]
+                    api["NestJS application, one process:<br/>identity, customers, vehicles, services,<br/>inventory, work-orders and the shared kernel"]
+                end
+                mailpit["Mailpit pod<br/>catches the status e-mails"]
+                job["Migration Job<br/>runs before each upgrade"]
+            end
+            rds[("RDS PostgreSQL 16")]
+            redis[("ElastiCache Redis 7")]
+        end
+    end
+    users -->|"HTTP"| nlb
+    nlb --> api
+    api -->|"TLS"| rds
+    api -->|"TLS"| redis
+    api -->|"SMTP"| mailpit
+    job -->|"TLS"| rds
+    ecr -.->|"image pulled by the nodes"| pods
+    sm -.->|"read by the CD, handed to the pods as a Secret"| pods
+```
+
+```mermaid
+flowchart LR
+    dev["Developer pushes or<br/>opens a pull request"] --> ci
+    subgraph gha["GitHub Actions"]
+        ci["CI<br/>lint, unit and build in parallel"]
+        subgraph cd["CD, after a push to main passes the CI"]
+            tip["tip<br/>is the commit still the tip of main?"] --> terraform["Terraform<br/>apply prod"] --> image["image<br/>build and push"] --> deploy["deploy<br/>upgrade the Helm release"]
+        end
+        ci --> tip
+    end
+    terraform -->|"OIDC role workshop-deploy"| infra["AWS: VPC, EKS, RDS,<br/>ElastiCache, ECR, Secrets Manager"]
+    image --> registry[("ECR")]
+    secrets[("Secrets Manager")] -->|"read at run time"| deploy
+    deploy --> cluster["EKS: migration Job, then the pods"]
+```
+
+The load balancer is a Network Load Balancer that the chart's Service of type LoadBalancer creates.
+The nodes sit in private subnets, and the database and the cache accept connections only from them.
+The API answers over HTTP at the hostname of the load balancer, because HTTPS needs a domain and a
+certificate that this project leaves out. [The deployment diagram](docs/architecture/c4-deployment-prod.mmd)
+draws the same in C4.
+
+### Running locally
+
+Both ways run the application against PostgreSQL, Redis and Mailpit in the containers of
+`docker-compose.yml`.
+
+With docker compose, the application is a container beside them. `npm run setup`, which needs
+Node.js, does the whole bring-up: it creates `.env`, starts the containers, applies the migrations and
+seeds the demo data ([Getting started](#getting-started) explains each step):
+
+```bash
+npm run setup
+```
+
+The API answers at `http://localhost:13000` and Mailpit at `http://localhost:8025`.
+
+With the local cluster, a kind cluster runs the chart that `prod` runs, against the same containers.
+It needs Docker and a `.env` file. The script creates the cluster, installs metrics-server for the
+autoscaler, builds the image from the working tree and installs the chart with the local values. The
+migration Job runs first:
+
+```bash
+cp -n .env.example .env
+docker compose up --detach postgres redis mailpit
+scripts/local-cluster.sh up
+```
+
+The API answers at `http://localhost:18080`, and `curl http://localhost:18080/health/ready` shows the
+database and Redis up. A second `up` upgrades the release in place. The script writes its kubeconfig to
+`.tools/kind/workshop.kubeconfig` and leaves `~/.kube/config` alone. To remove the cluster and keep the
+compose containers and their data:
+
+```bash
+scripts/local-cluster.sh down
+```
+
+### Provisioning with Terraform
+
+Terraform provisions `prod`, the only environment in AWS, in `us-east-1`. Only Docker has to be
+installed: `scripts/tool.sh terraform` runs Terraform 1.17.1 in a container as your user. The AWS CLI
+is the one other tool, to sign in and to point `kubectl` at the cluster.
+[`infra/README.md`](infra/README.md) has the variables, the cost and the checks that need no AWS
+account.
+
+Two stacks create these resources:
+
+| Stack                                   | What it creates                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `infra/bootstrap`, applied once by hand | An S3 bucket for the Terraform state, with versioning, encryption and public access blocked, the GitHub OIDC provider, and the IAM role `workshop-deploy`, which only this repository's `prod` environment can assume                                                                                                                                                                                                                                                                                                          |
+| `infra/main.tf`, applied by the CD      | A VPC with a public and a private subnet in each of two zones and one NAT gateway. An EKS cluster on Kubernetes 1.37 with one managed node group of two `t3.medium` nodes and the metrics-server add-on. RDS PostgreSQL 16 on `db.t4g.micro`, with SSL required, in the private subnets. ElastiCache Redis 7 on `cache.t4g.micro`, with TLS, in the private subnets. Secrets Manager secrets for the generated database password and JWT secret. One ECR repository that scans each image on push and keeps the last 20 images |
+
+The database and the cache accept connections only from the nodes of the cluster.
+
+The bootstrap runs once, from your machine, with your own AWS credentials. Its state stays in
+`infra/bootstrap/terraform.tfstate`, which git ignores, so keep that file:
+
+```bash
+scripts/tool.sh terraform -chdir=infra/bootstrap init
+scripts/tool.sh terraform -chdir=infra/bootstrap apply
+```
+
+Then set up GitHub as [the CI and the CD](#the-ci-and-the-cd) says and merge to `main`: the CD applies
+the main stack. To apply it by hand with the same files, where `cluster_admin_arns` lists the IAM users
+and roles that may use `kubectl` besides the deploy role:
+
+```bash
+scripts/tool.sh terraform -chdir=infra init -backend-config=environments/prod.backend.hcl
+scripts/tool.sh terraform -chdir=infra apply -var-file=environments/prod.tfvars \
+  -var 'cluster_admin_arns=["arn:aws:iam::<account-id>:user/<name>"]'
+```
+
+The first apply takes about 20 minutes. To remove `prod`, uninstall the release first, because the
+load balancer it created keeps the VPC from being deleted:
+
+```bash
+aws eks update-kubeconfig --name workshop-prod --region us-east-1
+scripts/tool.sh helm uninstall workshop --namespace workshop
+scripts/tool.sh terraform -chdir=infra destroy -var-file=environments/prod.tfvars
+```
+
+Destroying `prod` erases its database for good: the database takes no final snapshot and has no
+deletion protection. The ECR repository goes with its images, and the secrets at once. `prod` costs
+about US$ 0.31 an hour, about US$ 225 a month, whether or not anyone uses it. Another environment is
+another pair of files in `infra/environments`.
+
+### The CI and the CD
+
+The CI, `.github/workflows/ci.yml`, runs on every push and every pull request. Its jobs `lint`, `unit`
+and `build` run side by side on Node 24 with `npm run lint`, `npm run test:unit` and `npm run build`,
+and the run fails when any of them fails. The integration and e2e suites need PostgreSQL and Redis and
+run on your machine for now.
+
+The CD, `.github/workflows/cd.yml`, starts when a CI run completes, and it deploys only a push to
+`main` of this repository that passed. It has four jobs, each waiting for the one before:
+
+| Job         | What it does                                                                                                                                                                                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tip`       | Stops the run unless the commit the CI tested is still the tip of `main`, so the slow CI of an older commit cannot replace a newer deploy                                                                                                                               |
+| `terraform` | Assumes the deploy role through GitHub OIDC and applies `prod` with `environments/prod.tfvars` and `environments/prod.backend.hcl`                                                                                                                                      |
+| `image`     | Builds the image of that commit and pushes it to ECR, tagged with the commit SHA                                                                                                                                                                                        |
+| `deploy`    | Reads the Terraform outputs and the two secrets from Secrets Manager, upgrades the chart with `--wait`, then reads the hostname of the load balancer and upgrades the release again with `APP_PUBLIC_URL` set to it when that differs from the URL of the first upgrade |
+
+One deploy runs at a time. A second run waits for the first to end, a third replaces the second while
+it waits, and a deploy that is running is never cancelled, because stopping an apply leaves the state
+locked. A failed CI run, a pull request and a push to another branch deploy nothing. Re-running only
+the failed jobs of an old CD run keeps the answer of its first `tip` job, so after a newer merge
+re-run all the jobs, and `tip` checks again.
+
+Before the first merge to `main`, set up AWS and GitHub:
+
+1. Apply the bootstrap, as [Provisioning with Terraform](#provisioning-with-terraform) shows.
+2. In the settings of the repository, create the environment `prod` and limit its deployment branches
+   to `main`.
+3. In that environment, set the variable `AWS_DEPLOY_ROLE_ARN` to the `deploy_role_arn` output of the
+   bootstrap. To use `kubectl` yourself, also set `CLUSTER_ADMIN_ARNS` to a JSON list of the ARNs of
+   your IAM users or roles.
+
+The CD starts from the copy of `cd.yml` on `main`, so it runs for the first time after the merge that
+adds it. The workflows hold no AWS access key: the jobs that call AWS assume the role through OIDC.
+[`infra/README.md`](infra/README.md) has the details, and
+[ADR 0041](docs/adr/0041-ci-and-cd-run-on-github-actions.md) the reasons.
+
+### Deploying to Kubernetes
+
+In `prod` the CD deploys. The `deploy` job of `.github/workflows/cd.yml` runs `helm upgrade --install`
+on every merge to `main` that passes the CI. The migration Job runs before the pods change, so the
+schema is ready first, and a migration that fails stops the upgrade and leaves the running pods in
+place.
+
+To deploy by hand, point `kubectl` and Helm at the cluster and pass the eleven values only a deploy knows, each
+with `--set-string`, because `--set` reads a commit SHA made of digits as a number. The addresses come
+from the outputs of Terraform, the passwords from Secrets Manager, and `COMMIT` is the SHA of the image
+in ECR ([`k8s/README.md`](k8s/README.md#values) lists where each value comes from):
+
+```bash
+aws eks update-kubeconfig --name workshop-prod --region us-east-1
+scripts/tool.sh helm upgrade --install workshop k8s/workshop --namespace workshop --create-namespace \
+  --values k8s/workshop/values-prod.yaml \
+  --set-string image.repository="$REPOSITORY_URL" --set-string image.tag="$COMMIT" \
+  --set-string config.DATABASE_HOST="$DATABASE_HOST" --set-string config.DATABASE_PORT="$DATABASE_PORT" \
+  --set-string config.DATABASE_NAME="$DATABASE_NAME" --set-string config.DATABASE_USER="$DATABASE_USER" \
+  --set-string config.REDIS_HOST="$REDIS_HOST" --set-string config.REDIS_PORT="$REDIS_PORT" \
+  --set-string config.APP_PUBLIC_URL="$APP_PUBLIC_URL" \
+  --set-string secrets.DATABASE_PASSWORD="$DATABASE_PASSWORD" --set-string secrets.JWT_SECRET="$JWT_SECRET" \
+  --wait --timeout 15m
+```
+
+The first install has no load balancer hostname yet, so it passes a placeholder for `APP_PUBLIC_URL`
+and upgrades again with the hostname, which the Service shows once it exists:
+
+```bash
+scripts/tool.sh kubectl get service workshop --namespace workshop \
+  --output jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+```
+
+`curl http://<hostname>/health/ready` answers 200 with `database` and `redis` up when the release is
+healthy. Locally the same chart runs through `scripts/local-cluster.sh up`, with `values-local.yaml`.
+
+### The prod database
+
+The database accepts connections only from the nodes of the cluster, so every way in goes through a
+pod. The user is `workshop`, the `database_user` output of Terraform, and its password is in Secrets
+Manager. This opens a `psql` session in a pod that lives for the session:
+
+```bash
+export PGPASSWORD="$(aws secretsmanager get-secret-value --secret-id workshop-prod/database-password \
+  --query SecretString --output text)"
+export DATABASE_HOST="$(scripts/tool.sh kubectl get configmap workshop --namespace workshop \
+  --output jsonpath='{.data.DATABASE_HOST}')"
+scripts/tool.sh kubectl run psql --namespace workshop --rm --stdin --tty --restart=Never \
+  --image=postgres:16-alpine --env PGPASSWORD="$PGPASSWORD" --env PGSSLMODE=require \
+  --command -- psql --host "$DATABASE_HOST" --username workshop --dbname workshop
+```
+
+A relay pod and a port forward let a client on your machine connect too:
+[`k8s/README.md`](k8s/README.md#the-database) has the commands.
+
+The deploy creates no account. You create the SUPER_ADMIN in the database, by hand or with the admin
+seed. By hand, in the `psql` session, you insert the user and link it to the `SUPER_ADMIN` role, the two
+statements `src/seed-admin.ts` runs, with an Argon2id hash of the password. With the admin seed, a pod
+of the image runs `node dist/seed-admin.js`, which reads `ADMIN_EMAIL`, `ADMIN_PASSWORD` and
+`ADMIN_DOCUMENT`, creates the account and does nothing for one that exists
+([`k8s/README.md`](k8s/README.md#the-database) has the pod command). Then sign in with
+`POST /api/v1/auth/sessions` and create every other record through the API.
+
+### Showing the autoscaler
+
+`k6/board.js` signs in once and lists the board under a growing load, so the replicas grow from 2
+toward 6 while `kubectl get hpa --watch` runs. The rate limit counts by address and every request
+leaves one machine, so raise `RATE_LIMIT_MAX_REQUESTS` for the run and restore it afterwards.
+[`k8s/README.md`](k8s/README.md#showing-the-autoscaler) has those steps. The two commands that show it:
+
+```bash
+scripts/tool.sh kubectl get hpa workshop --namespace workshop --watch
+scripts/tool.sh k6 run -e BASE_URL=http://localhost:18080 \
+  -e ADMIN_EMAIL=admin@example.com -e ADMIN_PASSWORD='choose-a-password' k6/board.js
+```
+
+`BASE_URL` is the hostname of the load balancer in `prod` and `http://localhost:18080` in the local
+cluster.
+
+### The API collection and the video
+
+The Postman collection of the whole API is
+[`postman/workshop-api.postman_collection.json`](postman/workshop-api.postman_collection.json), and its
+local environment sits beside it ([Postman collection](#postman-collection) explains how to run it).
+
+The demonstration video, up to 15 minutes, shows the deploy, a CI/CD run, calls to the API and the
+autoscaler.
+
+> **Placeholder:** the video is not published yet. Replace this line with its YouTube or Vimeo link
+> after the recording.
+
 ## Tech stack
 
 | Layer             | Technology                               |
@@ -305,15 +620,25 @@ is in [`docs/ubiquitous-language/`](docs/ubiquitous-language/README.md).
 | Coverage          | `@vitest/coverage-v8`                    |
 | Lint and format   | ESLint 9, Prettier 3                     |
 | Containers        | Docker and Docker Compose                |
+| Orchestration     | Kubernetes 1.37 on Amazon EKS, Helm 4    |
+| Local cluster     | kind                                     |
+| Infrastructure    | Terraform 1.17, on AWS                   |
+| CI and CD         | GitHub Actions                           |
+| Load test         | k6                                       |
 
 ## Requirements
 
 - **Node.js 22 or newer** (the `engines` field in `package.json`; the Docker image uses Node 24)
 - **npm** (the repository versions `package-lock.json`)
 - **Docker** and **Docker Compose**, for PostgreSQL, Redis and Mailpit
+- The **AWS CLI** and an AWS account, only to provision `prod` and to reach its cluster
 
 There is no need to install PostgreSQL, Redis or a mail server on the machine: `docker-compose.yml`
-starts them.
+starts them. Docker also runs the build tools of Phase 2 through [`scripts/tool.sh`](scripts/tool.sh),
+which pins their versions. Terraform 1.17.1, kubeconform 0.8.0, k6 2.3.0 and actionlint 1.7.12 run as
+containers. kind 0.33.0, kubectl 1.37.2 and Helm 4.3.1 are binaries that the script downloads into
+`.tools/bin` and checks against the checksum their projects publish. `.tools/` is generated, and git
+ignores it.
 
 ## Getting started
 
@@ -406,6 +731,10 @@ brings the application down with the field's message, rather than failing later.
 `.env` is in `.gitignore` and never versioned. `.env.test` is versioned on purpose: it points at
 the `workshop_test` database and holds only local test credentials.
 
+In Kubernetes the pods read the same variables from a ConfigMap, which holds the settings that are not
+secret, and a Secret, which holds `DATABASE_PASSWORD` and `JWT_SECRET`. The deploy fills in what only
+it knows ([Deploying to Kubernetes](#deploying-to-kubernetes)).
+
 ## Database
 
 PostgreSQL, reached through TypeORM with hand-written migrations. The schema has 20 domain tables,
@@ -421,7 +750,9 @@ npm run migration:generate  # generates a new one from the entity differences
 
 The production image carries no ts-node, so it applies the migrations with `node dist/migrate.js`
 and creates the `SUPER_ADMIN` with `node dist/seed-admin.js`. Both read the same `DATABASE_*`
-variables as the application, and the second reads the `ADMIN_*` ones.
+variables as the application, and the second reads the `ADMIN_*` ones. In Kubernetes a Job runs the
+first before each install and upgrade, and the second is run by hand
+([the prod database](#the-prod-database)).
 
 ### Seeds
 
@@ -641,7 +972,9 @@ Errors follow one shape, and the kind of the domain error decides the status:
 
 ## Postman collection
 
-[`postman/`](postman/) carries the collection and the local environment:
+[`postman/`](postman/) carries the collection,
+[`workshop-api.postman_collection.json`](postman/workshop-api.postman_collection.json), and the local
+environment:
 
 ```
 postman/
@@ -700,6 +1033,23 @@ run their own migrations on `workshop_test` before starting
 nor `npm run seed` is a prerequisite for them. The test database is never truncated between runs,
 which is why each test generates its own unique data rather than relying on a clean slate.
 
+### Infrastructure checks
+
+The infrastructure has a suite of its own, under `vitest.infra.config.ts`, that `npm test`, the CI and
+the `pre-push` hook never run. Its static group renders the chart, reads the Terraform files, runs the
+scripts of the workflows against stand-ins and reads the documents. It needs Docker and no AWS
+account:
+
+```bash
+npx vitest run --config vitest.infra.config.ts test/infra/static
+scripts/tool.sh actionlint
+```
+
+The runtime groups under `test/infra/runtime` start containers and a kind cluster: the image against
+a throwaway PostgreSQL and Redis, TLS to both, the compose stack, and the local cluster. They never
+touch the `workshop` or `workshop_test` databases. [`infra/README.md`](infra/README.md) lists the
+Terraform checks.
+
 ### Coverage
 
 The 80% floor is enforced per critical path, not as a single global number
@@ -747,6 +1097,7 @@ excludes the test files.
 
 ```
 .
+├── .github/workflows/             ci.yml and cd.yml
 ├── src/
 │   ├── config/                    typed configuration and environment validation
 │   ├── modules/                   one directory per module, four layers in each
@@ -770,15 +1121,19 @@ excludes the test files.
 │   ├── architecture/              the lint rules, each proven against a fixture tree
 │   ├── contract/                  the OpenAPI document the e2e suite compares against
 │   ├── e2e/                       full flows over HTTP
+│   ├── infra/                     the chart, Terraform, workflows and documents of Phase 2
 │   ├── integration/               persistence against the real PostgreSQL
 │   └── support/                   factories, in-memory fakes and suite setup
 ├── docs/
-│   ├── adr/                       37 architecture decision records
-│   ├── architecture/              overview, high level, low level per module
+│   ├── adr/                       41 architecture decision records
+│   ├── architecture/              overview, high level, low level per module, C4 diagrams
 │   └── ubiquitous-language/       the shared vocabulary, one page per context
+├── infra/                         Terraform: bootstrap, main stack, modules and environments
+├── k8s/                           the Helm chart and the kind configuration
+├── k6/                            the load scenario that shows the autoscaler
 ├── postman/                       collection and environment
 ├── security/                      the vulnerability assessment tool
-├── scripts/                       setup, seeds and the architecture checks
+├── scripts/                       setup, seeds, tool.sh, local-cluster.sh and the architecture checks
 ├── docker/                        PostgreSQL init script
 ├── Dockerfile
 └── docker-compose.yml
@@ -851,8 +1206,10 @@ rejected across the project, the record of the language decisions and the consis
 
 ## Technical decisions
 
-Thirty-five numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
-context, the decision and the consequences. The seven below shape the system the most.
+Forty-one numbered records in [`docs/adr/`](docs/adr/README.md), one per decision, each with its
+context, the decision and the consequences. The seven below shape the system the most. The four of
+Phase 2, 0038 to 0041, cover the infrastructure, the database and Redis settings, the chart and the
+pipeline ([Phase 2 infrastructure](#phase-2-infrastructure)).
 
 ### Why PostgreSQL
 
@@ -997,6 +1354,14 @@ Where each mandatory capability of the Tech Challenge is met.
 | docker-compose.yml                              | [`docker-compose.yml`](docker-compose.yml), four services, each with a healthcheck                                        |
 | Minimum 80% coverage on the critical domains    | Per-path thresholds in [`vitest.config.ts`](vitest.config.ts), see [Coverage](#coverage)                                  |
 | Simple local setup                              | [Getting started](#getting-started)                                                                                       |
+| Dockerfile and compose, revised                 | The image runs the migrations and the admin seed from compiled code, and `app` reports healthy on `/health/ready`         |
+| Kubernetes manifests in `/k8s`                  | Helm chart [`k8s/workshop`](k8s/workshop): Deployment, Service, ConfigMap, Secret, HPA, migration Job                     |
+| Horizontal Pod Autoscaler on CPU and memory     | [`hpa.yaml`](k8s/workshop/templates/hpa.yaml), 2 to 6 replicas at 70% CPU and 80% memory                                  |
+| Terraform scripts in `/infra`                   | [`infra/`](infra): VPC, EKS, RDS, ElastiCache, ECR; [resources and how to apply](#provisioning-with-terraform)            |
+| CI/CD pipeline                                  | [`ci.yml`](.github/workflows/ci.yml) and [`cd.yml`](.github/workflows/cd.yml): build, test, image, deploy                 |
+| README with the architecture drawing            | [Phase 2 infrastructure](#phase-2-infrastructure)                                                                         |
+| Link to the API collection                      | [`postman/workshop-api.postman_collection.json`](postman/workshop-api.postman_collection.json)                            |
+| Link to the demonstration video                 | A placeholder until the video is recorded                                                                                 |
 
 The customer receives the budget by e-mail, with the total and a link to approve it and a link to
 reject it, and can also read it at `GET /work-orders/me/:number`. The links are API calls that take a
@@ -1021,10 +1386,17 @@ What is implemented:
 - NUL bytes refused before they reach a query, with a 400 instead of a 500
 - Logging with `authorization`, `password` and `refreshToken` redacted
 - The container runs as the `node` user, not as root
+- The pods run as user 1000 with a read-only root file system and no privilege escalation
+- The database and the cache of `prod` accept connections only from the cluster's nodes, and only over
+  TLS
+- The CD assumes an AWS role through GitHub OIDC, and the repository holds no AWS access key and no
+  secret value
 
 What this project does **not** claim: it has not been through a security audit, does not run in
-production and should not be treated as ready for it. To report a vulnerability, open an issue
-without detailing the vector and ask for a private channel.
+production and should not be treated as ready for it. The API in `prod` answers over HTTP at the
+hostname of the load balancer, because HTTPS needs a domain and a certificate that this project leaves
+out. To report a vulnerability, open an issue without detailing the vector and ask for a private
+channel.
 
 ## Security assessment
 
@@ -1067,17 +1439,23 @@ are in [Security assessment documentation](security/README.md).
 
 ## Deployment
 
-What exists in the repository is enough to run on any host with Docker:
+`prod` is the only environment in AWS, and the CD deploys it on every merge to `main` that passes the
+CI ([The CI and the CD](#the-ci-and-the-cd)). What the repository holds for it:
 
 - A multi-stage [`Dockerfile`](Dockerfile), with `npm ci` and `npm prune --omit=dev --omit=optional`,
-  producing a production image that runs as the `node` user and exposes port 3000
-- A [`docker-compose.yml`](docker-compose.yml) orchestrating the application, PostgreSQL and
-  Redis, with a healthcheck on each and a named volume for the data
+  producing a production image that runs as the `node` user, exposes port 3000 and carries the
+  compiled migrations, the admin seed and the RDS certificate bundle
+- A [`docker-compose.yml`](docker-compose.yml) for development, with a healthcheck on each service and
+  a named volume for the data
+- The Helm chart in [`k8s/workshop`](k8s/workshop), which runs the migrations in a Job before the pods
+  change ([Deploying to Kubernetes](#deploying-to-kubernetes))
+- The Terraform in [`infra/`](infra) that provisions the cluster, the database, the cache, the
+  registry and the secrets ([Provisioning with Terraform](#provisioning-with-terraform))
+- The two workflows in [`.github/workflows`](.github/workflows)
 
-There is no cloud, Kubernetes, Terraform or CI configuration in this repository, and the compose
-file was written for a local environment. Taking this to production would need at least secrets
-outside `.env`, TLS at the edge, a backup of the PostgreSQL volume and a step that runs the
-migrations before the application starts serving.
+The repository leaves out HTTPS and a domain, backups of the database (destroying `prod` erases it),
+monitoring and alerting, and a staging environment. The API answers over HTTP at the hostname of the
+load balancer.
 
 ## Contributing
 
@@ -1089,7 +1467,9 @@ The conventions the repository follows:
    in e2e
 4. `pre-push` runs lint, build and tests for you. With Docker up it includes integration and e2e;
    without it, run those two suites by hand before opening the PR
-5. A decision that changes the shape of the system becomes a new ADR in `docs/adr/`, numbered in
+5. A change to the chart, the Terraform files, the workflows or their documents runs the
+   infrastructure specs: `npx vitest run --config vitest.infra.config.ts test/infra/static`
+6. A decision that changes the shape of the system becomes a new ADR in `docs/adr/`, numbered in
    sequence
 
 ## License
