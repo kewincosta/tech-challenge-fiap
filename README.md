@@ -1037,7 +1037,10 @@ Those two suites read `.env.test`, which is versioned on purpose because it carr
 run their own migrations on `workshop_test` before starting
 ([`test/support/global-setup.ts`](test/support/global-setup.ts)). Neither `npm run migration:run`
 nor `npm run seed` is a prerequisite for them. The test database is never truncated between runs,
-which is why each test generates its own unique data rather than relying on a clean slate.
+which is why each test generates its own unique data rather than relying on a clean slate. The CPF
+and plate factories also skip every CPF and plate that an active user or vehicle of that database
+holds: [`test/support/setup-taken-values.ts`](test/support/setup-taken-values.ts) loads them before
+each test file of these two suites, and the unit suite loads nothing.
 
 ### Infrastructure checks
 

@@ -2,7 +2,10 @@
 // the values they handed out in this test file, and a factory draws again when it meets one, so no
 // call hands out a value twice. The test database is never truncated, so it keeps every user and
 // vehicle that earlier runs inserted, and a CPF or a plate that an active row holds meets the unique
-// index of its table (ux_users_document, ux_vehicles_plate).
+// index of its table (ux_users_document, ux_vehicles_plate). The integration and e2e suites also
+// load the values of the active rows of the database into the set before each test file
+// (setup-taken-values.ts). The unit suite and the infra runtime specs load nothing, so for them the
+// set only keeps a file from drawing one value twice.
 export const takenValues = new Set<string>();
 
 // Plenty: a plate, the likelier of the two, lands on a taken value about once in three thousand
