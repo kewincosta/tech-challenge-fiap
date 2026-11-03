@@ -187,7 +187,8 @@ function toNumber(value: Value): number {
   return NaN;
 }
 
-function toText(value: Value): string {
+/** The text GitHub makes of a value: nothing for null, JSON for an object. */
+export function toText(value: Value): string {
   if (value === null) {
     return '';
   }

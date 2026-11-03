@@ -7,6 +7,7 @@ import {
   hasStatusFunction,
   interpolate,
   jobRuns,
+  toText,
   type Context,
   type Value,
 } from '../support/expressions';
@@ -542,6 +543,35 @@ describe('CD workflow', () => {
       ).toBeLessThanOrEqual(
         requested.length > 0 ? Math.min(...requested.map(Number)) : Math.min(lasts, 3600),
       );
+    }
+  });
+
+  it('assumes the role in the region of the Terraform files', () => {
+    const regionOf = (file: string): string | undefined =>
+      unquoted(
+        blockArguments(withoutComments(readText(join(REPOSITORY_ROOT, 'infra/environments', file))))
+          .region,
+      );
+    const context = contextOf(PASSED);
+    const region = toText(interpolate(String(cd.env?.AWS_REGION), context));
+
+    expect(regionOf('prod.tfvars'), 'prod.tfvars sets a region').toBeTruthy();
+    expect(regionOf('prod.backend.hcl'), 'the state is in the region of the stack').toBe(
+      regionOf('prod.tfvars'),
+    );
+    expect(region).toBe(regionOf('prod.tfvars'));
+    for (const id of AWS_JOBS) {
+      const assume = actionSteps(cd.jobs[id]).find((step) =>
+        step.uses.startsWith('aws-actions/configure-aws-credentials@'),
+      );
+
+      expect(
+        interpolate(String(assume?.with?.['aws-region']), {
+          ...context,
+          env: { AWS_REGION: region },
+        }),
+        `${id} assumes the role in that region`,
+      ).toBe(region);
     }
   });
 
