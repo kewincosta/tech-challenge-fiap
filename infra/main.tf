@@ -1,5 +1,6 @@
-# The one entry of the infrastructure. It wires the modules in modules/. An environment is a pair
-# of files in environments/, applied as:
+# The one entry of the infrastructure. It wires the modules in modules/ and holds what joins them:
+# who may reach the database and the cache. An environment is a pair of files in environments/,
+# applied as:
 #
 #   terraform init -backend-config=environments/prod.backend.hcl
 #   terraform apply -var-file=environments/prod.tfvars
@@ -11,6 +12,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "6.71.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.9.1"
     }
   }
 
@@ -28,6 +33,10 @@ provider "aws" {
       ManagedBy   = "terraform"
     }
   }
+}
+
+locals {
+  name = "${var.project}-${var.environment}"
 }
 
 module "network" {
@@ -55,10 +64,69 @@ module "cluster" {
   subnet_ids                 = module.network.private_subnet_ids
 }
 
+module "database" {
+  source = "./modules/database"
+
+  project                      = var.project
+  environment                  = var.environment
+  database_name                = var.database_name
+  database_user                = var.database_user
+  database_engine_version      = var.database_engine_version
+  database_instance_class      = var.database_instance_class
+  database_allocated_storage   = var.database_allocated_storage
+  database_multi_az            = var.database_multi_az
+  database_skip_final_snapshot = var.database_skip_final_snapshot
+  database_deletion_protection = var.database_deletion_protection
+  subnet_ids                   = module.network.private_subnet_ids
+  security_group_ids           = [aws_security_group.database.id]
+}
+
+module "cache" {
+  source = "./modules/cache"
+
+  project              = var.project
+  environment          = var.environment
+  cache_engine_version = var.cache_engine_version
+  cache_node_type      = var.cache_node_type
+  cache_node_count     = var.cache_node_count
+  subnet_ids           = module.network.private_subnet_ids
+  security_group_ids   = [aws_security_group.cache.id]
+}
+
 module "registry" {
   source = "./modules/registry"
 
   project              = var.project
   environment          = var.environment
   registry_image_count = var.registry_image_count
+}
+
+# Only the cluster's nodes reach the database and the cache. Each group holds one rule, a source
+# group and a port, and no address range.
+resource "aws_security_group" "database" {
+  name        = "${local.name}-database"
+  description = "PostgreSQL, open to the nodes of the ${local.name} cluster only."
+  vpc_id      = module.network.vpc_id
+
+  ingress {
+    description     = "PostgreSQL from the nodes"
+    protocol        = "tcp"
+    from_port       = 5432
+    to_port         = 5432
+    security_groups = [module.cluster.node_security_group_id]
+  }
+}
+
+resource "aws_security_group" "cache" {
+  name        = "${local.name}-cache"
+  description = "Redis, open to the nodes of the ${local.name} cluster only."
+  vpc_id      = module.network.vpc_id
+
+  ingress {
+    description     = "Redis from the nodes"
+    protocol        = "tcp"
+    from_port       = 6379
+    to_port         = 6379
+    security_groups = [module.cluster.node_security_group_id]
+  }
 }

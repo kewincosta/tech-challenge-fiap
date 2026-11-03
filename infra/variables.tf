@@ -77,6 +77,61 @@ variable "cluster_admin_arns" {
   default     = []
 }
 
+variable "database_name" {
+  description = "The database the application connects to."
+  type        = string
+}
+
+variable "database_user" {
+  description = "The master user of the database."
+  type        = string
+}
+
+variable "database_engine_version" {
+  description = "The PostgreSQL version, with its minor."
+  type        = string
+}
+
+variable "database_instance_class" {
+  description = "The instance class of the database."
+  type        = string
+}
+
+variable "database_allocated_storage" {
+  description = "The storage of the database in GiB."
+  type        = number
+}
+
+variable "database_multi_az" {
+  description = "Whether a standby in another zone backs the database."
+  type        = bool
+}
+
+variable "database_skip_final_snapshot" {
+  description = "Whether destroying the database skips the last snapshot, which erases the data for good."
+  type        = bool
+}
+
+variable "database_deletion_protection" {
+  description = "Whether AWS refuses to delete the database until the protection is switched off."
+  type        = bool
+}
+
+variable "cache_engine_version" {
+  description = "The Redis version."
+  type        = string
+}
+
+variable "cache_node_type" {
+  description = "The node type of the cache."
+  type        = string
+}
+
+variable "cache_node_count" {
+  description = "How many nodes the cache runs."
+  type        = number
+}
+
 variable "registry_image_count" {
   description = "How many images the repository keeps. Older ones expire."
   type        = number

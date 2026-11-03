@@ -6,6 +6,7 @@
 mock_provider "aws" {
   source = "./tests/mocks/aws"
 }
+mock_provider "random" {}
 mock_provider "time" {}
 mock_provider "tls" {}
 mock_provider "cloudinit" {}

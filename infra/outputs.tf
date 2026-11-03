@@ -14,3 +14,33 @@ output "repository_url" {
   description = "The ECR repository the CD pushes the image to."
   value       = module.registry.repository_url
 }
+
+output "database_host" {
+  description = "The address of the PostgreSQL instance."
+  value       = module.database.host
+}
+
+output "database_port" {
+  description = "The port of the PostgreSQL instance."
+  value       = module.database.port
+}
+
+output "database_name" {
+  description = "The database the application connects to."
+  value       = module.database.name
+}
+
+output "database_user" {
+  description = "The master user of the database."
+  value       = module.database.user
+}
+
+output "redis_host" {
+  description = "The address of the Redis primary node."
+  value       = module.cache.host
+}
+
+output "redis_port" {
+  description = "The port of the Redis primary node."
+  value       = module.cache.port
+}
