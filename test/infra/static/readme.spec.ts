@@ -19,6 +19,7 @@ const README = readText(join(REPOSITORY_ROOT, 'README.md'));
 const SECTIONS = sectionsOf(README);
 
 const SHELL = ['bash', 'sh', 'shell'];
+const FILE_EXTENSION = /\.(?:md|ts|js|json|ya?ml|sh|tf|tfvars|hcl|mmd|pem)$/;
 
 /** Every file the repository holds, tracked or not yet committed and not ignored, and its folders. */
 function repositoryPaths(): Set<string> {
@@ -69,7 +70,7 @@ interface Expected {
   mentions?: RegExp[];
   /** Commands its shell blocks have to hold. */
   commands?: RegExp[];
-  /** Mermaid drawings: what each has to show, found across the drawings of the section. */
+  /** Mermaid drawings: one drawing of the section has to show everything a line lists. */
   drawings?: Array<[shows: string, patterns: RegExp[]]>;
 }
 
@@ -117,7 +118,12 @@ const PARTS: Array<{ part: string; expected: Expected[] }> = [
           /Secrets Manager/,
           /Destroying `prod` erases its database/,
         ],
-        commands: [/terraform .*\binit\b/, /terraform .*\bapply\b/, /terraform .*\bdestroy\b/],
+        commands: [
+          /terraform -chdir=infra\/bootstrap apply/,
+          /terraform -chdir=infra init -backend-config=environments\/prod\.backend\.hcl/,
+          /terraform -chdir=infra apply -var-file=environments\/prod\.tfvars/,
+          /terraform -chdir=infra destroy -var-file=environments\/prod\.tfvars/,
+        ],
       },
     ],
   },
@@ -168,7 +174,7 @@ const PARTS: Array<{ part: string; expected: Expected[] }> = [
           /admin seed/,
           /dist\/seed-admin\.js/,
         ],
-        commands: [/aws secretsmanager get-secret-value/, /kubectl run/, /psql/],
+        commands: [/aws secretsmanager get-secret-value/, /kubectl run /, /--command -- psql /],
       },
     ],
   },
@@ -195,16 +201,20 @@ describe('README', () => {
           expect(commandsOf(found.fences), `${part}: a command ${pattern}`).toMatch(pattern);
         }
         if (want.drawings !== undefined) {
-          const drawings = found.fences.filter((fence) => fence.language === 'mermaid');
-          const drawn = drawings.map((fence) => fence.content).join('\n');
+          const drawings = found.fences
+            .filter((fence) => fence.language === 'mermaid')
+            .map((fence) => fence.content);
 
           expect(drawings.length, `${part}: the section draws it`).toBeGreaterThan(0);
           for (const [shows, patterns] of want.drawings) {
-            for (const pattern of patterns) {
-              expect(drawn, `${part}: the drawings show ${shows}, with ${pattern}`).toMatch(
-                pattern,
-              );
-            }
+            const missing = drawings.map((drawing) =>
+              patterns.filter((pattern) => !pattern.test(drawing)).map(String),
+            );
+
+            expect(
+              missing.some((absent) => absent.length === 0),
+              `${part}: one drawing shows ${shows}, and the best one lacks ${missing.sort((a, b) => a.length - b.length)[0]?.join(', ')}`,
+            ).toBe(true);
           }
         }
       }
@@ -255,11 +265,14 @@ describe('README', () => {
 
     /** The path a word of the README names, or undefined when the word names none. */
     const pathOf = (word: string): string | undefined => {
-      const token = word
+      // Terraform reads these two flags relative to -chdir=infra, where the commands run.
+      const fromInfra = /^-(?:var-file|backend-config)=/.test(word);
+      const stripped = word
         .replace(/^[("'`[]+|[)"'`\],;:.]+$/g, '')
         .replace(/^--?[\w-]+=/, '')
         .replace(/^\.\//, '')
         .replace(/\/+$/, '');
+      const token = fromInfra ? `infra/${stripped}` : stripped;
 
       if (token === '' || /[$<>*{}|\\:]/.test(token)) {
         return undefined;
@@ -268,11 +281,15 @@ describe('README', () => {
         return token.startsWith('/app/') ? token : undefined;
       }
       if (token.includes('/')) {
-        return roots.has(token.split('/')[0]) || ['dist', '.tools'].includes(token.split('/')[0])
+        // A folder of the repository, or a file whatever folder it is said to be in: a typo in the
+        // first folder is a path to a file that does not exist.
+        return roots.has(token.split('/')[0]) ||
+          ['dist', '.tools'].includes(token.split('/')[0]) ||
+          FILE_EXTENSION.test(token)
           ? token
           : undefined;
       }
-      return /\.(?:md|ts|js|json|ya?ml|sh|tf|tfvars|hcl|mmd|pem)$/.test(token) ||
+      return FILE_EXTENSION.test(token) ||
         ['Dockerfile', 'LICENSE', '.env', '.env.example', '.env.test'].includes(token)
         ? token
         : undefined;
