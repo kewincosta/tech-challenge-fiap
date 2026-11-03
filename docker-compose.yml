@@ -20,6 +20,19 @@ services:
       SMTP_PORT: 1025
     ports:
       - '${APP_HOST_PORT:-13000}:3000'
+    # Healthy once /health/ready answers 200. The image has no curl or wget, so node asks.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then((response) => process.exit(response.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   postgres:
     image: postgres:16-alpine
