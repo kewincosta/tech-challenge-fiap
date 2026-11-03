@@ -33,9 +33,9 @@ run on the developer's machine for now.
   tested with the tip of `main`, through the GitHub API. Two merges can finish their CI out of order,
   and the older commit would then deploy after the newer one. The older commit sees that it is no
   longer the tip and stops, and the newer one deploys through its own run.
-- `terraform` applies `prod` with `environments/prod.backend.hcl` and `environments/prod.tfvars`.
-  The variable `cluster_admin_arns` comes from the `CLUSTER_ADMIN_ARNS` variable of the GitHub
-  environment, and an empty list when that is unset.
+- `terraform` applies `prod` with `infra/environments/prod.backend.hcl` and
+  `infra/environments/prod.tfvars`. The variable `cluster_admin_arns` comes from the
+  `CLUSTER_ADMIN_ARNS` variable of the GitHub environment, and is an empty list when that is unset.
 - `image` builds the `Dockerfile` and pushes it to the ECR repository that Terraform made, tagged with
   the commit's SHA.
 - `deploy` reads the Terraform outputs and both secrets. It upgrades the chart with
@@ -43,18 +43,18 @@ run on the developer's machine for now.
   hostname of the load balancer. When `APP_PUBLIC_URL` differs from it, the job upgrades the release
   again. [ADR 0040](0040-the-application-runs-in-kubernetes-as-a-helm-chart.md) describes the chart.
 
-Every job of the CD checks out and tags `github.event.workflow_run.head_sha`. In a `workflow_run` run,
-`github.sha` is the tip of `main` when the CD starts, which can be a later commit than the one the CI
-tested.
+Every job of the CD that checks out code takes `github.event.workflow_run.head_sha`, and the image
+carries it as its tag. In a `workflow_run` run, `github.sha` is the tip of `main` when the CD starts,
+which can be a later commit than the one the CI tested.
 
 The three jobs that call AWS run in the GitHub environment `prod`, which admits only `main`, with
 `id-token: write`. Each assumes `workshop-deploy`, the role of the bootstrap
 ([ADR 0038](0038-infrastructure-on-aws-provisioned-by-terraform.md)), through
 `aws-actions/configure-aws-credentials`, with the role's ARN taken from the environment variable
-`AWS_DEPLOY_ROLE_ARN`. No job holds an access
-key, and the credentials step masks the account id. A job reads the Terraform outputs that it needs
-from the state, with `terraform output`, and receives none from the job before it. GitHub drops a job
-output that holds a masked value, and the repository URL holds the account id.
+`AWS_DEPLOY_ROLE_ARN`. No job holds an access key, and the credentials step masks the account id. A
+job reads the Terraform outputs that it needs from the state, with `terraform output`, and receives
+none from the job before it. GitHub drops a job output that holds a masked value, and the repository
+URL holds the account id.
 
 The CD reads the database password and the JWT secret from Secrets Manager during the run and
 masks both with `::add-mask::` before anything else can print them. It hands them to Helm with

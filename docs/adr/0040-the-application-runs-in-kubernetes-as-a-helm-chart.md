@@ -67,16 +67,16 @@ commit SHA made of digits only as a number. The deploy never passes `--reuse-val
 to a release by hand disappears at the next deploy. The load balancer's hostname exists only once the
 Service does, so the first install passes a placeholder URL and an upgrade follows with the hostname.
 
-`scripts/local-cluster.sh up` makes the local cluster. It creates the kind cluster `workshop` on a node
-image of the Kubernetes version that `prod.tfvars` pins
-([ADR 0038](0038-infrastructure-on-aws-provisioned-by-terraform.md)), installs metrics-server from a manifest kept
-in the repository, builds the image from the working tree, loads it under a tag made from its layers,
-and installs the chart with the local values, whose pods reach the compose PostgreSQL, Redis and
-Mailpit by name. kind points the DNS of its node at Docker's, which answers for the containers on the
-networks the node is on, so the script joins the node to the networks of those compose services. It
-takes the secrets from `.env` and writes a kubeconfig of its own under `.tools/kind`, so
-`~/.kube/config` stays as it was. `down` deletes the cluster and leaves the compose containers and
-their data.
+`scripts/local-cluster.sh up` makes the local cluster. It creates the kind cluster `workshop` on a
+node image of the Kubernetes version that `prod.tfvars` pins
+([ADR 0038](0038-infrastructure-on-aws-provisioned-by-terraform.md)), installs metrics-server from a
+manifest kept in the repository, builds the image from the working tree, loads it under a tag made
+from its layers, and installs the chart with the local values, whose pods reach the compose
+PostgreSQL, Redis and Mailpit by name. kind points the DNS of its node at Docker's, which answers for
+the containers on the networks the node is on, so the script joins the node to the networks of those
+compose services. It takes the secrets from `.env` and writes a kubeconfig of its own under
+`.tools/kind`, so `~/.kube/config` stays as it was. `down` deletes the cluster and leaves the
+compose containers and their data.
 
 kind, kubectl and Helm ship no image that reaches a kind cluster, so they run as binaries that
 `scripts/tool.sh` downloads into `.tools/bin` and checks against the checksum their projects publish.
