@@ -61,6 +61,6 @@ Proof: `git check-ignore -q docs/roteiro-video.md && git check-ignore -q docs/ro
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`, returned at `ebc9ede`
+- **Dispatched:** build (Sonnet sub-agent, C1 to C4, and the Phase 2 video script) at `29f839d`, returned at `ebc9ede`; Verifier (fresh sub-agent, default model) at `cd46ba0`, over `c8b2a1e..cd46ba0`, with `proofs.md` 6 pass at `cd46ba0`
 - **Boundary:** C1-C4 closed at `ebc9ede`; the video script is `docs/roteiro-video-fase-2.md`, which git ignores
 - **Abandoned:** none
