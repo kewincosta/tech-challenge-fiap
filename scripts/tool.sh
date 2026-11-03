@@ -85,8 +85,6 @@ case "$TOOL" in
     mkdir -p "$TOOLS/terraform/plugin-cache"
     docker_args+=(
       --env "TF_PLUGIN_CACHE_DIR=$TOOLS/terraform/plugin-cache"
-      # The first init has no lock file yet, and the cache holds no hash to check against.
-      --env 'TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE=true'
       "$TERRAFORM_IMAGE"
     )
     ;;
