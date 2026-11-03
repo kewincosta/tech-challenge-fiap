@@ -209,3 +209,23 @@ describe('Terraform files', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('Bootstrap variables', () => {
+  it('names sub_claim_prefix where a prefix without the IDs is refused', () => {
+    const variables = blocks(readText(join(INFRA, 'bootstrap/variables.tf')), 'variable');
+    const prefix = variables.find((variable) => variable.labels[0] === 'github_subject_prefix');
+    expect(prefix, 'the bootstrap declares github_subject_prefix').toBeDefined();
+
+    const validations = blocks(prefix?.body ?? '', 'validation');
+    const withoutIds = validations.find((validation) =>
+      /owner and repository IDs/.test(
+        unquoted(blockArguments(validation.body).error_message) ?? '',
+      ),
+    );
+    expect(withoutIds, 'a validation refuses a prefix without the IDs').toBeDefined();
+
+    const message = unquoted(blockArguments(withoutIds?.body ?? '').error_message) ?? '';
+    expect(message).toContain('sub_claim_prefix');
+    expect(message).toContain('gh api repos/<owner>/<repo>/actions/oidc/customization/sub');
+  });
+});
