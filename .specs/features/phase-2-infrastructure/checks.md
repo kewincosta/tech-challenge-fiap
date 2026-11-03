@@ -123,7 +123,7 @@ Proof: run infra | ✓ Chart > keeps every secret out of the values files and fa
 **C32** - `k6 inspect` accepts the scenario in `k6/board.js` (AC 12)
 Proof: `scripts/tool.sh k6 inspect k6/board.js`
 
-**C33** - Run with short stages against the local cluster and an account's credentials, the k6 script signs in once and lists the board, every request answered 200 and every check passing (AC 12)
+**C33** - Run with short stages against the local cluster and an account's credentials, the k6 script signs in once and lists the board, the sign-in answered 201 and every listing 200, and every check passing (AC 12)
 Proof: run cluster | ✓ Local cluster > runs the k6 scenario with one sign-in and the board listed
 
 ### S3 - The chart runs in a local cluster
@@ -226,7 +226,7 @@ Proof: run infra | ✓ CD workflow > applies Terraform, pushes the image and upg
 **C64** - The CD runs one deploy at a time: its concurrency group holds a second run until the first ends, with `cancel-in-progress` false (AC 24)
 Proof: run infra | ✓ CD workflow > queues a second deploy behind the first
 
-**C65** - The CD's jobs run under the `prod` environment with `id-token: write` and assume the deploy role through `aws-actions/configure-aws-credentials` and `role-to-assume`; neither workflow names an AWS access key (AC 25)
+**C65** - The CD's jobs that call AWS run under the `prod` environment with `id-token: write` and assume the deploy role through `aws-actions/configure-aws-credentials` and `role-to-assume`; neither workflow names an AWS access key (AC 25)
 Proof: run infra | ✓ CD workflow > assumes the deploy role through OIDC and names no access key
 
 **C66** - The CD reads the database password and `JWT_SECRET` from Secrets Manager during the run, masks them, and hands them to the chart without writing them to a file in the repository (AC 25)
@@ -296,7 +296,7 @@ Proof: run infra | ✓ Architecture diagrams > draws the prod deployment
 
 ## Handoff
 
-- **Settled mid-build:** none
+- **Settled mid-build:** 2026-11-03, on three points raised after the build: C33's "every request answered 200" while the sign-in answers 201; the `tip` job, which calls no AWS API and so sits outside C65's "the CD's jobs"; and `AWS_DEPLOY_ROLE_ARN`, a variable whose value, account id included, GitHub prints in the public log of the credentials step: user: "1, 2 e 3", approving the three recommendations; C33 and C65 amended, door 6 and hop 7 reworded, and the role's ARN moves to a secret of the `prod` environment
 - **Dispatched:** build 1 (Sonnet sub-agent, S1, C1 to C18 and C20, with `vitest.infra.config.ts`) at `8487598`, stopped by the 5-hour limit at `08d438f`, resumed after the reset, returned at `ee0014b`; build 2 (Sonnet sub-agent, S4, C42 to C60, with `scripts/tool.sh`) at `ee0014b`, returned at `b8f0146`; build 3 (Sonnet sub-agent, S2 and S3, C19 and C21 to C41) at `b8f0146`, returned at `99b3ddc`; build 4 (Sonnet sub-agent, S5 and S6, C61 to C72) at `99b3ddc`, stopped by the 5-hour limit at `2ce3b01`, resumed after the reset, returned at `9515068`; Verifier (fresh sub-agent, default model) at `c37b779`, over `8487598..c37b779`, with `proofs.md` 80 pass at `c37b779`
 - **Boundary:** C1-C18 and C20 closed at `ee0014b`; C42-C60 closed at `b8f0146`; C19 and C21-C41 closed at `99b3ddc`; C61-C72 closed at `9515068`
 - **Abandoned:** none
