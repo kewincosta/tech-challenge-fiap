@@ -180,6 +180,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: C75 infra/modules/network/outputs.tf (infra)
 - last seen: 2026-11-03T09:46:34Z
 
+### L-045 - Compare a workflow's trigger filters as a whole beside the example events, because a few examples miss an added branch, pattern, ignore list or action.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `ci` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: C1 test/infra/static/workflows.spec.ts:134 (ci)
+- last seen: 2026-11-03T13:24:24Z
+
+### L-046 - Rename a test together with every proof line under .specs that names it, because the renamed test leaves that check with no test that runs.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `specs` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: phase-2-infrastructure C61, renamed in 7383f9f (specs)
+- last seen: 2026-11-03T13:24:24Z
+
+### L-047 - Assert the kind of a generated document, not only that it parses, because PersonDocument accepts a CPF and a CNPJ alike.
+- signal: `weak_test` · recurrence: 1 feature(s) · scope: `test-support` · harmful: 0
+- features: ci-triggers-and-test-collisions
+- evidence: C4 test/integration/test-values.spec.ts:136 (test-support)
+- last seen: 2026-11-03T13:24:24Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

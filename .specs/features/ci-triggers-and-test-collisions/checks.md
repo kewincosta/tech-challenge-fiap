@@ -78,5 +78,5 @@ Proof: run integration | ✓ Test values > loads the taken values in the integra
 
 - **Settled mid-build:** none
 - **Dispatched:** build (Sonnet sub-agent, C1 to C7) at `71ceae3`, returned at `c5775cd`; Verifier (fresh sub-agent, default model) at `9da3341`, over `16c8ce5..9da3341`, with `proofs.md` 9 pass at `9da3341`, stopped by the 5-hour limit before reading, resumed at `a1e66a8`, returned FAIL with 3 findings at `db585f6`; the 3 findings fixed in the main session at `9bdf1e9`, `2607dad`, `a3d5d95` and `1ad93b6`, and its two notes at `1fe0ae1` (C3 also requires that another branch runs nothing) and `a3d5d95` (door 6 of `phase-2-infrastructure` notes the amendment)
-- **Boundary:** C1-C7 closed at `c5775cd`; the tests of C1, C3 and C4 made stricter at `1ad93b6`
+- **Boundary:** C1-C7 closed at `c5775cd`; the tests of C1, C3 and C4 made stricter at `1ad93b6`; `check_proofs.py` 9 pass and `validate_verification.py` exits 0 at `eb8dc93`, after `check_proofs.py phase-2-infrastructure` passed 86 at `dd991bf`
 - **Abandoned:** none

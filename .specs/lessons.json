@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 45,
+  "next_id": 48,
   "lessons": [
     {
       "id": "L-003",
@@ -515,6 +515,60 @@
       ],
       "created": "2026-11-03T09:46:34Z",
       "last_seen": "2026-11-03T09:46:34Z"
+    },
+    {
+      "id": "L-045",
+      "key": "weak_test::compare a workflow s trigger filters as a whole beside the example events because a few examples miss an added branch pattern ignore list or action",
+      "text": "Compare a workflow's trigger filters as a whole beside the example events, because a few examples miss an added branch, pattern, ignore list or action.",
+      "signal": "weak_test",
+      "scope": "ci",
+      "status": "candidate",
+      "features": [
+        "ci-triggers-and-test-collisions"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C1 test/infra/static/workflows.spec.ts:134 (ci)"
+      ],
+      "created": "2026-11-03T13:24:24Z",
+      "last_seen": "2026-11-03T13:24:24Z"
+    },
+    {
+      "id": "L-046",
+      "key": "weak_test::rename a test together with every proof line under specs that names it because the renamed test leaves that check with no test that runs",
+      "text": "Rename a test together with every proof line under .specs that names it, because the renamed test leaves that check with no test that runs.",
+      "signal": "weak_test",
+      "scope": "specs",
+      "status": "candidate",
+      "features": [
+        "ci-triggers-and-test-collisions"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "phase-2-infrastructure C61, renamed in 7383f9f (specs)"
+      ],
+      "created": "2026-11-03T13:24:24Z",
+      "last_seen": "2026-11-03T13:24:24Z"
+    },
+    {
+      "id": "L-047",
+      "key": "weak_test::assert the kind of a generated document not only that it parses because persondocument accepts a cpf and a cnpj alike",
+      "text": "Assert the kind of a generated document, not only that it parses, because PersonDocument accepts a CPF and a CNPJ alike.",
+      "signal": "weak_test",
+      "scope": "test-support",
+      "status": "candidate",
+      "features": [
+        "ci-triggers-and-test-collisions"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C4 test/integration/test-values.spec.ts:136 (test-support)"
+      ],
+      "created": "2026-11-03T13:24:24Z",
+      "last_seen": "2026-11-03T13:24:24Z"
     }
   ]
 }
