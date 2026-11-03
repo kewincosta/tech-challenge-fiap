@@ -138,8 +138,9 @@ create_cluster() {
 # node is on. Joining the node to the networks of the compose services lets the pods reach postgres,
 # redis and mailpit by name. The node goes with the cluster, and so does its place on them.
 join_compose_networks() {
-  local service network joined
+  local service networks network joined
   for service in "${COMPOSE_SERVICES[@]}"; do
+    networks="$(networks_of "$(compose_container "$service")")"
     while IFS= read -r network; do
       case "$network" in
         '' | bridge | host | none) continue ;;
@@ -148,7 +149,7 @@ join_compose_networks() {
       if ! grep -qx -- "$network" <<<"$joined"; then
         docker network connect "$network" "$NODE"
       fi
-    done < <(networks_of "$(compose_container "$service")")
+    done <<<"$networks"
   done
 }
 
