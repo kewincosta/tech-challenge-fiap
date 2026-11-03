@@ -1,7 +1,8 @@
-import { randomBytes } from 'node:crypto';
-import { readdirSync } from 'node:fs';
+import { randomBytes, X509Certificate } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import { uniqueValidCpf } from '../../support/factories/document.factory';
 import {
   buildImage,
@@ -153,5 +154,25 @@ describe('Production image', () => {
     expect(runtimeUser).toMatch(/^[1-9]\d*$/);
     expect(tooling.code).toBe(0);
     expect(tooling.stdout.trim(), 'ts-node and typescript are not in node_modules').toBe('');
+  });
+
+  it('carries the RDS certificate bundle the prod values name', async () => {
+    const values = parse(
+      readFileSync(join(REPOSITORY_ROOT, 'k8s/workshop/values-prod.yaml'), 'utf8'),
+    ) as {
+      config: { DATABASE_SSL_CA: string };
+    };
+    const bundle = values.config.DATABASE_SSL_CA;
+
+    const file = await runInImage(['cat', bundle]);
+    const certificates =
+      file.stdout.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
+
+    expect(bundle, 'the prod values name a bundle').toMatch(/^\/.+\.pem$/);
+    expectSuccess(file, `reading ${bundle}`);
+    expect(certificates.length, 'a bundle holds more than one certificate').toBeGreaterThan(1);
+    for (const certificate of certificates) {
+      expect(new X509Certificate(certificate).subject, 'each block is a certificate').not.toBe('');
+    }
   });
 });
