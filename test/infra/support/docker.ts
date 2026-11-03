@@ -21,7 +21,7 @@ export interface CommandResult {
 export interface CommandOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
-  /** Returns the result of a command that exits non-zero instead of throwing. */
+  /** Makes a non-zero exit a result to inspect. Without it the call throws. */
   allowFailure?: boolean;
 }
 

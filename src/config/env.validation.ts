@@ -8,7 +8,7 @@ const envSchema = z.object({
   DATABASE_USER: z.string().min(1),
   DATABASE_PASSWORD: z.string().min(1),
   DATABASE_NAME: z.string().min(1),
-  // An enum, not z.coerce.boolean(): that turns the string "false" into true.
+  // z.coerce.boolean() turns the string "false" into true, so the TLS switches are enums.
   DATABASE_SSL: z.enum(['true', 'false']).optional(),
   DATABASE_SSL_CA: z.string().optional(),
   REDIS_HOST: z.string().min(1),

@@ -1,7 +1,7 @@
 import { ReadinessChecks } from './ports/readiness-checks.port';
 
-// A probe that waits longer than this has already failed it, and a dependency that hangs must not
-// hold the request open for as long as it hangs.
+// A dependency that has not answered after this long is down. The request ends then, however long
+// the dependency would hang.
 const CHECK_TIMEOUT_MS = 2000;
 
 export type CheckState = 'up' | 'down';

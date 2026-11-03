@@ -56,7 +56,7 @@ describe('Readiness', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(
       reported,
-      'at 2000 ms the report no longer waits for the redis check',
+      'at 2000 ms the report stops waiting for the redis check',
     ).toHaveBeenCalledWith({
       status: 'error',
       checks: { database: 'up', redis: 'down' },
