@@ -63,6 +63,6 @@ Proof: run infra | ✓ Decision records > records AD-027 as ADR 0043, which amen
 ## Handoff
 
 - **Settled mid-build:** none
-- **Dispatched:** build (Sonnet sub-agent, C1 to C5) at `87782a9`
-- **Boundary:** none
+- **Dispatched:** build (Sonnet sub-agent, C1 to C5) at `87782a9`, returned at `245c310`
+- **Boundary:** C1-C5 closed at `245c310`
 - **Abandoned:** none
