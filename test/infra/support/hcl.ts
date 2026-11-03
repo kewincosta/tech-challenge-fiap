@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Just enough of HCL to read the Terraform files of the repository: comments, string literals,
+ * The part of HCL needed to read the Terraform files of the repository: comments, string literals,
  * numbers, blocks and the arguments of a block. It does not evaluate anything.
  */
 

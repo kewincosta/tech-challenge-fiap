@@ -70,7 +70,7 @@ module "eks" {
   # The pods call no AWS API, so the cluster needs no OIDC provider for service account roles.
   enable_irsa = false
 
-  # A version that leaves standard support is upgraded, not kept at the extended support price.
+  # EKS upgrades a version that leaves standard support. Extended support costs extra per cluster hour.
   upgrade_policy = {
     support_type = "STANDARD"
   }
