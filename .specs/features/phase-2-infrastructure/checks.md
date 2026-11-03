@@ -264,7 +264,7 @@ Proof: run infra | ✓ README > documents every part the brief asks for
 **C70** - Every file, folder and script the README's links and commands name exists in the repository, `infra/README.md` and `k8s/README.md` among them (AC 27)
 Proof: run infra | ✓ README > names only files and scripts that exist
 
-**C71** - ADRs 0038 to 0041 exist, each `Accepted` and naming its row, AD-022 to AD-025, and each row names its ADR (Landing, AD-010)
+**C71** - ADRs 0038 to 0041 exist, each `Accepted` and naming its row, AD-022 to AD-025, and each row names its ADR (Landing, AD-010; on 2026-11-03 ADR 0042 amended 0041 and AD-026 amended AD-025, so their statuses read `Amended by 0042` and `amended by AD-026`)
 Proof: run infra | ✓ Decision records > records AD-022 to AD-025 as ADRs 0038 to 0041 that name each other
 
 **C72** - A diagram under `docs/architecture` draws the `prod` deployment: the load balancer, the EKS cluster with the application's pods and Mailpit, RDS, ElastiCache and ECR (Shape)
