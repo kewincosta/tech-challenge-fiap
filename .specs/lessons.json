@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 48,
+  "next_id": 63,
   "lessons": [
     {
       "id": "L-003",
@@ -569,6 +569,276 @@
       ],
       "created": "2026-11-03T13:24:24Z",
       "last_seen": "2026-11-03T13:24:24Z"
+    },
+    {
+      "id": "L-048",
+      "key": "weak_test::check the mechanism a document credits against the code that does it not only the outcome it names",
+      "text": "Check the mechanism a document credits against the code that does it, not only the outcome it names.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C2 docs/architecture/high-level-design.md, configureApp (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-049",
+      "key": "weak_test::compare the bodies and the failure condition a document gives for a route with the controller and its use case",
+      "text": "Compare the bodies and the failure condition a document gives for a route with the controller and its use case.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C3 docs/architecture/low-level-design/health.md bodies (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-050",
+      "key": "weak_test::pair each entry point a document names with what it does so a test fails when two roles are swapped",
+      "text": "Pair each entry point a document names with what it does, so a test fails when two roles are swapped.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C1 high-level-design.md entry points (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-051",
+      "key": "weak_test::read routes from every form the decorator and a url take an empty path and a port included",
+      "text": "Read routes from every form the decorator and a URL take, an empty path and a port included.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C3 route scan in test/infra/static/documents.spec.ts (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-052",
+      "key": "weak_test::check that the folders a document names exist not only its files",
+      "text": "Check that the folders a document names exist, not only its files.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "pathsNamed in test/infra/static/documents.spec.ts (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-053",
+      "key": "weak_test::check that a file a document sends the reader to holds what the document says it holds",
+      "text": "Check that a file a document sends the reader to holds what the document says it holds.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "health.md pointer to k8s/README.md (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-054",
+      "key": "weak_test::name in a document which consumer each configuration file serves and test each pairing",
+      "text": "Name in a document which consumer each configuration file serves, and test each pairing.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "high-level-design.md config row (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-055",
+      "key": "weak_test::do not pin a sentence in a test without checking that it is still true of the section around it",
+      "text": "Do not pin a sentence in a test without checking that it is still true of the section around it.",
+      "signal": "weak_test",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "C1 pinned the stale code units sentence (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-056",
+      "key": "spec_precision_gap::name the file when two scripts could fit a sentence of a document",
+      "text": "Name the file when two scripts could fit a sentence of a document.",
+      "signal": "spec_precision_gap",
+      "scope": "docs",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "high-level-design.md How a request travels (docs)"
+      ],
+      "created": "2026-11-03T18:41:19Z",
+      "last_seen": "2026-11-03T18:41:19Z"
+    },
+    {
+      "id": "L-057",
+      "key": "ac_gap::set every variable a guide s command reads in the terminal that runs it",
+      "text": "Set every variable a guide's command reads in the terminal that runs it.",
+      "signal": "ac_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/roteiro-video-fase-2.md block 7 k6 (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-058",
+      "key": "ac_gap::write the status code where a guide names a work order status with the portuguese label beside it",
+      "text": "Write the status code where a guide names a work order status, with the Portuguese label beside it.",
+      "signal": "ac_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/roteiro-video-fase-2.md block 6 status (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-059",
+      "key": "ac_gap::start a guide s terraform destroy with the init a machine that never applied needs",
+      "text": "Start a guide's terraform destroy with the init a machine that never applied needs.",
+      "signal": "ac_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "README.md and docs/roteiro-video-fase-2.md destroy (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-060",
+      "key": "ac_gap::count the completed pod of the migration job among what kubectl get pods shows",
+      "text": "Count the completed pod of the migration Job among what kubectl get pods shows.",
+      "signal": "ac_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/roteiro-video-fase-2.md block 5 pods (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-061",
+      "key": "ac_gap::create a demonstration branch from main so its pull request holds only the demonstration commit",
+      "text": "Create a demonstration branch from main, so its pull request holds only the demonstration commit.",
+      "signal": "ac_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/roteiro-video-fase-2.md step 6 branch (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
+    },
+    {
+      "id": "L-062",
+      "key": "spec_precision_gap::cite a source in a guide only after reading that it holds what the guide takes from it",
+      "text": "Cite a source in a guide only after reading that it holds what the guide takes from it.",
+      "signal": "spec_precision_gap",
+      "scope": "guides",
+      "status": "candidate",
+      "features": [
+        "phase-2-architecture-docs"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "docs/roteiro-video-fase-2.md sources (guides)"
+      ],
+      "created": "2026-11-03T18:41:20Z",
+      "last_seen": "2026-11-03T18:41:20Z"
     }
   ]
 }

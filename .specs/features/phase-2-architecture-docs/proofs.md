@@ -1,6 +1,6 @@
 # phase-2-architecture-docs proofs
 
-**HEAD**: cd46ba0
+**HEAD**: e70ff40
 **Tree**: clean
 **Shell**: /bin/sh
 **Result**: 6 pass, 0 fail
@@ -32,8 +32,8 @@
 
  Test Files  7 passed (7)
       Tests  91 passed (91)
-   Start at  15:14:56
-   Duration  8.89s (transform 187ms, setup 0ms, collect 325ms, tests 8.40s, environment 0ms, prepare 46ms)
+   Start at  15:40:18
+   Duration  7.68s (transform 185ms, setup 0ms, collect 316ms, tests 7.21s, environment 0ms, prepare 38ms)
 ```
 
 `git check-ignore -q docs/roteiro-video.md && git check-ignore -q docs/roteiro-video-fase-2.md` - exit 0
